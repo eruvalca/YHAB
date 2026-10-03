@@ -77,7 +77,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         }
     }
 
-    private static async Task RegisterAndLoginAsync(IPage page)
+    internal static async Task RegisterAndLoginAsync(IPage page)
     {
         var anonymousPlans = await page.APIRequest.GetAsync("/api/plans");
         anonymousPlans.Status.ShouldBe(401);

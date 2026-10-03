@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using YHAB.Data;
 using YHAB.SharedKernel.Budgeting;
 
@@ -28,15 +29,23 @@ internal static class BudgetSnapshotMapping
 
     public static void Apply(ApplicationDbContext database, PlanSnapshot snapshot)
     {
-        Sync(database, snapshot.Accounts.Select(item => ToEntity(item, snapshot.Id)), item => item.Id);
-        Sync(database, snapshot.Groups.Select(item => ToEntity(item, snapshot.Id)), item => item.Id);
-        Sync(database, snapshot.Categories.Select(item => ToEntity(item, snapshot.Id)), item => item.Id);
-        Sync(database, snapshot.Allocations.Select(item => ToEntity(item, snapshot.Id)), item => (item.CategoryId, item.Month));
-        Sync(database, snapshot.Transactions.Select(item => ToEntity(item, snapshot.Id)), item => item.Id);
-        Sync(database, snapshot.Transactions.SelectMany(entry => entry.Splits.Select(split => ToEntity(split, snapshot.Id, entry.Id))), item => item.Id);
+        var removed = new List<EntityEntry>();
+        Sync(database, snapshot.Accounts.Select(item => ToEntity(item, snapshot.Id)), item => item.Id, removed);
+        Sync(database, snapshot.Groups.Select(item => ToEntity(item, snapshot.Id)), item => item.Id, removed);
+        Sync(database, snapshot.Categories.Select(item => ToEntity(item, snapshot.Id)), item => item.Id, removed);
+        Sync(database, snapshot.Allocations.Select(item => ToEntity(item, snapshot.Id)), item => (item.CategoryId, item.Month), removed);
+        Sync(database, snapshot.Transactions.Select(item => ToEntity(item, snapshot.Id)), item => item.Id, removed);
+        Sync(database, snapshot.Transactions.SelectMany(entry => entry.Splits.Select(split => ToEntity(split, snapshot.Id, entry.Id))), item => item.Id, removed);
+
+        // Reparent retained dependents first, then remove children before their principals.
+        // EF enforces required Restrict relationships as soon as an entity is marked deleted.
+        for (var index = removed.Count - 1; index >= 0; index--)
+        {
+            removed[index].State = EntityState.Deleted;
+        }
     }
 
-    private static void Sync<TEntity, TKey>(ApplicationDbContext database, IEnumerable<TEntity> desired, Func<TEntity, TKey> key)
+    private static void Sync<TEntity, TKey>(ApplicationDbContext database, IEnumerable<TEntity> desired, Func<TEntity, TKey> key, List<EntityEntry> removed)
         where TEntity : class
         where TKey : notnull
     {
@@ -53,10 +62,7 @@ internal static class BudgetSnapshotMapping
             }
         }
 
-        foreach (var entry in existing.Values)
-        {
-            entry.State = EntityState.Deleted;
-        }
+        removed.AddRange(existing.Values);
     }
 
     private static AccountData ToData(BudgetAccount item)
@@ -72,7 +78,7 @@ internal static class BudgetSnapshotMapping
         => new(item.Id, item.CategoryId, item.Amount, item.Memo);
 
     private static TransactionData ToData(BudgetTransaction item, IReadOnlyList<SplitData> splits)
-        => new(item.Id, item.AccountId, item.Date, item.Payee, item.Memo, item.Amount, item.TransferAccountId, item.State, item.TransferState, item.NeedsApproval, item.Flag, splits, item.Repeat, item.AnchorDate, item.Occurrence, item.SourceTemplateId);
+        => new(item.Id, item.AccountId, item.Date, item.Payee, item.Memo, item.Amount, item.TransferAccountId, item.State, item.TransferState, item.NeedsApproval, item.Flag, splits, item.Repeat, item.AnchorDate, item.Occurrence, item.SourceTemplateId, item.ScheduledDate);
 
     private static CategoryData ToData(BudgetCategory item)
         => new(item.Id, item.GroupId, item.Name, item.Notes, item.SortOrder, item.Hidden, item.CreditAccountId, item.TargetKind is { } kind ? new TargetData(kind, item.TargetCadence, item.TargetAmount, item.TargetStartMonth, item.TargetDueDate, item.TargetRepeatMonths, item.TargetWeekday) : null);
@@ -137,6 +143,8 @@ internal static class BudgetSnapshotMapping
         AnchorDate = item.AnchorDate,
         Occurrence = item.Occurrence,
         SourceTemplateId = item.SourceTemplateId,
+        // History written before ScheduledDate existed still needs a stable occurrence key.
+        ScheduledDate = item.ScheduledDate ?? (item.SourceTemplateId.HasValue ? item.Date : null),
     };
 
     private static BudgetCategory ToEntity(CategoryData item, Guid planId) => new()

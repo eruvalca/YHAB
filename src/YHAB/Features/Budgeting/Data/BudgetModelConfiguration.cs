@@ -47,7 +47,7 @@ internal static class BudgetModelConfiguration
         entry.HasOne<BudgetAccount>().WithMany().HasForeignKey(item => new { item.PlanId, item.AccountId }).OnDelete(DeleteBehavior.Restrict);
         entry.HasOne<BudgetAccount>().WithMany().HasForeignKey(item => new { item.PlanId, item.TransferAccountId }).OnDelete(DeleteBehavior.Restrict);
         entry.HasIndex(item => new { item.PlanId, item.Date });
-        entry.HasIndex(item => new { item.PlanId, item.SourceTemplateId, item.Date }).IsUnique();
+        entry.HasIndex(item => new { item.PlanId, item.SourceTemplateId, item.ScheduledDate }).IsUnique();
         entry.Property(item => item.Payee).HasMaxLength(200);
         entry.Property(item => item.Memo).HasMaxLength(4000);
         entry.Property(item => item.Flag).HasMaxLength(20);

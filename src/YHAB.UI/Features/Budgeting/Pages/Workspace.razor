@@ -12,7 +12,7 @@
 }
 @if (Snapshot is { } plan)
 {
-    <FluentGrid Spacing="4" Class="workspace" aria-busy="@(_busy ? "true" : "false")" data-interactive="@(RendererInfo.IsInteractive ? "true" : "false")">
+    <FluentGrid Spacing="4" Class="workspace" aria-busy="@(_busy ? "true" : "false")" data-interactive="@(RendererInfo.IsInteractive ? "true" : "false")" data-renderer="@RendererInfo.Name">
         <FluentGridItem Xs="12" Lg="3"><PlanNavigation Plan="plan" OnAddAccount="AddAccount" Busy="IsBusy" /></FluentGridItem>
         <FluentGridItem Xs="12" Lg="9">
             <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalS)" Class="workspace-tools">

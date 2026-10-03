@@ -7,13 +7,30 @@ the CLI and editor find `global.json` and `YHAB.slnx`.
 | Project | Scope |
 | --- | --- |
 | `YHAB.UnitTests` | Budget arithmetic, monthly carryover, cash/credit overspending, payment reserves, targets, recurrence, transaction validation, reconciliation, plus Identity and service defaults. |
-| `YHAB.ComponentTests` | Calculator input events, month-specific assignments, invalid-input feedback, account workflows, navigation, error request IDs, and the shared UI's `Counter`, using bUnit. |
-| `YHAB.IntegrationTests` | Real PostgreSQL: migrations, Identity, private plan isolation, cross-plan foreign keys, optimistic concurrency, durable undo/redo, and deletion of owned ledger data. |
+| `YHAB.ComponentTests` | Calculator input events, month-specific assignments, invalid-input feedback, delayed workspace loading and interactive-only recurring posting, account workflows, navigation, error request IDs, and the shared UI's `Counter`, using bUnit. |
+| `YHAB.IntegrationTests` | Real PostgreSQL: migrations and legacy data upgrades, Identity, private plan isolation, cross-plan foreign keys, optimistic concurrency, category merges, editable recurring occurrence dates, durable undo/redo, and deletion of owned ledger data. |
 | `YHAB.AspireIntegrationTests` | The real AppHost, database/migration startup dependencies, readiness, resource endpoints, and cross-process HTTP behavior. |
 | `YHAB.PlaywrightTests` | Real Chromium: Fluent controls, desktop/mobile navigation, persistent themes, drawer behavior, document continuity, manual plan/purchase/undo/report/reconciliation workflows, and API authentication/antiforgery/revision guards. |
 
 `YHAB.Testing` is a shared support library, not a test project. It configures
 isolated AppHost builders for the Aspire and Playwright projects.
+
+The linked fixture under `tests/Scenarios` supplies identical synthetic household
+data to unit, persistence, and browser tests without adding AppHost dependencies
+to headless projects. The [three-month validation report](../docs/budgeting-validation.md)
+records its independent expected totals, growing dataset checkpoints, layer
+boundaries, results, and findings. Persistence checkpoints use disposable bulk
+fixtures; browser entries use the authenticated API.
+
+The household browser regression holds the WebAssembly runtime binary download
+until the first populated workspace works through an interactive server circuit.
+It then releases the download, waits for Auto's resource-cache marker before
+navigating away, and verifies cached WebAssembly rendering later in
+the walkthrough. It also checks the initial SSR HTML and retains the uncaught
+browser-error assertion. The workspace's `data-renderer` attribute makes the
+rendering path observable without visible implementation details. The bUnit
+workspace tests check delayed data loading and recurring commands, not the actual
+SSR-to-interactive handoff or SignalR transport.
 
 ## Supported stack
 

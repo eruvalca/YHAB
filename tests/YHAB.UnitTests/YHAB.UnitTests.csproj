@@ -10,6 +10,7 @@
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <ProjectReference Include="../../src/YHAB/YHAB.csproj" />
+    <Compile Include="../Scenarios/*.cs" Link="Scenarios/%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

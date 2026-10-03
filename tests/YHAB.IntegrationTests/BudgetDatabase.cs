@@ -12,7 +12,7 @@ internal sealed class BudgetDatabase(PostgreSqlContainer container, ServiceProvi
 {
     public IDbContextFactory<ApplicationDbContext> Factory => provider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
     public BudgetStore Store => provider.GetRequiredService<BudgetStore>();
-    public static async Task<BudgetDatabase> CreateAsync(CancellationToken cancellationToken)
+    public static async Task<BudgetDatabase> CreateAsync(CancellationToken cancellationToken, TimeProvider? timeProvider = null)
     {
         var container = new PostgreSqlBuilder("postgres:18.3").Build();
         ServiceProvider? provider = null;
@@ -22,7 +22,7 @@ internal sealed class BudgetDatabase(PostgreSqlContainer container, ServiceProvi
             var services = new ServiceCollection();
             services.AddLogging();
             services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
-            services.AddSingleton<TimeProvider, FixedTime>();
+            services.AddSingleton(timeProvider ?? new FixedTime());
             services.AddSingleton<BudgetClock>();
             services.AddTransient<BudgetStore>();
             services.AddDbContextFactory<ApplicationDbContext>(options => options.UseNpgsql(container.GetConnectionString()));
@@ -49,4 +49,3 @@ internal sealed class BudgetDatabase(PostgreSqlContainer container, ServiceProvi
         public override DateTimeOffset GetUtcNow() => new(2026, 10, 2, 12, 0, 0, TimeSpan.Zero);
     }
 }
-

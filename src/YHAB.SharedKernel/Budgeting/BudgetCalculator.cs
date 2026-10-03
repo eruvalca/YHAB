@@ -25,7 +25,8 @@ public static class BudgetCalculator
         BudgetMonth? result = null;
         for (var current = start; current <= month; current = current.AddMonths(1))
         {
-            var creditMoves = new List<CreditMove>();
+            var creditActivity = new List<CreditActivity>();
+            var creditPayments = new Dictionary<Guid, CreditPayment>();
             var rows = plan.Categories.ToDictionary(item => item.Id, item => new WorkingCategory(item, carry[item.Id]));
             foreach (var allocation in plan.Allocations.Where(item => item.Month == current))
             {
@@ -43,11 +44,11 @@ public static class BudgetCalculator
 
             foreach (var entry in entries[current])
             {
-                ApplyEntry(entry, accounts, balances, rows, payments, creditMoves);
+                ApplyEntry(entry, accounts, balances, rows, payments, creditActivity, creditPayments);
             }
 
-            FundCredit(rows, payments);
-            MoveCreditReserves(rows, creditMoves);
+            var funded = FundCredit(rows, creditActivity);
+            ApplyCreditReserves(entries[current], rows, funded, creditPayments);
             var output = rows.Values.Select(row => ToCategoryMonth(plan, row, current, today, includeTargets)).ToArray();
             var liquid = plan.Accounts.Where(account => BudgetFacts.IsCash(account.Kind)).Sum(account => balances[account.Id])
                 + plan.Accounts.Where(account => BudgetFacts.IsCredit(account.Kind)).Sum(account => Math.Max(0, balances[account.Id]));
@@ -71,7 +72,8 @@ public static class BudgetCalculator
     }
 
     private static void ApplyEntry(TransactionData entry, Dictionary<Guid, AccountData> accounts,
-        Dictionary<Guid, decimal> balances, Dictionary<Guid, WorkingCategory> rows, Dictionary<Guid, Guid> payments, List<CreditMove> creditMoves)
+        Dictionary<Guid, decimal> balances, Dictionary<Guid, WorkingCategory> rows, Dictionary<Guid, Guid> payments,
+        List<CreditActivity> creditActivity, Dictionary<Guid, CreditPayment> creditPayments)
     {
         var source = accounts[entry.AccountId];
         var before = balances[source.Id];
@@ -82,7 +84,7 @@ public static class BudgetCalculator
         {
             destination = accounts[transferId];
             destinationBefore = balances[transferId];
-            ApplyPayment(entry, source, destination, balances, rows, payments, creditMoves);
+            RecordPayment(entry, source, destination, before, destinationBefore, payments, creditPayments);
             balances[transferId] -= entry.Amount;
         }
 
@@ -119,7 +121,11 @@ public static class BudgetCalculator
                 var creditAmount = amount == remainingAmount ? remainingCredit : decimal.Round(amount * fraction, 2, MidpointRounding.AwayFromZero);
                 remainingCredit -= creditAmount;
                 remainingAmount -= amount;
-                row.CreditActivity[budgetAccount.Id] = row.CreditActivity.GetValueOrDefault(budgetAccount.Id) + creditAmount;
+                row.CreditRefunds += Math.Max(0, creditAmount);
+                if (payments.TryGetValue(budgetAccount.Id, out var paymentId))
+                {
+                    creditActivity.Add(new(entry.Id, categoryId, paymentId, creditAmount));
+                }
                 row.CashActivity += amount - creditAmount;
             }
             else
@@ -129,12 +135,12 @@ public static class BudgetCalculator
         }
     }
 
-    private static void ApplyPayment(TransactionData entry, AccountData source, AccountData destination,
-        Dictionary<Guid, decimal> balances, Dictionary<Guid, WorkingCategory> rows, Dictionary<Guid, Guid> payments, List<CreditMove> creditMoves)
+    private static void RecordPayment(TransactionData entry, AccountData source, AccountData destination,
+        decimal sourceBefore, decimal destinationBefore, Dictionary<Guid, Guid> payments, Dictionary<Guid, CreditPayment> creditPayments)
     {
         var receiving = entry.Amount < 0 ? destination : source;
         var sending = entry.Amount < 0 ? source : destination;
-        var receivingBefore = receiving.Id == source.Id ? balances[source.Id] - entry.Amount : balances[destination.Id];
+        var receivingBefore = receiving.Id == source.Id ? sourceBefore : destinationBefore;
         var paid = Math.Min(Math.Abs(entry.Amount), Math.Max(0, -receivingBefore));
         if (!BudgetFacts.IsCredit(receiving.Kind) || !payments.TryGetValue(receiving.Id, out var categoryId))
         {
@@ -143,45 +149,111 @@ public static class BudgetCalculator
 
         if (BudgetFacts.IsCash(sending.Kind))
         {
-            rows[categoryId].Activity -= paid;
-            rows[categoryId].CashActivity -= paid;
+            creditPayments.Add(entry.Id, new(categoryId, null, paid, 0));
         }
         else if (BudgetFacts.IsCredit(sending.Kind) && payments.TryGetValue(sending.Id, out var sendingCategory))
         {
-            creditMoves.Add(new(categoryId, sendingCategory, paid));
+            var sendingBefore = sending.Id == source.Id ? sourceBefore : destinationBefore;
+            var borrowed = Math.Max(0, paid - Math.Max(0, sendingBefore));
+            creditPayments.Add(entry.Id, new(categoryId, sendingCategory, paid, borrowed));
         }
     }
 
-    private static void MoveCreditReserves(Dictionary<Guid, WorkingCategory> rows, List<CreditMove> moves)
+    private static void ApplyCreditReserves(IEnumerable<TransactionData> entries, Dictionary<Guid, WorkingCategory> rows,
+        Dictionary<Guid, PaymentFunding> funded, Dictionary<Guid, CreditPayment> payments)
     {
-        foreach (var move in moves)
+        // Category funding accounts for the whole month's cash spending and refunds.
+        // Apply that funding at each purchase, so a transfer cannot consume later purchases' reserves.
+        foreach (var entry in entries)
         {
-            var source = rows[move.ReceivingCategory];
-            var reserved = Math.Min(move.Paid, Math.Max(0, source.Carried + source.Assigned + source.Activity));
-            source.Activity -= reserved;
-            rows[move.SendingCategory].Activity += reserved;
-        }
-    }
-
-    private sealed record CreditMove(Guid ReceivingCategory, Guid SendingCategory, decimal Paid);
-
-    private static void FundCredit(Dictionary<Guid, WorkingCategory> rows, Dictionary<Guid, Guid> payments)
-    {
-        foreach (var row in rows.Values.Where(item => item.Category.CreditAccountId is null))
-        {
-            var funds = Math.Max(0, row.Carried + row.Assigned + row.CashActivity);
-            foreach (var (accountId, activity) in row.CreditActivity)
+            if (funded.TryGetValue(entry.Id, out var funding))
             {
-                if (!payments.TryGetValue(accountId, out var paymentId))
-                {
-                    continue;
-                }
+                rows[funding.PaymentCategoryId].Activity += funding.Amount;
+            }
 
-                var reserved = activity >= 0 ? -activity : Math.Min(-activity, funds);
-                rows[paymentId].Activity += reserved;
-                funds -= reserved;
+            if (!payments.TryGetValue(entry.Id, out var payment))
+            {
+                continue;
+            }
+
+            var receiving = rows[payment.ReceivingCategory];
+            var cashPaid = payment.Paid - payment.Borrowed;
+            receiving.Activity -= cashPaid;
+            receiving.CashActivity -= cashPaid;
+            if (payment.SendingCategory is { } sendingCategory)
+            {
+                var reserved = Math.Min(payment.Borrowed, Math.Max(0, receiving.Carried + receiving.Assigned + receiving.Activity));
+                receiving.Activity -= reserved;
+                rows[sendingCategory].Activity += reserved;
             }
         }
+    }
+
+    private sealed record CreditActivity(Guid TransactionId, Guid CategoryId, Guid PaymentCategoryId, decimal Amount);
+    private sealed record PaymentFunding(Guid PaymentCategoryId, decimal Amount);
+    private sealed record CreditPayment(Guid ReceivingCategory, Guid? SendingCategory, decimal Paid, decimal Borrowed);
+
+    private static Dictionary<Guid, PaymentFunding> FundCredit(Dictionary<Guid, WorkingCategory> rows, List<CreditActivity> activity)
+    {
+        var remainingActivity = OffsetRefundedPurchases(rows, activity);
+        // Cash spending has priority when allocating the remaining category money.
+        var funds = rows.ToDictionary(item => item.Key,
+            item => Math.Max(0, item.Value.Carried + item.Value.Assigned + item.Value.CashActivity + item.Value.CreditRefunds));
+        var funded = new Dictionary<Guid, PaymentFunding>();
+        foreach (var item in remainingActivity)
+        {
+            var reserved = -item.Amount;
+            if (item.Amount < 0)
+            {
+                reserved = Math.Min(reserved, funds[item.CategoryId]);
+                funds[item.CategoryId] -= reserved;
+            }
+
+            funded[item.TransactionId] = new(item.PaymentCategoryId, reserved + (funded.GetValueOrDefault(item.TransactionId)?.Amount ?? 0));
+        }
+        return funded;
+    }
+
+    private static CreditActivity[] OffsetRefundedPurchases(Dictionary<Guid, WorkingCategory> rows, List<CreditActivity> activity)
+    {
+        var remaining = activity.ToArray();
+        var purchases = new Dictionary<(Guid CategoryId, Guid PaymentCategoryId), Stack<int>>();
+        for (var index = 0; index < remaining.Length; index++)
+        {
+            var item = remaining[index];
+            var key = (item.CategoryId, item.PaymentCategoryId);
+            if (!purchases.TryGetValue(key, out var previous))
+            {
+                previous = new Stack<int>();
+                purchases.Add(key, previous);
+            }
+
+            if (item.Amount < 0)
+            {
+                previous.Push(index);
+                continue;
+            }
+
+            // Cancel the most recent earlier purchases on this card/category. These
+            // offsets reduce spending; they never become reserves an earlier transfer can use.
+            var refund = item.Amount;
+            while (refund > 0 && previous.TryPeek(out var purchaseIndex))
+            {
+                var purchase = remaining[purchaseIndex];
+                var canceled = Math.Min(refund, -purchase.Amount);
+                remaining[purchaseIndex] = purchase with { Amount = purchase.Amount + canceled };
+                refund -= canceled;
+                if (remaining[purchaseIndex].Amount == 0)
+                {
+                    previous.Pop();
+                }
+            }
+
+            rows[item.CategoryId].CreditRefunds -= item.Amount - refund;
+            remaining[index] = item with { Amount = refund };
+        }
+
+        return remaining;
     }
 
     private static CategoryMonth ToCategoryMonth(PlanSnapshot plan, WorkingCategory row, DateOnly month, DateOnly today, bool includeTargets)
@@ -189,7 +261,7 @@ public static class BudgetCalculator
         var available = row.Carried + row.Assigned + row.Activity;
         var overspending = Math.Max(0, -available);
         var cash = row.Category.CreditAccountId.HasValue ? overspending
-            : Math.Min(overspending, Math.Max(0, -(row.Carried + row.Assigned + row.CashActivity)));
+            : Math.Min(overspending, Math.Max(0, -(row.Carried + row.Assigned + row.CashActivity + row.CreditRefunds)));
         var needed = row.Snoozed || !includeTargets ? 0 : TargetCalculator.Needed(plan, row.Category, month, today, row.Assigned, available, row.Carried);
         var targetTotal = !includeTargets ? 0 : MonthlyTargetTotal(plan, row, month, today, available);
         return new(row.Category, row.Assigned, row.Activity, available, cash, overspending - cash, needed,
@@ -209,6 +281,6 @@ public static class BudgetCalculator
         public decimal Activity { get; set; }
         public decimal CashActivity { get; set; }
         public bool Snoozed { get; set; }
-        public Dictionary<Guid, decimal> CreditActivity { get; } = [];
+        public decimal CreditRefunds { get; set; }
     }
 }

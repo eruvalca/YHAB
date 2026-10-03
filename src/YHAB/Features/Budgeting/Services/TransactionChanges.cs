@@ -30,14 +30,18 @@ internal static class TransactionChanges
             return new InvalidBudgetChange("Use Reconcile to lock transactions after verifying your balance.");
         }
 
+        var sameSchedule = existing is { Repeat: not RepeatFrequency.None }
+            && existing.Repeat == entry.Repeat && existing.Date == entry.Date;
+        var anchor = sameSchedule ? existing!.AnchorDate ?? existing.Date : entry.Date;
         entry = entry with
         {
             Id = entry.Id == Guid.Empty ? Guid.NewGuid() : entry.Id,
             Payee = entry.Payee.Trim(),
             Splits = entry.Splits.Select(item => item with { Id = item.Id == Guid.Empty ? Guid.NewGuid() : item.Id }).ToArray(),
             SourceTemplateId = existing?.SourceTemplateId,
-            AnchorDate = entry.Repeat == RepeatFrequency.None ? null : entry.Date,
-            Occurrence = 0,
+            ScheduledDate = existing?.ScheduledDate ?? (existing?.SourceTemplateId.HasValue == true ? existing.Date : null),
+            AnchorDate = entry.Repeat == RepeatFrequency.None ? null : anchor,
+            Occurrence = sameSchedule ? existing!.Occurrence : 0,
         };
         var updated = plan with { Transactions = CatalogChanges.Replace(plan.Transactions, entry, item => item.Id) };
         return entry.Repeat == RepeatFrequency.None ? updated : PostDue(updated, today);
@@ -175,13 +179,14 @@ internal static class TransactionChanges
             var next = template;
             while (next.Date <= today)
             {
-                if (!transactions.Any(item => item.SourceTemplateId == template.Id && item.Date == next.Date))
+                if (!transactions.Any(item => item.SourceTemplateId == template.Id && (item.ScheduledDate ?? item.Date) == next.Date))
                 {
                     transactions.Add(next with
                     {
                         Id = Guid.NewGuid(),
                         Repeat = RepeatFrequency.None,
                         SourceTemplateId = template.Id,
+                        ScheduledDate = next.Date,
                         State = ClearingState.Uncleared,
                         TransferState = ClearingState.Uncleared,
                         NeedsApproval = true,

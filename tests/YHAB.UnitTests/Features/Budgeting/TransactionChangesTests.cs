@@ -53,6 +53,54 @@ public sealed class TransactionChangesTests
     }
 
     [Fact]
+    public void EditingTemplateDetailsPreservesTheOriginalMonthEndAnchor()
+    {
+        var plan = Create();
+        var template = Entry(plan, 0, -25, date: new(2026, 1, 31)) with { Repeat = RepeatFrequency.Monthly };
+        plan = TransactionChanges.Save(plan, new(0, template), new(2026, 1, 31)).AsT0;
+        var next = plan.Transactions.Single(item => item.Repeat != RepeatFrequency.None);
+        next.Date.ShouldBe(new(2026, 2, 28));
+        var edited = next with
+        {
+            Memo = "Updated subscription",
+            Amount = -30,
+            Splits = [next.Splits[0] with { Amount = -30 }],
+            AnchorDate = null,
+            Occurrence = 0,
+        };
+
+        var result = TransactionChanges.Save(plan, new(0, edited), new(2026, 2, 1));
+
+        result.IsT0.ShouldBeTrue();
+        var saved = result.AsT0.Transactions.Single(item => item.Id == next.Id);
+        saved.AnchorDate.ShouldBe(new DateOnly(2026, 1, 31));
+        saved.Occurrence.ShouldBe(1);
+        var posted = TransactionChanges.PostDue(result.AsT0, new(2026, 3, 31));
+        posted.Transactions.Where(item => item.SourceTemplateId == next.Id).OrderBy(item => item.Date)
+            .Select(item => (item.Date, item.Amount)).ShouldBe([(new(2026, 1, 31), -25m), (new(2026, 2, 28), -30m), (new(2026, 3, 31), -30m)]);
+    }
+
+    [Theory]
+    [InlineData(27, RepeatFrequency.Monthly, 2026, 3, 27)]
+    [InlineData(28, RepeatFrequency.Weekly, 2026, 3, 7)]
+    public void ChangingTemplateScheduleEstablishesANewAnchor(int day, RepeatFrequency frequency, int year, int month, int nextDay)
+    {
+        var plan = Create();
+        var template = Entry(plan, 0, -25, date: new(2026, 1, 31)) with { Repeat = RepeatFrequency.Monthly };
+        plan = TransactionChanges.Save(plan, new(0, template), new(2026, 1, 31)).AsT0;
+        var next = plan.Transactions.Single(item => item.Repeat != RepeatFrequency.None);
+        var date = new DateOnly(2026, 2, day);
+
+        var result = TransactionChanges.Save(plan, new(0, next with { Date = date, Repeat = frequency }), date);
+
+        result.IsT0.ShouldBeTrue();
+        var saved = result.AsT0.Transactions.Single(item => item.Id == next.Id);
+        saved.AnchorDate.ShouldBe(date);
+        saved.Date.ShouldBe(new(year, month, nextDay));
+        saved.Occurrence.ShouldBe(1);
+    }
+
+    [Fact]
     public void InvalidSplitTotalsAndForeignCategoryAreRejected()
     {
         var plan = Create();
@@ -60,6 +108,28 @@ public sealed class TransactionChangesTests
         TransactionChanges.Save(plan, new(0, entry with { Amount = -99 }), plan.Today).IsT1.ShouldBeTrue();
         TransactionChanges.Save(plan, new(0, entry with { Splits = [entry.Splits[0] with { CategoryId = Guid.NewGuid() }] }), plan.Today).IsT1.ShouldBeTrue();
         TransactionChanges.Save(plan, new(0, entry with { Splits = [entry.Splits[0] with { Amount = decimal.MaxValue }, entry.Splits[0]] }), plan.Today).IsT1.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void EditingOccurrenceDatePreservesItsScheduledIdentityAndPreventsReposting()
+    {
+        var plan = Create();
+        var template = Entry(plan, 0, -25) with { Repeat = RepeatFrequency.Daily };
+        plan = TransactionChanges.Save(plan, new(0, template), January.AddDays(2)).AsT0;
+        var occurrence = plan.Transactions.Single(item => item.SourceTemplateId == template.Id && item.Date == January.AddDays(1));
+
+        var result = TransactionChanges.Save(plan, new(0, occurrence with { Date = January.AddDays(2), ScheduledDate = null }), plan.Today);
+
+        result.IsT0.ShouldBeTrue();
+        var saved = result.AsT0.Transactions.Single(item => item.Id == occurrence.Id);
+        saved.Date.ShouldBe(January.AddDays(2));
+        saved.ScheduledDate.ShouldBe(January.AddDays(1));
+        result.AsT0.Transactions.Count(item => item.SourceTemplateId == template.Id && item.Date == saved.Date).ShouldBe(2);
+        // Rewind the template deliberately: catch-up must recognize the edited occurrence.
+        var next = result.AsT0.Transactions.Single(item => item.Id == template.Id);
+        var replayed = TransactionChanges.Save(result.AsT0, new(0, next with { Date = January.AddDays(1) }), January.AddDays(2)).AsT0;
+        replayed.Transactions.Count.ShouldBe(3);
+        replayed.Transactions.Single(item => item.Id == occurrence.Id).ShouldBe(saved);
     }
 
     [Fact]

@@ -20,4 +20,5 @@ internal sealed class BudgetTransaction
     public DateOnly? AnchorDate { get; set; }
     public int Occurrence { get; set; }
     public Guid? SourceTemplateId { get; set; }
+    public DateOnly? ScheduledDate { get; set; }
 }

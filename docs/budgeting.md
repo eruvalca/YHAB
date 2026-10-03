@@ -46,6 +46,13 @@ page. Horizontal table scrolling preserves the surrounding mobile layout.
 - Funded credit purchases move money from their spending category into the
   corresponding credit payment category. Payments use that reserve. Opening
   credit debt needs an explicit assignment to its payment category.
+- Within each month, credit refunds first offset the most recent earlier
+  purchases on the same card and in the same category. These cancellations
+  do not become payment reserves available to transfers or cover cash
+  overspending. Excess refunds can fund other spending, with cash spending
+  taking priority; refunds received before a later purchase remain separate.
+- Balance transfers move only the payment money available at the transfer;
+  later purchases retain their own reserves.
 - A positive credit balance behaves like spendable cash until depleted.
 - Future assignments reserve money from Ready to assign. Moving money changes
   assignments without inventing income or altering account balances.
@@ -72,7 +79,11 @@ The plan's server date uses `Budgeting:TimeZone` (default `America/Chicago`).
 Dates and amounts are date-only values and fixed decimal dollars.
 
 Monthly recurrence retains its original day: January 31 becomes February 28,
-then March 31. Closing an account pauses instructions involving that account.
+then March 31. Editing an amount, memo, or other details preserves that anchor;
+changing the next date or repeat frequency starts a new schedule from that date.
+Posted occurrences have an immutable scheduled date separate from their editable
+transaction date. Two occurrences can share a transaction date without being
+posted twice. Closing an account pauses instructions involving that account.
 Use the register's **Recurring** view to edit or delete future repeating
 instructions without removing already-posted occurrences.
 
@@ -91,8 +102,12 @@ new edit; conflicting edits never silently overwrite another tab's changes.
 
 Plan selection, settings, reports, the shell, and Identity forms default to
 static SSR with enhanced navigation. The budget/register workspace uses
-InteractiveAuto and a persisted prerender snapshot. Server rendering calls the
-application service directly; WASM uses the authenticated same-origin API.
+InteractiveAuto. Each renderer loads an owner-scoped snapshot: once for static
+prerendering and again when interactivity starts. The complete ledger is not
+serialized into persistent prerender state, which would grow beyond SignalR's
+startup message limit. Server rendering calls the application service directly;
+WASM uses the authenticated same-origin API. Interactive loading and refresh post
+due recurring entries after the snapshot arrives; static SSR never posts them.
 Fluent providers live inside the interactive workspace. Native static forms
 retain named POST form mapping and antiforgery.
 
@@ -103,6 +118,12 @@ keys prevent ledger references crossing plans. Decimal columns use precision
 bounded JSON history snapshots commit in one transaction. Reads do not track
 entities and use a repeatable-read transaction so the ledger and its revision
 stay consistent across queries. Migrations run through Aspire's existing migration resource.
+
+`PreserveRecurringOccurrenceDates` backfills occurrence identities from their
+existing transaction dates and moves the unique occurrence index to the scheduled
+date. Older undo/redo snapshots remain readable. Downgrading to the previous
+schema requires occurrence transaction dates to satisfy its old unique index;
+the downgrade does not change transaction dates to force compatibility.
 
 The client currently receives the complete owned plan ledger so month changes
 and calculations can run locally. This favors personal manual-entry plans;
@@ -139,6 +160,9 @@ described in the root README.
 
 ## Acceptance evidence
 
+See the [three-month household validation](budgeting-validation.md) for growing
+transaction datasets, independent monetary expectations, and campaign findings.
+
 The budgeting checks complement the existing Identity tests. They use fixed
 boundary values, fresh bUnit renderers, disposable PostgreSQL containers, and
 isolated AppHosts. Browser tests exercise both desktop and phone widths.
@@ -148,11 +172,15 @@ isolated AppHosts. Browser tests exercise both desktop and phone widths.
 | Calculator inputs and invalid expressions | `EvaluatesBoundedDecimalArithmetic`, `RejectsInvalidOrUnboundedInput`, `CalculatorEmitsEvaluatedAmountAndRejectsInvalidExpressionAsync` |
 | Monthly assignments, carryover, and cash overspending | `NextMonthAssignmentUsesTheDisplayedMonthAndEvaluatedAmountAsync`, `PositiveBalancesCarryForwardAndFutureAssignmentsReserveMoney`, `CashOverspendingReducesNextMonthReadyToAssign` |
 | Credit debt, funded purchases, payments, and refunds | `CreditOpeningDebtDoesNotCreateSpendableMoney`, `FundedCreditPurchasesMoveCashToPaymentCategory`, `CardPaymentReducesReserveWithoutCountingAsAnotherPurchase`, `RefundRestoresCategoryAndReducesPaymentReserve` |
+| Cross-card refunds, cash priority, and payment reserve timing | `CrossCardRefundFundsPurchasesRegardlessOfTransactionOrder`, `CrossCardRefundCoversCashSpendingBeforeCreditSpending`, `BalanceTransferDoesNotUseMoneyFromLaterPurchases`, `CashPaymentAfterBalanceTransferUsesTransferredReserve`, `PositiveCardBalanceUsedForTransferReservesOnlyBorrowedMoney` |
+| Unfunded refunds, partial funding, and month rollover | `UnfundedRefundDoesNotReserveMoneyOnAnotherCardOrReduceNextMonthCash`, `PartialRefundReservesOnlyAssignedMoneyForRemainingCreditSpending`, `UnfundedRefundDoesNotCoverCashOverspending` |
+| Refund cancellation and transferable reserves | `RefundOffsetsCannotFundAnEarlierBalanceTransfer`, `RefundBeforePurchaseReleasesOpeningReserveBeforeBalanceTransfer`, `PartialRefundsAcrossMultiplePurchasesPreserveOnlyFundedReserves` |
 | Split validation and cent preservation | `InvalidSplitTotalsAndForeignCategoryAreRejected`, `SplitRoundingPreservesEveryCentOfPositiveCreditCrossing` |
 | Targets and automatic assignment | `MonthlyBehaviorDistinguishesCarryContributionsAndBalance`, `DatedRefillCountsMoneyAlreadySpentDuringTheTargetPeriod`, `AutoAssignUsesOnlyReadyCashAndSkipsHiddenOrSnoozedTargets` |
 | Recurring entries without one-off scheduling | `RejectsOneOffFutureEntriesButAcceptsRepeatingInstructions`, `DueRecurrencesArePostedOnceWithApprovalAndAnchorDayPreserved`, `FrequenciesRetainTheAnchorAcrossCalendarBoundaries`, `TwiceMonthlyClampsFebruaryAndReturnsToTheOriginalDays` |
+| Recurring edits, occurrence identity, and upgrade compatibility | `EditingTemplateDetailsPreservesTheOriginalMonthEndAnchor`, `ChangingTemplateScheduleEstablishesANewAnchor`, `OccurrencesCanShareEditedDatesWithoutLosingIdentityOrHistoryAsync`, `MigrationBackfillsScheduledDatesAndLegacyHistoryCanStillBeRestoredAsync` |
 | Transfers, reconciliation, and account locks | `TransferClearingUpdatesOnlyTheSelectedAccountSide`, `CreditBalanceTransferMovesFundedPaymentMoneyToTheNewCard`, `ReconciliationLocksOnlyClearedEntriesAndRequiresExplicitAdjustment`, `ClosingAnAccountRequiresZeroBalanceAndOpeningChangesRespectReconciliation` |
-| Category history and payee management | `MergingAUsedCategoryPreservesAssignmentsSpendingAndAccountBalance`, `PayeeRenameChangesMatchingPostedAndRecurringEntriesOnly` |
+| Category history and payee management | `MergingAUsedCategoryPreservesAssignmentsSpendingAndAccountBalance`, `MergingAssignedCategoryPersistsHistoryAndSupportsUndoRedoAsync`, `PayeeRenameChangesMatchingPostedAndRecurringEntriesOnly` |
 | Private plans, SQL integrity, durable history, and concurrent edits | `OwnerIsolationHistoryAndConcurrentWritesPersistAcrossContextsAsync`, `DatabaseRejectsCrossPlanReferencesAndAccountDeletionRemovesOwnedLedgerAsync` |
 | Manual browser workflow, calculator entry, keyboard undo/redo, reports, reconciliation, and API guards | `ManualPlanPurchaseUndoAndReportsAgreeAsync` at 1440px and 390px |
 | Themes, mobile navigation, and SSR document continuity | `FluentNavigationPreservesDocumentAndThemeChoice` at 1280px and 390px |

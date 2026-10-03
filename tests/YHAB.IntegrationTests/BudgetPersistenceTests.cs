@@ -13,6 +13,51 @@ namespace YHAB.IntegrationTests;
 public sealed class BudgetPersistenceTests
 {
     [Fact]
+    public async Task MergingAssignedCategoryPersistsHistoryAndSupportsUndoRedoAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(3));
+        await using var database = await BudgetDatabase.CreateAsync(timeout.Token);
+        var store = database.Store;
+        var id = await store.CreateAsync("owner-a", new("Merge regression"), timeout.Token);
+        var plan = (await store.ReadAsync("owner-a", id, timeout.Token)).ShouldNotBeNull();
+        var source = plan.Categories[0].Id;
+        var destination = plan.Categories[1].Id;
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, plan.Today, false, "");
+        plan = await ApplyAsync(store, plan, new SaveAccount(plan.Version, account), timeout.Token);
+        plan = await ApplyAsync(store, plan, new AssignMoney(plan.Version, source, BudgetFacts.Month(plan.Today), 100), timeout.Token);
+        plan = await ApplyAsync(store, plan, new AssignMoney(plan.Version, destination, BudgetFacts.Month(plan.Today), 50), timeout.Token);
+        var entry = new TransactionData(Guid.NewGuid(), account.Id, plan.Today, "Market", "Preserve memo", -25, null,
+            ClearingState.Cleared, ClearingState.Uncleared, false, "", [new(Guid.NewGuid(), source, -25, "Preserve split")]);
+        plan = await ApplyAsync(store, plan, new SaveTransaction(plan.Version, entry), timeout.Token);
+
+        plan = await ApplyAsync(store, plan, new RemoveCategory(plan.Version, source, destination), timeout.Token);
+
+        plan.Categories.ShouldNotContain(item => item.Id == source);
+        plan.Allocations.Single().CategoryId.ShouldBe(destination);
+        plan.Allocations.Single().Amount.ShouldBe(150);
+        plan.Transactions.Single().Splits.Single().CategoryId.ShouldBe(destination);
+        BudgetCalculator.Calculate(plan, BudgetFacts.Month(plan.Today), plan.Today).Categories.Single(item => item.Category.Id == destination).Available.ShouldBe(125);
+        plan = await ApplyAsync(store, plan, new UndoChange(plan.Version), timeout.Token);
+        plan.Categories.ShouldContain(item => item.Id == source);
+        plan.Allocations.Single(item => item.CategoryId == source).Amount.ShouldBe(100);
+        plan.Allocations.Single(item => item.CategoryId == destination).Amount.ShouldBe(50);
+        plan.Transactions.Single().Splits.Single().CategoryId.ShouldBe(source);
+        plan = await ApplyAsync(store, plan, new RedoChange(plan.Version), timeout.Token);
+        plan.Categories.ShouldNotContain(item => item.Id == source);
+        plan.Allocations.Single().Amount.ShouldBe(150);
+        plan.Transactions.Single().Splits.Single().ShouldBe(entry.Splits[0] with { CategoryId = destination });
+        plan.Transactions.Single().Memo.ShouldBe(entry.Memo);
+        BudgetFacts.Balance(plan, account, plan.Today).Working.ShouldBe(975);
+    }
+
+    private static async Task<PlanSnapshot> ApplyAsync(BudgetStore store, PlanSnapshot plan, PlanCommand command, CancellationToken token)
+    {
+        (await store.ExecuteAsync("owner-a", plan.Id, command, token)).IsT0.ShouldBeTrue();
+        return (await store.ReadAsync("owner-a", plan.Id, token)).ShouldNotBeNull();
+    }
+
+    [Fact]
     public async Task OwnerIsolationHistoryAndConcurrentWritesPersistAcrossContextsAsync()
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
@@ -96,4 +141,3 @@ public sealed class BudgetPersistenceTests
         saved.Allocations.Single().Amount.ShouldBe(400);
     }
 }
-

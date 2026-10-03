@@ -17,5 +17,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\YHAB.Testing\YHAB.Testing.csproj" />
+    <ProjectReference Include="../../src/YHAB.SharedKernel/YHAB.SharedKernel.csproj" />
+    <Compile Include="../Scenarios/*.cs" Link="Scenarios/%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

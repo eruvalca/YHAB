@@ -9,7 +9,9 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
 {
     [Parameter] public Guid PlanId { get; set; }
     [Parameter] public Guid? AccountId { get; set; }
-    [PersistentState] public PlanSnapshot? Snapshot { get; set; }
+    // The full ledger can exceed SignalR's startup message limit. Each renderer
+    // loads its own owner-scoped snapshot instead of round-tripping it in prerender state.
+    private PlanSnapshot? Snapshot { get; set; }
     private bool _busy;
     private bool IsBusy => _busy || !RendererInfo.IsInteractive;
     private string? _error;
@@ -41,12 +43,6 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
             _module = await javascript.InvokeAsync<IJSObjectReference>("import", "./_content/YHAB.UI/budget-workspace.js");
             _reference = DotNetObjectReference.Create(this);
             await _module.InvokeVoidAsync("connect", _reference);
-            if (Snapshot is { } plan && plan.Transactions.Any(item => item.Repeat != RepeatFrequency.None && item.Date <= plan.Today
-                && !plan.Accounts.Any(account => account.Closed && (account.Id == item.AccountId || account.Id == item.TransferAccountId))))
-            {
-                await ExecuteAsync(new PostRecurring(plan.Version, plan.Today));
-                StateHasChanged();
-            }
         }
     }
 
@@ -56,6 +52,13 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         try
         {
             Snapshot = await budgets.ReadAsync(PlanId);
+            // Interactive reads can complete after the first render. Post only after
+            // the snapshot arrives, and never mutate the plan during static SSR.
+            if (RendererInfo.IsInteractive && Snapshot is { } plan && plan.Transactions.Any(item => item.Repeat != RepeatFrequency.None && item.Date <= plan.Today
+                && !plan.Accounts.Any(account => account.Closed && (account.Id == item.AccountId || account.Id == item.TransferAccountId))))
+            {
+                await ExecuteAsync(new PostRecurring(plan.Version, plan.Today));
+            }
         }
         catch (BudgetRequestException exception)
         {
