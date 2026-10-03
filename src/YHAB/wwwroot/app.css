@@ -58,7 +58,9 @@ button, input, select, textarea {
     font: inherit;
 }
 
-button {
+/* Fluent dropdowns supply slotted native buttons. Their web component owns
+   their border, spacing and typography; these rules style our native buttons. */
+button:where(:not([slot])) {
     max-width: 100%;
     padding: 0.4rem 0.75rem;
     cursor: pointer;
@@ -69,7 +71,7 @@ button {
     font-weight: 600;
 }
 
-button:disabled {
+button:where(:not([slot])):disabled {
     cursor: default;
 }
 

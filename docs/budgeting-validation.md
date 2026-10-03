@@ -6,6 +6,140 @@ only tests and documentation. The subsequent BUG-01 investigation changes
 workspace startup as described below. Earlier uncommitted budgeting fixes remain
 part of the tested workspace.
 
+## UI and manual workflow follow-up
+
+On October 3, 2026, a separate synthetic local account and **Household walkthrough**
+plan were used for hands-on browser checks. No real YNAB plans or existing YHAB
+user data were changed. This pass also inspected the user's two screenshots and
+Aspire startup log. Raw startup logs remain outside Git because dashboard login
+URLs contain access tokens.
+
+| Finding | Resolution / evidence |
+| --- | --- |
+| UI-01: every Fluent dropdown contained an extra border and clipped text | Global native button styling applied to the dropdown's slotted button: 1 px border and 6.4 / 12 px padding inside a 20 px line box. Exclude slotted buttons while keeping low selector specificity, so native Identity buttons and category links retain their styling. Browser checks assert zero inner border/padding in budget, account, and transaction selectors. |
+| UI-02: workspace status and filter actions were misaligned | Set Fluent's explicit vertical alignment, remove default field margins in filter rows, separate the history toolbar from the heading, and allow pagination to wrap. Desktop geometry and phone overflow checks guard the result. |
+| UI-03: dark styling changed after enhanced navigation | Blazor replaced the body's client-added theme marker while Fluent's dark tokens remained active. Reapply Fluent's saved theme on `enhancedload`; retain System behavior and static SSR navigation. Tests exercise navigation in light, dark, and System mode, plus OS changes. |
+| UI-04: reconciled transactions looked editable and displayed an unchecked cleared state | The server already rejected these edits. The editor now explains how to unreconcile, disables Save and the clearing toggle when either transfer side is reconciled, and displays the actual source clearing state. Four component cases cover both locks and an unlocked transfer. |
+| UI-05: an empty category filter showed only column headings | Add an explicit no-matches message. Browser tests select an empty Hidden view and restore All categories. |
+| UI-06: opening an editor from a low register row left it offscreen | Reproduced on a 390 px phone viewport: the transaction editor appeared above the current scroll position. The shared editor surface now focuses its heading after its first interactive render, bringing it into view without interrupting subsequent input. Browser checks cover account, transaction, and reconciliation editors. |
+| LOG-01: repeated antiforgery cache-header warnings | Plan pages and API responses now use `Cache-Control: no-cache, no-store` and `Pragma: no-cache`, matching antiforgery requirements. The subsequent manual run returned no YHAB warning/error telemetry; authenticated browser checks verify the headers on snapshots and tokens. |
+| ENV-02: Aspire's ContainerExec watcher terminates after 60 seconds | Reproduced in Aspire 13.6.0 after healthy startup. Remains open in the dependency; see investigation below. |
+
+Manual checks used actual rendered controls, including opening dropdowns, typing
+arithmetic, clicking actions, and inspecting screenshots. The core checkpoint was:
+
+- Opening checking $5,250 (entered as `5000 + 250`), savings $3,000, card -$400.
+- Assign $6,100; set a $650 grocery target and fund its $50 shortfall. Ready to
+  assign becomes $2,100 with $6,150 assigned.
+- Post a cleared $120 card grocery purchase; split an $80 checking purchase
+  into $60 groceries and $20 shopping. An unbalanced $79 split disables Save.
+- Transfer $500 checking to savings and pay $200 from checking to the card.
+- Create a $14.99 monthly subscription due today, approve its occurrence,
+  verify the next instruction is November 3, and refresh without duplicating it.
+- Move $20 from groceries to shopping to cover cash overspending, undo and redo.
+- Bulk-clear checking entries; a $1 reconciliation mismatch requires explicit
+  adjustment consent. Reconcile the matching $4,455.01 balance.
+- Create a Seasonal group and Holiday meals category; assign $100, hide it,
+  retrieve it with Hidden, and move its history to Gifts. Ready to assign is $2,000.
+- Rename the plan, save notes, rename the subscription payee, and filter reports
+  to October 1–3. Spending is $214.99: groceries $180, shopping $20,
+  subscriptions $14.99. Account transfers and payments do not become expenses.
+
+At this checkpoint, balances are checking **$4,455.01**, savings **$3,500**,
+card **-$320**, with **$320** available for card payment. Net worth is
+**$7,635.01** ($7,955.01 assets less $320 debt). The later $100 category
+assignment and history move do not alter these account/report totals.
+
+The final phone pass verified the renamed **Family streaming** payee in both its
+posted and recurring entries (next occurrence November 3). Selecting November
+preserved $5,955.01 of category balances without posting future recurring activity.
+Assigning $300 there reduced Ready to assign to $1,700 and appeared as a future
+assignment when returning to October; Undo restored $2,000. A one-off transaction
+dated October 4 displayed the unsupported-future-date message and disabled Save.
+The reconciled split editor displayed its clearing state, lock notice, and disabled
+Save correctly. Mobile dropdown filtering, light/dark navigation, and document
+overflow checks passed. The skip link remained outside the viewport when unfocused.
+
+Final active-run YHAB telemetry returned no warnings/errors, and the browser had
+no warnings/errors for that run. The separate AppHost ContainerExec timeout
+recurred at 17:52:08 UTC; it remains ENV-02. Validation used ordinary Aspire shutdown
+and preserved the development database.
+
+Screenshots from the synthetic walkthrough are local ignored artifacts under
+`artifacts/ui-validation`: `desktop-dark.jpg`, `phone-light.jpg`,
+`phone-dropdown.jpg`, and `phone-editor.jpg`. Automated screenshots also cover
+desktop/phone light and dark views under the Playwright project's `TestResults`.
+
+### Automated follow-up results
+
+The complete five-project run passed **551 tests, 0 failed, 0 skipped** in
+2 minutes 11 seconds: 294 unit, 241 component, 8 PostgreSQL integration,
+1 Aspire integration, and 7 Playwright tests. This includes the existing
+one-/two-/three-month scenarios at up to 3,000 calculation/persistence transactions
+and 600 browser transactions. Evidence is in `artifacts/ui-regression.log` and
+the five TRX files in `artifacts/ui-regression`. This run preceded the final
+editor-focus enhancement, whose follow-up validation is recorded below.
+
+```powershell
+dotnet build YHAB.slnx
+dotnet test --solution YHAB.slnx --no-build --report-trx --results-directory artifacts/ui-regression
+dotnet format YHAB.slnx --severity warn
+```
+
+After the editor-focus change, a fresh solution build passed with zero warnings
+and errors; unit tests passed **294/294** and component tests **241/241**. The
+seven-case browser rerun passed five cases but the two extended workflow cases
+failed an incorrect native `IsEnabledAsync` assertion on Fluent's custom button
+host. Their focus/viewport assertions had passed. The assertion was corrected to
+inspect Fluent's `disabled` attribute, then both affected desktop/phone cases
+passed (**2 passed, 0 failed, 0 skipped**). No product change was needed for that
+test-harness failure. The final five other browser cases were not redundantly rerun.
+
+```powershell
+dotnet test --project tests/YHAB.UnitTests/YHAB.UnitTests.csproj --no-build --report-trx --results-directory artifacts/ui-final
+dotnet test --project tests/YHAB.ComponentTests/YHAB.ComponentTests.csproj --no-build --report-trx --results-directory artifacts/ui-final
+dotnet test --project tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj --no-build --report-trx --results-directory artifacts/ui-final
+dotnet build YHAB.slnx
+dotnet test --project tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj --no-build --filter-class YHAB.PlaywrightTests.BudgetWorkflowTests --report-trx --results-directory artifacts/ui-editor-final
+dotnet format YHAB.slnx --severity warn
+dotnet format YHAB.slnx --severity warn --verify-no-changes
+```
+
+Documentation review checked `AGENTS.md`, the root README, `build/README.md`,
+`tests/README.md`, and the existing budgeting feature documentation. Updated
+theme/styling setup, editor behavior, browser-test conventions, and this findings
+record. Durable agent and build rules remain accurate and unchanged.
+
+The manual pass complements the deterministic one-, two-, and three-month tests
+below. It is not a claim that every Identity ceremony, browser engine, or possible
+financial edge case was manually exercised.
+
+### Aspire log investigation
+
+The repeated `AuxiliaryBackchannelService` connection-reset exceptions in the
+attachment are logged at Debug when tooling clients disconnect. Aspire's
+[connection handler](https://github.com/microsoft/aspire/blob/56f3e9c0d216c0c7069dabb49dd0464e4827744f/src/Aspire.Hosting/Backchannel/AuxiliaryBackchannelService.cs)
+explicitly treats that reset as an expected disconnection.
+
+The **Critical** ContainerExec timeout is different and must not be dismissed as
+debug noise. The installed 13.6.0 package's checksum-verified
+[KubernetesService source](https://github.com/microsoft/aspire/blob/56f3e9c0d216c0c7069dabb49dd0464e4827744f/src/Aspire.Hosting/Dcp/KubernetesService.cs)
+awaits the watch response inside a finite API timeout. The observed stack ends in
+that watch setup while awaiting stream data. This is consistent with an idle
+ContainerExec watch not completing setup before the 60-second startup budget;
+that explanation is an inference, not a verified upstream fix. PostgreSQL and
+YHAB remain Running/Healthy and migrations Finished throughout the reproduction.
+ContainerExec monitoring is degraded even though the application works.
+
+The official package query still listed 13.6.0 as the newest stable release.
+No logging suppression, reflection patch, dummy container execution, package
+downgrade, or timeout inflation was added. The warning remains visible and needs
+an upstream Aspire correction. Recheck the exact version before applying a future
+patch and validate resource-command monitoring as well as web readiness.
+
+Browser console connection errors during intentional AppHost shutdown were
+separated from active-run errors by endpoint and timestamp.
+
 ## Repeat validation after the startup fix
 
 Rerun on October 3, 2026, at approximately 01:09–01:11 America/Chicago, using

@@ -154,6 +154,17 @@ purchase, reload, undo with the keyboard, redo, verify reports, and reconcile.
 They also check API session, antiforgery, and stale-revision rejection. These tests
 do not establish passkey ceremonies or every account workflow.
 
+Browser layout checks verify that Fluent dropdown triggers have no nested native
+border/padding, category links retain their native styling, desktop toolbar
+controls align, and phone pages do not overflow. Theme checks navigate between
+SSR pages after selecting light, dark, and System preferences, verify the resolved
+color scheme, and emulate OS changes in System mode. A reload alone does not
+exercise Blazor's replacement of body attributes during enhanced navigation.
+Opening account, transaction, and reconciliation editors must focus a visible
+heading; browser checks also reopen a reconciled entry from its register row.
+The reconciliation-editor component cases cover locks on either transfer side,
+the displayed clearing state, and saving an unlocked cleared transfer.
+
 Both Aspire and Playwright tests use `YHAB.Testing.TestAppHost`, a small shared
 library that removes container volume/bind mounts and enforces session lifetimes
 on the real AppHost model. Aspire's testing builder disables the dashboard and

@@ -1,4 +1,8 @@
 <EditorSurface Title="@(Transaction is null ? "Add transaction" : "Edit transaction")" OnClose="OnClose">
+    @if (IsReconciled)
+    {
+        <div class="notice" data-kind="information" role="status">This transaction is reconciled. Close this editor, select the transaction, and choose <strong>Mark uncleared / unreconcile</strong> before editing it.</div>
+    }
     <FluentGrid Spacing="3">
         <FluentGridItem Xs="12" Md="6"><FluentSelect TOption="AccountData" TValue="Guid" Label="Account" Items="_accounts" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="_account" /></FluentGridItem>
         <FluentGridItem Xs="12" Md="6"><div class="form-field"><label for="transaction-date">@(_repeat == RepeatFrequency.None ? "Date" : "Next occurrence")</label><input id="transaction-date" type="date" @bind="_date" /></div></FluentGridItem>
@@ -36,7 +40,7 @@
     </FluentGrid>
     @if (_repeat == RepeatFrequency.None)
     {
-        <FluentCheckbox Label="Cleared at the bank" LabelPosition="LabelPosition.Before" @bind-Value="_cleared" />
+        <FluentCheckbox Label="Cleared at the bank" LabelPosition="LabelPosition.Before" @bind-Value="_cleared" Disabled="IsReconciled" />
         @if (_date > Plan.Today) { <div class="notice" data-kind="warning">Future transactions must repeat. One-off scheduled transactions aren't supported.</div> }
     }
     else { <p class="muted">Due occurrences enter your register for approval when you open the plan. The next occurrence stays here as a repeating instruction.</p> }

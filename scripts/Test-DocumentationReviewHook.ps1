@@ -134,6 +134,101 @@ Invoke-Hook 'UserPromptSubmit' 'duplicate' | Out-Null
 Assert-Result 'Duplicate start event preserves the original baseline' (
     (Invoke-Hook 'Stop' 'duplicate').decision -eq 'block')
 
+# Replay the final-response wording that caused the redundant continuation.
+# Each case changes the workspace after its own baseline, so a quiet result
+# proves that the acknowledgement (not an unchanged workspace) suppressed it.
+$completedMessages = @(
+    "Fixed the dropdown rendering and alignment issues.`n`nDocumentation reviewed and updated. The findings and test report records results and limitations."
+    'Documentation review: complete. Updated the hook workflow documentation.'
+    'Documentation review: complete. No documentation changes were needed.'
+    'Documentation review is complete. AGENTS.md remains accurate.'
+    'Documentation review is already complete. No further edits were needed.'
+    'Documentation reviewed; existing setup guidance remains accurate.'
+    '**Documentation review:** complete. Updated affected guidance.'
+    '- Documentation review: complete. Reviewed README.md and feature docs.'
+    @'
+```text
+Documentation review: complete.
+```
+
+Documentation reviewed and updated.
+'@
+    "~~~text`nExample only.`n~~~`nDocumentation review: complete. Docs unchanged."
+)
+$case = 0
+foreach ($message in $completedMessages) {
+    $turn = "completed-$case"
+    Invoke-Hook 'UserPromptSubmit' $turn | Out-Null
+    Set-FixtureFile 'source.cs' "// Completed review fixture $case"
+    Assert-Result "Completed review $case does not request a redundant continuation" (
+        (Invoke-Hook 'Stop' $turn @{ last_assistant_message = $message }).Count -eq 0)
+    $case++
+}
+
+Assert-Result 'Repeated Stop remembers the reviewed workspace without response text' (
+    (Invoke-Hook 'Stop' $turn).Count -eq 0)
+Invoke-Hook 'UserPromptSubmit' $turn | Out-Null
+Assert-Result 'Duplicate prompt preserves the completed review acknowledgement' (
+    (Invoke-Hook 'Stop' $turn).Count -eq 0)
+Set-FixtureFile 'source.cs' '// Changed after the acknowledged review'
+Assert-Result 'Further workspace changes invalidate the completed review acknowledgement' (
+    (Invoke-Hook 'Stop' $turn @{ last_assistant_message = 'Made another change.' }).decision -eq 'block')
+
+$incompleteMessages = @(
+    $null
+    ''
+    'Implementation complete.'
+    'Documentation review: pending.'
+    'Documentation review: incomplete.'
+    'Documentation review: not complete.'
+    'Documentation review is not complete.'
+    'Documentation review: complete except for feature docs.'
+    'Documentation review: complete?'
+    'I will report Documentation review: complete. after checking the docs.'
+    '> Documentation reviewed and updated.'
+    '    Documentation review: complete.'
+    '"Documentation reviewed and updated." is an example.'
+    'Documentation review: **not** complete.'
+    @'
+```text
+Documentation review: complete.
+```
+Review still pending.
+'@
+    @'
+~~~~text
+~~~
+Documentation review: complete.
+~~~~
+'@
+    @'
+```text
+~~~
+Documentation review: complete.
+```
+'@
+    @{ unexpected = 'Documentation review: complete.' }
+)
+$case = 0
+foreach ($message in $incompleteMessages) {
+    $turn = "incomplete-$case"
+    Invoke-Hook 'UserPromptSubmit' $turn | Out-Null
+    Set-FixtureFile 'source.cs' "// Missing review fixture $case"
+    Assert-Result "Missing or incomplete review $case still requests a finishing review" (
+        (Invoke-Hook 'Stop' $turn @{ last_assistant_message = $message }).decision -eq 'block')
+    $case++
+}
+
+Invoke-Hook 'UserPromptSubmit' 'prompt-is-not-outcome' | Out-Null
+Set-FixtureFile 'source.cs' '// Only the final assistant message acknowledges review'
+Assert-Result 'A completion phrase in the user prompt cannot acknowledge review' (
+    (Invoke-Hook 'Stop' 'prompt-is-not-outcome' @{ prompt = 'Documentation review: complete.' }).decision -eq 'block')
+
+$stateText = Get-ChildItem -LiteralPath (Join-Path $fixtureRoot 'artifacts/agent-hooks/documentation') -Filter '*.json' |
+    ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }
+Assert-Result 'Hook state never persists the final message or its outcome text' (
+    ($stateText -join "`n") -notmatch 'Documentation review|AGENTS.md remains accurate|last_assistant_message')
+
 $invalidJson = '{invalid' | & pwsh -NoProfile -NonInteractive -File $hookScript
 Assert-Result 'Malformed input fails open with a JSON warning' (
     $LASTEXITCODE -eq 0 -and ($invalidJson | ConvertFrom-Json -AsHashtable).systemMessage)
@@ -186,6 +281,16 @@ if ($IsWindows) {
                 $execution.ExitCode -eq 0 -and ($execution.Output | ConvertFrom-Json -AsHashtable).decision -eq 'block')
             $execution = Invoke-WindowsManifestHook $stopHandler $payload $shell
             Assert-Result "$shell Stop launcher does not repeat the finishing pass" (
+                $execution.ExitCode -eq 0 -and ($execution.Output | ConvertFrom-Json -AsHashtable).Count -eq 0)
+
+            $payload.turn_id = "$shell-completed"
+            $payload.hook_event_name = 'UserPromptSubmit'
+            Invoke-WindowsManifestHook $startHandler $payload $shell | Out-Null
+            Set-FixtureFile "launcher-$shell.md" 'Another change, reviewed before the final response.'
+            $payload.hook_event_name = 'Stop'
+            $payload.last_assistant_message = 'Documentation reviewed and updated.'
+            $execution = Invoke-WindowsManifestHook $stopHandler $payload $shell
+            Assert-Result "$shell Stop launcher accepts an already-completed review" (
                 $execution.ExitCode -eq 0 -and ($execution.Output | ConvertFrom-Json -AsHashtable).Count -eq 0)
         }
     }

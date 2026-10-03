@@ -38,8 +38,8 @@
 {
     <GroupEditor Plan="Plan" OnCommand="OnCommand" OnClose="CloseEditors" Busy="Busy" />
 }
-<FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalS)" Class="table-toolbar">
-    <FluentSelect TOption="string" TValue="string" Label="View" Items="_filters" @bind-Value="_filter" />
+<FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Bottom" HorizontalGap="var(--spacingHorizontalS)" Class="table-toolbar">
+    <FluentSelect TOption="string" TValue="string" Label="View" Items="_filters" @bind-Value="_filter" Margin="0" />
     <FluentButton OnClick="AddCategory" Disabled="Busy" Appearance="ButtonAppearance.Subtle">+ Category</FluentButton>
     <FluentButton OnClick="AddGroup" Disabled="Busy" Appearance="ButtonAppearance.Subtle">Manage groups</FluentButton>
 </FluentStack>
@@ -73,4 +73,8 @@
     </table>
 </div>
 @if (!Plan.Categories.Any()) { <div class="empty-state"><h2>Make space for your priorities</h2><p>Add a category group, then the things you want your money to do.</p></div> }
+else if (!Plan.Groups.Any(group => Rows(group.Id).Any()))
+{
+    <div class="empty-state"><h2>No categories match this view</h2><p>Choose another view to see the rest of your plan.</p></div>
+}
 <p class="muted">Positive balances roll forward. @Money(_budget.AssignedInFuture) is assigned in future months. Enter arithmetic such as 150 + 25 in any amount field.</p>

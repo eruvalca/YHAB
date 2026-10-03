@@ -71,12 +71,33 @@ public sealed class NavigationTests(ITestOutputHelper output)
         (await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth")).ShouldBeTrue();
         await page.Locator("[data-theme-select]").SelectOptionAsync("dark");
         await page.WaitForFunctionAsync("document.body.dataset.theme === 'dark'");
+        await VerifyThemeAfterNavigationAsync(page, width, "Register", "dark");
+        (await page.Locator("button[type='submit']").First.EvaluateAsync<string>("element => getComputedStyle(element).borderTopWidth")).ShouldBe("1px");
+        await VerifyThemeAfterNavigationAsync(page, width, "Home", "dark");
         await page.ReloadAsync();
         await page.WaitForFunctionAsync("document.body.dataset.theme === 'dark'");
         await page.Locator("[data-theme-select]").SelectOptionAsync("light");
         await page.WaitForFunctionAsync("document.body.dataset.theme !== 'dark'");
+        await VerifyThemeAfterNavigationAsync(page, width, "Register", "light");
         await page.Locator("[data-theme-select]").SelectOptionAsync("system");
+        await page.EmulateMediaAsync(new() { ColorScheme = ColorScheme.Dark });
+        await page.WaitForFunctionAsync("document.body.dataset.theme === 'dark'");
+        await VerifyThemeAfterNavigationAsync(page, width, "Home", "dark");
+        (await page.Locator("[data-theme-select]").InputValueAsync()).ShouldBe("system");
+        await page.EmulateMediaAsync(new() { ColorScheme = ColorScheme.Light });
+        await page.WaitForFunctionAsync("document.body.dataset.theme !== 'dark'");
         errors.ShouldBeEmpty();
+    }
+
+    private static async Task VerifyThemeAfterNavigationAsync(IPage page, int width, string destination, string theme)
+    {
+        var origin = await page.EvaluateAsync<double>("performance.timeOrigin");
+        await OpenNavigationAsync(page, width);
+        await page.GetByRole(AriaRole.Link, new() { Name = destination, Exact = true }).ClickAsync();
+        await page.Locator(string.Equals(destination, "Home", StringComparison.Ordinal) ? ".welcome h1" : ".account-form").WaitForAsync();
+        await page.WaitForFunctionAsync("expected => getComputedStyle(document.body).colorScheme === expected", theme);
+        (await page.EvaluateAsync<double>("performance.timeOrigin")).ShouldBe(origin);
+        await AssertDrawerClosedAsync(page, width);
     }
 
     private static async Task OpenNavigationAsync(IPage page, int width)

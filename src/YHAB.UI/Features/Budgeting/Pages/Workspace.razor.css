@@ -1,0 +1,10 @@
+.workspace-toolbar {
+    padding-bottom: var(--spacingVerticalM);
+    margin-bottom: var(--spacingVerticalL);
+    border-bottom: 1px solid var(--colorNeutralStroke2);
+}
+
+.workspace-status {
+    margin-inline-start: var(--spacingHorizontalS);
+    font-size: var(--fontSizeBase200);
+}

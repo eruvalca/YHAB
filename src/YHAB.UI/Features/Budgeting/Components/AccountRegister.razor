@@ -30,10 +30,10 @@
 {
     <ReconcileEditor Plan="Plan" Account="_account" OnCommand="OnCommand" OnClose="CloseEditors" Busy="Busy" />
 }
-<FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalM)" Class="table-toolbar">
-    <FluentTextInput Label="Search transactions" @bind-Value="_search" @bind-Value:after="ResetPage" Immediate="true" Placeholder="Payee, category, memo, flag, amount…" />
-    <FluentSelect TOption="string" TValue="string" Label="Show" Items="_filters" @bind-Value="_filter" @bind-Value:after="ResetPage" />
-    <FluentSelect TOption="string" TValue="string" Label="Sort by" Items="_sorts" @bind-Value="_sort" @bind-Value:after="ResetPage" />
+<FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Bottom" HorizontalGap="var(--spacingHorizontalM)" Class="table-toolbar">
+    <FluentTextInput Label="Search transactions" @bind-Value="_search" @bind-Value:after="ResetPage" Immediate="true" Placeholder="Payee, category, memo, flag, amount…" Margin="0" />
+    <FluentSelect TOption="string" TValue="string" Label="Show" Items="_filters" @bind-Value="_filter" @bind-Value:after="ResetPage" Margin="0" />
+    <FluentSelect TOption="string" TValue="string" Label="Sort by" Items="_sorts" @bind-Value="_sort" @bind-Value:after="ResetPage" Margin="0" />
 </FluentStack>
 <details class="date-filters"><summary>Date range</summary><FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalM)">
     <div class="form-field"><label for="register-from">From</label><input id="register-from" type="date" @bind="_from" @bind:after="ResetPage" /></div>
@@ -41,7 +41,7 @@
 </FluentStack></details>
 @if (_selected.Count > 0)
 {
-    <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalS)" Class="selection-toolbar">
+    <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalS)" Class="selection-toolbar">
         <strong>@_selected.Count selected</strong>
         <FluentButton OnClick="ApproveAsync" Disabled="Busy" Appearance="ButtonAppearance.Subtle">Approve</FluentButton>
         <FluentButton OnClick="ClearAsync" Disabled="Busy" Appearance="ButtonAppearance.Subtle">Mark cleared</FluentButton>
@@ -83,7 +83,7 @@
 {
     <div class="empty-state"><h2>No transactions here yet</h2><p>Add a transaction or adjust your filters. Small habits bring a clearer picture.</p></div>
 }
-<FluentStack HorizontalGap="var(--spacingHorizontalM)" Class="pagination">
+<FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalM)" Class="pagination">
     <FluentButton OnClick="PreviousPage" Disabled="@(_page == 0)" Appearance="ButtonAppearance.Subtle">Previous</FluentButton>
     <span>Page @(_page + 1) · @FilteredEntries.Count() transactions</span>
     <FluentButton OnClick="NextPage" Disabled="@((_page + 1) * PageSize >= FilteredEntries.Count())" Appearance="ButtonAppearance.Subtle">Next</FluentButton>

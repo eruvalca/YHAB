@@ -333,13 +333,16 @@ dotnet test --solution YHAB.slnx
 
 - Review documentation as part of implementation work, before any authorized
   commit and before reporting completion. Update affected instructions and docs;
-  leave accurate documentation unchanged. Briefly report the review outcome.
+  leave accurate documentation unchanged. In the final response, state
+  `Documentation review: complete.` followed by the outcome once review is done.
+  Do not report completion for a pending or blocked review.
   This does not authorize a commit or broaden a read-only task.
 - Keep durable agent conventions here, setup and runtime workflows in `README.md`,
   build rules in `build/README.md`, and test conventions in `tests/README.md`.
   Update existing feature and workflow documentation rather than duplicating it.
 - The project-owned Codex `UserPromptSubmit` hook supplies this reminder and
   records a workspace baseline. The companion `Stop` hook requests at most one
-  finishing review when the workspace changes during a turn. These hooks are
-  advisory, not proof of documentation accuracy or a Git commit gate.
+  finishing review when the workspace changes during a turn and the final
+  response lacks a completed-review acknowledgement. These hooks are advisory,
+  not proof of documentation accuracy or a Git commit gate.
   See [agent hook maintenance](build/agent-hooks.md) for setup and validation.

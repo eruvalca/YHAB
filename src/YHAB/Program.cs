@@ -96,7 +96,8 @@ app.Use(async (context, next) =>
 {
     if (context.Request.Path.StartsWithSegments("/plans", StringComparison.OrdinalIgnoreCase))
     {
-        context.Response.Headers.CacheControl = "no-store";
+        context.Response.Headers.CacheControl = "no-cache, no-store";
+        context.Response.Headers.Pragma = "no-cache";
     }
     await next(context);
 });

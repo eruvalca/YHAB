@@ -39,6 +39,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         {
             await RegisterAndLoginAsync(page);
             await CreatePlanAsync(page);
+            await VerifyBudgetLayoutAsync(page, width);
             await VerifyApiGuardsAsync(page);
             await AddAccountAndAssignAsync(page);
             var planUrl = page.Url;
@@ -57,9 +58,11 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             await page.ScreenshotAsync(new() { Path = Path.Combine(AppContext.BaseDirectory, "TestResults", $"budget-{width}-light.png"), FullPage = true });
             await page.Locator("[data-theme-select]").SelectOptionAsync("dark");
             await page.WaitForFunctionAsync("document.body.dataset.theme === 'dark'");
+            await VerifyBudgetLayoutAsync(page, width);
             await page.ScreenshotAsync(new() { Path = Path.Combine(AppContext.BaseDirectory, "TestResults", $"budget-{width}-dark.png"), FullPage = true });
             await page.GetByRole(AriaRole.Link, new() { Name = "Reflect", Exact = true }).ClickAsync();
             await page.GetByRole(AriaRole.Heading, new() { Name = "Reflect", Exact = true }).WaitForAsync();
+            await page.WaitForFunctionAsync("document.body.dataset.theme === 'dark'");
             var spending = page.Locator(".spending-row").Filter(new() { HasText = "Groceries" });
             (await spending.Locator("strong").InnerTextAsync()).ShouldBe("$75.00");
             await ReconcileAsync(page);
@@ -111,7 +114,8 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         var planPath = new Uri(page.Url).AbsolutePath;
         var planResponse = await page.APIRequest.GetAsync($"/api{planPath}");
         planResponse.Status.ShouldBe(200);
-        planResponse.Headers["cache-control"].ShouldBe("no-store");
+        planResponse.Headers["cache-control"].ShouldBe("no-cache, no-store");
+        planResponse.Headers["pragma"].ShouldBe("no-cache");
         var plan = (await planResponse.JsonAsync()).ShouldNotBeNull();
         var version = plan.GetProperty("version").GetInt64();
         var withoutToken = await page.APIRequest.PutAsync($"/api{planPath}/settings", new()
@@ -120,6 +124,8 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         });
         withoutToken.Status.ShouldBe(400);
         var tokenResponse = await page.APIRequest.GetAsync("/api/plans/token");
+        tokenResponse.Headers["cache-control"].ShouldBe("no-cache, no-store");
+        tokenResponse.Headers["pragma"].ShouldBe("no-cache");
         var token = (await tokenResponse.JsonAsync()).ShouldNotBeNull().GetProperty("token").GetString().ShouldNotBeNull();
         var stale = await page.APIRequest.PutAsync($"/api{planPath}/settings", new()
         {
@@ -135,6 +141,8 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
     private static async Task AddAccountAndAssignAsync(IPage page)
     {
         await Button(page, "Add account").ClickAsync();
+        await VerifyEditorFocusAsync(page);
+        await VerifyDropdownChromeAsync(page);
         await Input(page, "Account name").FillAsync("Everyday checking");
         await Input(page, "Opening balance").FillAsync("800 + 200");
         await Input(page, "Opening balance").PressAsync("Tab");
@@ -150,6 +158,8 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await page.GetByRole(AriaRole.Link, new() { Name = "All transactions", Exact = true }).ClickAsync();
         await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
         await Button(page, "+ Add transaction").ClickAsync();
+        await VerifyEditorFocusAsync(page);
+        await VerifyDropdownChromeAsync(page);
         await Input(page, "Payee").FillAsync("Neighborhood market");
         await Input(page, "Amount").FillAsync("50 + 25");
         await Input(page, "Amount").PressAsync("Tab");
@@ -166,15 +176,66 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await Button(page, "Uncleared").ClickAsync();
         await Button(page, "Cleared").WaitForAsync();
         await Button(page, "Reconcile").ClickAsync();
+        await VerifyEditorFocusAsync(page);
         (await Input(page, "Bank's posted balance").InputValueAsync()).ShouldBe("925.00");
         await Button(page, "Finish reconciliation").ClickAsync();
         await Button(page, "Reconciled").WaitForAsync();
         var balance = page.Locator(".stat").Filter(new() { HasText = "Cleared balance" });
         (await balance.Locator("strong").InnerTextAsync()).ShouldBe("$925.00");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Neighborhood market", Exact = true }).ClickAsync();
+        await VerifyEditorFocusAsync(page);
+        (await page.Locator(".editor-surface .notice").InnerTextAsync()).ShouldContain("Mark uncleared / unreconcile");
+        // Playwright's native enabled check does not recognize Fluent's custom
+        // element host; its disabled attribute is the component contract.
+        (await Button(page, "Save transaction").GetAttributeAsync("disabled")).ShouldNotBeNull();
+    }
+
+    private static async Task VerifyEditorFocusAsync(IPage page)
+    {
+        await page.WaitForFunctionAsync("document.activeElement?.matches('.editor-surface h2') === true");
+        var heading = (await page.Locator(".editor-surface h2").BoundingBoxAsync()).ShouldNotBeNull();
+        heading.Y.ShouldBeGreaterThanOrEqualTo(0);
+        (heading.Y + heading.Height).ShouldBeLessThanOrEqualTo((await page.EvaluateAsync<int>("innerHeight")));
     }
 
     private static ILocator Input(IPage page, string label) => page.Locator("fluent-field")
         .Filter(new() { Has = page.GetByText(label, new() { Exact = true }) }).Locator("input");
+
+    private static async Task VerifyDropdownChromeAsync(IPage page)
+    {
+        var controls = page.Locator("fluent-dropdown > button[slot='control']");
+        (await controls.CountAsync()).ShouldBeGreaterThan(0);
+        foreach (var control in await controls.AllAsync())
+        {
+            (await control.EvaluateAsync<string>("element => getComputedStyle(element).borderTopWidth")).ShouldBe("0px");
+            (await control.EvaluateAsync<string>("element => getComputedStyle(element).padding")).ShouldBe("0px");
+            (await control.EvaluateAsync<bool>("element => element.getBoundingClientRect().height >= parseFloat(getComputedStyle(element).lineHeight)")).ShouldBeTrue();
+        }
+    }
+
+    private static async Task VerifyBudgetLayoutAsync(IPage page, int width)
+    {
+        await VerifyDropdownChromeAsync(page);
+        // Native category actions must retain their link-like appearance after
+        // scoping the global button styles away from Fluent's slotted controls.
+        (await page.Locator(".category-link").First.EvaluateAsync<string>("element => getComputedStyle(element).borderTopWidth")).ShouldBe("0px");
+        (await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth")).ShouldBeTrue();
+        if (width >= 1000)
+        {
+            var refresh = (await Button(page, "Refresh").BoundingBoxAsync()).ShouldNotBeNull();
+            var status = (await page.Locator(".workspace-status").BoundingBoxAsync()).ShouldNotBeNull();
+            Math.Abs(refresh.Y + refresh.Height / 2 - status.Y - status.Height / 2).ShouldBeLessThan(1);
+            var filter = (await page.Locator(".table-toolbar fluent-dropdown").BoundingBoxAsync()).ShouldNotBeNull();
+            var addCategory = (await Button(page, "+ Category").BoundingBoxAsync()).ShouldNotBeNull();
+            Math.Abs(filter.Y + filter.Height - addCategory.Y - addCategory.Height).ShouldBeLessThanOrEqualTo(4);
+        }
+        await page.GetByRole(AriaRole.Combobox, new() { Name = "View", Exact = true }).ClickAsync();
+        await page.Locator("fluent-option[text='Hidden']").ClickAsync();
+        await page.GetByRole(AriaRole.Heading, new() { Name = "No categories match this view" }).WaitForAsync();
+        await page.GetByRole(AriaRole.Combobox, new() { Name = "View", Exact = true }).ClickAsync();
+        await page.Locator("fluent-option[text='All categories']").ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Groceries", Exact = true }).WaitForAsync();
+    }
 
     // Fluent v5 declares its button role through ElementInternals, which role locators cannot inspect.
     private static ILocator Button(IPage page, string label) => page.Locator("fluent-button")

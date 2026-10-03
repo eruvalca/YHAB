@@ -172,8 +172,9 @@ web components automatically, including static layout hamburger behavior. Do not
 add a v4 web-components script or `FluentDesignTheme`. The body specifies a teal
 brand palette with `data-theme-color`. The static header offers System, Light,
 and Dark through v5's `Blazor.theme.setThemeMode` API. Fluent persists the
-preference and follows OS changes in System mode. The shared initializer restores
-the selector after enhanced navigation; appearance does not start a .NET renderer.
+preference and follows OS changes in System mode. The shared initializer reapplies
+the selected theme and restores the selector after enhanced navigation, which can
+replace the body's client-side theme marker. Appearance does not start a .NET renderer.
 Application styles use v5 CSS design tokens.
 
 The shell uses `FluentLayout`, `FluentNav`, and `FluentNavItem`; the home, counter,
@@ -221,6 +222,9 @@ Shared styles live in `src/YHAB/wwwroot/app.css`: sizing, typography, forms
 notices (`notice` with a semantic `data-kind`), and table overflow
 (`table-container`). Component-specific styles belong in adjacent `.razor.css`
 files. Use narrowly scoped `::deep` selectors for child component markup.
+Native button styling excludes slotted controls: Fluent dropdowns render a native
+button in their `control` slot and own its border and padding. Filter toolbars use
+explicit Fluent alignment and zero field margins so labels do not displace actions.
 
 Custom CSS is limited to application sizing, accessibility, and static form
 compatibility, using Fluent tokens. Prefer Fluent layout/spacing parameters;

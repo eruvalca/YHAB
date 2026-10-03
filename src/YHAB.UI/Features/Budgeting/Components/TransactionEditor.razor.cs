@@ -41,7 +41,8 @@ public sealed partial class TransactionEditor
                 && !(destination is not null && BudgetFacts.IsBudget(source.Kind) && BudgetFacts.IsBudget(destination.Kind));
         }
     }
-    private bool CannotSave => Busy || !_amountValid || _account == Guid.Empty || (_transfer != Guid.Empty && _transfer == _account)
+    private bool IsReconciled => Transaction is { State: ClearingState.Reconciled } or { TransferState: ClearingState.Reconciled };
+    private bool CannotSave => Busy || IsReconciled || !_amountValid || _account == Guid.Empty || (_transfer != Guid.Empty && _transfer == _account)
         || (_repeat == RepeatFrequency.None && _date > Plan.Today)
         || (NeedsCategory && _split && (_splits.Count == 0 || _splits.Any(item => !item.Valid) || _splits.Sum(item => item.Amount) != SignedAmount));
 
@@ -67,7 +68,7 @@ public sealed partial class TransactionEditor
         _memo = Transaction?.Memo ?? "";
         Amount = Math.Abs(Transaction?.Amount ?? 0);
         _direction = Transaction?.Amount > 0 ? "Inflow" : "Outflow";
-        _cleared = Transaction?.State == ClearingState.Cleared;
+        _cleared = Transaction?.State is ClearingState.Cleared or ClearingState.Reconciled;
         _repeat = Transaction?.Repeat ?? RepeatFrequency.None;
         _flag = string.IsNullOrEmpty(Transaction?.Flag) ? "None" : Transaction.Flag;
         _category = FirstSplit?.CategoryId ?? Guid.Empty;

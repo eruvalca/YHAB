@@ -37,6 +37,12 @@ Plan settings rename the plan, store notes, and rename payees throughout posted
 and recurring entries. The register supports search, date/status filters, sorting,
 flags, duplication, approval, clearing, and bulk deletion. It displays 50 rows per
 page. Horizontal table scrolling preserves the surrounding mobile layout.
+Opening an editor focuses its heading and brings it into view, including when
+editing from a register row below the editor's position on a phone.
+Reconciled entries show their locked state in the editor and cannot be saved.
+Select the entry in the register and use **Mark uncleared / unreconcile** first;
+either reconciled side of a transfer locks the whole entry. Empty category views
+explain that the selected filter has no matching categories.
 
 ## Monthly rules
 

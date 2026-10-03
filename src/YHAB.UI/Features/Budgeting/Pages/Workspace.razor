@@ -15,12 +15,14 @@
     <FluentGrid Spacing="4" Class="workspace" aria-busy="@(_busy ? "true" : "false")" data-interactive="@(RendererInfo.IsInteractive ? "true" : "false")" data-renderer="@RendererInfo.Name">
         <FluentGridItem Xs="12" Lg="3"><PlanNavigation Plan="plan" OnAddAccount="AddAccount" Busy="IsBusy" /></FluentGridItem>
         <FluentGridItem Xs="12" Lg="9">
-            <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalS)" Class="workspace-tools">
-                <FluentButton OnClick="UndoAsync" Disabled="@(IsBusy || !plan.CanUndo)" Appearance="ButtonAppearance.Subtle" title="Undo (Ctrl+Z)">Undo</FluentButton>
-                <FluentButton OnClick="RedoAsync" Disabled="@(IsBusy || !plan.CanRedo)" Appearance="ButtonAppearance.Subtle" title="Redo (Ctrl+Shift+Z)">Redo</FluentButton>
-                <FluentButton OnClick="RefreshAsync" Disabled="IsBusy" Appearance="ButtonAppearance.Subtle">Refresh</FluentButton>
-                <span class="muted" role="status">@(_busy ? "Saving…" : _status)</span>
-            </FluentStack>
+            <div class="workspace-toolbar">
+                <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalS)" VerticalGap="var(--spacingVerticalS)" Class="workspace-tools">
+                    <FluentButton OnClick="UndoAsync" Disabled="@(IsBusy || !plan.CanUndo)" Appearance="ButtonAppearance.Subtle" title="Undo (Ctrl+Z)">Undo</FluentButton>
+                    <FluentButton OnClick="RedoAsync" Disabled="@(IsBusy || !plan.CanRedo)" Appearance="ButtonAppearance.Subtle" title="Redo (Ctrl+Shift+Z)">Redo</FluentButton>
+                    <FluentButton OnClick="RefreshAsync" Disabled="IsBusy" Appearance="ButtonAppearance.Subtle">Refresh</FluentButton>
+                    <span class="workspace-status muted" role="status">@(_busy ? "Saving…" : _status)</span>
+                </FluentStack>
+            </div>
             @if (_accountEditor)
             {
                 <AccountEditor @key="_editingAccount?.Id" Plan="plan" Account="_editingAccount" OnCommand="ExecuteAsync" OnClose="CloseAccount" Busy="IsBusy" />

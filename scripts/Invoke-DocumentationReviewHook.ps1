@@ -17,6 +17,43 @@ function Get-TextHash([string] $Text) {
         [Text.Encoding]::UTF8.GetBytes($Text)))
 }
 
+function Test-DocumentationReviewComplete([object] $Message) {
+    if ($Message -isnot [string]) {
+        return $false
+    }
+
+    # Recognize an explicit outcome in the final response, not a mention in a
+    # quoted example, code block, future plan, or file name. This is an advisory
+    # acknowledgement, not proof that the documentation is accurate.
+    $fenceCharacter = ''
+    $fenceLength = 0
+    foreach ($line in ($Message -split '\r?\n')) {
+        if ($line -match '^ {0,3}(`{3,}|~{3,})(.*)$') {
+            $fence = $Matches[1]
+            if (-not $fenceCharacter) {
+                $fenceCharacter = $fence.Substring(0, 1)
+                $fenceLength = $fence.Length
+            }
+            elseif ($fence.StartsWith($fenceCharacter, [StringComparison]::Ordinal) -and
+                $fence.Length -ge $fenceLength -and [string]::IsNullOrWhiteSpace($Matches[2])) {
+                $fenceCharacter = ''
+            }
+            continue
+        }
+        if ($fenceCharacter -or $line -match '^( {4}|\t|\s*>)') {
+            continue
+        }
+
+        $statement = ($line.Trim() -replace '^[-*+]\s+', '') -replace '\*\*|__', ''
+        # Prefer the first form in new responses; retain the plain-language
+        # forms used in existing final responses, including the reported case.
+        if ($statement -match '^(?i:Documentation review:\s*complete|Documentation review (?:is )?(?:already )?complete|Documentation reviewed(?: and updated)?)(?:[.;]|$)') {
+            return $true
+        }
+    }
+    return $false
+}
+
 function Get-WorkspaceSnapshot {
     $head = & git -C $repoRoot rev-parse --verify HEAD 2>$null
     if ($LASTEXITCODE -ne 0) {
@@ -53,7 +90,7 @@ function Get-WorkspaceSnapshot {
 }
 
 $reviewInstruction = @'
-Documentation is part of implementation work. Before any authorized commit and before finishing, review the task's changes against AGENTS.md and relevant README/feature docs. Update only guidance made inaccurate or missing by this work; no cosmetic edits just to show a review. Keep durable agent rules in AGENTS.md, setup in README.md, build rules in build/README.md, and test conventions in tests/README.md. Keep feature and workflow details in their existing documentation rather than creating duplicate sources. Preserve unrelated changes and installed third-party skill files. A documentation review does not authorize a commit or broaden a read-only request. If no update is needed, leave docs unchanged. Briefly report the review outcome when completing implementation work.
+Documentation is part of implementation work. Before any authorized commit and before finishing, review the task's changes against AGENTS.md and relevant README/feature docs. Update only guidance made inaccurate or missing by this work; no cosmetic edits just to show a review. Keep durable agent rules in AGENTS.md, setup in README.md, build rules in build/README.md, and test conventions in tests/README.md. Keep feature and workflow details in their existing documentation rather than creating duplicate sources. Preserve unrelated changes and installed third-party skill files. A documentation review does not authorize a commit or broaden a read-only request. If no update is needed, leave docs unchanged. When the review is complete, include "Documentation review: complete." followed by the outcome in the final response so the finishing hook does not request it again. Do not report completion when review is pending or blocked.
 '@
 
 try {
@@ -110,6 +147,18 @@ try {
     }
     $current = Get-WorkspaceSnapshot
     if ($baseline.fingerprint -eq $current.fingerprint) {
+        '{}'
+        exit 0
+    }
+    if ($baseline.reviewedFingerprint -eq $current.fingerprint) {
+        '{}'
+        exit 0
+    }
+    if (Test-DocumentationReviewComplete $event.last_assistant_message) {
+        # Remember only which workspace was acknowledged, never response text.
+        # Further edits invalidate this acknowledgement for repeated Stop events.
+        $baseline.reviewedFingerprint = $current.fingerprint
+        $baseline | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $statePath -Encoding utf8
         '{}'
         exit 0
     }

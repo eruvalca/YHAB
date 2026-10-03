@@ -10,7 +10,12 @@ export function initializeNavigation(blazor) {
             updateThemeSelector();
         }
     });
-    blazor.addEventListener('enhancedload', updateThemeSelector);
+    blazor.addEventListener('enhancedload', () => {
+        // Enhanced navigation restores the server's body attributes. Reapply
+        // Fluent's resolved theme so native controls and dark-mode CSS agree.
+        blazor.theme?.setThemeMode(blazor.theme.getThemeSettings()?.mode ?? 'system');
+        updateThemeSelector();
+    });
     updateThemeSelector();
     // Static SSR doesn't execute FluentNavItem's interactive drawer-close handler.
     // Close the web component before Blazor patches the next page into the document.

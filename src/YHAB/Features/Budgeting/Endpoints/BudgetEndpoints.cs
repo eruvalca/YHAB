@@ -14,7 +14,8 @@ internal static class BudgetEndpoints
         var group = app.MapGroup("/api/plans").RequireAuthorization().WithTags("Budgeting");
         group.AddEndpointFilter(async (context, next) =>
         {
-            context.HttpContext.Response.Headers.CacheControl = "no-store";
+            context.HttpContext.Response.Headers.CacheControl = "no-cache, no-store";
+            context.HttpContext.Response.Headers.Pragma = "no-cache";
             if (!HttpMethods.IsGet(context.HttpContext.Request.Method))
             {
                 try

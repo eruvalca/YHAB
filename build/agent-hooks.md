@@ -21,12 +21,30 @@ hashes, candidate paths, and a commit ID under ignored
 or file contents. The baseline covers staged and unstaged changes, non-ignored
 untracked files, and `HEAD`. Repeated prompt events keep the original baseline.
 
-`Stop` compares the baseline with the current workspace. If it changed, the hook
-requests one final documentation review through Codex's `decision: "block"`
+`Stop` compares the baseline with the current workspace. If it changed and the
+final assistant response does not acknowledge a completed documentation review,
+the hook requests one final review through Codex's `decision: "block"`
 response. This continues the agent; it does not reject a Git commit or ask the
 user for approval. The agent reviews the relevant documentation through its
-usual tools, updates it if needed, and reports the outcome. If the review is
-already complete, it can confirm the result without repeating the work.
+usual tools, updates it if needed, and reports the outcome.
+
+After completing the review, include `Documentation review: complete.` followed
+by the outcome in the final response, for example, which docs changed or that
+existing guidance remains accurate. The hook also accepts the existing phrases
+`Documentation reviewed and updated.`, `Documentation reviewed; ...`, and
+`Documentation review is complete.` (including `already complete`). Markdown
+bold and bullet formatting is supported. These must be affirmative statements,
+starting a line outside blockquotes or code blocks. Plans to review, pending or
+negative outcomes, questions, and mentions in examples do not count. Only report
+completion after reviewing; changed documentation files alone are not evidence
+of completion. If review is blocked, report the limitation truthfully.
+
+The hook checks the documented `last_assistant_message` field in memory. It does
+not read the transcript or call a model to classify prose. It records only the
+acknowledged workspace fingerprint so duplicate Stop events remain quiet;
+further workspace changes invalidate that acknowledgement. Missing or
+unrecognized final-response wording retains the one-pass fallback. This is a
+small acknowledgement convention, not a general natural-language classifier.
 
 A per-turn marker and `stop_hook_active` prevent repeat passes. Plan-mode turns,
 unchanged workspaces, and missing baselines do not request a finishing review.
@@ -69,7 +87,10 @@ pwsh ./scripts/Test-DocumentationReviewHook.ps1
 
 The checks run in isolated Git fixtures under ignored `artifacts/`. They cover
 baseline comparisons, dirty files, staging, commits, failure handling, and
-finishing-pass loop prevention. On Windows, they exercise both registered
+finishing-pass loop prevention. They replay the previously redundant final
+response, distinguish completion from pending/quoted examples, check that later
+edits invalidate acknowledgement, and verify no response text is persisted.
+On Windows, they exercise both registered
 commands through PowerShell 7, Windows PowerShell, and `cmd.exe` from a
 subdirectory in a path with spaces. They do not establish that the current Codex
 session has loaded or trusted the hooks; verify that separately in Codex.
