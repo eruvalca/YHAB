@@ -1,0 +1,10 @@
+# Methods with cyclomatic complexity greater than 25 produce CA1502.
+# Prefer cohesive responsibilities over splitting methods solely to reduce a score.
+CA1502: 25
+
+# Retain CA1506's default limits; findings are suggestions for architectural review.
+CA1506(Type): 95
+CA1506(Method): 40
+CA1506(Field): 40
+CA1506(Property): 40
+CA1506(Event): 40

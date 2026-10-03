@@ -1,0 +1,62 @@
+@page "/Account/Manage/Passkeys"
+
+@using YHAB.Data
+@using Microsoft.AspNetCore.Identity
+@using System.ComponentModel.DataAnnotations
+@using System.Buffers.Text
+
+@inject UserManager<ApplicationUser> UserManager
+@inject AccountPasskeyService AccountPasskeys
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Manage your passkeys</PageTitle>
+
+<h3>Manage your passkeys</h3>
+
+<StatusMessage />
+
+@if (_currentPasskeys is { Count: > 0 })
+{
+    <div class="table-container">
+        <table>
+            <tbody>
+                @foreach (var passkey in _currentPasskeys)
+                {
+                    <tr>
+                        <td>@(passkey.Name ?? "Unnamed passkey")</td>
+                        <td>
+                            @{
+                                var credentialId = Base64Url.EncodeToString(passkey.CredentialId);
+                            }
+                            <form @formname="@($"update-passkey-{credentialId}")" @onsubmit="UpdatePasskeyAsync" method="post">
+                                <AntiforgeryToken />
+                                <div class="actions">
+                                    <input type="hidden" name="CredentialId" value="@credentialId" />
+                                    <button type="submit" name="Action" value="rename" title="Rename this passkey">Rename</button>
+                                    <button type="submit" name="Action" value="delete" title="Remove this passkey from your account">Delete</button>
+                                </div>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <p>No passkeys are registered.</p>
+}
+
+<form @formname="add-passkey" @onsubmit="AddPasskeyAsync" method="post">
+    <AntiforgeryToken />
+    @if (_currentPasskeys is { Count: >= MaxPasskeyCount })
+    {
+        <p class="error-text">You have reached the maximum number of allowed passkeys. Please delete one before adding a new one.</p>
+    }
+    else
+    {
+        <PasskeySubmit Operation="PasskeyOperation.Create" Name="Input">Add a new passkey</PasskeySubmit>
+    }
+
+</form>

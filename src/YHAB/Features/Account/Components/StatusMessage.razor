@@ -1,0 +1,7 @@
+@if (!string.IsNullOrEmpty(DisplayMessage))
+{
+    var statusMessageKind = DisplayMessage.StartsWith("Error") ? "error" : "success";
+    <div class="notice" data-kind="@statusMessageKind" role="alert">
+        @DisplayMessage
+    </div>
+}

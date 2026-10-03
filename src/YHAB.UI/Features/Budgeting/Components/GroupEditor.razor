@@ -1,0 +1,8 @@
+<EditorSurface Title="Category groups" OnClose="OnClose">
+    <FluentSelect TOption="GroupData" TValue="Guid" Label="Group to edit" Items="_groups" OptionText="item => item.Name" OptionValue="item => item.Id" Value="_id" ValueChanged="SelectGroup" />
+    <FluentTextInput Label="Group name" @bind-Value="_name" MaxLength="100" />
+    <div class="form-field"><label for="group-order">Display order</label><input id="group-order" type="number" @bind="_order" /></div>
+    <FluentCheckbox Label="Hide this group" LabelPosition="LabelPosition.Before" @bind-Value="_hidden" />
+    <FluentButton OnClick="SaveAsync" Disabled="@(Busy || string.IsNullOrWhiteSpace(_name))" Appearance="ButtonAppearance.Primary">Save group</FluentButton>
+</EditorSurface>
+

@@ -1,0 +1,47 @@
+@page "/plans/{PlanId:guid}"
+@page "/plans/{PlanId:guid}/accounts"
+@page "/plans/{PlanId:guid}/accounts/{AccountId:guid}"
+@attribute [Authorize]
+@rendermode InteractiveAuto
+
+<PageTitle>@(Snapshot?.Name ?? "Your plan") · YHAB</PageTitle>
+<FluentProviders />
+@if (_error is not null)
+{
+    <div class="notice" data-kind="error" role="alert">@_error <FluentButton OnClick="RefreshAsync" Appearance="ButtonAppearance.Subtle">Refresh plan</FluentButton></div>
+}
+@if (Snapshot is { } plan)
+{
+    <FluentGrid Spacing="4" Class="workspace" aria-busy="@(_busy ? "true" : "false")" data-interactive="@(RendererInfo.IsInteractive ? "true" : "false")">
+        <FluentGridItem Xs="12" Lg="3"><PlanNavigation Plan="plan" OnAddAccount="AddAccount" Busy="IsBusy" /></FluentGridItem>
+        <FluentGridItem Xs="12" Lg="9">
+            <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalS)" Class="workspace-tools">
+                <FluentButton OnClick="UndoAsync" Disabled="@(IsBusy || !plan.CanUndo)" Appearance="ButtonAppearance.Subtle" title="Undo (Ctrl+Z)">Undo</FluentButton>
+                <FluentButton OnClick="RedoAsync" Disabled="@(IsBusy || !plan.CanRedo)" Appearance="ButtonAppearance.Subtle" title="Redo (Ctrl+Shift+Z)">Redo</FluentButton>
+                <FluentButton OnClick="RefreshAsync" Disabled="IsBusy" Appearance="ButtonAppearance.Subtle">Refresh</FluentButton>
+                <span class="muted" role="status">@(_busy ? "Saving…" : _status)</span>
+            </FluentStack>
+            @if (_accountEditor)
+            {
+                <AccountEditor @key="_editingAccount?.Id" Plan="plan" Account="_editingAccount" OnCommand="ExecuteAsync" OnClose="CloseAccount" Busy="IsBusy" />
+            }
+            @if (IsRegister)
+            {
+                <AccountRegister Plan="plan" AccountId="AccountId" OnCommand="ExecuteAsync" OnEditAccount="EditAccount" Busy="IsBusy" />
+            }
+            else
+            {
+                <BudgetBoard Plan="plan" OnCommand="ExecuteAsync" Busy="IsBusy" />
+            }
+            <details class="history-panel">
+                <summary>Recent changes & keyboard shortcuts</summary>
+                <p class="muted">Ctrl+Z undo · Ctrl+Shift+Z redo. Shortcuts leave text fields alone. Your latest 50 changes can be undone.</p>
+                <ol>@foreach (var change in plan.Changes) { <li>@change.Description <small class="muted">@change.Timestamp.ToLocalTime().ToString("g", Culture)</small></li> }</ol>
+            </details>
+        </FluentGridItem>
+    </FluentGrid>
+}
+else if (_error is null)
+{
+    <p role="status">Opening your plan…</p>
+}

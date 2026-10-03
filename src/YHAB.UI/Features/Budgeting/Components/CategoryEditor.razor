@@ -1,0 +1,47 @@
+<EditorSurface Title="@(Category is null ? "New category" : Category.Name)" OnClose="OnClose">
+    <FluentGrid Spacing="3">
+        <FluentGridItem Xs="12" Md="6"><FluentTextInput Label="Category name" @bind-Value="_name" MaxLength="100" /></FluentGridItem>
+        <FluentGridItem Xs="12" Md="6"><FluentSelect TOption="GroupData" TValue="Guid" Label="Category group" Items="Plan.Groups" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="_group" /></FluentGridItem>
+        <FluentGridItem Xs="6"><div class="form-field"><label for="category-order">Display order</label><input id="category-order" type="number" @bind="_order" /></div></FluentGridItem>
+        <FluentGridItem Xs="6"><FluentCheckbox Label="Hide category" LabelPosition="LabelPosition.Before" @bind-Value="_hidden" /></FluentGridItem>
+        <FluentGridItem Xs="12"><FluentTextArea Label="Notes" @bind-Value="_notes" MaxLength="4000" /></FluentGridItem>
+    </FluentGrid>
+    <FluentCheckbox Label="Set a target" LabelPosition="LabelPosition.Before" @bind-Value="_hasTarget" />
+    @if (_hasTarget)
+    {
+        <FluentGrid Spacing="3">
+            <FluentGridItem Xs="12" Md="4"><FluentSelect TOption="TargetKind" TValue="TargetKind" Label="Target behavior" Items="_kinds" OptionText="KindLabel" @bind-Value="_kind" /></FluentGridItem>
+            <FluentGridItem Xs="12" Md="4"><FluentSelect TOption="TargetCadence" TValue="TargetCadence" Label="Frequency" Items="_cadences" @bind-Value="_cadence" /></FluentGridItem>
+            <FluentGridItem Xs="12" Md="4"><AmountInput Label="Target amount" @bind-Value="_amount" ValidChanged="value => _valid = value" /></FluentGridItem>
+            @if (_cadence == TargetCadence.Weekly)
+            {
+                <FluentGridItem Xs="12"><FluentSelect TOption="DayOfWeek" TValue="DayOfWeek" Label="Each" Items="_weekdays" @bind-Value="_weekday" /></FluentGridItem>
+            }
+            @if (_cadence is TargetCadence.Yearly or TargetCadence.Custom)
+            {
+                <FluentGridItem Xs="6"><div class="form-field"><label for="target-due">Have it by</label><input id="target-due" type="date" @bind="_due" /></div></FluentGridItem>
+                @if (_cadence == TargetCadence.Custom)
+                {
+                    <FluentGridItem Xs="6"><div class="form-field"><label for="target-repeat">Repeat every (months, 0 = no repeat)</label><input id="target-repeat" type="number" min="0" max="120" @bind="_repeat" /></div></FluentGridItem>
+                }
+            }
+        </FluentGrid>
+        <p class="muted">@TargetDescription</p>
+    }
+    <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalS)">
+        <FluentButton OnClick="SaveAsync" Disabled="@(Busy || !_valid || string.IsNullOrWhiteSpace(_name) || _group == Guid.Empty)" Appearance="ButtonAppearance.Primary">Save category</FluentButton>
+        @if (Category?.Target is not null)
+        {
+            <FluentButton OnClick="SnoozeAsync" Disabled="Busy" Appearance="ButtonAppearance.Subtle">@(_snoozed ? "Resume target this month" : "Snooze target this month")</FluentButton>
+        }
+    </FluentStack>
+    @if (Category is { CreditAccountId: null })
+    {
+        <details class="danger-zone"><summary>Remove category</summary>
+            <p>Choose where its assignments and transactions should go. This change can be undone.</p>
+            <FluentSelect TOption="CategoryData" TValue="Guid" Label="Move history to" Items="_replacements" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="_replacement" />
+            <FluentButton OnClick="RemoveAsync" Disabled="Busy" Appearance="ButtonAppearance.Outline">Remove and move history</FluentButton>
+        </details>
+    }
+</EditorSurface>
+

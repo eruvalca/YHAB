@@ -1,0 +1,7 @@
+.welcome { padding-block: clamp(2rem, 6vw, 5rem); max-width: 55rem; }
+h1 { font-size: clamp(2.5rem, 5vw, 5rem); letter-spacing: -0.055em; line-height: 1.04; margin-bottom: var(--spacingVerticalXXXL); }
+h1 span { color: var(--colorBrandForeground1); }
+.welcome p { max-width: 36rem; margin-bottom: var(--spacingVerticalXXL); }
+.login-link { display: inline-block; margin: var(--spacingVerticalL) var(--spacingHorizontalXL); }
+.surface { height: 100%; }
+.surface p:last-child { color: var(--colorNeutralForeground3); margin-bottom: 0; }

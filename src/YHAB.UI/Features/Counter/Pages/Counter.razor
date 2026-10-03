@@ -1,0 +1,22 @@
+@page "/counter"
+@rendermode InteractiveAuto
+
+<PageTitle>Counter</PageTitle>
+
+<h1>Counter</h1>
+
+<div class="counter-content">
+    <FluentCard Class="counter-card">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalM)">
+            <p role="status">Current count: @_currentCount</p>
+            <FluentButton Appearance="ButtonAppearance.Primary"
+                          IconStart="@(new Icons.Regular.Size20.Add())"
+                          Title="Click me"
+                          Disabled="@(!RendererInfo.IsInteractive)"
+                          OnClick="IncrementCount">Click me</FluentButton>
+        </FluentStack>
+    </FluentCard>
+</div>
+
+@* Providers inherit this page's renderer and scoped services. *@
+<FluentProviders />

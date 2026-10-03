@@ -1,0 +1,67 @@
+@page "/Account/Manage/EnableAuthenticator"
+
+@using System.ComponentModel.DataAnnotations
+@using System.Globalization
+@using System.Text
+@using System.Text.Encodings.Web
+@using Microsoft.AspNetCore.Identity
+@using YHAB.Data
+
+@inject UserManager<ApplicationUser> UserManager
+@inject AccountTwoFactorService AccountTwoFactor
+@inject UrlEncoder UrlEncoder
+@inject IdentityRedirectManager RedirectManager
+@inject ILogger<EnableAuthenticator> Logger
+
+<PageTitle>Configure authenticator app</PageTitle>
+
+@if (_recoveryCodes is not null)
+{
+    <ShowRecoveryCodes RecoveryCodes="_recoveryCodes" StatusMessage="@_message" />
+}
+else if (_sharedKey is not null)
+{
+    <StatusMessage Message="@_message" />
+    <h3>Configure authenticator app</h3>
+    <div>
+        <p>To use an authenticator app go through the following steps:</p>
+        <ol>
+            <li>
+                <p>
+                    Download a two-factor authenticator app like Microsoft Authenticator for
+                    <a href="https://go.microsoft.com/fwlink/?Linkid=825072">Android</a> and
+                    <a href="https://go.microsoft.com/fwlink/?Linkid=825073">iOS</a> or
+                    Google Authenticator for
+                    <a href="https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2&amp;hl=en">Android</a> and
+                    <a href="https://itunes.apple.com/us/app/google-authenticator/id388497605?mt=8">iOS</a>.
+                </p>
+            </li>
+            <li>
+                <p>Scan the QR Code or enter this key <kbd>@_sharedKey</kbd> into your two factor authenticator app. Spaces and casing do not matter.</p>
+                <div class="notice" data-kind="information">Learn how to <a href="https://go.microsoft.com/fwlink/?Linkid=852423">enable QR code generation</a>.</div>
+                <div></div>
+                <div data-url="@_authenticatorUri"></div>
+            </li>
+            <li>
+                <p>
+                    Once you have scanned the QR code or input the key above, your two factor authentication app will provide you
+                    with a unique code. Enter the code in the confirmation box below.
+                </p>
+                <EditForm class="account-form" Model="Input" FormName="send-code" OnValidSubmit="OnValidSubmitAsync" method="post">
+                    <DataAnnotationsValidator />
+                    <div class="form-field">
+                        <label for="Input.Code">Verification Code</label>
+                        <InputText @bind-Value="Input.Code" id="Input.Code" autocomplete="off" placeholder="Enter the code" />
+                        <ValidationMessage For="() => Input.Code" class="error-text" />
+                    </div>
+                    <button type="submit">Verify</button>
+                    <ValidationSummary class="error-text" role="alert" />
+                </EditForm>
+            </li>
+        </ol>
+    </div>
+}
+else
+{
+    <StatusMessage Message="@_message" />
+}

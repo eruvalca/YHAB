@@ -1,0 +1,35 @@
+<Project>
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <AnalysisMode>All</AnalysisMode>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <!-- Identify tests before evaluating analyzer references; project bodies and NuGet props load later. -->
+  <PropertyGroup Condition="'$(IsTestProject)' == '' and ($(MSBuildProjectName.EndsWith('.UnitTests')) or $(MSBuildProjectName.EndsWith('.ComponentTests')) or $(MSBuildProjectName.EndsWith('.IntegrationTests')) or $(MSBuildProjectName.EndsWith('.AspireIntegrationTests')) or $(MSBuildProjectName.EndsWith('.PlaywrightTests')))">
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <!-- Resolve shared analyzer inputs from the repository root. -->
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)CodeMetricsConfig.txt" />
+    <!-- Source diagnostics remain governed by .editorconfig; see build/README.md for the SDK workaround. -->
+    <GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory)build/AnalyzerCompatibility.globalconfig" />
+  </ItemGroup>
+
+  <!-- Analyzer versions live in Directory.Packages.props. These are build tools, not dependencies
+       of consumers of YHAB projects or packages. -->
+  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
+    <PackageReference Include="Meziantou.Analyzer" PrivateAssets="all"
+                      IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
+    <PackageReference Include="SonarAnalyzer.CSharp" PrivateAssets="all"
+                      IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
+    <PackageReference Include="Roslynator.Analyzers" PrivateAssets="all"
+                      IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
+    <PackageReference Include="xunit.analyzers" PrivateAssets="all"
+                      IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive"
+                      Condition="'$(IsTestProject)' == 'true'" />
+  </ItemGroup>
+</Project>

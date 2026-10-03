@@ -1,0 +1,65 @@
+@page "/Account/Manage/ExternalLogins"
+
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Identity
+@using YHAB.Data
+
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IUserStore<ApplicationUser> UserStore
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Manage your external logins</PageTitle>
+
+<StatusMessage />
+@if (_currentLogins?.Count > 0)
+{
+    <h3>Registered Logins</h3>
+    <div class="table-container">
+        <table>
+            <tbody>
+                @foreach (var login in _currentLogins)
+                {
+                    <tr>
+                        <td>@login.ProviderDisplayName</td>
+                        <td>
+                            @if (_showRemoveButton)
+                            {
+                                <form @formname="@($"remove-login-{login.LoginProvider}")" @onsubmit="OnSubmitAsync" method="post">
+                                    <AntiforgeryToken />
+                                    <div>
+                                        <input type="hidden" name="@nameof(LoginProvider)" value="@login.LoginProvider" />
+                                        <input type="hidden" name="@nameof(ProviderKey)" value="@login.ProviderKey" />
+                                        <button type="submit" title="Remove this @login.ProviderDisplayName login from your account">Remove</button>
+                                    </div>
+                                </form>
+                            }
+                            else
+                            {
+                                @: &nbsp;
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+@if (_otherLogins?.Count > 0)
+{
+    <h4>Add another service to log in.</h4>
+    <hr />
+    <form action="Account/Manage/LinkExternalLogin" method="post">
+        <AntiforgeryToken />
+        <div>
+            <div class="actions">
+                @foreach (var provider in _otherLogins)
+                {
+                    <button type="submit" name="Provider" value="@provider.Name" title="Log in using your @provider.DisplayName account">
+                        @provider.DisplayName
+                    </button>
+                }
+            </div>
+        </div>
+    </form>
+}

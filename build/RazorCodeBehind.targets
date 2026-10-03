@@ -1,0 +1,37 @@
+<Project>
+  <PropertyGroup>
+    <_YHABBuildProject>$(MSBuildThisFileDirectory)YHAB.Build/YHAB.Build.csproj</_YHABBuildProject>
+    <_YHABBuildAssembly>$(MSBuildThisFileDirectory)YHAB.Build/bin/$(Configuration)/net10.0/YHAB.Build.dll</_YHABBuildAssembly>
+    <_YHABDotNetHost Condition="'$(DotNetHostPath)' != ''">$(DotNetHostPath)</_YHABDotNetHost>
+    <_YHABDotNetHost Condition="'$(_YHABDotNetHost)' == ''">dotnet</_YHABDotNetHost>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="$(_YHABBuildProject)"
+                      ReferenceOutputAssembly="false"
+                      Private="false"
+                      PrivateAssets="all"
+                      GlobalPropertiesToRemove="RuntimeIdentifier;SelfContained;PublishAot;PublishTrimmed" />
+  </ItemGroup>
+
+  <!-- Always recheck, including incremental builds and deleted companion files. -->
+  <Target Name="ValidateRazorCodeBehind"
+          BeforeTargets="CoreCompile"
+          DependsOnTargets="ResolveProjectReferences;ResolveRazorComponentInputs"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <_YHABComponentManifest>$(IntermediateOutputPath)yhab-razor-components.txt</_YHABComponentManifest>
+      <_YHABCompileManifest>$(IntermediateOutputPath)yhab-compile-files.txt</_YHABCompileManifest>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(_YHABComponentManifest)" Lines="@(RazorComponent->'%(FullPath)')"
+                      Overwrite="true" WriteOnlyWhenDifferent="true" Encoding="UTF-8" />
+    <WriteLinesToFile File="$(_YHABCompileManifest)" Lines="@(Compile->'%(FullPath)')"
+                      Overwrite="true" WriteOnlyWhenDifferent="true" Encoding="UTF-8" />
+    <ItemGroup>
+      <FileWrites Include="$(_YHABComponentManifest);$(_YHABCompileManifest)" />
+    </ItemGroup>
+    <!-- A separate process avoids locking the validator's assemblies in reusable MSBuild nodes. -->
+    <Exec Command="&quot;$(_YHABDotNetHost)&quot; &quot;$(_YHABBuildAssembly)&quot; &quot;$(MSBuildProjectDirectory)&quot; &quot;$(RootNamespace)&quot; &quot;$(DefineConstants)&quot; &quot;$(_YHABComponentManifest)&quot; &quot;$(_YHABCompileManifest)&quot;"
+          Condition="'@(RazorComponent)' != ''" />
+  </Target>
+</Project>

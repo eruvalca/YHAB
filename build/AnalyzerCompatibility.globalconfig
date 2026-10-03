@@ -1,0 +1,8 @@
+is_global = true
+
+# .NET SDK 10.0.401 reports CA1515 on C# 14 extension blocks with Location.None.
+# A type-level SuppressMessage cannot suppress those diagnostics. This fallback
+# suppresses unlocated CA1515 diagnostics; .editorconfig keeps CA1515 = warning
+# for ordinary C# source types and retains its existing Razor exception.
+# Recheck and remove this fallback when an SDK update fixes extension-block analysis.
+dotnet_diagnostic.CA1515.severity = none

@@ -1,0 +1,41 @@
+<nav class="plan-navigation" aria-label="Plan navigation">
+    <a class="back-link" href="/plans">← All plans</a>
+    <p class="eyebrow">YOUR PLAN</p>
+    <h2>@Plan.Name</h2>
+    <FluentNav aria-label="Budget pages" UseIcons="true">
+        <FluentNavItem Href="@($"/plans/{Plan.Id}")" Match="NavLinkMatch.All" IconRest="@(new Icons.Regular.Size20.Wallet())" tabindex="0">Plan your money</FluentNavItem>
+        <FluentNavItem Href="@($"/plans/{Plan.Id}/accounts")" Match="NavLinkMatch.All" IconRest="@(new Icons.Regular.Size20.Receipt())" tabindex="0">All transactions</FluentNavItem>
+        <FluentNavItem Href="@($"/plans/{Plan.Id}/reports")" IconRest="@(new Icons.Regular.Size20.DataBarVertical())" tabindex="0">Reflect</FluentNavItem>
+        <FluentNavItem Href="@($"/plans/{Plan.Id}/settings")" IconRest="@(new Icons.Regular.Size20.Settings())" tabindex="0">Plan settings</FluentNavItem>
+    </FluentNav>
+    <div class="account-nav-heading"><p class="eyebrow">ACCOUNTS</p></div>
+    @if (Plan.Accounts.Count == 0)
+    {
+        <p class="muted">Add an account to give your money a starting point.</p>
+    }
+    @foreach (var account in Plan.Accounts.Where(item => !item.Closed))
+    {
+        <a @key="account.Id" class="account-nav-link" href="@($"/plans/{Plan.Id}/accounts/{account.Id}")">
+            <span>@account.Name<small>@AccountLabel(account.Kind)</small></span>
+            <span class="money">@Money(Balance(Plan, account, Plan.Today).Working)</span>
+        </a>
+    }
+    @if (Plan.Accounts.Any(item => item.Closed))
+    {
+        <details><summary>Closed accounts</summary>
+            @foreach (var account in Plan.Accounts.Where(item => item.Closed))
+            {
+                <a @key="account.Id" class="account-nav-link" href="@($"/plans/{Plan.Id}/accounts/{account.Id}")">@account.Name</a>
+            }
+        </details>
+    }
+    @if (OnAddAccount.HasDelegate)
+    {
+        <FluentButton OnClick="AddAsync" Disabled="Busy" IconStart="@(new Icons.Regular.Size16.Add())" Appearance="ButtonAppearance.Subtle">Add account</FluentButton>
+    }
+    else
+    {
+        <a class="back-link" href="@($"/plans/{Plan.Id}/accounts")">Manage accounts →</a>
+    }
+    <div class="plan-private"><FluentIcon Value="@(new Icons.Regular.Size16.LockClosed())" aria-hidden="true" /> Private to you</div>
+</nav>

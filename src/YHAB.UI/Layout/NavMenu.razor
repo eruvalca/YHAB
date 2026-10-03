@@ -1,0 +1,31 @@
+@implements IDisposable
+
+@inject NavigationManager NavigationManager
+
+<div class="navigation-content">
+    @* Static SSR does not run FluentNav's roving-tabindex initialization. Keep
+       native links keyboard reachable, including before Blazor starts. *@
+    <FluentNav UseIcons="true" aria-label="Main navigation">
+        <FluentNavItem Href="/" Match="NavLinkMatch.All" IconRest="@(new Icons.Regular.Size20.Home())" IconActive="@(new Icons.Filled.Size20.Home())" tabindex="0">Home</FluentNavItem>
+        <FluentNavItem Href="plans" IconRest="@(new Icons.Regular.Size20.Wallet())" IconActive="@(new Icons.Filled.Size20.Wallet())" tabindex="0">Your plans</FluentNavItem>
+        <FluentNavSectionHeader Title="Account" />
+        <AuthorizeView>
+            <Authorized>
+                <FluentNavItem Href="Account/Manage" IconRest="@(new Icons.Regular.Size20.Person())" tabindex="0">@context.User.Identity?.Name</FluentNavItem>
+            </Authorized>
+            <NotAuthorized>
+                <FluentNavItem Href="Account/Register" IconRest="@(new Icons.Regular.Size20.PersonAdd())" tabindex="0">Register</FluentNavItem>
+                <FluentNavItem Href="Account/Login" IconRest="@(new Icons.Regular.Size20.ArrowEnter())" tabindex="0">Login</FluentNavItem>
+            </NotAuthorized>
+        </AuthorizeView>
+    </FluentNav>
+    <AuthorizeView>
+        <Authorized>
+            <form class="logout-form" action="Account/Logout" method="post">
+                <AntiforgeryToken />
+                <input type="hidden" name="ReturnUrl" value="@_currentUrl" />
+                <button type="submit">Logout</button>
+            </form>
+        </Authorized>
+    </AuthorizeView>
+</div>

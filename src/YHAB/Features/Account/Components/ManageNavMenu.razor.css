@@ -1,0 +1,8 @@
+.account-navigation {
+    min-width: 0;
+}
+
+.account-navigation ::deep a {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}

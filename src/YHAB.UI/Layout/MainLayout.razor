@@ -1,0 +1,46 @@
+@inherits LayoutComponentBase
+
+<a class="skip-link" href="#main-content" data-enhance-nav="false">Skip to content</a>
+
+<div class="page">
+    <FluentLayout Id="app-layout" Class="app-layout" GlobalScrollbar="true" Height="auto">
+        <FluentLayoutItem Area="LayoutArea.Header" Class="header-area" Height="4rem" Padding="0">
+            <header class="site-header">
+                <FluentStack VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalM)" Height="100%" Width="100%">
+                    <div class="menu-toggle">
+                        <FluentLayoutHamburger Id="site-menu" PanelHeader="YHAB" />
+                    </div>
+                    <a class="site-name" href="/">YHAB</a>
+                    <span class="site-tagline">A little clarity. A lot of possibility.</span>
+                    <div class="theme-control">
+                        <label for="theme-preference">Appearance</label>
+                        <select id="theme-preference" data-theme-select>
+                            <option value="system">System</option>
+                            <option value="light">Light</option>
+                            <option value="dark">Dark</option>
+                        </select>
+                    </div>
+                </FluentStack>
+            </header>
+        </FluentLayoutItem>
+        <FluentLayoutItem Area="LayoutArea.Navigation" Class="site-navigation">
+            <NavMenu />
+        </FluentLayoutItem>
+        <FluentLayoutItem Area="LayoutArea.Content" Class="content-area">
+            <main id="main-content" class="content-container" tabindex="-1">
+                @Body
+            </main>
+        </FluentLayoutItem>
+        <FluentLayoutItem Area="LayoutArea.Footer">
+            <footer class="site-footer">Your money, with intention. <span>USD · Manual accounts · Private plans</span></footer>
+        </FluentLayoutItem>
+    </FluentLayout>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    <FluentStack Class="error-content" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalL)" Wrap="true">
+        <span>An unhandled error has occurred.</span>
+        <a href="." class="reload">Reload</a>
+        <button type="button" class="dismiss">Dismiss</button>
+    </FluentStack>
+</div>

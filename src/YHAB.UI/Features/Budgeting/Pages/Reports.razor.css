@@ -1,0 +1,7 @@
+.report-filter { margin-block: var(--spacingVerticalXXL); }
+.report-filter .form-field { max-width: 13rem; }
+.report-filter button { align-self: end; }
+.spending-row { margin-block: var(--spacingVerticalL); }
+.spending-row strong { margin-inline-start: auto; }
+.spending-row meter { width: 100%; height: 1rem; accent-color: var(--colorBrandBackground); }
+

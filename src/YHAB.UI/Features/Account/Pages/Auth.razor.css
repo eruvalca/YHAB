@@ -1,0 +1,8 @@
+.account-summary ::deep .fluent-card {
+    max-width: 36rem;
+    padding: var(--spacingVerticalXXL) var(--spacingHorizontalXXL);
+}
+
+p {
+    margin: 0;
+}

@@ -1,0 +1,19 @@
+@using Microsoft.AspNetCore.Identity
+@using YHAB.Data
+
+@inject SignInManager<ApplicationUser> SignInManager
+
+<div class="account-navigation">
+    <FluentNav UseIcons="false" aria-label="Account settings">
+        <FluentNavItem Href="Account/Manage" Match="NavLinkMatch.All" tabindex="0">Profile</FluentNavItem>
+        <FluentNavItem Href="Account/Manage/Email" tabindex="0">Email</FluentNavItem>
+        <FluentNavItem Href="Account/Manage/ChangePassword" tabindex="0">Password</FluentNavItem>
+        @if (_hasExternalLogins)
+        {
+            <FluentNavItem Href="Account/Manage/ExternalLogins" tabindex="0">External logins</FluentNavItem>
+        }
+        <FluentNavItem Href="Account/Manage/TwoFactorAuthentication" tabindex="0">Two-factor authentication</FluentNavItem>
+        <FluentNavItem Href="Account/Manage/Passkeys" tabindex="0">Passkeys</FluentNavItem>
+        <FluentNavItem Href="Account/Manage/PersonalData" tabindex="0">Personal data</FluentNavItem>
+    </FluentNav>
+</div>

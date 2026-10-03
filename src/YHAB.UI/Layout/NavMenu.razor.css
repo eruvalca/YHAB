@@ -1,0 +1,12 @@
+.navigation-content {
+    min-width: 0;
+}
+
+.navigation-content ::deep a {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.logout-form {
+    margin: 1rem;
+}

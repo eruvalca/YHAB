@@ -1,0 +1,30 @@
+@page "/Account/ResendEmailConfirmation"
+
+@using System.ComponentModel.DataAnnotations
+@using System.Text
+@using System.Text.Encodings.Web
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.WebUtilities
+@using YHAB.Data
+
+@inject UserManager<ApplicationUser> UserManager
+@inject IEmailSender<ApplicationUser> EmailSender
+@inject NavigationManager NavigationManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Resend email confirmation</PageTitle>
+
+<h1>Resend email confirmation</h1>
+<h2>Enter your email.</h2>
+<hr />
+<StatusMessage Message="@_message" />
+<EditForm class="account-form" Model="Input" FormName="resend-email-confirmation" OnValidSubmit="OnValidSubmitAsync" method="post">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="error-text" role="alert" />
+    <div class="form-field">
+        <label for="Input.Email">Email</label>
+        <InputText @bind-Value="Input.Email" id="Input.Email" aria-required="true" placeholder="name@example.com" />
+        <ValidationMessage For="() => Input.Email" class="error-text" />
+    </div>
+    <button type="submit">Resend</button>
+</EditForm>

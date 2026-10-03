@@ -1,0 +1,51 @@
+@page "/Account/Register"
+
+@using System.ComponentModel.DataAnnotations
+@using System.Text
+@using System.Text.Encodings.Web
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.WebUtilities
+@using YHAB.Data
+
+@inject UserManager<ApplicationUser> UserManager
+@inject AccountRegistrationService AccountRegistration
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IEmailSender<ApplicationUser> EmailSender
+@inject ILogger<Register> Logger
+@inject NavigationManager NavigationManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Register</PageTitle>
+
+<h1>Register</h1>
+
+<div class="account-sections">
+    <StatusMessage Message="@Message" />
+    <EditForm class="account-form" Model="Input" method="post" OnValidSubmit="RegisterUserAsync" FormName="register">
+        <DataAnnotationsValidator />
+        <h2>Create a new account.</h2>
+        <hr />
+        <ValidationSummary class="error-text" role="alert" />
+        <div class="form-field">
+            <label for="Input.Email">Email</label>
+            <InputText @bind-Value="Input.Email" id="Input.Email" autocomplete="username" aria-required="true" placeholder="name@example.com" />
+            <ValidationMessage For="() => Input.Email" class="error-text" />
+        </div>
+        <div class="form-field">
+            <label for="Input.Password">Password</label>
+            <InputText type="password" @bind-Value="Input.Password" id="Input.Password" autocomplete="new-password" aria-required="true" placeholder="password" />
+            <ValidationMessage For="() => Input.Password" class="error-text" />
+        </div>
+        <div class="form-field">
+            <label for="Input.ConfirmPassword">Confirm Password</label>
+            <InputText type="password" @bind-Value="Input.ConfirmPassword" id="Input.ConfirmPassword" autocomplete="new-password" aria-required="true" placeholder="password" />
+            <ValidationMessage For="() => Input.ConfirmPassword" class="error-text" />
+        </div>
+        <button type="submit">Register</button>
+    </EditForm>
+    <section>
+        <h3>Use another service to register.</h3>
+        <hr />
+        <ExternalLoginPicker />
+    </section>
+</div>

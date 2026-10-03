@@ -1,0 +1,42 @@
+@page "/Account/LoginWith2fa"
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Identity
+@using YHAB.Data
+
+@inject SignInManager<ApplicationUser> SignInManager
+@inject AccountSignInService AccountSignIn
+@inject UserManager<ApplicationUser> UserManager
+@inject IdentityRedirectManager RedirectManager
+@inject ILogger<LoginWith2fa> Logger
+
+<PageTitle>Two-factor authentication</PageTitle>
+
+<h1>Two-factor authentication</h1>
+<hr />
+<StatusMessage Message="@_message" />
+<p>Your login is protected with an authenticator app. Enter your authenticator code below.</p>
+<EditForm class="account-form" Model="Input" FormName="login-with-2fa" OnValidSubmit="OnValidSubmitAsync" method="post">
+    <input type="hidden" name="ReturnUrl" value="@ReturnUrl" />
+    <input type="hidden" name="RememberMe" value="@RememberMe" />
+    <DataAnnotationsValidator />
+    <ValidationSummary class="error-text" role="alert" />
+    <div class="form-field">
+        <label for="Input.TwoFactorCode">Authenticator code</label>
+        <InputText @bind-Value="Input.TwoFactorCode" id="Input.TwoFactorCode" autocomplete="off" />
+        <ValidationMessage For="() => Input.TwoFactorCode" class="error-text" />
+    </div>
+    <div>
+        <label for="remember-machine" class="checkbox-field">
+            <InputCheckbox id="remember-machine" @bind-Value="Input.RememberMachine" />
+            Remember this machine
+        </label>
+    </div>
+    <div>
+        <button type="submit">Log in</button>
+    </div>
+</EditForm>
+<p>
+    Don't have access to your authenticator device? You can
+    <a href="Account/LoginWithRecoveryCode?ReturnUrl=@ReturnUrl">log in with a recovery code</a>.
+</p>

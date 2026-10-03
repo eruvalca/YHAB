@@ -1,0 +1,24 @@
+<Solution>
+  <Folder Name="/build/">
+    <Project Path="build/YHAB.Build/YHAB.Build.csproj" />
+  </Folder>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="src/YHAB.ServiceDefaults/YHAB.ServiceDefaults.csproj" />
+  <Folder Name="/tests/">
+    <Project Path="tests/YHAB.AspireIntegrationTests/YHAB.AspireIntegrationTests.csproj" />
+    <Project Path="tests/YHAB.ComponentTests/YHAB.ComponentTests.csproj" />
+    <Project Path="tests/YHAB.IntegrationTests/YHAB.IntegrationTests.csproj" />
+    <Project Path="tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj" />
+    <Project Path="tests/YHAB.Testing/YHAB.Testing.csproj" />
+    <Project Path="tests/YHAB.UnitTests/YHAB.UnitTests.csproj" />
+  </Folder>
+  <Project Path="src/YHAB.AppHost/YHAB.AppHost.csproj" />
+  <Project Path="src/YHAB.Client/YHAB.Client.csproj" />
+  <Project Path="src/YHAB.SharedKernel/YHAB.SharedKernel.csproj" />
+  <Project Path="src/YHAB.UI/YHAB.UI.csproj" />
+  <Project Path="src/YHAB/YHAB.csproj" />
+</Solution>

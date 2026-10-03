@@ -1,0 +1,50 @@
+@page "/plans"
+@attribute [Authorize]
+<PageTitle>Your plans · YHAB</PageTitle>
+<div class="page-intro">
+    <p class="eyebrow">A FRESH PERSPECTIVE</p>
+    <h1>Make room for what matters.</h1>
+    <p class="lead">Give every dollar a purpose. Build a little more breathing room.</p>
+</div>
+@if (_error is not null)
+{
+    <p class="notice" data-kind="error" role="alert">@_error</p>
+}
+<FluentGrid Spacing="6">
+    <FluentGridItem Xs="12" Lg="8">
+        <h2>Your plans</h2>
+        @if (_plans.Count == 0)
+        {
+            <div class="empty-state"><h3>A clearer picture starts here.</h3><p>Create your first plan, add the money you have, and decide what it needs to do.</p></div>
+        }
+        <FluentGrid Spacing="4">
+            @foreach (var plan in _plans)
+            {
+                <FluentGridItem @key="plan.Id" Xs="12" Md="6">
+                    <a class="plan-card" href="@($"/plans/{plan.Id}")">
+                        <FluentIcon Value="@(new Icons.Regular.Size32.Wallet())" aria-hidden="true" />
+                        <h3>@plan.Name</h3>
+                        <p>@(string.IsNullOrWhiteSpace(plan.Notes) ? "A plan for the life you want." : plan.Notes)</p>
+                        <span class="plan-card-action">Open plan <span aria-hidden="true">↗</span></span>
+                    </a>
+                </FluentGridItem>
+            }
+        </FluentGrid>
+    </FluentGridItem>
+    <FluentGridItem Xs="12" Lg="4">
+        <section class="surface">
+            <p class="eyebrow">START SOMETHING GOOD</p>
+            <h2>Create a plan</h2>
+            <EditForm Model="Input" method="post" FormName="CreatePlan" OnValidSubmit="CreateAsync" Enhance>
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalL)">
+                    <div class="form-field"><label for="plan-name">Plan name</label><InputText id="plan-name" @bind-Value="Input.Name" placeholder="My everyday plan" maxlength="100" /></div>
+                    <div class="checkbox-field"><label for="starter-categories">Start with suggested categories</label><InputCheckbox id="starter-categories" @bind-Value="Input.StarterCategories" /></div>
+                    <button class="primary-action" type="submit">Create your plan →</button>
+                    <p class="field-hint">Private to your account. USD, with US date formatting.</p>
+                </FluentStack>
+            </EditForm>
+        </section>
+    </FluentGridItem>
+</FluentGrid>

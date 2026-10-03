@@ -1,0 +1,5 @@
+.account-layout ::deep .account-panel {
+    display: block;
+    min-width: 0;
+    padding: var(--spacingVerticalXXL) var(--spacingHorizontalXXL);
+}

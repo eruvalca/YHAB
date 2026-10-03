@@ -1,0 +1,32 @@
+@page "/Account/Manage/RenamePasskey/{Id}"
+
+@using YHAB.Data
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Identity
+@using System.Buffers.Text
+
+@inject UserManager<ApplicationUser> UserManager
+@inject AccountPasskeyService AccountPasskeys
+@inject IdentityRedirectManager RedirectManager
+
+<EditForm class="account-form" Model="Input" OnValidSubmit="RenameAsync" FormName="rename-passkey" method="post">
+    <DataAnnotationsValidator />
+    @if (_passkey?.Name is { } name)
+    {
+        <h4>Enter a new name for your "@name" passkey</h4>
+    }
+    else
+    {
+        <h4>Enter a name for your passkey</h4>
+    }
+    <hr />
+    <ValidationSummary class="error-text" role="alert" />
+    <div class="form-field">
+        <label for="Input.Name">Passkey name</label>
+        <InputText @bind-Value="Input.Name" id="Input.Name" aria-required="true" placeholder="My passkey" />
+        <ValidationMessage For="() => Input.Name" class="error-text" />
+    </div>
+    <div>
+        <button type="submit">Continue</button>
+    </div>
+</EditForm>

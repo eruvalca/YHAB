@@ -1,0 +1,10 @@
+<EditorSurface Title="Move money" OnClose="OnClose">
+    <p class="muted">Your priorities can change. Your plan can, too.</p>
+    <FluentGrid Spacing="3">
+        <FluentGridItem Xs="12" Md="4"><FluentSelect TOption="CategoryData" TValue="Guid" Label="Move from" Items="_categories" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="_from" /></FluentGridItem>
+        <FluentGridItem Xs="12" Md="4"><FluentSelect TOption="CategoryData" TValue="Guid" Label="Move to" Items="_categories" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="_to" /></FluentGridItem>
+        <FluentGridItem Xs="12" Md="4"><AmountInput Label="Amount to move" @bind-Value="_amount" ValidChanged="value => _valid = value" /></FluentGridItem>
+    </FluentGrid>
+    <FluentButton OnClick="SaveAsync" Disabled="@(Busy || !_valid || _amount <= 0 || _from == _to)" Appearance="ButtonAppearance.Primary">Move money</FluentButton>
+</EditorSurface>
+

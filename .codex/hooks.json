@@ -1,0 +1,30 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -NonInteractive -File \"$(git rev-parse --show-toplevel)/scripts/Invoke-DocumentationReviewHook.ps1\"",
+            "commandWindows": "pwsh -NoProfile -NonInteractive -Command \"& (Join-Path (git rev-parse --show-toplevel) 'scripts/Invoke-DocumentationReviewHook.ps1')\"",
+            "timeout": 15,
+            "statusMessage": "Preparing documentation review"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -NonInteractive -File \"$(git rev-parse --show-toplevel)/scripts/Invoke-DocumentationReviewHook.ps1\"",
+            "commandWindows": "pwsh -NoProfile -NonInteractive -Command \"& (Join-Path (git rev-parse --show-toplevel) 'scripts/Invoke-DocumentationReviewHook.ps1')\"",
+            "timeout": 15,
+            "statusMessage": "Reviewing documentation impact"
+          }
+        ]
+      }
+    ]
+  }
+}

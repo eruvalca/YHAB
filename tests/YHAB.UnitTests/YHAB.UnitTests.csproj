@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="../../src/YHAB/YHAB.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Bogus" PrivateAssets="all" />
+    <PackageReference Include="NSubstitute" PrivateAssets="all" />
+    <PackageReference Include="Shouldly" PrivateAssets="all" />
+    <PackageReference Include="xunit.v3.core.mtp-v2" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Testing.Platform" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Testing.Platform.MSBuild" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Testing.Extensions.TrxReport" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

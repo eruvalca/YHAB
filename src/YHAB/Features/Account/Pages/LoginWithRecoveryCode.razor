@@ -1,0 +1,31 @@
+@page "/Account/LoginWithRecoveryCode"
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Identity
+@using YHAB.Data
+
+@inject SignInManager<ApplicationUser> SignInManager
+@inject AccountSignInService AccountSignIn
+@inject UserManager<ApplicationUser> UserManager
+@inject IdentityRedirectManager RedirectManager
+@inject ILogger<LoginWithRecoveryCode> Logger
+
+<PageTitle>Recovery code verification</PageTitle>
+
+<h1>Recovery code verification</h1>
+<hr />
+<StatusMessage Message="@_message" />
+<p>
+    You have requested to log in with a recovery code. This login will not be remembered until you provide
+    an authenticator app code at log in or disable 2FA and log in again.
+</p>
+<EditForm class="account-form" Model="Input" FormName="login-with-recovery-code" OnValidSubmit="OnValidSubmitAsync" method="post">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="error-text" role="alert" />
+    <div class="form-field">
+        <label for="Input.RecoveryCode">Recovery Code</label>
+        <InputText @bind-Value="Input.RecoveryCode" id="Input.RecoveryCode" autocomplete="off" placeholder="RecoveryCode" />
+        <ValidationMessage For="() => Input.RecoveryCode" class="error-text" />
+    </div>
+    <button type="submit">Log in</button>
+</EditForm>

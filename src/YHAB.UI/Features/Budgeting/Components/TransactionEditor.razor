@@ -1,0 +1,44 @@
+<EditorSurface Title="@(Transaction is null ? "Add transaction" : "Edit transaction")" OnClose="OnClose">
+    <FluentGrid Spacing="3">
+        <FluentGridItem Xs="12" Md="6"><FluentSelect TOption="AccountData" TValue="Guid" Label="Account" Items="_accounts" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="_account" /></FluentGridItem>
+        <FluentGridItem Xs="12" Md="6"><div class="form-field"><label for="transaction-date">@(_repeat == RepeatFrequency.None ? "Date" : "Next occurrence")</label><input id="transaction-date" type="date" @bind="_date" /></div></FluentGridItem>
+        <FluentGridItem Xs="12" Md="6"><FluentTextInput Label="Payee" @bind-Value="_payee" MaxLength="200" DataList="known-payees" /><datalist id="known-payees">@foreach (var payee in Plan.Transactions.Select(item => item.Payee).Where(item => item.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase)) { <option value="@payee"></option> }</datalist></FluentGridItem>
+        <FluentGridItem Xs="12" Md="6"><FluentSelect TOption="AccountData" TValue="Guid" Label="Transfer to or from" Items="_destinations" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="_transfer" /></FluentGridItem>
+        <FluentGridItem Xs="6"><FluentSelect TOption="string" TValue="string" Label="Money direction" Items="_directions" @bind-Value="_direction" /></FluentGridItem>
+        <FluentGridItem Xs="6"><AmountInput Label="Amount" @bind-Value="Amount" ValidChanged="value => _amountValid = value" /></FluentGridItem>
+    </FluentGrid>
+    @if (NeedsCategory)
+    {
+        @if (!_split)
+        {
+            <FluentSelect TOption="CategoryData" TValue="Guid" Label="Category" Items="_categories" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="_category" />
+            <FluentButton OnClick="StartSplit" Appearance="ButtonAppearance.Subtle">Split across categories</FluentButton>
+        }
+        else
+        {
+            <p class="muted">Enter signed split amounts: negative for outflows, positive for inflows. Remaining: @Money(SignedAmount - _splits.Sum(item => item.Amount))</p>
+            @foreach (var split in _splits)
+            {
+                <FluentGrid @key="split.Id" Spacing="2">
+                    <FluentGridItem Xs="12" Md="5"><FluentSelect TOption="CategoryData" TValue="Guid" Label="Split category" Items="_categories" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="split.Category" /></FluentGridItem>
+                    <FluentGridItem Xs="6" Md="3"><AmountInput Label="Split amount" @bind-Value="split.Amount" ValidChanged="value => split.Valid = value" /></FluentGridItem>
+                    <FluentGridItem Xs="6" Md="3"><FluentTextInput Label="Split memo" @bind-Value="split.Memo" MaxLength="1000" /></FluentGridItem>
+                    <FluentGridItem Xs="12" Md="1"><FluentButton OnClick="() => RemoveSplit(split)" Appearance="ButtonAppearance.Subtle" aria-label="Remove split">×</FluentButton></FluentGridItem>
+                </FluentGrid>
+            }
+            <FluentButton OnClick="AddSplit" Appearance="ButtonAppearance.Subtle">+ Another split</FluentButton>
+        }
+    }
+    <FluentGrid Spacing="3">
+        <FluentGridItem Xs="12"><FluentTextArea Label="Memo" @bind-Value="_memo" MaxLength="4000" /></FluentGridItem>
+        <FluentGridItem Xs="6"><FluentSelect TOption="RepeatFrequency" TValue="RepeatFrequency" Label="Repeat" Items="_frequencies" OptionText="FrequencyLabel" @bind-Value="_repeat" /></FluentGridItem>
+        <FluentGridItem Xs="6"><FluentSelect TOption="string" TValue="string" Label="Flag" Items="_flags" @bind-Value="_flag" /></FluentGridItem>
+    </FluentGrid>
+    @if (_repeat == RepeatFrequency.None)
+    {
+        <FluentCheckbox Label="Cleared at the bank" LabelPosition="LabelPosition.Before" @bind-Value="_cleared" />
+        @if (_date > Plan.Today) { <div class="notice" data-kind="warning">Future transactions must repeat. One-off scheduled transactions aren't supported.</div> }
+    }
+    else { <p class="muted">Due occurrences enter your register for approval when you open the plan. The next occurrence stays here as a repeating instruction.</p> }
+    <FluentButton OnClick="SaveAsync" Disabled="@CannotSave" Appearance="ButtonAppearance.Primary">Save transaction</FluentButton>
+</EditorSurface>

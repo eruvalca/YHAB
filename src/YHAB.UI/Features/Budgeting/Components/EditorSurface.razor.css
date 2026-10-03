@@ -1,0 +1,4 @@
+.editor-surface { margin-block: var(--spacingVerticalXL); padding: clamp(1rem, 2vw, 1.75rem); border: 1px solid var(--colorBrandStroke2); border-radius: var(--borderRadiusXLarge); background: var(--colorNeutralBackground1); box-shadow: var(--shadow8); }
+h2 { margin: 0; }
+.editor-surface ::deep .fluent-text-input, .editor-surface ::deep .fluent-select, .editor-surface ::deep .fluent-text-area { width: 100%; }
+

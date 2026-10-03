@@ -1,0 +1,309 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.{md,markdown,razor}]
+# Preserve Markdown hard line breaks and meaningful Razor output whitespace.
+trim_trailing_whitespace = false
+
+[*.{cs,razor,js,ts,css}]
+indent_style = space
+indent_size = 4
+
+[*.{json,yml,yaml}]
+indent_style = space
+indent_size = 2
+
+[*.{xml,csproj,props,targets,slnx}]
+indent_style = space
+indent_size = 2
+
+[*.cs]
+# Agreed C# conventions also apply to Razor code-behind files.
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_using_directive_placement = outside_namespace:warning
+csharp_prefer_braces = true:warning
+
+# Enforce C# formatting, including handwritten Razor code-behind.
+dotnet_diagnostic.IDE0055.severity = warning
+
+# IDE0001: Simplify Names
+dotnet_diagnostic.IDE0001.severity = warning
+
+# Match C# filenames to their type names; Component.razor.cs already qualifies.
+dotnet_diagnostic.MA0048.severity = warning
+
+# Explicit string equality keeps comparison intent visible.
+dotnet_diagnostic.MA0006.severity = warning
+
+# Choose string comparers explicitly for collections and comparison operations.
+dotnet_diagnostic.MA0002.severity = warning
+
+# Make comparison culture and case behavior explicit at flagged API calls.
+dotnet_diagnostic.MA0074.severity = warning
+
+# Method length is review guidance rather than a build gate.
+dotnet_diagnostic.MA0051.severity = suggestion
+MA0051.maximum_lines_per_method = 60
+MA0051.maximum_statements_per_method = 40
+
+# Limit method branching complexity; the threshold is in CodeMetricsConfig.txt.
+dotnet_diagnostic.CA1502.severity = warning
+
+# Prefer specific complexity/length guidance over a composite maintainability score.
+dotnet_diagnostic.CA1505.severity = none
+
+# Review coupling to other types without making the count a build gate.
+dotnet_diagnostic.CA1506.severity = suggestion
+
+# Empty classes need a purpose; justified exceptions belong on individual types.
+dotnet_diagnostic.S2094.severity = warning
+
+# Keep inactive code examples in documentation rather than source comments.
+dotnet_diagnostic.S125.severity = warning
+
+# Remove unused private members; verify indirect framework uses before removal.
+dotnet_diagnostic.IDE0051.severity = warning
+
+# Review private state that is assigned but never read; preserve required effects.
+dotnet_diagnostic.IDE0052.severity = warning
+
+# Remove unused assignments; explicitly discard unneeded results of necessary calls.
+dotnet_diagnostic.IDE0059.severity = warning
+csharp_style_unused_value_assignment_preference = discard_variable:warning
+
+# Check unused parameters at every method accessibility; preserve required contracts.
+dotnet_diagnostic.IDE0060.severity = warning
+dotnet_code_quality_unused_parameters = all:warning
+
+# Keep nullable suppressions only where they affect the compiler's analysis.
+dotnet_diagnostic.S8969.severity = warning
+
+# Keep eligible private implementation classes sealed by default.
+dotnet_diagnostic.S3260.severity = warning
+
+# Seal eligible concrete classes, including public application/component types.
+# Intentional base classes need review across project boundaries.
+dotnet_diagnostic.MA0053.severity = warning
+MA0053.public_class_should_be_sealed = true
+
+# Keep executable-project implementation types within their assembly.
+# Required public contracts use justified exceptions on individual types.
+dotnet_diagnostic.CA1515.severity = warning
+
+# Make helpers independent of instance state explicit.
+dotnet_diagnostic.S2325.severity = warning
+
+# Consume meaningful return values or remove unnecessary return contracts.
+dotnet_diagnostic.S3241.severity = warning
+
+# Consider LINQ loop simplifications when they improve readability.
+dotnet_diagnostic.S3267.severity = suggestion
+
+# Keep deployment-specific paths configurable; document fixed-format exceptions.
+dotnet_diagnostic.S1075.severity = warning
+
+# Await available asynchronous alternatives where the analyzer reports them.
+dotnet_diagnostic.S6966.severity = warning
+
+# Consume ValueTask instances correctly, normally by awaiting each instance once.
+dotnet_diagnostic.CA2012.severity = warning
+
+# Forward cancellation parameters to supporting calls; make intentional opt-outs explicit.
+dotnet_diagnostic.CA2016.severity = warning
+
+# Fields already receive their type's default value before construction.
+dotnet_diagnostic.CA1805.severity = warning
+
+# This C# solution does not publish APIs for other .NET languages.
+dotnet_diagnostic.CA1716.severity = none
+
+# Use known concrete implementations where an abstraction serves no purpose.
+dotnet_diagnostic.CA1859.severity = warning
+
+# Parse reusable composite format strings once and cache the template.
+dotnet_diagnostic.CA1863.severity = warning
+
+# Declare typed logging methods and let the source generator implement them.
+dotnet_diagnostic.CA1848.severity = warning
+
+# Avoid expensive log-only argument evaluation when the level is disabled.
+dotnet_diagnostic.CA1873.severity = warning
+
+# Validate reference arguments at externally visible method boundaries.
+dotnet_diagnostic.CA1062.severity = warning
+
+# State string comparison behavior even when the overload's default is suitable.
+dotnet_diagnostic.CA1307.severity = warning
+
+# Check lowercase normalization; justify display-only exceptions on their methods.
+dotnet_diagnostic.CA1308.severity = warning
+
+# Review type/namespace naming overlaps without blocking feature-folder conventions.
+dotnet_diagnostic.CA1724.severity = suggestion
+
+# DI, reflection, and EF create internal application types without direct new calls.
+dotnet_diagnostic.CA1812.severity = none
+
+# Expose collection contracts instead of arrays from public properties.
+dotnet_diagnostic.CA1819.severity = warning
+
+# Avoid replaceable mutable collection APIs; preserve framework parameter binding.
+dotnet_diagnostic.CA2227.severity = warning
+
+# Flag System.Random usage; security-sensitive values require secure randomness.
+dotnet_diagnostic.CA5394.severity = warning
+
+# Local variable type preferences.
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = true:suggestion
+
+# Expression-bodied members.
+csharp_style_expression_bodied_methods = when_on_single_line:suggestion
+csharp_style_expression_bodied_constructors = false:suggestion
+csharp_style_expression_bodied_operators = when_on_single_line:suggestion
+csharp_style_expression_bodied_properties = true:suggestion
+csharp_style_expression_bodied_indexers = true:suggestion
+csharp_style_expression_bodied_accessors = true:suggestion
+csharp_style_expression_bodied_lambdas = true:suggestion
+csharp_style_expression_bodied_local_functions = when_on_single_line:suggestion
+
+# Pattern matching.
+csharp_style_pattern_matching_over_is_with_cast_check = true:warning
+csharp_style_pattern_matching_over_as_with_null_check = true:warning
+csharp_style_prefer_switch_expression = true:suggestion
+csharp_style_prefer_pattern_matching = true:suggestion
+csharp_style_prefer_not_pattern = true:warning
+csharp_style_prefer_extended_property_pattern = true:warning
+
+# Null handling.
+dotnet_style_prefer_is_null_check_over_reference_equality_method = true:warning
+dotnet_style_null_propagation = true:suggestion
+dotnet_style_coalesce_expression = true:warning
+csharp_style_prefer_null_check_over_type_check = true:warning
+
+# Modern C# features.
+# Primary constructors are required; IDE0290 checks supported conversions.
+csharp_style_prefer_primary_constructors = true:error
+csharp_style_implicit_object_creation_when_type_is_apparent = true:suggestion
+csharp_style_inlined_variable_declaration = true:suggestion
+csharp_prefer_simple_using_statement = true:warning
+dotnet_style_prefer_collection_expression = when_types_exactly_match:suggestion
+
+# Mark eligible private fields readonly; primary constructor parameters are separate.
+dotnet_style_readonly_field = true:warning
+dotnet_diagnostic.IDE0044.severity = warning
+
+# Use a tuple element's available name instead of its positional ItemN spelling.
+dotnet_style_explicit_tuple_names = true:warning
+dotnet_diagnostic.IDE0033.severity = warning
+
+# Prefer auto-properties over trivial backing-field/property pairs.
+dotnet_style_prefer_auto_properties = true:warning
+dotnet_diagnostic.IDE0032.severity = warning
+
+# Express updates with compound assignment, including null-coalescing assignment.
+dotnet_style_prefer_compound_assignment = true:warning
+dotnet_diagnostic.IDE0054.severity = warning
+dotnet_diagnostic.IDE0074.severity = warning
+
+# Simplify conditional expressions with redundant boolean branches.
+dotnet_style_prefer_simplified_boolean_expressions = true:warning
+dotnet_diagnostic.IDE0075.severity = warning
+
+# Group eligible initial property assignments with object creation.
+dotnet_style_object_initializer = true:warning
+dotnet_diagnostic.IDE0017.severity = warning
+
+# Group initial collection contents; keep [] expression conversions as suggestions.
+dotnet_style_collection_initializer = true:warning
+
+# Editor-only warning: omit this. when it does not affect member binding.
+dotnet_style_qualification_for_field = false:warning
+dotnet_style_qualification_for_property = false:warning
+dotnet_style_qualification_for_method = false:warning
+dotnet_style_qualification_for_event = false:warning
+dotnet_diagnostic.IDE0003.severity = warning
+
+# Awaitable-returning methods use Async, including methods without the async keyword.
+dotnet_diagnostic.MA0137.severity = warning
+
+# Naming rules share IDE1006 for build severity.
+dotnet_diagnostic.IDE1006.severity = warning
+
+# Interfaces use I-prefixed PascalCase at every accessibility level.
+dotnet_naming_rule.interfaces_must_begin_with_i.symbols = interface_symbols
+dotnet_naming_rule.interfaces_must_begin_with_i.style = interface_style
+dotnet_naming_rule.interfaces_must_begin_with_i.severity = warning
+dotnet_naming_symbols.interface_symbols.applicable_kinds = interface
+dotnet_naming_symbols.interface_symbols.applicable_accessibilities = *
+dotnet_naming_style.interface_style.required_prefix = I
+dotnet_naming_style.interface_style.capitalization = pascal_case
+
+# Generic type parameters use T or descriptive T-prefixed PascalCase names.
+dotnet_naming_rule.type_parameters_must_begin_with_t.symbols = type_parameter_symbols
+dotnet_naming_rule.type_parameters_must_begin_with_t.style = type_parameter_style
+dotnet_naming_rule.type_parameters_must_begin_with_t.severity = warning
+dotnet_naming_symbols.type_parameter_symbols.applicable_kinds = type_parameter
+dotnet_naming_symbols.type_parameter_symbols.applicable_accessibilities = *
+dotnet_naming_style.type_parameter_style.required_prefix = T
+dotnet_naming_style.type_parameter_style.capitalization = pascal_case
+
+# Private/protected fields use _camelCase, including static and readonly fields.
+dotnet_naming_rule.private_fields_use_underscore_prefix.symbols = private_field_symbols
+dotnet_naming_rule.private_fields_use_underscore_prefix.style = private_field_style
+dotnet_naming_rule.private_fields_use_underscore_prefix.severity = warning
+dotnet_naming_symbols.private_field_symbols.applicable_kinds = field
+dotnet_naming_symbols.private_field_symbols.applicable_accessibilities = private, protected, private_protected
+dotnet_naming_style.private_field_style.required_prefix = _
+dotnet_naming_style.private_field_style.capitalization = camel_case
+
+# All constant fields and local constants use PascalCase.
+dotnet_naming_rule.constants_are_pascal_case.symbols = constant_symbols
+dotnet_naming_rule.constants_are_pascal_case.style = pascal_case_style
+dotnet_naming_rule.constants_are_pascal_case.severity = warning
+dotnet_naming_symbols.constant_symbols.applicable_kinds = field, local
+dotnet_naming_symbols.constant_symbols.applicable_accessibilities = *
+dotnet_naming_symbols.constant_symbols.required_modifiers = const
+
+# Constants in the same scope retain PascalCase; this more-specific rule wins.
+dotnet_naming_rule.private_constants_are_pascal_case.symbols = private_constant_symbols
+dotnet_naming_rule.private_constants_are_pascal_case.style = pascal_case_style
+dotnet_naming_rule.private_constants_are_pascal_case.severity = warning
+dotnet_naming_symbols.private_constant_symbols.applicable_kinds = field
+dotnet_naming_symbols.private_constant_symbols.applicable_accessibilities = private, protected, private_protected
+dotnet_naming_symbols.private_constant_symbols.required_modifiers = const
+dotnet_naming_style.pascal_case_style.capitalization = pascal_case
+
+# Both empty-string spellings are allowed.
+dotnet_diagnostic.RCS1078.severity = none
+
+# Ordinary await is appropriate for application and Blazor component code.
+# Use ConfigureAwait deliberately where the synchronization context is not needed.
+dotnet_diagnostic.CA2007.severity = none
+dotnet_diagnostic.MA0004.severity = none
+
+# IDE0130: Namespace does not match folder structure
+dotnet_diagnostic.IDE0130.severity = warning
+
+[*.razor.cs]
+# Component accessibility must match Razor's generated public partial class.
+# Other C# rules continue to apply to code-behind.
+dotnet_diagnostic.CA1515.severity = none
+
+[src/YHAB.AppHost/AppHost.cs]
+# Aspire's conventional entry point contains the implicit top-level Program type.
+dotnet_diagnostic.MA0048.severity = none
+
+[src/YHAB/Data/Migrations/[0-9]*_*.cs]
+# EF prefixes migration filenames with a timestamp that is not in the type name.
+dotnet_diagnostic.MA0048.severity = none
+# Schema migrations naturally contain long sequences of generated operations.
+dotnet_diagnostic.MA0051.severity = none

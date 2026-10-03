@@ -1,0 +1,9 @@
+{
+  "xUnit": {
+    "failWarns": true,
+    "parallelMode": "all",
+    "parallelAlgorithm": "conservative",
+    "maxParallelThreads": "1x",
+    "preEnumerateTheories": true
+  }
+}

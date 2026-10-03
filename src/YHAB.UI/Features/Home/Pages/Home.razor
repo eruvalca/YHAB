@@ -1,0 +1,17 @@
+@page "/"
+
+<PageTitle>YHAB · Your money, with intention</PageTitle>
+<section class="welcome">
+    <p class="eyebrow">A LITTLE MORE BREATHING ROOM</p>
+    <h1>Your money.<br />Your priorities.<br /><span>A plan that feels good.</span></h1>
+    <p class="lead">Know what you have. Decide what matters. Make room for everyday life and the things you're looking forward to.</p>
+    <AuthorizeView>
+        <Authorized><a class="primary-action" href="/plans">Open your plans →</a></Authorized>
+        <NotAuthorized><a class="primary-action" href="/Account/Register">Create your account →</a><a class="login-link" href="/Account/Login">Welcome back? Log in</a></NotAuthorized>
+    </AuthorizeView>
+</section>
+<FluentGrid Spacing="4">
+    <FluentGridItem Xs="12" Md="4"><section class="surface"><p class="eyebrow">01 / GET A CLEAR PICTURE</p><h2>Start with what you have.</h2><p>Add your accounts and balances by hand. A quiet space for your finances, with you in control.</p></section></FluentGridItem>
+    <FluentGridItem Xs="12" Md="4"><section class="surface"><p class="eyebrow">02 / GIVE IT A PURPOSE</p><h2>Fund the life you want.</h2><p>Everyday bills, a rainy day, your next adventure. Give each dollar a job and build toward your targets.</p></section></FluentGridItem>
+    <FluentGridItem Xs="12" Md="4"><section class="surface"><p class="eyebrow">03 / KEEP MOVING FORWARD</p><h2>Let your plan grow with you.</h2><p>Track your spending, move money when plans change, and see your progress over time.</p></section></FluentGridItem>
+</FluentGrid>

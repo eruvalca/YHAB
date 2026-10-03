@@ -1,0 +1,9 @@
+<section class="editor-surface" aria-label="@Title">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalL)" Width="100%">
+        <FluentStack VerticalAlignment="VerticalAlignment.Center" HorizontalAlignment="HorizontalAlignment.SpaceBetween" Width="100%">
+            <h2>@Title</h2>
+            <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="CloseAsync" aria-label="Close editor">Close</FluentButton>
+        </FluentStack>
+        @ChildContent
+    </FluentStack>
+</section>

@@ -1,0 +1,4 @@
+{
+  "dotnet.defaultSolution": "YHAB.slnx",
+  "aspire.dashboardBrowser": "openExternalBrowser"
+}

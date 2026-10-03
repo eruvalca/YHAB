@@ -1,0 +1,90 @@
+<FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalM)" Class="page-heading">
+    <div><p class="eyebrow">THE LITTLE DETAILS, ALL TOGETHER</p><h1>@(_account?.Name ?? "All transactions")</h1><p class="muted">@(_account is null ? "Every account in your plan." : AccountLabel(_account.Kind))</p></div>
+    <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalS)">
+        <FluentButton OnClick="Add" Disabled="@(Busy || !Plan.Accounts.Any(item => !item.Closed))" Appearance="ButtonAppearance.Primary">+ Add transaction</FluentButton>
+        @if (_account is not null)
+        {
+            <FluentButton OnClick="Reconcile" Disabled="@(Busy || _account.Closed)" Appearance="ButtonAppearance.Outline">Reconcile</FluentButton>
+            <FluentButton OnClick="EditAccountAsync" Appearance="ButtonAppearance.Subtle">Account details</FluentButton>
+        }
+    </FluentStack>
+</FluentStack>
+@if (_account is not null)
+{
+    var balance = Balance(Plan, _account, Plan.Today);
+    <FluentGrid Spacing="3" Class="summary-grid">
+        <FluentGridItem Xs="12" Md="4"><div class="stat"><span>Cleared balance</span><strong>@Money(balance.Cleared)</strong></div></FluentGridItem>
+        <FluentGridItem Xs="6" Md="4"><div class="stat"><span>Uncleared</span><strong>@Money(balance.Uncleared)</strong></div></FluentGridItem>
+        <FluentGridItem Xs="6" Md="4"><div class="stat"><span>Working balance</span><strong>@Money(balance.Working)</strong></div></FluentGridItem>
+    </FluentGrid>
+    @if (IsLoan(_account.Kind))
+    {
+        <div class="notice" data-kind="information">Recorded rate: @_account.InterestRate.ToString("0.##", Culture)% · Minimum payment: @Money(_account.MinimumPayment). Record payments as transfers and enter interest manually so this balance matches your lender.</div>
+    }
+}
+@if (_editing)
+{
+    <TransactionEditor @key="_editKey" Plan="Plan" Transaction="_transaction" AccountId="AccountId" OnCommand="OnCommand" OnClose="CloseEditors" Busy="Busy" />
+}
+@if (_reconciling && _account is not null)
+{
+    <ReconcileEditor Plan="Plan" Account="_account" OnCommand="OnCommand" OnClose="CloseEditors" Busy="Busy" />
+}
+<FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalM)" Class="table-toolbar">
+    <FluentTextInput Label="Search transactions" @bind-Value="_search" @bind-Value:after="ResetPage" Immediate="true" Placeholder="Payee, category, memo, flag, amount…" />
+    <FluentSelect TOption="string" TValue="string" Label="Show" Items="_filters" @bind-Value="_filter" @bind-Value:after="ResetPage" />
+    <FluentSelect TOption="string" TValue="string" Label="Sort by" Items="_sorts" @bind-Value="_sort" @bind-Value:after="ResetPage" />
+</FluentStack>
+<details class="date-filters"><summary>Date range</summary><FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalM)">
+    <div class="form-field"><label for="register-from">From</label><input id="register-from" type="date" @bind="_from" @bind:after="ResetPage" /></div>
+    <div class="form-field"><label for="register-to">Through</label><input id="register-to" type="date" @bind="_to" @bind:after="ResetPage" /></div>
+</FluentStack></details>
+@if (_selected.Count > 0)
+{
+    <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalS)" Class="selection-toolbar">
+        <strong>@_selected.Count selected</strong>
+        <FluentButton OnClick="ApproveAsync" Disabled="Busy" Appearance="ButtonAppearance.Subtle">Approve</FluentButton>
+        <FluentButton OnClick="ClearAsync" Disabled="Busy" Appearance="ButtonAppearance.Subtle">Mark cleared</FluentButton>
+        <FluentButton OnClick="UnclearAsync" Disabled="Busy" Appearance="ButtonAppearance.Subtle">Mark uncleared / unreconcile</FluentButton>
+        <FluentButton OnClick="RequestDelete" Disabled="Busy" Appearance="ButtonAppearance.Subtle">Delete…</FluentButton>
+    </FluentStack>
+}
+@if (_deleting)
+{
+    <div class="notice" data-kind="warning"><p>Delete @_selected.Count selected transactions? Transfers are removed from both accounts. You can undo this change.</p>
+        <FluentButton OnClick="DeleteAsync" Disabled="Busy" Appearance="ButtonAppearance.Primary">Delete selected transactions</FluentButton>
+        <FluentButton OnClick="CancelDelete" Appearance="ButtonAppearance.Subtle">Keep transactions</FluentButton>
+    </div>
+}
+<div class="table-container" tabindex="0" aria-label="Account transaction register">
+    <table class="register-table">
+        <thead><tr><th><FluentCheckbox Label="Select page" LabelPosition="LabelPosition.Before" Value="AllVisibleSelected" ValueChanged="SelectVisible" /></th><th scope="col">Date</th><th scope="col">Payee / account</th><th scope="col">Category / memo</th><th scope="col" class="numeric">Outflow</th><th scope="col" class="numeric">Inflow</th><th scope="col">Status</th>@if (_account is not null) { <th scope="col" class="numeric">Balance</th> }</tr></thead>
+        <tbody>
+            @foreach (var entry in VisibleEntries)
+            {
+                var amount = DisplayAmount(entry);
+                <tr @key="entry.Id" data-selected="@(_selected.Contains(entry.Id) ? "true" : "false")">
+                    <td><FluentCheckbox Label="Select" LabelPosition="LabelPosition.Before" Value="_selected.Contains(entry.Id)" ValueChanged="value => Select(entry.Id, value)" /></td>
+                    <td class="nowrap">@entry.Date.ToString("MM/dd/yyyy", Culture) @if (entry.Repeat != RepeatFrequency.None) { <small>@TransactionEditor.FrequencyLabel(entry.Repeat)</small> }</td>
+                    <td><button class="category-link" @onclick="() => Edit(entry)">@PayeeLabel(entry)</button><small>@AccountName(entry.AccountId) @if (entry.Flag.Length > 0) { <span class="flag" data-flag="@entry.Flag">@entry.Flag flag</span> }</small>
+                        <FluentButton OnClick="() => Duplicate(entry)" Appearance="ButtonAppearance.Subtle">Duplicate</FluentButton>
+                    </td>
+                    <td>@CategoryLabel(entry)<small>@entry.Memo</small>@if (entry.NeedsApproval) { <span class="approval-badge">Needs approval</span> }</td>
+                    <td class="numeric money">@(amount < 0 ? Money(-amount) : "—")</td>
+                    <td class="numeric money">@(amount > 0 ? Money(amount) : "—")</td>
+                    <td><FluentButton OnClick="() => ToggleClearedAsync(entry)" Disabled="@(Busy || entry.Repeat != RepeatFrequency.None || DisplayState(entry) == ClearingState.Reconciled)" Appearance="ButtonAppearance.Subtle">@DisplayState(entry)</FluentButton></td>
+                    @if (_account is not null) { <td class="numeric money">@(entry.Repeat == RepeatFrequency.None ? Money(_running.GetValueOrDefault(entry.Id)) : "—")</td> }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+@if (!FilteredEntries.Any())
+{
+    <div class="empty-state"><h2>No transactions here yet</h2><p>Add a transaction or adjust your filters. Small habits bring a clearer picture.</p></div>
+}
+<FluentStack HorizontalGap="var(--spacingHorizontalM)" Class="pagination">
+    <FluentButton OnClick="PreviousPage" Disabled="@(_page == 0)" Appearance="ButtonAppearance.Subtle">Previous</FluentButton>
+    <span>Page @(_page + 1) · @FilteredEntries.Count() transactions</span>
+    <FluentButton OnClick="NextPage" Disabled="@((_page + 1) * PageSize >= FilteredEntries.Count())" Appearance="ButtonAppearance.Subtle">Next</FluentButton>
+</FluentStack>

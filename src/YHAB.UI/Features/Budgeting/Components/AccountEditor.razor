@@ -1,0 +1,23 @@
+<EditorSurface Title="@(_id == Guid.Empty ? "A place for your money" : "Account details")" OnClose="OnClose">
+    <p class="muted">Enter the balance from your records. You can add transactions whenever you need.</p>
+    <FluentTextInput Label="Account name" @bind-Value="_name" MaxLength="100" Required="true" />
+    <FluentSelect TOption="AccountKind" TValue="AccountKind" Label="Account type" Items="_kinds"
+                  OptionText="AccountLabel" @bind-Value="_kind" Disabled="@(_id != Guid.Empty)" />
+    <div class="form-field"><label for="account-opening-date">Opening date</label><input id="account-opening-date" type="date" @bind="_openedOn" /></div>
+    <AmountInput Label="Opening balance" @bind-Value="_balance" ValidChanged="value => _amountValid = value" />
+    <p class="field-hint">Use a negative balance for money you owe.</p>
+    @if (BudgetFacts.IsLoan(_kind))
+    {
+        <AmountInput Label="Annual interest rate (%)" @bind-Value="_interest" ValidChanged="value => _interestValid = value" />
+        <AmountInput Label="Minimum monthly payment" @bind-Value="_minimum" ValidChanged="value => _minimumValid = value" />
+    }
+    <FluentTextArea Label="Notes" @bind-Value="_notes" MaxLength="4000" />
+    @if (_id != Guid.Empty)
+    {
+        <FluentCheckbox Label="Account is closed" LabelPosition="LabelPosition.Before" @bind-Value="_closed" />
+    }
+    <FluentStack HorizontalGap="var(--spacingHorizontalS)" Wrap="true">
+        <FluentButton Appearance="ButtonAppearance.Primary" OnClick="SaveAsync" Disabled="@(!_amountValid || !_interestValid || !_minimumValid || string.IsNullOrWhiteSpace(_name) || Busy)">Save account</FluentButton>
+        <FluentButton OnClick="CancelAsync">Cancel</FluentButton>
+    </FluentStack>
+</EditorSurface>

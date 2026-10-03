@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <ResourcePreloader />
+    <link rel="stylesheet" href="@Assets["_content/Microsoft.FluentUI.AspNetCore.Components/css/default-fuib.css"]" />
+    <link rel="stylesheet" href="@Assets["YHAB.styles.css"]" />
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+    <ImportMap />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <HeadOutlet />
+</head>
+
+@* Load the Fluent baseline above app.css instead of reinjecting it after our overrides. *@
+<body data-theme-color="#0F766E" no-fuib-style>
+    <Routes />
+    <ReconnectModal />
+    <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script src="@Assets["Features/Account/Components/PasskeySubmit.razor.js"]" type="module"></script>
+</body>
+
+</html>

@@ -1,0 +1,6 @@
+{
+  "appHost": {
+    "language": "csharp",
+    "path": "src/YHAB.AppHost/YHAB.AppHost.csproj"
+  }
+}

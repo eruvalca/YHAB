@@ -1,0 +1,29 @@
+@page "/Account/Manage"
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Identity
+@using YHAB.Data
+
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Profile</PageTitle>
+
+<h3>Profile</h3>
+<StatusMessage />
+
+<EditForm class="account-form" Model="Input" FormName="profile" OnValidSubmit="OnValidSubmitAsync" method="post">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="error-text" role="alert" />
+    <div class="form-field">
+        <label for="username">Username</label>
+        <input type="text" value="@_username" id="username" placeholder="Choose your username." disabled />
+    </div>
+    <div class="form-field">
+        <label for="Input.PhoneNumber">Phone number</label>
+        <InputText @bind-Value="Input.PhoneNumber" id="Input.PhoneNumber" placeholder="Enter your phone number" />
+        <ValidationMessage For="() => Input.PhoneNumber" class="error-text" />
+    </div>
+    <button type="submit">Save</button>
+</EditForm>

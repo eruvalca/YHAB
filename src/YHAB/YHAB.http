@@ -1,0 +1,35 @@
+# Use the HTTPS address reported by aspire describe. Authenticate in the same
+# client first and retain its Identity and antiforgery cookies. Never commit cookies.
+@baseUrl = https://localhost:REPLACE_WITH_ASPIRE_PORT
+@planId = REPLACE_WITH_OWNED_PLAN_ID
+@requestToken = REPLACE_WITH_TOKEN_FROM_RESPONSE
+
+### List the signed-in user's private plans
+GET {{baseUrl}}/api/plans
+
+### Obtain the antiforgery token (and retain its cookie)
+GET {{baseUrl}}/api/plans/token
+
+### Create a plan
+POST {{baseUrl}}/api/plans
+Content-Type: application/json
+X-CSRF-TOKEN: {{requestToken}}
+
+{
+  "name": "Everyday plan",
+  "starterCategories": true
+}
+
+### Read its revision and resource identifiers
+GET {{baseUrl}}/api/plans/{{planId}}
+
+### Rename a plan using the revision returned by the last read
+PUT {{baseUrl}}/api/plans/{{planId}}/settings
+Content-Type: application/json
+X-CSRF-TOKEN: {{requestToken}}
+
+{
+  "version": 0,
+  "name": "A little breathing room",
+  "notes": "A plan for the things that matter."
+}

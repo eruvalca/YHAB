@@ -1,0 +1,48 @@
+@page "/Account/Manage/Email"
+
+@using System.ComponentModel.DataAnnotations
+@using System.Text
+@using System.Text.Encodings.Web
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.WebUtilities
+@using YHAB.Data
+
+@inject UserManager<ApplicationUser> UserManager
+@inject IEmailSender<ApplicationUser> EmailSender
+@inject NavigationManager NavigationManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Manage email</PageTitle>
+
+<h3>Manage email</h3>
+
+<StatusMessage Message="@_message"/>
+<form @onsubmit="OnSendEmailVerificationAsync" @formname="send-verification" id="send-verification-form" method="post">
+    <AntiforgeryToken />
+</form>
+<EditForm class="account-form" Model="Input" FormName="change-email" OnValidSubmit="OnValidSubmitAsync" method="post">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="error-text" role="alert" />
+    @if (_isEmailConfirmed)
+    {
+        <div class="form-field">
+            <label for="email">Email</label>
+            <input type="text" value="@_email" id="email" placeholder="Enter your email" disabled />
+            <span>Email confirmed</span>
+        </div>
+    }
+    else
+    {
+        <div class="form-field">
+            <label for="email">Email</label>
+            <input type="text" value="@_email" id="email" placeholder="Enter your email" disabled />
+            <button type="submit" form="send-verification-form">Send verification email</button>
+        </div>
+    }
+    <div class="form-field">
+        <label for="Input.NewEmail">New email</label>
+        <InputText @bind-Value="Input.NewEmail" id="Input.NewEmail" autocomplete="email" aria-required="true" placeholder="Enter a new email" />
+        <ValidationMessage For="() => Input.NewEmail" class="error-text" />
+    </div>
+    <button type="submit">Change email</button>
+</EditForm>

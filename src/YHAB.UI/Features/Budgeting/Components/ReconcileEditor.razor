@@ -1,0 +1,12 @@
+<EditorSurface Title="@($"Reconcile {Account.Name}")" OnClose="OnClose">
+    <p>Compare your cleared balance with your bank's posted balance. Pending transactions stay uncleared.</p>
+    <p>Cleared in YHAB: <strong class="money">@Money(_cleared)</strong></p>
+    <AmountInput Label="Bank's posted balance" @bind-Value="_balance" ValidChanged="value => _valid = value" />
+    @if (_balance != _cleared)
+    {
+        <div class="notice" data-kind="warning">Difference: @Money(_balance - _cleared). Check missing or uncleared entries before making an adjustment.</div>
+        <FluentCheckbox Label="Create a balance adjustment for this difference" LabelPosition="LabelPosition.Before" @bind-Value="_adjust" />
+    }
+    <FluentButton OnClick="SaveAsync" Disabled="@(Busy || !_valid || (_balance != _cleared && !_adjust))" Appearance="ButtonAppearance.Primary">Finish reconciliation</FluentButton>
+</EditorSurface>
+

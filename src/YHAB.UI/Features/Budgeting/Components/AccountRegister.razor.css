@@ -1,0 +1,15 @@
+.register-table { min-width: 53rem; font-size: var(--fontSizeBase200); }
+.register-table small { display: block; margin-top: var(--spacingVerticalXS); color: var(--colorNeutralForeground3); font-weight: var(--fontWeightRegular); }
+.register-table th, .register-table td { padding-block: var(--spacingVerticalM); }
+.register-table tr[data-selected="true"] { background: var(--colorBrandBackground2); }
+.date-filters { margin-block: var(--spacingVerticalM); }
+.date-filters summary { cursor: pointer; margin-bottom: var(--spacingVerticalS); }
+.date-filters .form-field { max-width: 13rem; }
+.approval-badge { display: inline-block; padding: var(--spacingVerticalXXS) var(--spacingHorizontalS); border-radius: var(--borderRadiusMedium); background: var(--colorPaletteMarigoldBackground1); color: var(--colorPaletteMarigoldForeground2); }
+.flag { font-size: var(--fontSizeBase100); border-inline-start: 3px solid var(--colorBrandStroke1); padding-inline-start: var(--spacingHorizontalXS); }
+.flag[data-flag="Red"] { border-color: var(--colorPaletteRedForeground1); }
+.flag[data-flag="Orange"] { border-color: var(--colorPaletteDarkOrangeForeground1); }
+.flag[data-flag="Yellow"] { border-color: var(--colorPaletteMarigoldForeground1); }
+.flag[data-flag="Green"] { border-color: var(--colorPaletteGreenForeground1); }
+.flag[data-flag="Purple"] { border-color: var(--colorPalettePurpleForeground1); }
+

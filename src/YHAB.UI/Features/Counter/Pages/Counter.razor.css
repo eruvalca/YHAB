@@ -1,0 +1,9 @@
+.counter-content ::deep .counter-card {
+    max-width: 36rem;
+    padding: var(--spacingVerticalXXL) var(--spacingHorizontalXXL);
+}
+
+p {
+    margin: 0;
+    font-size: var(--fontSizeBase500, 1.25rem);
+}

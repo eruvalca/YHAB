@@ -1,0 +1,39 @@
+@page "/plans/{PlanId:guid}/settings"
+@attribute [Authorize]
+<PageTitle>Plan settings · YHAB</PageTitle>
+@if (_message is not null) { <div class="notice" data-kind="@(_failed ? "error" : "success")" role="status">@_message</div> }
+@if (_plan is { } plan)
+{
+    <FluentGrid Spacing="4">
+        <FluentGridItem Xs="12" Lg="3"><PlanNavigation Plan="plan" /></FluentGridItem>
+        <FluentGridItem Xs="12" Lg="9">
+            <p class="eyebrow">MAKE IT YOURS</p><h1>Plan settings</h1>
+            <section class="surface">
+                <h2>A plan with a purpose</h2>
+                <EditForm Model="Settings" method="post" FormName="PlanSettings" OnValidSubmit="SaveAsync" Enhance>
+                    <DataAnnotationsValidator /><ValidationSummary />
+                    <input type="hidden" name="Settings.Version" value="@Settings.Version" />
+                    <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalL)">
+                        <div class="form-field"><label for="settings-name">Plan name</label><InputText id="settings-name" @bind-Value="Settings.Name" maxlength="100" /></div>
+                        <div class="form-field"><label for="settings-notes">Notes & intentions</label><InputTextArea id="settings-notes" @bind-Value="Settings.Notes" maxlength="4000" rows="4" /></div>
+                        <button type="submit" class="primary-action">Save plan settings</button>
+                    </FluentStack>
+                </EditForm>
+            </section>
+            <section class="surface report-section">
+                <h2>Manage payees</h2><p>Rename a payee across posted and recurring transactions. You can undo this from your plan.</p>
+                <EditForm Model="Payee" method="post" FormName="RenamePayee" OnValidSubmit="RenameAsync" Enhance>
+                    <DataAnnotationsValidator /><ValidationSummary />
+                    <input type="hidden" name="Payee.Version" value="@Payee.Version" />
+                    <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalL)">
+                        <div class="form-field"><label for="old-payee">Existing payee</label><InputSelect id="old-payee" @bind-Value="Payee.OldName"><option value="">Choose a payee</option>@foreach (var name in plan.Transactions.Select(item => item.Payee).Where(item => item.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase)) { <option value="@name">@name</option> }</InputSelect></div>
+                        <div class="form-field"><label for="new-payee">New name</label><InputText id="new-payee" @bind-Value="Payee.NewName" maxlength="200" /></div>
+                        <button type="submit" class="primary-action">Rename payee</button>
+                    </FluentStack>
+                </EditForm>
+            </section>
+            <p class="muted">Private plan · US dollars · US dates · Manual accounts</p>
+        </FluentGridItem>
+    </FluentGrid>
+}
+
