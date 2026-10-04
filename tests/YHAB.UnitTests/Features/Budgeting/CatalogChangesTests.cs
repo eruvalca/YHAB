@@ -15,10 +15,10 @@ public sealed class CatalogChangesTests
     {
         var plan = Create();
         var account = new AccountData(Guid.Empty, "Travel card", AccountKind.CreditCard, -200, January, false, "");
-        var created = CatalogChanges.Save(plan, new(0, account), plan.Today).AsT0;
+        var created = CatalogChanges.Save(BudgetTestData.NewIds(), plan, new(0, account), plan.Today).AsT0;
         var card = created.Accounts.Single(item => string.Equals(item.Name, "Travel card", StringComparison.Ordinal));
         var payment = created.Categories.Single(item => item.CreditAccountId == card.Id);
-        var renamed = CatalogChanges.Save(created, new(0, card with { Name = "Rewards card" }), plan.Today).AsT0;
+        var renamed = CatalogChanges.Save(BudgetTestData.NewIds(), created, new(0, card with { Name = "Rewards card" }), plan.Today).AsT0;
         renamed.Categories.Single(item => item.CreditAccountId == card.Id).Id.ShouldBe(payment.Id);
         renamed.Categories.Single(item => item.CreditAccountId == card.Id).Name.ShouldBe("Rewards card");
         renamed.Groups.Single(item => item.Id == payment.GroupId).Name.ShouldBe("Credit card payments");
@@ -69,7 +69,7 @@ public sealed class CatalogChangesTests
     {
         var plan = Create();
         plan = plan with { Transactions = [Entry(plan, 0, -10), Entry(plan, 0, -20) with { Repeat = RepeatFrequency.Monthly }, Entry(plan, 0, -30) with { Payee = "Other" }] };
-        var renamed = PlanCommandHandler.Apply(plan, new RenamePayee(0, "market", "Neighborhood market"), plan.Today).AsT0;
+        var renamed = PlanCommandHandler.Apply(BudgetTestData.NewIds(), plan, new RenamePayee(0, "market", "Neighborhood market"), plan.Today).AsT0;
         renamed.Transactions.Take(2).ShouldAllBe(item => string.Equals(item.Payee, "Neighborhood market", StringComparison.Ordinal));
         renamed.Transactions[2].Payee.ShouldBe("Other");
         renamed.Transactions.Select(item => item.Amount).ShouldBe([-10, -20, -30]);

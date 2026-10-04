@@ -10,6 +10,60 @@ namespace YHAB.UnitTests.Features.Budgeting;
 public sealed class TargetCalculatorTests
 {
     [Theory]
+    [InlineData(TargetCadence.Yearly, 0, 12, 50)]
+    [InlineData(TargetCadence.Yearly, 0, 24, 50)]
+    [InlineData(TargetCadence.Custom, 3, 3, 200)]
+    [InlineData(TargetCadence.Custom, 3, 9, 200)]
+    public void RepeatingTargetsStartANewContributionPeriod(TargetCadence cadence, int repeat, int offset, decimal expected)
+    {
+        var plan = Assigned(Create(), 600);
+        var due = cadence == TargetCadence.Yearly ? new DateOnly(2026, 12, 31) : new DateOnly(2026, 3, 31);
+        var category = plan.Categories[0] with { Target = new(TargetKind.SetAside, cadence, 600, January, due, repeat) };
+        var month = January.AddMonths(offset);
+        TargetCalculator.Needed(plan, category, month, month, 0, 600, 600).ShouldBe(expected);
+    }
+
+    [Theory]
+    [InlineData(0, 100)]
+    [InlineData(30, 70)]
+    [InlineData(100, 0)]
+    [InlineData(101, 0)]
+    public void UndatedBalanceTargetUsesAvailableMoney(decimal available, decimal expected)
+    {
+        var plan = Create();
+        var category = plan.Categories[0] with { Target = new(TargetKind.Balance, TargetCadence.Custom, 100, January, null) };
+        TargetCalculator.Needed(plan, category, January, plan.Today, 20, available, 0).ShouldBe(expected);
+    }
+
+    [Fact]
+    public void DatedBalanceTargetUsesRemainingBalanceAndRoundsUpToACent()
+    {
+        var plan = Create();
+        var category = plan.Categories[0] with { Target = new(TargetKind.Balance, TargetCadence.Custom, 100, January, new(2026, 3, 31)) };
+        TargetCalculator.Needed(plan, category, January, plan.Today, 10, 20, 10).ShouldBe(20);
+        TargetCalculator.Needed(plan, category, January, plan.Today, 0, 0, 0).ShouldBe(33.34m);
+    }
+
+    [Fact]
+    public void NonRepeatingTargetStopsAfterItsDueMonth()
+    {
+        var plan = Create();
+        var category = plan.Categories[0] with { Target = new(TargetKind.SetAside, TargetCadence.Custom, 600, January, new(2026, 3, 31)) };
+        TargetCalculator.Needed(plan, category, January.AddMonths(2), plan.Today, 0, 0, 0).ShouldBe(600);
+        TargetCalculator.Needed(plan, category, January.AddMonths(3), plan.Today, 0, 0, 0).ShouldBe(0);
+    }
+
+    [Fact]
+    public void TargetsDoNotFundBeforeStartingOrBelowZero()
+    {
+        var plan = Create();
+        var category = plan.Categories[0] with { Target = new(TargetKind.SetAside, TargetCadence.Monthly, 100, January.AddMonths(1), null) };
+        TargetCalculator.Needed(plan, category, January, plan.Today, 0, 0, 0).ShouldBe(0);
+        TargetCalculator.Needed(plan, category, January.AddMonths(1), plan.Today, 101, 101, 0).ShouldBe(0);
+        TargetCalculator.Needed(plan, category with { Target = null }, January, plan.Today, 0, 0, 0).ShouldBe(0);
+    }
+
+    [Theory]
     [InlineData(TargetKind.Refill, 30)]
     [InlineData(TargetKind.SetAside, 80)]
     [InlineData(TargetKind.Balance, 40)]

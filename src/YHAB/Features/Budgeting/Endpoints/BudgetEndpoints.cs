@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
@@ -42,6 +43,26 @@ internal static class BudgetEndpoints
         group.MapGet("/token", (HttpContext context, IAntiforgery antiforgery)
             => TypedResults.Ok(new RequestToken(antiforgery.GetAndStoreTokens(context).RequestToken!))).WithSummary("Get a token for authenticated plan changes.");
         group.MapGet("/{planId:guid}", ReadAsync).WithSummary("Read a privately owned plan.");
+        group.MapGet("/{planId:guid}/view", async (Guid planId, HttpContext context, BudgetQueries queries, CancellationToken token)
+            => TypedResults.Ok(await queries.ViewAsync(Owner(context), planId, token)));
+        group.MapGet("/{planId:guid}/workspace", async (Guid planId, DateOnly? month, HttpContext context, BudgetQueries queries, CancellationToken token)
+            => TypedResults.Ok(await queries.WorkspaceAsync(Owner(context), planId, month, token)))
+            .WithSummary("Read matching navigation balances and one budget month.");
+        group.MapGet("/{planId:guid}/revision", async (Guid planId, HttpContext context, BudgetQueries queries, CancellationToken token)
+            => TypedResults.Ok(await queries.RevisionAsync(Owner(context), planId, token)));
+        group.MapGet("/{planId:guid}/months/{month}", async (Guid planId, DateOnly month, long version, HttpContext context, BudgetQueries queries, CancellationToken token)
+            => TypedResults.Ok(await queries.MonthAsync(Owner(context), planId, month, version, token)));
+        group.MapGet("/{planId:guid}/register", async (Guid planId, string query, HttpContext context, BudgetQueries queries, CancellationToken token) =>
+        {
+            RegisterQuery request;
+            try { request = JsonSerializer.Deserialize<RegisterQuery>(query, JsonSerializerOptions.Web) ?? throw new JsonException(); }
+            catch (JsonException) { throw new BudgetRequestException(400, "Choose valid register filters."); }
+            return TypedResults.Ok(await queries.RegisterAsync(Owner(context), planId, request, token));
+        });
+        group.MapGet("/{planId:guid}/reports", async (Guid planId, DateOnly from, DateOnly through, HttpContext context, BudgetQueries queries, CancellationToken token)
+            => TypedResults.Ok(await queries.ReportsAsync(Owner(context), planId, from, through, token)));
+        group.MapGet("/{planId:guid}/payees", async (Guid planId, HttpContext context, BudgetQueries queries, CancellationToken token)
+            => TypedResults.Ok(await queries.PayeesAsync(Owner(context), planId, token)));
         group.MapPost("/", async (CreatePlanRequest request, HttpContext context, BudgetStore store, CancellationToken cancellationToken) =>
         {
             var id = await store.CreateAsync(Owner(context), request, cancellationToken);

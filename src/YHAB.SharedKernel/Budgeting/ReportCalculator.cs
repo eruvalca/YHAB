@@ -34,7 +34,35 @@ public static class ReportCalculator
                 .Select(split => new { Id = split.CategoryId!.Value, Amount = -split.Amount * BudgetDirection(plan, entry) }))
             .GroupBy(item => item.Id)
             .Select(group => new CategorySpending(group.Key, plan.Categories.Single(item => item.Id == group.Key).Name, group.Sum(item => item.Amount)))
-            .Where(item => item.Amount != 0).OrderByDescending(item => item.Amount).ToArray();
+            .Where(item => item.Amount != 0).OrderByDescending(item => item.Amount).ThenBy(item => item.CategoryId).ToArray();
+    }
+
+    /// <summary>Builds the same reports from bounded aggregates without retaining transactions. Totals must cover the supplied inclusive date range.</summary>
+    public static ReportView FromTotals(PlanSnapshot catalog, DateOnly from, DateOnly through, ReportTotals totals)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentNullException.ThrowIfNull(totals);
+        var changes = catalog.Accounts.ToDictionary(account => account.Id, account => totals.PriorAccountChanges.GetValueOrDefault(account.Id));
+        var movements = totals.AccountMonths.ToLookup(item => item.Month);
+        var flows = totals.CategoryMonths.ToLookup(item => item.Month);
+        var months = new List<MonthReport>();
+        for (var month = BudgetFacts.Month(from); month <= through; month = month.AddMonths(1))
+        {
+            foreach (var movement in movements[month]) { changes[movement.AccountId] += movement.Amount; }
+            var end = month.AddMonths(1).AddDays(-1);
+            var throughDate = end > through ? through : end;
+            var balances = catalog.Accounts.Select(account => changes[account.Id]
+                + (account.OpenedOn <= throughDate ? account.OpeningBalance : 0)).ToArray();
+            months.Add(new(month, flows[month].Where(item => item.CategoryId is null).Sum(item => item.Amount),
+                -flows[month].Where(item => item.CategoryId.HasValue).Sum(item => item.Amount),
+                balances.Where(amount => amount > 0).Sum(), -balances.Where(amount => amount < 0).Sum()));
+        }
+        var names = catalog.Categories.ToDictionary(item => item.Id, item => item.Name);
+        var spending = totals.CategoryMonths.Where(item => item.CategoryId.HasValue)
+            .GroupBy(item => item.CategoryId!.Value)
+            .Select(group => new CategorySpending(group.Key, names[group.Key], -group.Sum(item => item.Amount)))
+            .Where(item => item.Amount != 0).OrderByDescending(item => item.Amount).ThenBy(item => item.CategoryId).ToArray();
+        return new(catalog.Version, months, spending);
     }
 
     private static int BudgetDirection(PlanSnapshot plan, TransactionData entry)
@@ -48,4 +76,3 @@ public static class ReportCalculator
         return destination is not null && BudgetFacts.IsBudget(destination.Kind) ? -1 : 0;
     }
 }
-

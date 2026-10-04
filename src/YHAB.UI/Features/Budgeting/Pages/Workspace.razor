@@ -6,21 +6,27 @@
 
 <PageTitle>@(Snapshot?.Name ?? "Your plan") · YHAB</PageTitle>
 <FluentProviders />
+@if (_hasUpdates)
+{
+    <div class="notice" data-kind="information" role="status">New transactions or changes are available. Finish your entry, then refresh the plan.</div>
+}
 @if (_error is not null)
 {
-    <div class="notice" data-kind="error" role="alert">@_error <FluentButton OnClick="RefreshAsync" Appearance="ButtonAppearance.Subtle">Refresh plan</FluentButton></div>
+    <div class="notice" data-kind="error" role="alert">@_error <FluentButton OnClick="RefreshAsync" Disabled="_busy" Appearance="ButtonAppearance.Subtle">Refresh plan</FluentButton>
+        @if (_operation.CanRetry) { <FluentButton OnClick="RetryAsync" Appearance="ButtonAppearance.Subtle">Retry save safely</FluentButton> }
+    </div>
 }
 @if (Snapshot is { } plan)
 {
     <FluentGrid Spacing="4" Class="workspace" aria-busy="@(_busy ? "true" : "false")" data-interactive="@(RendererInfo.IsInteractive ? "true" : "false")" data-renderer="@RendererInfo.Name">
-        <FluentGridItem Xs="12" Lg="3"><PlanNavigation Plan="plan" OnAddAccount="AddAccount" Busy="IsBusy" /></FluentGridItem>
+        <FluentGridItem Xs="12" Lg="3"><PlanNavigation Plan="plan" Balances="_view?.Balances" OnAddAccount="AddAccount" Busy="IsBusy" /></FluentGridItem>
         <FluentGridItem Xs="12" Lg="9">
             <div class="workspace-toolbar">
                 <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalS)" VerticalGap="var(--spacingVerticalS)" Class="workspace-tools">
                     <FluentButton OnClick="UndoAsync" Disabled="@(IsBusy || !plan.CanUndo)" Appearance="ButtonAppearance.Subtle" title="Undo (Ctrl+Z)">Undo</FluentButton>
                     <FluentButton OnClick="RedoAsync" Disabled="@(IsBusy || !plan.CanRedo)" Appearance="ButtonAppearance.Subtle" title="Redo (Ctrl+Shift+Z)">Redo</FluentButton>
-                    <FluentButton OnClick="RefreshAsync" Disabled="IsBusy" Appearance="ButtonAppearance.Subtle">Refresh</FluentButton>
-                    <span class="workspace-status muted" role="status">@(_busy ? "Saving…" : _status)</span>
+                    <FluentButton OnClick="RefreshAsync" Disabled="_busy" Appearance="ButtonAppearance.Subtle">Refresh</FluentButton>
+                    <span class="workspace-status muted" role="status">@_operation.Message</span>
                 </FluentStack>
             </div>
             @if (_accountEditor)
@@ -29,11 +35,11 @@
             }
             @if (IsRegister)
             {
-                <AccountRegister Plan="plan" AccountId="AccountId" OnCommand="ExecuteAsync" OnEditAccount="EditAccount" Busy="IsBusy" />
+                <AccountRegister @key="plan.Id" Plan="plan" Balances="_view?.Balances" LoadPage="LoadRegisterAsync" LoadPayees="LoadPayeesAsync" AccountId="AccountId" OnCommand="ExecuteAsync" OnEditAccount="EditAccount" Busy="IsBusy" />
             }
             else
             {
-                <BudgetBoard Plan="plan" OnCommand="ExecuteAsync" Busy="IsBusy" />
+                <BudgetBoard @key="plan.Id" Plan="plan" LoadMonth="LoadMonthAsync" OnCommand="ExecuteAsync" Busy="IsBusy" />
             }
             <details class="history-panel">
                 <summary>Recent changes & keyboard shortcuts</summary>

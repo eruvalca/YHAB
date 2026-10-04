@@ -16,7 +16,7 @@ internal static class MoneyChanges
         return SetAllocation(plan, new(command.CategoryId, command.Month, command.Amount, command.Snoozed));
     }
 
-    public static BudgetChangeOutcome Move(PlanSnapshot plan, MoveMoney command, DateOnly today)
+    public static BudgetChangeOutcome Move(PlanSnapshot plan, MoveMoney command, DateOnly today, BudgetMonth? projection = null)
     {
         if (command.FromCategoryId == command.ToCategoryId || !ValidMonth(command.Month) || command.Amount <= 0
             || !CatalogChanges.ValidMoney(command.Amount) || !ValidCategory(plan, command.FromCategoryId) || !ValidCategory(plan, command.ToCategoryId))
@@ -24,7 +24,7 @@ internal static class MoneyChanges
             return new InvalidBudgetChange("Choose different source and destination categories and a positive amount.");
         }
 
-        var month = BudgetCalculator.Calculate(plan, command.Month, today);
+        var month = projection ?? BudgetCalculator.Calculate(plan, command.Month, today);
         var available = command.FromCategoryId is { } sourceId
             ? month.Categories.Single(item => item.Category.Id == sourceId).Available : month.ReadyToAssign;
         if (available < command.Amount)
@@ -52,14 +52,14 @@ internal static class MoneyChanges
         return plan;
     }
 
-    public static BudgetChangeOutcome AutoAssign(PlanSnapshot plan, AutoAssign command, DateOnly today)
+    public static BudgetChangeOutcome AutoAssign(PlanSnapshot plan, AutoAssign command, DateOnly today, BudgetMonth? projection = null)
     {
         if (!ValidMonth(command.Month))
         {
             return new InvalidBudgetChange("Choose a calendar month.");
         }
 
-        var month = BudgetCalculator.Calculate(plan, command.Month, today);
+        var month = projection ?? BudgetCalculator.Calculate(plan, command.Month, today);
         var remaining = Math.Max(0, month.ReadyToAssign);
         foreach (var row in month.Categories.OrderByDescending(item => item.Available < 0)
             .ThenBy(item => item.Category.Target?.DueDate ?? DateOnly.MaxValue)
@@ -79,7 +79,7 @@ internal static class MoneyChanges
         return plan;
     }
 
-    public static BudgetChangeOutcome Reconcile(PlanSnapshot plan, ReconcileAccount command, DateOnly today)
+    public static BudgetChangeOutcome Reconcile(CommandIds ids, PlanSnapshot plan, ReconcileAccount command, DateOnly today, decimal? clearedMovement = null)
     {
         var account = plan.Accounts.SingleOrDefault(item => item.Id == command.AccountId && !item.Closed);
         if (account is null || !CatalogChanges.ValidDate(command.Date) || command.Date > today || command.Date < account.OpenedOn
@@ -88,7 +88,8 @@ internal static class MoneyChanges
             return new InvalidBudgetChange("Choose an open account, valid reconciliation date, and statement balance.");
         }
 
-        var difference = command.ClearedBalance - BudgetFacts.Balance(plan, account, command.Date).Cleared;
+        var cleared = clearedMovement ?? AccountLedgerFacts.FromLedger(plan, account.Id, command.Date).ClearedMovement;
+        var difference = command.ClearedBalance - account.OpeningBalance - cleared;
         if (!CatalogChanges.ValidMoney(difference))
         {
             return new InvalidBudgetChange("The reconciliation difference exceeds the supported transaction amount. Check the statement balance and your entries.");
@@ -103,7 +104,7 @@ internal static class MoneyChanges
         if (difference != 0)
         {
             // Adjustments to cash balances affect Ready to Assign, rather than pretending to be spending.
-            entries.Add(new(Guid.NewGuid(), account.Id, command.Date, "Reconciliation adjustment", "Balance correction",
+            entries.Add(new(ids[0], account.Id, command.Date, "Reconciliation adjustment", "Balance correction",
                 difference, null, ClearingState.Reconciled, ClearingState.Uncleared, false, string.Empty, []));
         }
 
@@ -133,7 +134,7 @@ internal static class MoneyChanges
     private static bool ValidMonth(DateOnly month) => CatalogChanges.ValidDate(month) && month.Day == 1;
 
     private static bool ValidCategory(PlanSnapshot plan, Guid? categoryId)
-        => categoryId is null || plan.Categories.Any(item => item.Id == categoryId);
+        => categoryId is not { } id || plan.Categories.Any(item => item.Id == id);
 
     private static PlanSnapshot Adjust(PlanSnapshot plan, Guid categoryId, DateOnly month, decimal amount)
     {

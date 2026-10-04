@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Aspire.Hosting.Testing;
 using Microsoft.Playwright;
+using Npgsql;
 using Shouldly;
 using Xunit;
 using YHAB.SharedKernel.Budgeting;
@@ -21,7 +22,9 @@ public sealed class HouseholdBrowserTests(ITestOutputHelper output)
     public async Task GrowingHouseholdLedgerMatchesBudgetRegisterAndReportsAsync()
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        timeout.CancelAfter(TimeSpan.FromMinutes(12));
+        var cycles = int.Parse(Environment.GetEnvironmentVariable("YHAB_BROWSER_CYCLES") ?? "120", CultureInfo.InvariantCulture);
+        cycles.ShouldBeInRange(120, 1800);
+        timeout.CancelAfter(TimeSpan.FromMinutes(12) + TimeSpan.FromSeconds(cycles - 120));
         await using var builder = await TestAppHost.CreateAsync(timeout.Token);
         await using var app = await builder.BuildAsync(timeout.Token);
         using (var startup = CancellationTokenSource.CreateLinkedTokenSource(timeout.Token))
@@ -43,6 +46,8 @@ public sealed class HouseholdBrowserTests(ITestOutputHelper output)
         var page = await context.NewPageAsync();
         var errors = new ConcurrentQueue<string>();
         page.PageError += (_, error) => errors.Enqueue(error);
+        var artifacts = System.IO.Path.Combine(AppContext.BaseDirectory, "TestResults", $"household-{Guid.NewGuid():N}");
+        var tracing = true;
         var allowWebAssembly = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var runtimeRequested = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         // Hold the runtime download so a cold server circuit must work on its own.
@@ -72,7 +77,7 @@ public sealed class HouseholdBrowserTests(ITestOutputHelper output)
                     (await page.Locator(".workspace").GetAttributeAsync("data-renderer")).ShouldBe("Server");
                     errors.ShouldBeEmpty();
                     allowWebAssembly.SetResult();
-                    await context.UnrouteAllAsync(new() { Behavior = UnrouteBehavior.Wait });
+                    await context.UnrouteAsync("**/_framework/dotnet.native.*.wasm");
                     // .NET 10 writes this cache marker after the Auto runtime finishes
                     // loading. Leaving the document sooner can cancel its downloads.
                     await page.WaitForFunctionAsync("() => Object.keys(localStorage).some(key => key.startsWith('blazor-resource-hash:'))", null,
@@ -80,6 +85,12 @@ public sealed class HouseholdBrowserTests(ITestOutputHelper output)
                     output.WriteLine("Cold server circuit verified; WebAssembly resources finished loading.");
                 }
                 await VerifyRegisterAsync(page, api.Path, months);
+                var session = await context.NewCDPSessionAsync(page);
+                await session.SendAsync("HeapProfiler.collectGarbage");
+                var heap = (await session.SendAsync("Runtime.getHeapUsage")).ShouldNotBeNull();
+                var dom = (await session.SendAsync("Memory.getDOMCounters")).ShouldNotBeNull();
+                output.WriteLine($"{months * 200} transactions: post-GC browser JS heap {heap.GetProperty("usedSize").GetDouble():N0} bytes; {dom.GetProperty("nodes").GetInt32():N0} DOM nodes. WebAssembly linear memory is not included.");
+                await session.DetachAsync();
                 await VerifyReportsAsync(page, api.Path, months);
                 output.WriteLine($"{months * 200} transactions: browser budget/register/report checks {timer.ElapsedMilliseconds} ms.");
             }
@@ -88,17 +99,111 @@ public sealed class HouseholdBrowserTests(ITestOutputHelper output)
             await page.GotoAsync($"{api.Path}/accounts");
             await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
             (await page.Locator(".workspace").GetAttributeAsync("data-renderer")).ShouldBe("WebAssembly");
+            await page.Locator(".pagination > span").Filter(new() { HasText = "Page 1 · 600 transactions" }).WaitForAsync();
             (await page.Locator(".pagination > span").InnerTextAsync()).ShouldBe("Page 1 · 600 transactions");
             (await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth")).ShouldBeTrue();
+            // Finish snapshot tracing and replace its document before measuring
+            // memory so diagnostic DOM retention cannot look like an app leak.
+            await BrowserArtifacts.CaptureAsync(page, context, artifacts, output.WriteLine);
+            tracing = false;
+            await page.CloseAsync();
+            page = await context.NewPageAsync();
+            page.PageError += (_, error) => errors.Enqueue(error);
+            await page.SetViewportSizeAsync(390, 844);
+            var connection = (await app.GetConnectionStringAsync("yhabdb", timeout.Token)).ShouldNotBeNull();
+            await VerifyLargeRegistersAsync(page, context, browser, api.Path, connection, timeout.Token);
+            await BrowserEditingSession.RunAsync(page, context, browser, api.Path, "Groceries", cycles, output.WriteLine, timeout.Token);
+            await VerifyWideCatalogAsync(page, context, browser, connection, timeout.Token);
             errors.ShouldBeEmpty();
         }
         finally
         {
             allowWebAssembly.TrySetResult();
             await context.UnrouteAllAsync(new() { Behavior = UnrouteBehavior.IgnoreErrors });
-            var artifacts = System.IO.Path.Combine(AppContext.BaseDirectory, "TestResults", $"household-{Guid.NewGuid():N}");
-            await BrowserArtifacts.CaptureAsync(page, context, artifacts, output.WriteLine);
+            await BrowserArtifacts.CaptureAsync(page, context, artifacts, output.WriteLine, captureTrace: tracing);
         }
+    }
+
+    private async Task VerifyLargeRegistersAsync(IPage page, IBrowserContext context, IBrowser browser, string path, string connectionString, CancellationToken token)
+    {
+        var id = Guid.Parse(path.Split('/')[2]);
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync(token);
+        var previous = 600;
+        foreach (var count in new[] { 10_000, 50_000, 100_000 })
+        {
+            // Only the disposable AppHost database is bulk-seeded. Browser reads use
+            // normal authenticated endpoints. Retire history tied to the earlier fixture.
+            await using var command = connection.CreateCommand();
+            command.CommandText = """
+                INSERT INTO "BudgetTransaction" ("PlanId", "Id", "AccountId", "Date", "Payee", "Memo", "Amount", "State", "TransferState", "NeedsApproval", "Flag", "Repeat", "Occurrence", "Sequence")
+                SELECT @id, gen_random_uuid(), @account, DATE '2026-01-01' + (n % 90)::int,
+                    CASE WHEN n % 10 = 0 THEN 'Salary' ELSE 'Market' END, '', CASE WHEN n % 10 = 0 THEN 100 ELSE -1 END,
+                    0, 0, false, '', 0, 0, n FROM generate_series(@previous + 1, @count) n;
+                INSERT INTO "BudgetSplit" ("PlanId", "Id", "TransactionId", "CategoryId", "Amount", "Memo")
+                SELECT "PlanId", gen_random_uuid(), "Id", CASE WHEN "Amount" < 0 THEN @category ELSE NULL END, "Amount", ''
+                    FROM "BudgetTransaction" WHERE "PlanId" = @id AND "Sequence" > @previous;
+                DELETE FROM "BudgetCheckpoint" WHERE "PlanId" = @id;
+                DELETE FROM "BudgetHistory" WHERE "PlanId" = @id;
+                DELETE FROM "BudgetReceipt" WHERE "PlanId" = @id;
+                UPDATE "BudgetPlans" SET "Version" = "Version" + 1, "NextSequence" = @count, "HistoryCursor" = 0 WHERE "Id" = @id;
+                """;
+            command.Parameters.AddWithValue("id", id);
+            command.Parameters.AddWithValue("account", HouseholdScenario.Id(1));
+            command.Parameters.AddWithValue("category", HouseholdScenario.Id(102));
+            command.Parameters.AddWithValue("previous", previous);
+            command.Parameters.AddWithValue("count", count);
+            await command.ExecuteNonQueryAsync(token);
+            var timer = Stopwatch.StartNew();
+            await page.GotoAsync($"{path}/accounts");
+            await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+            await page.Locator(".pagination > span").Filter(new() { HasText = $"Page 1 · {count} transactions" }).WaitForAsync();
+            (await page.Locator(".register-table tbody tr").CountAsync()).ShouldBe(50);
+            var session = await context.NewCDPSessionAsync(page);
+            var readyMilliseconds = timer.ElapsedMilliseconds;
+            await session.SendAsync("HeapProfiler.collectGarbage");
+            var heap = (await session.SendAsync("Runtime.getHeapUsage")).ShouldNotBeNull();
+            var dom = (await session.SendAsync("Memory.getDOMCounters")).ShouldNotBeNull();
+            output.WriteLine($"{count:N0} transactions: interactive register {readyMilliseconds} ms; post-GC browser JS heap {heap.GetProperty("usedSize").GetDouble():N0} bytes, {dom.GetProperty("nodes").GetInt32():N0} DOM nodes; exactly 50 rows. JS heap excludes WebAssembly linear memory.");
+            await session.DetachAsync();
+            (await page.Locator(".workspace").GetAttributeAsync("data-renderer")).ShouldBe("WebAssembly");
+            await BrowserMemory.CaptureAsync(browser, context, page, $"{count:N0} entries", output.WriteLine);
+            previous = count;
+        }
+    }
+
+    private async Task VerifyWideCatalogAsync(IPage page, IBrowserContext context, IBrowser browser, string connectionString, CancellationToken token)
+    {
+        var api = await HouseholdApi.CreateAsync(page.APIRequest);
+        var plan = await api.ReadAsync();
+        var start = BudgetFacts.Month(plan.Today).AddMonths(-239);
+        var group = Guid.CreateVersion7();
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync(token);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            INSERT INTO "BudgetAccount" ("PlanId", "Id", "Name", "Kind", "OpeningBalance", "OpenedOn", "Closed", "Notes", "InterestRate", "MinimumPayment")
+            SELECT @id, gen_random_uuid(), 'Account ' || n, 0, 1000000, @start, false, '', 0, 0 FROM generate_series(1, 100) n;
+            INSERT INTO "BudgetGroup" ("PlanId", "Id", "Name", "SortOrder", "Hidden") VALUES (@id, @group, 'Scale categories', 0, false);
+            INSERT INTO "BudgetCategory" ("PlanId", "Id", "GroupId", "Name", "Notes", "SortOrder", "Hidden", "TargetCadence", "TargetAmount", "TargetStartMonth", "TargetRepeatMonths", "TargetWeekday")
+            SELECT @id, gen_random_uuid(), @group, 'Category ' || n, '', n, false, 0, 0, @start, 0, 0 FROM generate_series(1, 500) n;
+            INSERT INTO "BudgetAllocation" ("PlanId", "CategoryId", "Month", "Amount", "Snoozed")
+            SELECT @id, "Id", (@start + make_interval(months => n))::date, 1, false
+            FROM "BudgetCategory" CROSS JOIN generate_series(0, 239) n WHERE "PlanId" = @id;
+            UPDATE "BudgetPlans" SET "Version" = "Version" + 1 WHERE "Id" = @id;
+            """;
+        command.Parameters.AddWithValue("id", plan.Id);
+        command.Parameters.AddWithValue("group", group);
+        command.Parameters.AddWithValue("start", start);
+        await command.ExecuteNonQueryAsync(token);
+        var timer = Stopwatch.StartNew();
+        await page.GotoAsync(api.Path);
+        await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+        await page.Locator(".hero-amount").Filter(new() { HasText = "$99,880,000.00" }).WaitForAsync();
+        (await page.Locator(".budget-table .amount-input input").CountAsync()).ShouldBe(500);
+        (await page.Locator(".workspace").GetAttributeAsync("data-renderer")).ShouldBe("WebAssembly");
+        output.WriteLine($"100 accounts / 500 categories / 120,000 allocations: interactive budget {timer.Elapsed.TotalMilliseconds:F1}ms; 500 amount inputs, exact $99,880,000 ready to assign.");
+        await BrowserMemory.CaptureAsync(browser, context, page, "wide catalog", output.WriteLine);
     }
 
     private static async Task VerifyBudgetAsync(IPage page, string path, DateOnly today, int months)
@@ -124,6 +229,7 @@ public sealed class HouseholdBrowserTests(ITestOutputHelper output)
     {
         await page.GotoAsync($"{path}/accounts");
         await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+        await page.Locator(".pagination > span").Filter(new() { HasText = $"Page 1 · {months * 200} transactions" }).WaitForAsync();
         (await page.Locator(".pagination > span").InnerTextAsync()).ShouldBe($"Page 1 · {months * 200} transactions");
         (await page.Locator(".register-table tbody tr").CountAsync()).ShouldBe(50);
         var firstRow = await page.Locator(".register-table tbody tr").First.InnerTextAsync();

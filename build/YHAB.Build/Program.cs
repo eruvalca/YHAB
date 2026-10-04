@@ -1,5 +1,10 @@
 using YHAB.Build;
 
+if (args is ["patch-fluent", var source, var observers, var destination])
+{
+    return await PatchFluentModule.RunAsync(source, observers, destination);
+}
+
 if (args.Length != 5)
 {
     await Console.Error.WriteLineAsync("Expected: project-directory root-namespace define-constants components-manifest compile-manifest");

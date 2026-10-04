@@ -36,4 +36,5 @@
     </PackageReference>
   </ItemGroup>
 
+  <Import Project="../../build/FluentAsset.targets" />
 </Project>

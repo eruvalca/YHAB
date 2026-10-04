@@ -11,6 +11,8 @@ public sealed class AmountExpressionTests
 {
     [Theory]
     [InlineData("150 + 25", "175")]
+    [InlineData("+50 - 25 * +2", "0")]
+    [InlineData("10-3-2", "5")]
     [InlineData("2 + 3 * 4", "14")]
     [InlineData("(2 + 3) * 4", "20")]
     [InlineData("$1,200.50 / 2", "600.25")]
@@ -26,6 +28,7 @@ public sealed class AmountExpressionTests
 
     [Theory]
     [InlineData("")]
+    [InlineData(null)]
     [InlineData(" ")]
     [InlineData("1/0")]
     [InlineData("(1+2")]
@@ -34,7 +37,13 @@ public sealed class AmountExpressionTests
     [InlineData("1000000000")]
     [InlineData("79228162514264337593543950335*2")]
     [InlineData("1 +")]
-    public void RejectsInvalidOrUnboundedInput(string expression)
+    public void RejectsInvalidOrUnboundedInput(string? expression)
         => AmountExpression.TryEvaluate(expression, out _).ShouldBeFalse();
-}
 
+    [Fact]
+    public void ExcessivelyLongInputDoesNotProduceAValue()
+    {
+        AmountExpression.TryEvaluate(new string('1', 201), out var value).ShouldBeFalse();
+        value.ShouldBe(0);
+    }
+}

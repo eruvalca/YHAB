@@ -69,6 +69,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             var spending = page.Locator(".spending-row").Filter(new() { HasText = "Groceries" });
             (await spending.Locator("strong").InnerTextAsync()).ShouldBe("$75.00");
             await ReconcileAsync(page);
+            await VerifyPayeeRenameUndoAsync(page);
             errors.ShouldBeEmpty();
         }
         finally
@@ -83,20 +84,22 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         }
     }
 
-    internal static async Task RegisterAndLoginAsync(IPage page)
+    internal static async Task RegisterAndLoginAsync(IPage page, Uri? origin = null)
     {
-        var anonymousPlans = await page.APIRequest.GetAsync("/api/plans");
+        string Address(string path) => origin is null ? path : new Uri(origin, path).AbsoluteUri;
+        var anonymousPlans = await page.APIRequest.GetAsync(Address("/api/plans"), new() { IgnoreHTTPSErrors = true });
         anonymousPlans.Status.ShouldBe(401);
+        await anonymousPlans.DisposeAsync();
         var email = $"budget-{Guid.NewGuid():N}@example.test";
         const string Password = "Local-test-Only!7926";
-        await page.GotoAsync("/Account/Register");
+        await page.GotoAsync(Address("/Account/Register"));
         await page.GetByLabel("Email", new() { Exact = true }).FillAsync(email);
         await page.GetByLabel("Password", new() { Exact = true }).FillAsync(Password);
         await page.GetByLabel("Confirm Password", new() { Exact = true }).FillAsync(Password);
         await page.GetByRole(AriaRole.Button, new() { Name = "Register", Exact = true }).ClickAsync();
         await page.GetByRole(AriaRole.Link, new() { Name = "Click here to confirm your account" }).ClickAsync();
         await page.GetByRole(AriaRole.Heading, new() { Name = "Confirm email", Exact = true }).WaitForAsync();
-        await page.GotoAsync("/Account/Login");
+        await page.GotoAsync(Address("/Account/Login"));
         await page.GetByLabel("Email", new() { Exact = true }).FillAsync(email);
         await page.GetByLabel("Password", new() { Exact = true }).FillAsync(Password);
         await page.GetByRole(AriaRole.Button, new() { Name = "Log in", Exact = true }).ClickAsync();
@@ -121,6 +124,19 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         planResponse.Headers["pragma"].ShouldBe("no-cache");
         var plan = (await planResponse.JsonAsync()).ShouldNotBeNull();
         var version = plan.GetProperty("version").GetInt64();
+        var workspace = await page.APIRequest.GetAsync($"/api{planPath}/workspace");
+        try
+        {
+            workspace.Status.ShouldBe(200);
+            workspace.Headers["cache-control"].ShouldBe("no-cache, no-store");
+            var combined = (await workspace.JsonAsync()).ShouldNotBeNull();
+            combined.GetProperty("view").GetProperty("catalog").GetProperty("version").GetInt64().ShouldBe(version);
+            combined.GetProperty("month").GetProperty("readyToAssign").GetDecimal().ShouldBe(0);
+        }
+        finally { await workspace.DisposeAsync(); }
+        var invalidMonth = await page.APIRequest.GetAsync($"/api{planPath}/workspace?month=1999-12-31");
+        try { invalidMonth.Status.ShouldBe(400); }
+        finally { await invalidMonth.DisposeAsync(); }
         var withoutToken = await page.APIRequest.PutAsync($"/api{planPath}/settings", new()
         {
             DataObject = new { version, name = "Must not change", notes = "" },
@@ -139,6 +155,32 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         var unchanged = (await (await page.APIRequest.GetAsync($"/api{planPath}")).JsonAsync()).ShouldNotBeNull();
         unchanged.GetProperty("name").GetString().ShouldBe("A little breathing room");
         unchanged.GetProperty("version").GetInt64().ShouldBe(version);
+    }
+
+    private static async Task VerifyTextUndoOwnershipAsync(IPage page)
+    {
+        var planPath = new Uri(page.Url).AbsolutePath.Split("/accounts", StringSplitOptions.None)[0];
+        var endpoint = $"/api{planPath}";
+        var before = (await (await page.APIRequest.GetAsync(endpoint)).JsonAsync()).ShouldNotBeNull();
+        var payee = Input(page, "Payee");
+        await payee.FocusAsync();
+        await payee.PressSequentiallyAsync("Text belongs to this field");
+        await page.EvaluateAsync("""
+            () => {
+                window.historyKeyEvents = [];
+                document.addEventListener('keydown', event => {
+                    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z')
+                        window.historyKeyEvents.push(event.defaultPrevented);
+                });
+            }
+            """);
+        await payee.PressAsync("Control+z");
+        (await payee.InputValueAsync()).ShouldBeEmpty();
+        await payee.PressAsync("Meta+z");
+        (await page.EvaluateAsync<bool[]>("window.historyKeyEvents")).ShouldBe([false, false]);
+        var after = (await (await page.APIRequest.GetAsync(endpoint)).JsonAsync()).ShouldNotBeNull();
+        after.GetProperty("version").GetInt64().ShouldBe(before.GetProperty("version").GetInt64());
+        after.GetProperty("transactions").GetArrayLength().ShouldBe(before.GetProperty("transactions").GetArrayLength());
     }
 
     private static async Task AddAccountAndAssignAsync(IPage page)
@@ -165,6 +207,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await Button(page, "+ Add transaction").ClickAsync();
         await VerifyEditorFocusAsync(page);
         await VerifyDropdownChromeAsync(page);
+        await VerifyTextUndoOwnershipAsync(page);
         await Input(page, "Payee").FillAsync("Neighborhood market");
         await Input(page, "Amount").FillAsync("50 + 25");
         await Input(page, "Amount").PressAsync("Tab");
@@ -172,6 +215,13 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await page.Locator("fluent-option[text='Groceries']").ClickAsync();
         await Button(page, "Save transaction").ClickAsync();
         await page.Locator(".register-table").GetByRole(AriaRole.Button, new() { Name = "Neighborhood market", Exact = true }).WaitForAsync();
+        await Button(page, "+ Add transaction").ClickAsync();
+        await VerifyEditorFocusAsync(page);
+        // Fluent copies the datalist into its shadow root. Check the list bound to
+        // the native input, not both the source list and the component's copy.
+        (await Input(page, "Payee").EvaluateAsync<string[]>("input => Array.from(input.list?.options ?? [], option => option.value)"))
+            .ShouldBe(["Neighborhood market"]);
+        await Button(page, "Close").ClickAsync();
     }
 
     private static async Task ReconcileAsync(IPage page)
@@ -193,6 +243,29 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         // Playwright's native enabled check does not recognize Fluent's custom
         // element host; its disabled attribute is the component contract.
         (await Button(page, "Save transaction").GetAttributeAsync("disabled")).ShouldNotBeNull();
+    }
+
+    private static async Task VerifyPayeeRenameUndoAsync(IPage page)
+    {
+        await Button(page, "Close").ClickAsync();
+        await page.GetByRole(AriaRole.Link, new() { Name = "Plan settings", Exact = true }).ClickAsync();
+        await page.GetByLabel("Existing payee", new() { Exact = true }).SelectOptionAsync("Neighborhood market");
+        await page.GetByLabel("New name", new() { Exact = true }).FillAsync("Community market");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Rename payee", Exact = true }).ClickAsync();
+        await page.Locator(".notice[data-kind='success']").Filter(new() { HasText = "Payee renamed." }).WaitForAsync();
+        await page.Locator(".account-nav-link").Filter(new() { HasText = "Everyday checking" }).ClickAsync();
+        await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+        await page.Locator(".register-table").GetByRole(AriaRole.Button, new() { Name = "Community market", Exact = true }).WaitForAsync();
+        await Button(page, "Undo").ClickAsync();
+        await page.Locator(".register-table").GetByRole(AriaRole.Button, new() { Name = "Neighborhood market", Exact = true }).WaitForAsync();
+        await Button(page, "Redo").ClickAsync();
+        await page.Locator(".register-table").GetByRole(AriaRole.Button, new() { Name = "Community market", Exact = true }).WaitForAsync();
+        await Button(page, "Reconciled").WaitForAsync();
+        (await page.Locator(".stat").Filter(new() { HasText = "Cleared balance" }).Locator("strong").InnerTextAsync()).ShouldBe("$925.00");
+        await Button(page, "+ Add transaction").ClickAsync();
+        (await Input(page, "Payee").EvaluateAsync<string[]>("input => Array.from(input.list?.options ?? [], option => option.value)"))
+            .ShouldBe(["Community market"]);
+        await Button(page, "Close").ClickAsync();
     }
 
     private static async Task VerifyEditorFocusAsync(IPage page)

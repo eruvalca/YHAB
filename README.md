@@ -103,6 +103,14 @@ volume survives. Aspire retains its generated local PostgreSQL password in AppHo
 user secrets; preserve those secrets along with the volume when reusing local data.
 No database password or connection string needs to be committed.
 
+The web host posts due recurring budget entries in bounded background batches
+while it is running. Set `Budgeting:AutomaticPosting` to `false` (environment
+variable `Budgeting__AutomaticPosting=false`) to disable that worker for a run.
+Interactive catch-up remains available. `Budgeting:TimeZone` determines the
+budget's server date and defaults to `America/Chicago`. See the existing
+[budgeting guide](docs/budgeting.md#recurrence-and-history) for scheduling,
+approval, retry and undo behavior.
+
 ## Debug through Aspire
 
 In VS Code, install the recommended Aspire and C# extensions and open the repository

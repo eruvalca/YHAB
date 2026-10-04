@@ -17,7 +17,7 @@
     {
         <a @key="account.Id" class="account-nav-link" href="@($"/plans/{Plan.Id}/accounts/{account.Id}")">
             <span>@account.Name<small>@AccountLabel(account.Kind)</small></span>
-            <span class="money" data-money-tone="@MoneyTone(Balance(Plan, account, Plan.Today).Working)">@Money(Balance(Plan, account, Plan.Today).Working)</span>
+            <span class="money" data-money-tone="@MoneyTone(WorkingBalance(account))">@Money(WorkingBalance(account))</span>
         </a>
     }
     @if (Plan.Accounts.Any(item => item.Closed))

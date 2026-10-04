@@ -8,6 +8,7 @@ internal sealed class BudgetTransaction
     public Guid PlanId { get; set; }
     public Guid AccountId { get; set; }
     public DateOnly Date { get; set; }
+    public long Sequence { get; set; }
     public string Payee { get; set; } = string.Empty;
     public string Memo { get; set; } = string.Empty;
     public decimal Amount { get; set; }

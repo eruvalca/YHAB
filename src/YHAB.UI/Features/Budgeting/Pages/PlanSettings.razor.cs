@@ -10,15 +10,17 @@ public sealed partial class PlanSettings(IBudgetClient budgets)
     [SupplyParameterFromForm(FormName = "PlanSettings")] private SettingsInput Settings { get; set; } = default!;
     [SupplyParameterFromForm(FormName = "RenamePayee")] private PayeeInput Payee { get; set; } = default!;
     private PlanSnapshot? _plan;
+    private IReadOnlyList<AccountBalance> _balances = [];
+    private IReadOnlyList<string> _payees = [];
     private string? _message;
     private bool _failed;
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            _plan = await budgets.ReadAsync(PlanId);
-            Settings ??= new() { Name = _plan.Name, Notes = _plan.Notes, Version = _plan.Version };
-            Payee ??= new() { Version = _plan.Version };
+            await LoadAsync();
+            Settings ??= new() { Name = _plan!.Name, Notes = _plan.Notes, Version = _plan.Version };
+            Payee ??= new() { Version = _plan!.Version };
         }
         catch (BudgetRequestException exception) { _message = exception.Message; _failed = true; }
     }
@@ -29,12 +31,19 @@ public sealed partial class PlanSettings(IBudgetClient budgets)
         try
         {
             await budgets.ExecuteAsync(PlanId, command);
-            _plan = await budgets.ReadAsync(PlanId);
-            Settings.Version = _plan.Version;
+            await LoadAsync();
+            Settings.Version = _plan!.Version;
             Payee.Version = _plan.Version;
             _message = message;
         }
         catch (BudgetRequestException exception) { _message = exception.Message; _failed = true; }
+    }
+    private async Task LoadAsync()
+    {
+        var view = await budgets.ReadViewAsync(PlanId);
+        _plan = view.Catalog;
+        _balances = view.Balances;
+        _payees = await budgets.ReadPayeesAsync(PlanId);
     }
     private sealed class SettingsInput
     {
@@ -49,4 +58,3 @@ public sealed partial class PlanSettings(IBudgetClient budgets)
         [Required, StringLength(200)] public string NewName { get; set; } = "";
     }
 }
-

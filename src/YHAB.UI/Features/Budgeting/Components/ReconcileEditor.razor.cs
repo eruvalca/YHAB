@@ -9,11 +9,11 @@ public sealed partial class ReconcileEditor
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
     [Parameter, EditorRequired] public EventCallback OnClose { get; set; }
     [Parameter] public bool Busy { get; set; }
+    [Parameter] public AccountBalance? Balance { get; set; }
     private decimal _balance;
     private decimal _cleared;
     private bool _valid = true;
     private bool _adjust;
-    protected override void OnInitialized() { _cleared = BudgetFacts.Balance(Plan, Account, Plan.Today).Cleared; _balance = _cleared; }
+    protected override void OnInitialized() { _cleared = Balance?.Cleared ?? BudgetFacts.Balance(Plan, Account, Plan.Today).Cleared; _balance = _cleared; }
     private Task SaveAsync() => OnCommand.InvokeAsync(new ReconcileAccount(Plan.Version, Account.Id, Plan.Today, _balance, _adjust));
 }
-

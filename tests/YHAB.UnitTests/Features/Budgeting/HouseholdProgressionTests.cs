@@ -37,17 +37,17 @@ public sealed class HouseholdProgressionTests(ITestOutputHelper output)
         var plan = HouseholdScenario.Create(months, 1000);
         var checking = HouseholdScenario.Id(1);
         var balance = 5400 + 3880 * months;
-        var rejected = PlanCommandHandler.Apply(plan, new ReconcileAccount(0, checking, plan.Today, balance + 1, false), plan.Today);
+        var rejected = PlanCommandHandler.Apply(BudgetTestData.NewIds(), plan, new ReconcileAccount(0, checking, plan.Today, balance + 1, false), plan.Today);
         rejected.IsT1.ShouldBeTrue();
-        var reconciled = PlanCommandHandler.Apply(plan, new ReconcileAccount(0, checking, plan.Today, balance, false), plan.Today);
+        var reconciled = PlanCommandHandler.Apply(BudgetTestData.NewIds(), plan, new ReconcileAccount(0, checking, plan.Today, balance, false), plan.Today);
         reconciled.IsT0.ShouldBeTrue();
         var updated = reconciled.AsT0;
         updated.Transactions.Where(item => item.AccountId == checking).ShouldAllBe(item => item.State == ClearingState.Reconciled);
         updated.Transactions.Where(item => item.AccountId != checking).ShouldAllBe(item => item.State == ClearingState.Cleared);
         updated.Transactions.Where(item => item.TransferAccountId.HasValue).ShouldAllBe(item => item.TransferState == ClearingState.Cleared);
         var purchase = updated.Transactions.First(item => item.AccountId == checking && item.Payee.StartsWith("Market", StringComparison.Ordinal));
-        PlanCommandHandler.Apply(updated, new SaveTransaction(0, purchase with { Memo = "Changed" }), plan.Today).IsT1.ShouldBeTrue();
-        PlanCommandHandler.Apply(updated, new DeleteTransactions(0, [purchase.Id]), plan.Today).IsT1.ShouldBeTrue();
+        PlanCommandHandler.Apply(BudgetTestData.NewIds(), updated, new SaveTransaction(0, purchase with { Memo = "Changed" }), plan.Today).IsT1.ShouldBeTrue();
+        PlanCommandHandler.Apply(BudgetTestData.NewIds(), updated, new DeleteTransactions(0, [purchase.Id]), plan.Today).IsT1.ShouldBeTrue();
         HouseholdChecks.Verify(updated, months, 1000);
     }
 
@@ -60,7 +60,7 @@ public sealed class HouseholdProgressionTests(ITestOutputHelper output)
         var plan = HouseholdScenario.Create(months, 1000);
         var template = new TransactionData(Guid.NewGuid(), HouseholdScenario.Id(1), new(2026, 1, 31), "Monthly service", "", -12,
             null, ClearingState.Uncleared, ClearingState.Uncleared, false, "", [new(Guid.NewGuid(), HouseholdScenario.Id(106), -12, "")], RepeatFrequency.Monthly);
-        var result = PlanCommandHandler.Apply(plan, new SaveTransaction(0, template), plan.Today);
+        var result = PlanCommandHandler.Apply(BudgetTestData.NewIds(), plan, new SaveTransaction(0, template), plan.Today);
         result.IsT0.ShouldBeTrue();
         var posted = result.AsT0;
         var occurrences = posted.Transactions.Where(item => item.SourceTemplateId == template.Id).OrderBy(item => item.Date).ToArray();
@@ -68,7 +68,7 @@ public sealed class HouseholdProgressionTests(ITestOutputHelper output)
         occurrences.ShouldAllBe(item => item.NeedsApproval && item.ScheduledDate == item.Date);
         var pending = posted.Transactions.Single(item => item.Id == template.Id);
         pending.Date.ShouldBe(HouseholdScenario.End(months + 1));
-        var again = PlanCommandHandler.Apply(posted, new PostRecurring(0, plan.Today), plan.Today);
+        var again = PlanCommandHandler.Apply(BudgetTestData.NewIds(), posted, new PostRecurring(0, plan.Today), plan.Today);
         again.IsT0.ShouldBeTrue();
         again.AsT0.Transactions.Count.ShouldBe(plan.Transactions.Count + months + 1);
         BudgetFacts.Balance(again.AsT0, plan.Accounts[0], plan.Today).Working.ShouldBe(5400 + (3880 - 12) * months);
@@ -84,8 +84,8 @@ public sealed class HouseholdProgressionTests(ITestOutputHelper output)
         var plan = HouseholdScenario.Create(months, 1000);
         var entry = plan.Transactions.First(item => item.Splits.Count == 2);
         var malformed = entry with { Splits = [entry.Splits[0] with { Amount = entry.Splits[0].Amount + .01m }, entry.Splits[1]] };
-        PlanCommandHandler.Apply(plan, new SaveTransaction(0, malformed), plan.Today).IsT1.ShouldBeTrue();
-        PlanCommandHandler.Apply(plan, new SaveTransaction(0, entry with { Date = plan.Today.AddDays(1) }), plan.Today).IsT1.ShouldBeTrue();
+        PlanCommandHandler.Apply(BudgetTestData.NewIds(), plan, new SaveTransaction(0, malformed), plan.Today).IsT1.ShouldBeTrue();
+        PlanCommandHandler.Apply(BudgetTestData.NewIds(), plan, new SaveTransaction(0, entry with { Date = plan.Today.AddDays(1) }), plan.Today).IsT1.ShouldBeTrue();
         var first = HouseholdScenario.Start.AddMonths(months - 1);
         var salariesOnly = ReportCalculator.Months(plan, first.AddDays(14), first.AddDays(14)).Single();
         salariesOnly.Income.ShouldBe(4200);
@@ -111,9 +111,9 @@ public sealed class HouseholdProgressionTests(ITestOutputHelper output)
         var credit = new TransactionData(HouseholdScenario.Id(900002), HouseholdScenario.Id(3), plan.Today, "Unexpected card bill", "",
             -(150 * months + 70), null, ClearingState.Cleared, ClearingState.Uncleared, false, "",
             [new(Guid.NewGuid(), HouseholdScenario.Id(105), -(150 * months + 70), "")]);
-        var first = PlanCommandHandler.Apply(plan, new SaveTransaction(0, cash), plan.Today);
+        var first = PlanCommandHandler.Apply(BudgetTestData.NewIds(), plan, new SaveTransaction(0, cash), plan.Today);
         first.IsT0.ShouldBeTrue();
-        var second = PlanCommandHandler.Apply(first.AsT0, new SaveTransaction(0, credit), plan.Today);
+        var second = PlanCommandHandler.Apply(BudgetTestData.NewIds(), first.AsT0, new SaveTransaction(0, credit), plan.Today);
         second.IsT0.ShouldBeTrue();
         var overspent = second.AsT0;
         var month = BudgetFacts.Month(plan.Today);
@@ -126,7 +126,7 @@ public sealed class HouseholdProgressionTests(ITestOutputHelper output)
         next.CreditOverspending.ShouldBe(0);
         next.ReadyToAssign.ShouldBe(13300 + 4050 * months);
         next.Categories.Single(item => item.Category.Id == HouseholdScenario.Id(108)).Available.ShouldBe(150 * months);
-        var covered = PlanCommandHandler.Apply(overspent, new AutoAssign(0, month), plan.Today);
+        var covered = PlanCommandHandler.Apply(BudgetTestData.NewIds(), overspent, new AutoAssign(0, month), plan.Today);
         covered.IsT0.ShouldBeTrue();
         var funded = BudgetCalculator.Calculate(covered.AsT0, month, plan.Today);
         funded.CashOverspending.ShouldBe(0);
@@ -155,13 +155,13 @@ public sealed class HouseholdProgressionTests(ITestOutputHelper output)
         var need = 150 - 40 * (months - 1);
         var before = BudgetCalculator.Calculate(plan, month, plan.Today);
         before.Categories.Single(item => item.Category.Id == refill.Id).TargetNeeded.ShouldBe(need);
-        var result = PlanCommandHandler.Apply(plan, new AutoAssign(0, month), plan.Today);
+        var result = PlanCommandHandler.Apply(BudgetTestData.NewIds(), plan, new AutoAssign(0, month), plan.Today);
         result.IsT0.ShouldBeTrue();
         var after = BudgetCalculator.Calculate(result.AsT0, month, plan.Today);
         after.Categories.Single(item => item.Category.Id == refill.Id).Available.ShouldBe(190);
         after.Categories.Single(item => item.Category.Id == hidden.Id).Assigned.ShouldBe(400);
         after.Categories.Single(item => item.Category.Id == snoozed.Id).Assigned.ShouldBe(350);
         after.ReadyToAssign.ShouldBe(13400 + 4050 * months - need);
-        PlanCommandHandler.Apply(result.AsT0, new MoveMoney(0, refill.Id, hidden.Id, month, 190.01m), plan.Today).IsT1.ShouldBeTrue();
+        PlanCommandHandler.Apply(BudgetTestData.NewIds(), result.AsT0, new MoveMoney(0, refill.Id, hidden.Id, month, 190.01m), plan.Today).IsT1.ShouldBeTrue();
     }
 }

@@ -8,6 +8,18 @@ namespace YHAB.UnitTests.Features.Budgeting;
 [SuppressMessage("Maintainability", "CA1515:Consider making public types internal", Justification = "xUnit requires public test classes for discovery.")]
 public sealed class RecurrenceCalendarTests
 {
+    [Fact]
+    public void InvalidFrequencyAndNegativeOccurrenceAreRejected()
+    {
+        Should.Throw<ArgumentOutOfRangeException>(() => RecurrenceCalendar.DateAt(new(2026, 1, 1), RepeatFrequency.None, 0));
+        Should.Throw<ArgumentOutOfRangeException>(() => RecurrenceCalendar.DateAt(new(2026, 1, 1), RepeatFrequency.Monthly, -1));
+    }
+
+    [Fact]
+    public void TwiceMonthlyFromFirstHalfPreservesBothDays()
+        => Enumerable.Range(0, 4).Select(index => RecurrenceCalendar.DateAt(new(2026, 1, 15), RepeatFrequency.TwiceMonthly, index))
+            .ShouldBe([new(2026, 1, 15), new(2026, 1, 30), new(2026, 2, 15), new(2026, 2, 28)]);
+
     [Theory]
     [InlineData(RepeatFrequency.Daily, 1, 2024, 3, 1)]
     [InlineData(RepeatFrequency.Weekly, 1, 2024, 3, 7)]

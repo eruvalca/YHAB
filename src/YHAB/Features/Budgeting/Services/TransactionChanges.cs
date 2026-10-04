@@ -10,7 +10,8 @@ internal static class TransactionChanges
         string.Empty, "Red", "Orange", "Yellow", "Green", "Blue", "Purple",
     };
 
-    public static BudgetChangeOutcome Save(PlanSnapshot plan, SaveTransaction command, DateOnly today)
+    public static BudgetChangeOutcome Save(CommandIds ids, PlanSnapshot plan, SaveTransaction command, DateOnly today,
+        IReadOnlySet<RecurringOccurrence>? posted = null)
     {
         var entry = command.Transaction;
         var error = Validate(plan, entry, today);
@@ -33,18 +34,20 @@ internal static class TransactionChanges
         var sameSchedule = existing is { Repeat: not RepeatFrequency.None }
             && existing.Repeat == entry.Repeat && existing.Date == entry.Date;
         var anchor = sameSchedule ? existing!.AnchorDate ?? existing.Date : entry.Date;
+        var nextId = 0;
         entry = entry with
         {
-            Id = entry.Id == Guid.Empty ? Guid.NewGuid() : entry.Id,
+            Id = entry.Id == Guid.Empty ? ids[nextId++] : entry.Id,
             Payee = entry.Payee.Trim(),
-            Splits = entry.Splits.Select(item => item with { Id = item.Id == Guid.Empty ? Guid.NewGuid() : item.Id }).ToArray(),
+            Splits = entry.Splits.Select(item => item with { Id = item.Id == Guid.Empty ? ids[nextId++] : item.Id }).ToArray(),
             SourceTemplateId = existing?.SourceTemplateId,
             ScheduledDate = existing?.ScheduledDate ?? (existing?.SourceTemplateId.HasValue == true ? existing.Date : null),
             AnchorDate = entry.Repeat == RepeatFrequency.None ? null : anchor,
             Occurrence = sameSchedule ? existing!.Occurrence : 0,
+            Sequence = existing?.Sequence ?? 0,
         };
         var updated = plan with { Transactions = CatalogChanges.Replace(plan.Transactions, entry, item => item.Id) };
-        return entry.Repeat == RepeatFrequency.None ? updated : PostDue(updated, today);
+        return entry.Repeat == RepeatFrequency.None ? updated : PostDue(ids.Skip(nextId), updated, today, posted);
     }
 
     private static string? Validate(PlanSnapshot plan, TransactionData? entry, DateOnly today)
@@ -104,9 +107,9 @@ internal static class TransactionChanges
         var direction = BudgetFacts.IsBudget(account.Kind) ? 1 : -1;
         foreach (var split in entry.Splits)
         {
-            if (!CatalogChanges.ValidMoney(split.Amount) || split.Memo is null || split.Memo.Length > 1000
+            if (split.Memo is null || split.Memo.Length > 1000
                 || (split.CategoryId is null && split.Amount * direction < 0)
-                || (split.CategoryId.HasValue && !plan.Categories.Any(item => item.Id == split.CategoryId && item.CreditAccountId is null)))
+                || (split.CategoryId.HasValue && !plan.Categories.Any(item => item.Id == split.CategoryId.Value && item.CreditAccountId is null)))
             {
                 return "Choose spending categories for outflows, valid split amounts, and split memos of at most 1,000 characters.";
             }
@@ -141,8 +144,8 @@ internal static class TransactionChanges
     {
         if (command.TransactionIds is null || command.TransactionIds.Count == 0
             || command.TransactionIds.Any(id => !plan.Transactions.Any(item => item.Id == id))
-            || (command.AccountId.HasValue && command.TransactionIds.Any(id => !plan.Transactions.Any(item => item.Id == id
-                && (item.AccountId == command.AccountId || item.TransferAccountId == command.AccountId))))
+            || (command.AccountId is { } accountId && command.TransactionIds.Any(id => !plan.Transactions.Any(item => item.Id == id
+                && (item.AccountId == accountId || item.TransferAccountId == accountId))))
             || command.State == ClearingState.Reconciled || (command.State.HasValue && !Enum.IsDefined(command.State.Value)))
         {
             return new InvalidBudgetChange("Select transactions and a valid clearing state. Reconciled status is set through Reconcile.");
@@ -166,39 +169,58 @@ internal static class TransactionChanges
         };
     }
 
-    public static PlanSnapshot PostDue(PlanSnapshot plan, DateOnly today)
+    public static PlanSnapshot PostDue(CommandIds ids, PlanSnapshot plan, DateOnly today, IReadOnlySet<RecurringOccurrence>? posted = null)
     {
+        var nextId = 0;
         var transactions = plan.Transactions.ToList();
-        foreach (var template in plan.Transactions.Where(item => item.Repeat != RepeatFrequency.None && item.Date <= today))
+        var occurrences = transactions.Where(item => item.SourceTemplateId.HasValue)
+            .Select(item => new RecurringOccurrence(item.SourceTemplateId!.Value, item.ScheduledDate ?? item.Date)).ToHashSet();
+        if (posted is not null)
+        {
+            occurrences.UnionWith(posted);
+        }
+        var remaining = RecurrencePlanner.BatchSize;
+        foreach (var template in plan.Transactions.Where(item => item.Repeat != RepeatFrequency.None && item.Date <= today)
+            .OrderBy(item => item.Date).ThenBy(item => item.Sequence).ThenBy(item => item.Id))
         {
             if (plan.Accounts.Any(item => (item.Id == template.AccountId || item.Id == template.TransferAccountId) && item.Closed))
             {
                 continue;
             }
 
-            var next = template;
-            while (next.Date <= today)
+            var batch = RecurrencePlanner.Due(template, today, remaining);
+            foreach (var date in batch.Dates)
             {
-                if (!transactions.Any(item => item.SourceTemplateId == template.Id && (item.ScheduledDate ?? item.Date) == next.Date))
+                if (occurrences.Add(new(template.Id, date)))
                 {
-                    transactions.Add(next with
+                    transactions.Add(template with
                     {
-                        Id = Guid.NewGuid(),
+                        Id = ids[nextId++],
+                        Sequence = 0,
+                        Date = date,
                         Repeat = RepeatFrequency.None,
                         SourceTemplateId = template.Id,
-                        ScheduledDate = next.Date,
+                        ScheduledDate = date,
                         State = ClearingState.Uncleared,
                         TransferState = ClearingState.Uncleared,
                         NeedsApproval = true,
-                        Splits = next.Splits.Select(item => item with { Id = Guid.NewGuid() }).ToArray(),
+                        Splits = template.Splits.Select(item => item with { Id = ids[nextId++] }).ToArray(),
                     });
                 }
 
-                var occurrence = next.Occurrence + 1;
-                next = next with { Occurrence = occurrence, Date = RecurrenceCalendar.DateAt(next.AnchorDate ?? template.Date, next.Repeat, occurrence) };
             }
 
-            transactions[transactions.IndexOf(template)] = next;
+            transactions[transactions.IndexOf(template)] = template with
+            {
+                AnchorDate = template.AnchorDate ?? template.Date,
+                Occurrence = batch.NextOccurrence,
+                Date = batch.NextDate,
+            };
+            remaining -= batch.Dates.Count;
+            if (remaining == 0)
+            {
+                break;
+            }
         }
 
         return plan with { Transactions = transactions };

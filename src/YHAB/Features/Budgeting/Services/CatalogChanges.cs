@@ -5,7 +5,7 @@ namespace YHAB.Features.Budgeting.Services;
 
 internal static class CatalogChanges
 {
-    public static BudgetChangeOutcome Save(PlanSnapshot plan, SaveAccount command, DateOnly today)
+    public static BudgetChangeOutcome Save(CommandIds ids, PlanSnapshot plan, SaveAccount command, DateOnly today, AccountLedgerFacts? facts = null)
     {
         var account = command.Account;
         if (account is null || !ValidName(account.Name) || !Enum.IsDefined(account.Kind) || account.Notes is null || account.Notes.Length > 4000)
@@ -25,18 +25,19 @@ internal static class CatalogChanges
             return new InvalidBudgetChange("Account type cannot be changed after creation. Create another account instead.");
         }
 
-        if (OpeningChangeAffectsReconciliation(plan, existing, account))
+        account = account with { Id = account.Id == Guid.Empty ? ids[0] : account.Id, Name = account.Name.Trim() };
+        facts ??= AccountLedgerFacts.FromLedger(plan, account.Id, today);
+        if (OpeningChangeAffectsReconciliation(facts, existing, account))
         {
             return new InvalidBudgetChange("Unreconcile this account's transactions before changing its opening balance or date.");
         }
 
-        account = account with { Id = account.Id == Guid.Empty ? Guid.NewGuid() : account.Id, Name = account.Name.Trim() };
-        if (plan.Transactions.Any(item => (item.AccountId == account.Id || item.TransferAccountId == account.Id) && item.Date < account.OpenedOn))
+        if (facts.FirstTransaction < account.OpenedOn)
         {
             return new InvalidBudgetChange("The opening date must be on or before this account's first transaction.");
         }
 
-        if (account.Closed && BudgetFacts.Balance(plan, account, today).Working != 0)
+        if (account.Closed && account.OpeningBalance + facts.WorkingMovement != 0)
         {
             return new InvalidBudgetChange("Bring the account balance to zero before closing it.");
         }
@@ -51,11 +52,11 @@ internal static class CatalogChanges
                 var group = groups.FirstOrDefault(item => string.Equals(item.Name, "Credit card payments", StringComparison.Ordinal));
                 if (group is null)
                 {
-                    group = new(Guid.NewGuid(), "Credit card payments", -1);
+                    group = new(ids[1], "Credit card payments", -1);
                     groups.Add(group);
                 }
 
-                categories.Add(new(Guid.NewGuid(), group.Id, account.Name, string.Empty, categories.Count, false, account.Id, null));
+                categories.Add(new(ids[2], group.Id, account.Name, string.Empty, categories.Count, false, account.Id, null));
             }
             else
             {
@@ -66,7 +67,7 @@ internal static class CatalogChanges
         return plan with { Accounts = Replace(plan.Accounts, account, item => item.Id), Categories = categories, Groups = groups };
     }
 
-    public static BudgetChangeOutcome Save(PlanSnapshot plan, SaveGroup command)
+    public static BudgetChangeOutcome Save(CommandIds ids, PlanSnapshot plan, SaveGroup command)
     {
         var group = command.Group;
         if (group is null || !ValidName(group.Name))
@@ -74,11 +75,11 @@ internal static class CatalogChanges
             return new InvalidBudgetChange("Enter a group name of 1–100 characters.");
         }
 
-        group = group with { Id = group.Id == Guid.Empty ? Guid.NewGuid() : group.Id, Name = group.Name.Trim() };
+        group = group with { Id = group.Id == Guid.Empty ? ids[0] : group.Id, Name = group.Name.Trim() };
         return plan with { Groups = Replace(plan.Groups, group, item => item.Id) };
     }
 
-    public static BudgetChangeOutcome Save(PlanSnapshot plan, SaveCategory command)
+    public static BudgetChangeOutcome Save(CommandIds ids, PlanSnapshot plan, SaveCategory command)
     {
         var category = command.Category;
         if (category is null || !ValidName(category.Name) || category.Notes is null || category.Notes.Length > 4000
@@ -98,7 +99,7 @@ internal static class CatalogChanges
             return new InvalidBudgetChange("Check the target amount, start month, due date, and repeat interval.");
         }
 
-        category = category with { Id = category.Id == Guid.Empty ? Guid.NewGuid() : category.Id, Name = category.Name.Trim() };
+        category = category with { Id = category.Id == Guid.Empty ? ids[0] : category.Id, Name = category.Name.Trim() };
         return plan with { Categories = Replace(plan.Categories, category, item => item.Id) };
     }
 
@@ -137,10 +138,9 @@ internal static class CatalogChanges
 
     internal static bool ValidName(string? name) => !string.IsNullOrWhiteSpace(name) && name.Trim().Length <= 100;
 
-    private static bool OpeningChangeAffectsReconciliation(PlanSnapshot plan, AccountData? existing, AccountData account)
+    private static bool OpeningChangeAffectsReconciliation(AccountLedgerFacts facts, AccountData? existing, AccountData account)
         => existing is not null && (existing.OpeningBalance != account.OpeningBalance || existing.OpenedOn != account.OpenedOn)
-            && plan.Transactions.Any(item => (item.AccountId == account.Id && item.State == ClearingState.Reconciled)
-                || (item.TransferAccountId == account.Id && item.TransferState == ClearingState.Reconciled));
+            && facts.HasReconciled;
 
     internal static bool ValidMoney(decimal amount) => amount is >= -AmountExpression.MaximumAmount and <= AmountExpression.MaximumAmount && decimal.Round(amount, 2) == amount;
 
@@ -159,7 +159,7 @@ internal static class CatalogChanges
         return Enum.IsDefined(target.Kind) && Enum.IsDefined(target.Cadence) && Enum.IsDefined(target.Weekday)
             && ValidMoney(target.Amount) && target.Amount > 0 && ValidDate(target.StartMonth) && target.StartMonth.Day == 1
             && target.RepeatEveryMonths is >= 0 and <= 120
-            && (target.DueDate is null || (ValidDate(target.DueDate.Value) && target.DueDate >= target.StartMonth))
+            && (target.DueDate is null || (ValidDate(target.DueDate.Value) && target.DueDate.Value >= target.StartMonth))
             && (target.Cadence != TargetCadence.Yearly || target.DueDate.HasValue);
     }
 }

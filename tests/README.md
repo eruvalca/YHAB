@@ -22,6 +22,233 @@ records its independent expected totals, growing dataset checkpoints, layer
 boundaries, results, and findings. Persistence checkpoints use disposable bulk
 fixtures; browser entries use the authenticated API.
 
+Foundation checks additionally cover deterministic recurrence batches, financial
+ordering, sparse history patches, save/refresh recovery, and ten-year ledgers.
+`WorkspaceProjectionTests` forces a write between navigation and month queries
+and verifies that the combined workspace response retains one committed revision.
+It also checks cached ownership, month selection, date validation and rejection
+of stale writes. Component tests cover selected-month preservation, publishing
+the complete response together, bounded read recovery and never resending a
+committed command. Browser checks exercise the authenticated endpoint and its
+no-cache response contract.
+`HistoryAtomicityTests` injects EF save failures and synchronizes competing
+revision claims; no production-only test hook is needed. `RegisterProjectionTests`
+checks every sort cursor, transfer-side balances/status, literal search escaping,
+owner checks and revision-keyed cache invalidation. `LedgerFoundationTests` seeds
+10,000, 50,000 and 100,000 synthetic transactions through disposable PostgreSQL
+fixtures, then exercises real queries, command services, history and competing
+recurrence processors. In-process EF fixtures enable retries to match Aspire;
+otherwise explicit transaction failures can be missed by integration tests.
+`BudgetDatabase` owns its EF internal service provider and disposes it with the
+fixture. Its stateful measurement interceptor is reused by that fixture's contexts,
+not shared across tests or retained by EF's process-wide provider cache. Keep the
+`ManyServiceProvidersCreatedWarning` enabled; do not suppress it to accommodate
+additional measurement fixtures.
+
+`MonthlyTransitionTests` exercises 80 simultaneous dated targets over ten years,
+backdated corrections, credit reserves, and resuming without earlier transactions.
+`MonthlyCheckpointTests` verifies persisted replay, invalidation on edits/undo,
+stale/foreign publication, format upgrades and report-range equivalence.
+It also checks SQL target aggregates, missing period-opening recovery, future
+reservations and multi-year replay with different target cycles. Compare all
+projection fields/rows by value: SQL decimal aggregates can spell zero as `0.0`
+while equivalent in-memory arithmetic spells it as `0`.
+`CheckpointPublicationTests` forces current-month edits between cold replay and
+checkpoint publication without timing races. It checks exact financial results
+and bounded current-month reads after publishing still-valid historical openings.
+It also checks invalidation-boundary compaction, metadata changes, backdating,
+undo/redo, financial resets, owner isolation, future revisions and cascading
+deletion. `HistoryAtomicityTests` verifies boundary rollback with failed writes
+and bounded storage under repeated edits. Run the 100k-entry measurement in
+isolation.
+`TargetPeriodTests` directly checks cycle boundaries; `MonthlyTransitionTests`
+compares bounded funding inputs with complete-history calculations and literal
+expected balances. `HistoryReadSetTests` verifies later account/category
+dependencies prevent selective undo from deleting a referenced principal.
+History checks exhaust all 50 retained changes, force undo/edit claims past the
+same read, and inject a failed undo to verify ledger/cursor/receipt/checkpoint rollback.
+`CommandIdentityTests` supplies immutable IDs and verifies repeatable transformations
+and the maximum 128-occurrence/100-split batch.
+`RecurringReadSetTests` checks a 1,001-occurrence history, edited actual dates,
+overlapping template IDs in different plans, schedule reset/undo/redo, and bounded
+identity reads. `BackgroundPostingTests` checks competing workers, empty batches,
+owner isolation, stale user requests and cancellation releasing the plan lock.
+`PayeePatchTests` exercises exact name matching, empty changes, validation, sparse
+history formats and conflicting restores. `PayeePersistenceTests` verifies rollback
+after the SQL update (including undo), receipt retries, competing renames, overlapping
+IDs in another owner's plan, literal Unicode names, checkpoint retention and undo
+after a recurring template advances. Compare ledger snapshots in stable identity
+or sequence order; the full persistence read has no presentation-order contract.
+
+`AccountLedgerFactsTests` exercises transfer direction, clearing sides, recurrence
+and date exclusion, empty accounts and reconciliation with precomputed balances.
+`CheckpointPolicyTests` distinguishes financial invalidation from metadata edits,
+including transaction/split ordering, old/new dates, target changes and zero-value
+allocations. `AccountOperationTests` compares database aggregates with ledger
+facts, checks overlapping foreign identities, verifies exact selective reconciliation
+and undo/redo results, and compares retained checkpoint contents with full replay.
+For SQL round trips, compare every transaction and split field by value in a stable
+order; decimal JSON spelling (`10` versus `10.00`) is not a financial difference.
+
+`ReportTotalsTests` pins income, expenses, assets and debt across partial months,
+opening dates, refunds, zero-net categories and closed accounts without mutating
+inputs. `ReportProjectionTests` compares SQL aggregates with complete-history
+calculations and independent household totals, including overlapping IDs in a
+foreign plan, tracking transfers, recurring-template exclusion and a concurrent
+write between report queries. `SelectiveSqlPlanTests` captures actual PostgreSQL
+plans: report output cardinality is bounded by accounts/categories and requested
+months, while underlying scans still process the relevant ledger history. Zero
+EF entity materializations alone does not establish a bounded database scan.
+The recurring SQL-plan case checks both per-plan and background discovery against
+100k posted entries, then asserts exact occurrence counts, balances, revisions and
+an empty worker pass. Keep row/filter bounds on the captured plans; elapsed-time
+samples alone cannot detect a regression to scanning posted history.
+
+`CommandBranchTests` covers account-side opening-date boundaries, category merging
+with uncategorized income, payment-category rejection and scoped/global approval.
+`SelectiveOperationScaleTests` measures every command type, retries, history, funding,
+bulk operations and reports at 10k/50k/100k entries, plus catalogs up to 100 accounts,
+500 categories and 120,000 allocations. Bulk payee checks include undo/redo and
+history size at each threshold. EF materialization counters count entity instances,
+not ordinary LINQ DTO projections; use persisted cardinality and SQL evidence for
+those projections. The desktop/phone `BudgetWorkflowTests` also renames through the
+static settings form, restores/reapplies through interactive history, and checks
+reconciliation, balance and updated suggestions. `SustainedContentionTests` runs separate
+service providers against one disposable database: 60-second offered-load windows
+with 1/4/8 editors, competing recurring processors, and a register reader. The
+paced case deliberately schedules two edits/second/editor; this timer models load,
+not UI readiness. It verifies receipts for every completed edit, exact occurrence
+dates/balances, history retention and no unexpected error logs. All due dates must
+finish during the offered-load window, before editors stop; the quiet drain cannot
+substitute for worker progress. This models replica
+data contention, not independently deployed web servers or network latency.
+Processors deliberately poll continuously for stress; the test does not model
+the hosted worker's 30-second schedule or establish its catch-up deadline.
+It samples test-process private bytes and working set once per second, with
+allocation and GC-collection deltas over the load window. These include the
+harness and may miss memory peaks between samples; they are not retained-heap
+measurements or a long-running production soak test.
+
+`ProcessLoadTests` exercises two actual Aspire web processes against one disposable
+database, retaining the hosted workers' 30-second cadence. It discovers the local
+replica endpoints and directs four authenticated writers to each; readings of the
+Aspire launcher PID are not application-memory evidence, so it resolves and checks
+each web executable before sampling. The process probe supports Windows and Linux.
+Eight staggered writers offer two attempts/second each. A conflict is recorded as
+a rejected attempt; it is not silently rebased or counted as a successful edit.
+Initial month reads precede editing, as they do before the UI enables its inputs.
+Accepted saves include the UI's combined balance and month refresh; refresh conflicts are
+recorded separately from rejected writes. The load harness mirrors the workspace's
+three-attempt read recovery, reporting recovered and exhausted refreshes separately.
+The successful-display latency includes read retries and excludes exhausted
+refreshes; the all-attempt latency includes both. Neither resends rejected writes.
+Accepted month projections must match
+the saved category amount and conserve the matching view's cash balance.
+Receipts, exact assignments, recurring dates/balances and bounded history are
+verified after the load. Each fixture starts with 100k posted transactions.
+
+The default is one plan and 180 seconds of load followed by 60 seconds idle.
+Set `YHAB_LOAD_PLANS=8` to measure independently edited plans and
+`YHAB_LOAD_SECONDS=600` for a longer run (accepted range: 120–1800 seconds).
+Run configurations in separate, sequential invocations so the runner's normal
+parallelism does not overlap measurement cases. Use Release for process measurements:
+
+```powershell
+$env:YHAB_LOAD_SECONDS = '600'
+$env:YHAB_LOAD_PLANS = '8'
+dotnet test --project tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj --configuration Release --filter-class '*ProcessLoadTests' --report-trx --results-directory TestResults/performance/process-load-eight
+Remove-Item Env:YHAB_LOAD_SECONDS, Env:YHAB_LOAD_PLANS
+```
+
+Private bytes, working sets and CPU are sampled per web process every ten seconds
+into the test's `process-load-*` artifacts, alongside current commit/conflict
+counts. These exclude PostgreSQL, the load generator and unsampled peaks. The
+independent plans currently use one authenticated owner; this is a data-partition
+comparison, not a multi-user authentication or deployed multi-host benchmark.
+
+Thresholds run sequentially within each test. For comparable observations, run
+each measurement method alone, sequentially; full-suite concurrency is suitable
+for correctness checks but distorts process-wide memory/timing observations.
+If simultaneous database stress and browser/AppHost startup exhaust local
+resources, run the solution with `--max-parallel-test-modules 1`. This serializes
+test projects while preserving their `all` / `conservative` / `1x` settings;
+report startup timeouts and the rerun separately instead of suppressing them.
+`DatabaseProbe` records elapsed time, SQL command count/execution duration, entity
+materialization counts, allocations, and end-of-operation process private bytes
+and working set. SQL duration excludes subsequent reader consumption, and entity
+counts exclude scalar/DTO/raw-SQL projections. Allocation deltas include background
+work and probe overhead; process memory includes the test runner and earlier work.
+Snapshots retained for later assertions can extend object lifetimes in the test.
+None represents memory owned exclusively by a request.
+EF's materialization interceptor itself adds per-entity property dictionaries and
+delegates, so entity-counting runs overstate application allocation and latency.
+Keep those probes for exact read-count regressions, and use
+`DatabaseProbe.CommandsOnly()` for a separate timing/allocation control. An empty
+materialization list in that mode means counting was disabled, not zero rows read.
+`ColdReplayWithoutEntityCountingRetainsExactBalancesAsync` runs the narrow 100k
+ledger, wide 10k ledger, and combined 100k/100-account/500-category/240-month shape
+sequentially, asserting full month equivalence and independent cash conservation.
+Optional EventPipe captures can isolate these intervals with the
+`YHAB-Tests-Measurements` provider at Verbose level (5). Attach to MTP's actual test
+worker, not its controller; a capture with no executed test is not validation.
+
+The household browser test bulk-seeds its disposable AppHost at 10k/50k/100k entries,
+then runs 120 paced enhanced-navigation/assignment cycles and opens a wide catalog.
+Set `YHAB_BROWSER_CYCLES` to 120–1800 for a longer session; extended runs also
+observe 60 seconds idle after navigation. `YHAB_MEMORY_SAMPLES` optionally names
+an ignored local JSONL file containing live samples, including each Chromium
+process's type/private bytes and DOM document/listener counts.
+Snapshot tracing stops and its document closes before this measurement segment;
+the functional walkthrough retains its trace and the last page has a screenshot.
+`BrowserMemory` measures post-JS-GC heap/DOM, WebAssembly linear-memory capacity
+through .NET's short-lived `localHeapViewU8()` runtime view, and private
+bytes/working sets of Chromium processes reported by CDP. Linear capacity is not
+live managed-object usage; process working-set sums can double-count shared pages,
+and CDP can omit auxiliary processes. Diagnostic calls have bounded waits. These
+observations do not establish leak freedom. Normal runner parallelism is unchanged.
+The probe records DOM counters after an initial collection and again after a
+rendering opportunity and a second fixed collection, allowing weak cleanup to run.
+It never loops collection until a growth assertion passes. Both observations are
+retained in the optional JSONL output.
+The repeated-navigation check verifies removed register controls are collectable
+and DOM counts remain bounded after warm-up. Optional `YHAB_HEAP_SNAPSHOTS` names
+a local diagnostic output directory for CDP snapshots at cycles 1, 12 and the final cycle,
+with native allocation profiles where Chromium supplies them and brief
+memory-infra allocator traces (8 MB trace-buffer bound, no screenshots);
+leave it unset for routine measurements. Snapshots can contain page data and
+belong in ignored local artifacts, never committed reports. The long-session DOM
+growth check also captures a heap snapshot before failing when that option is set.
+Allocator tracing can start a separate Chromium tracing-service process, listed
+separately in memory samples. Use renderer-specific values when comparing those
+runs with sessions that did not enable allocator diagnostics.
+Keep the original failure and diagnostic rerun results separate; a passing rerun
+does not by itself explain a different warm-up baseline or establish a memory plateau.
+SQL seeding is fixture setup, not an application write API.
+
+`InspectorRetentionTests` reuses the same `BrowserEditingSession` workload in a
+test-owned persistent Chromium context to measure diagnostic retention. It derives
+the executable and launch defaults from the installed Playwright browser, exposes
+its debugging endpoint only on loopback, and disconnects/reconnects CDP after the
+editing session. The document, workspace, .NET runtime, renderer process IDs and
+financial state must survive; another real assignment must persist afterward.
+The test does not reload the page or clear application caches during the control.
+It uses the same cycle/sample/snapshot environment options, adds before/after
+snapshots, and disposes the browser process and its temporary profile on failure
+or success. Its private-memory observations distinguish diagnostic overhead from
+application behavior; they are not a portable memory-drop threshold or proof of
+an application memory plateau. Run this diagnostic case separately from other
+performance workloads when comparing memory measurements.
+
+Keep performance measurements descriptive, not machine-dependent pass/fail timing
+thresholds. Assert exact financial totals, bounded page sizes/payloads, unchanged
+unrelated records and storage effects. A projection compared with the same pure
+calculator establishes consistency, not an independent mathematical oracle;
+literal expectations and household conservation checks establish the latter.
+The [validation report](../docs/budgeting-validation.md#foundation-hardening-and-large-ledgers)
+records current line/branch coverage and its limits. Collect coverage explicitly
+when changing these foundations, including compiler-generated lambdas in the
+source-file totals; never equate executed lines with proven correctness.
+
 The household browser regression holds the WebAssembly runtime binary download
 until the first populated workspace works through an interactive server circuit.
 It then releases the download, waits for Auto's resource-cache marker before

@@ -46,7 +46,11 @@ internal static class BudgetModelConfiguration
         entry.HasOne<BudgetPlan>().WithMany().HasForeignKey(item => item.PlanId);
         entry.HasOne<BudgetAccount>().WithMany().HasForeignKey(item => new { item.PlanId, item.AccountId }).OnDelete(DeleteBehavior.Restrict);
         entry.HasOne<BudgetAccount>().WithMany().HasForeignKey(item => new { item.PlanId, item.TransferAccountId }).OnDelete(DeleteBehavior.Restrict);
-        entry.HasIndex(item => new { item.PlanId, item.Date });
+        entry.HasIndex(item => new { item.PlanId, item.Date, item.Sequence, item.Id });
+        entry.HasIndex(item => new { item.PlanId, item.AccountId, item.Date, item.Sequence });
+        // Both per-plan posting and global worker discovery ignore posted entries.
+        entry.HasIndex(item => new { item.PlanId, item.Date, item.Sequence, item.Id }, "IX_BudgetTransaction_RecurringTemplates")
+            .HasFilter("\"Repeat\" <> 0");
         entry.HasIndex(item => new { item.PlanId, item.SourceTemplateId, item.ScheduledDate }).IsUnique();
         entry.Property(item => item.Payee).HasMaxLength(200);
         entry.Property(item => item.Memo).HasMaxLength(4000);
@@ -65,6 +69,20 @@ internal static class BudgetModelConfiguration
         history.Property(item => item.Description).HasMaxLength(200);
         history.Property(item => item.Before).HasColumnType("jsonb");
         history.Property(item => item.After).HasColumnType("jsonb");
+
+        var receipt = builder.Entity<BudgetReceipt>();
+        receipt.HasKey(item => new { item.PlanId, item.OperationId });
+        receipt.HasOne<BudgetPlan>().WithMany().HasForeignKey(item => item.PlanId);
+        receipt.Property(item => item.RequestHash).HasMaxLength(64);
+
+        var checkpoint = builder.Entity<BudgetCheckpoint>();
+        checkpoint.HasKey(item => new { item.PlanId, item.Month });
+        checkpoint.HasOne<BudgetPlan>().WithMany().HasForeignKey(item => item.PlanId);
+        checkpoint.Property(item => item.State).HasColumnType("jsonb");
+
+        var invalidation = builder.Entity<BudgetCheckpointInvalidation>();
+        invalidation.HasKey(item => new { item.PlanId, item.Version });
+        invalidation.HasOne<BudgetPlan>().WithMany().HasForeignKey(item => item.PlanId);
 
         foreach (var entity in builder.Model.GetEntityTypes().Where(item => string.Equals(item.ClrType.Namespace, typeof(BudgetPlan).Namespace, StringComparison.Ordinal)))
         {

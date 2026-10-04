@@ -1,9 +1,12 @@
+using System.Collections.Immutable;
+using YHAB.Features.Budgeting.Services;
 using YHAB.SharedKernel.Budgeting;
 
 namespace YHAB.UnitTests.Features.Budgeting;
 
 internal static class BudgetTestData
 {
+    public static CommandIds NewIds() => new(Enumerable.Range(0, 13029).Select(_ => Guid.CreateVersion7()).ToImmutableArray());
     public static DateOnly January => new(2026, 1, 1);
     public static PlanSnapshot Create(decimal cash = 1000, decimal card = 0)
     {
@@ -22,4 +25,3 @@ internal static class BudgetTestData
     public static PlanSnapshot Assigned(PlanSnapshot plan, decimal amount)
         => plan with { Allocations = [new(plan.Categories[0].Id, January, amount)] };
 }
-

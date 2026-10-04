@@ -1,0 +1,40 @@
+<Project>
+  <!-- The application serves a generated copy; the installed NuGet package is never edited. -->
+  <Target Name="PatchFluentDefinitionObservers"
+          AfterTargets="ResolveCoreStaticWebAssets"
+          DependsOnTargets="ResolveProjectReferences"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <_YHABFluentRoot>$([System.IO.Path]::GetFullPath('$(IntermediateOutputPath)fluent/'))</_YHABFluentRoot>
+      <_YHABFluentPatched>$(_YHABFluentRoot)Microsoft.FluentUI.AspNetCore.Components.lib.module.js</_YHABFluentPatched>
+    </PropertyGroup>
+    <ItemGroup>
+      <_YHABFluentOriginal Include="@(StaticWebAsset)"
+                          Condition="'%(StaticWebAsset.SourceId)' == 'Microsoft.FluentUI.AspNetCore.Components' and '%(StaticWebAsset.AssetTraitValue)' == 'JSLibraryModule'" />
+    </ItemGroup>
+    <Error Condition="'@(_YHABFluentOriginal->Count())' != '1'" Text="Expected exactly one Fluent initializer module to apply the pinned lifetime fix." />
+    <Exec Command="&quot;$(_YHABDotNetHost)&quot; &quot;$(_YHABBuildAssembly)&quot; patch-fluent &quot;@(_YHABFluentOriginal)&quot; &quot;$(MSBuildThisFileDirectory)FluentDefinitionObservers.js&quot; &quot;$(_YHABFluentPatched)&quot;" />
+    <ItemGroup>
+      <_YHABFluentCandidate Include="@(_YHABFluentOriginal->'$(_YHABFluentPatched)')">
+        <ContentRoot>$(_YHABFluentRoot)</ContentRoot>
+        <OriginalItemSpec>$(_YHABFluentPatched)</OriginalItemSpec>
+        <Fingerprint />
+        <Integrity />
+        <FileLength />
+        <LastWriteTime />
+      </_YHABFluentCandidate>
+      <StaticWebAsset Remove="@(_YHABFluentOriginal)" />
+      <StaticWebAssetEndpoint Remove="@(StaticWebAssetEndpoint)" Condition="'%(StaticWebAssetEndpoint.AssetFile)' == '@(_YHABFluentOriginal)'" />
+      <FileWrites Include="$(_YHABFluentPatched)" />
+    </ItemGroup>
+    <DefineStaticWebAssets CandidateAssets="@(_YHABFluentCandidate)">
+      <Output TaskParameter="Assets" ItemName="_YHABFluentAsset" />
+    </DefineStaticWebAssets>
+    <DefineStaticWebAssetEndpoints CandidateAssets="@(_YHABFluentAsset)" ContentTypeMappings="@(StaticWebAssetContentTypeMapping)">
+      <Output TaskParameter="Endpoints" ItemName="StaticWebAssetEndpoint" />
+    </DefineStaticWebAssetEndpoints>
+    <ItemGroup>
+      <StaticWebAsset Include="@(_YHABFluentAsset)" />
+    </ItemGroup>
+  </Target>
+</Project>

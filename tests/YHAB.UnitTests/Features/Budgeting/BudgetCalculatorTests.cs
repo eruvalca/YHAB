@@ -464,4 +464,50 @@ public sealed class BudgetCalculatorTests
         var payment = plan.Categories[1] with { Id = Guid.NewGuid(), Name = card.Name, CreditAccountId = card.Id };
         return plan with { Accounts = [.. plan.Accounts, card], Categories = [.. plan.Categories, payment] };
     }
+
+    [Fact]
+    public void SameDayFinancialOrderUsesTheSequenceRatherThanTheIdentifier()
+    {
+        var plan = WithSecondCard(Assigned(Create(card: -100), 100));
+        var transfer = Entry(plan, 1, 100) with
+        {
+            Id = Guid.Parse("ffffffff-ffff-ffff-ffff-ffffffffffff"),
+            Sequence = 1,
+            TransferAccountId = plan.Accounts[2].Id,
+            Splits = [],
+        };
+        var purchase = Entry(plan, 1, -100) with { Id = Guid.Parse("00000000-0000-0000-0000-000000000001"), Sequence = 2 };
+        plan = plan with { Transactions = [purchase, transfer] };
+        var month = BudgetCalculator.Calculate(plan, January, plan.Today);
+        month.Categories[1].Available.ShouldBe(100);
+        month.Categories[2].Available.ShouldBe(0);
+        month.ReadyToAssign.ShouldBe(900);
+    }
+
+    [Fact]
+    public void SplitStorageOrderCannotMoveACentBetweenCashAndCreditFunding()
+    {
+        var plan = Assigned(Create(card: 0.01m), 0.01m);
+        var second = plan.Categories[0] with { Id = Guid.NewGuid(), Name = "Second" };
+        var third = second with { Id = Guid.NewGuid(), Name = "Third" };
+        plan = plan with { Categories = [.. plan.Categories, second, third] };
+        var entry = Entry(plan, 1, -0.03m) with
+        {
+            Splits =
+            [
+                new(Guid.Parse("00000000-0000-0000-0000-000000000001"), plan.Categories[0].Id, -0.01m, ""),
+                new(Guid.Parse("00000000-0000-0000-0000-000000000002"), second.Id, -0.01m, ""),
+                new(Guid.Parse("00000000-0000-0000-0000-000000000003"), third.Id, -0.01m, ""),
+            ],
+        };
+        plan = plan with { Transactions = [entry] };
+        var ordered = BudgetCalculator.Calculate(plan, January, plan.Today);
+        var reversedSplits = entry.Splits.Reverse().ToArray();
+        var originalOrder = reversedSplits.ToArray();
+        var reversed = BudgetCalculator.Calculate(plan with { Transactions = [entry with { Splits = reversedSplits }] }, January, plan.Today);
+        ordered.Categories[1].Available.ShouldBe(0.01m);
+        reversed.Categories.ShouldBe(ordered.Categories);
+        reversed.ReadyToAssign.ShouldBe(1000);
+        reversedSplits.ShouldBe(originalOrder);
+    }
 }

@@ -19,4 +19,8 @@ namespace YHAB.SharedKernel.Budgeting;
 [JsonDerivedType(typeof(UndoChange), "UndoChange")]
 [JsonDerivedType(typeof(RedoChange), "RedoChange")]
 [JsonDerivedType(typeof(PostRecurring), "PostRecurring")]
-public abstract record PlanCommand(long Version);
+public abstract record PlanCommand(long Version)
+{
+    // Created once per user operation; retain this value when retrying an interrupted request.
+    public Guid OperationId { get; init; } = Guid.CreateVersion7();
+}

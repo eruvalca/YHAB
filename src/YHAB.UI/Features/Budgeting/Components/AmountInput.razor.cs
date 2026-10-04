@@ -10,7 +10,7 @@ public sealed partial class AmountInput
     [Parameter, EditorRequired] public decimal Value { get; set; }
     [Parameter] public EventCallback<decimal> ValueChanged { get; set; }
     [Parameter] public EventCallback<bool> ValidChanged { get; set; }
-    [Parameter] public string Id { get; set; } = $"amount-{Guid.NewGuid():N}";
+    [Parameter] public string Id { get; set; } = $"amount-{Guid.CreateVersion7():N}";
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public bool ReadOnly { get; set; }
     private string _text = string.Empty;

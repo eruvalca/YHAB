@@ -12,6 +12,36 @@ namespace YHAB.ComponentTests.Features.Budgeting;
 [SuppressMessage("Maintainability", "CA1515:Consider making public types internal", Justification = "xUnit requires public test classes for discovery.")]
 public sealed class BudgetBoardTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TargetSnoozeUsesDisplayedMonthWithoutAllocationHistoryAsync(bool snoozed)
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var plan = CreatePlan();
+        var month = BudgetFacts.Month(plan.Today);
+        var category = plan.Categories[0] with { Target = new(TargetKind.SetAside, TargetCadence.Monthly, 300, month, null, 0, DayOfWeek.Friday) };
+        plan = plan with { Categories = [category] };
+        var row = new CategoryMonth(category, 125, -20, 105, 0, 0, snoozed ? 0 : 175, 300, snoozed);
+        var budget = new BudgetMonth(month, 875, 125, -20, 105, 0, 0, 0, [row]);
+        var commands = new List<PlanCommand>();
+        var component = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, plan)
+            .Add(item => item.LoadMonth, _ => Task.FromResult(budget)).Add(item => item.OnCommand, commands.Add));
+        await component.Find(".category-link").ClickAsync();
+        var label = snoozed ? "Resume target this month" : "Snooze target this month";
+        await component.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), label, StringComparison.Ordinal)).ClickAsync();
+        var command = commands.Single().ShouldBeOfType<AssignMoney>();
+        command.CategoryId.ShouldBe(category.Id);
+        command.Month.ShouldBe(month);
+        command.Amount.ShouldBe(125);
+        command.Snoozed.ShouldBe(!snoozed);
+        command.Version.ShouldBe(plan.Version);
+        plan.Allocations.ShouldBeEmpty();
+    }
+
     [Fact]
     public async Task NextMonthAssignmentUsesTheDisplayedMonthAndEvaluatedAmountAsync()
     {

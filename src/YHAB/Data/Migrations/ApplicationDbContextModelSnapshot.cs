@@ -369,6 +369,42 @@ namespace YHAB.Migrations
                     b.ToTable("BudgetCategory");
                 });
 
+            modelBuilder.Entity("YHAB.Features.Budgeting.Data.BudgetCheckpoint", b =>
+                {
+                    b.Property<Guid>("PlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("Month")
+                        .HasColumnType("date");
+
+                    b.Property<int>("FormatVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.HasKey("PlanId", "Month");
+
+                    b.ToTable("BudgetCheckpoint");
+                });
+
+            modelBuilder.Entity("YHAB.Features.Budgeting.Data.BudgetCheckpointInvalidation", b =>
+                {
+                    b.Property<Guid>("PlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Version")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateOnly>("FirstInvalidMonth")
+                        .HasColumnType("date");
+
+                    b.HasKey("PlanId", "Version");
+
+                    b.ToTable("BudgetCheckpointInvalidation");
+                });
+
             modelBuilder.Entity("YHAB.Features.Budgeting.Data.BudgetGroup", b =>
                 {
                     b.Property<Guid>("PlanId")
@@ -446,6 +482,9 @@ namespace YHAB.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<long>("NextSequence")
+                        .HasColumnType("bigint");
+
                     b.Property<string>("Notes")
                         .IsRequired()
                         .HasMaxLength(4000)
@@ -464,6 +503,27 @@ namespace YHAB.Migrations
                     b.HasIndex("OwnerId");
 
                     b.ToTable("BudgetPlans", (string)null);
+                });
+
+            modelBuilder.Entity("YHAB.Features.Budgeting.Data.BudgetReceipt", b =>
+                {
+                    b.Property<Guid>("PlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OperationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<long>("Version")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("PlanId", "OperationId");
+
+                    b.ToTable("BudgetReceipt");
                 });
 
             modelBuilder.Entity("YHAB.Features.Budgeting.Data.BudgetSplit", b =>
@@ -546,6 +606,9 @@ namespace YHAB.Migrations
                     b.Property<DateOnly?>("ScheduledDate")
                         .HasColumnType("date");
 
+                    b.Property<long>("Sequence")
+                        .HasColumnType("bigint");
+
                     b.Property<Guid?>("SourceTemplateId")
                         .HasColumnType("uuid");
 
@@ -560,14 +623,17 @@ namespace YHAB.Migrations
 
                     b.HasKey("PlanId", "Id");
 
-                    b.HasIndex("PlanId", "AccountId");
-
-                    b.HasIndex("PlanId", "Date");
-
                     b.HasIndex("PlanId", "TransferAccountId");
 
                     b.HasIndex("PlanId", "SourceTemplateId", "ScheduledDate")
                         .IsUnique();
+
+                    b.HasIndex("PlanId", "AccountId", "Date", "Sequence");
+
+                    b.HasIndex("PlanId", "Date", "Sequence", "Id");
+
+                    b.HasIndex(new[] { "PlanId", "Date", "Sequence", "Id" }, "IX_BudgetTransaction_RecurringTemplates")
+                        .HasFilter("\"Repeat\" <> 0");
 
                     b.ToTable("BudgetTransaction");
                 });
@@ -718,6 +784,24 @@ namespace YHAB.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("YHAB.Features.Budgeting.Data.BudgetCheckpoint", b =>
+                {
+                    b.HasOne("YHAB.Features.Budgeting.Data.BudgetPlan", null)
+                        .WithMany()
+                        .HasForeignKey("PlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("YHAB.Features.Budgeting.Data.BudgetCheckpointInvalidation", b =>
+                {
+                    b.HasOne("YHAB.Features.Budgeting.Data.BudgetPlan", null)
+                        .WithMany()
+                        .HasForeignKey("PlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("YHAB.Features.Budgeting.Data.BudgetGroup", b =>
                 {
                     b.HasOne("YHAB.Features.Budgeting.Data.BudgetPlan", null)
@@ -741,6 +825,15 @@ namespace YHAB.Migrations
                     b.HasOne("YHAB.Data.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("YHAB.Features.Budgeting.Data.BudgetReceipt", b =>
+                {
+                    b.HasOne("YHAB.Features.Budgeting.Data.BudgetPlan", null)
+                        .WithMany()
+                        .HasForeignKey("PlanId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

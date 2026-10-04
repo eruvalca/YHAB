@@ -65,8 +65,10 @@ public sealed class RecurringPersistenceTests
         exception.InnerException.ShouldBeOfType<PostgresException>().SqlState.ShouldBe(PostgresErrorCodes.UniqueViolation);
     }
 
-    [Fact]
-    public async Task MigrationBackfillsScheduledDatesAndLegacyHistoryCanStillBeRestoredAsync()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MigrationBackfillsScheduledDatesAndLegacyHistoryCanStillBeRestoredAsync(bool dateChanged)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         timeout.CancelAfter(TimeSpan.FromMinutes(3));
@@ -78,31 +80,121 @@ public sealed class RecurringPersistenceTests
         var manual = occurrence with { Id = Guid.NewGuid(), SourceTemplateId = null, Payee = "Manual", Amount = 10 };
         var snapshot = new PlanSnapshot(Guid.NewGuid(), "Legacy plan", "", date, 0, [account], [], [], [], [occurrence, manual], false, false, []);
 
-        await SeedLegacyAsync(database, snapshot, timeout.Token);
+        var before = snapshot with
+        {
+            Transactions = [occurrence with { Memo = "Before the edit", Date = dateChanged ? date.AddDays(-1) : date }, manual],
+        };
+        await SeedLegacyAsync(database, before, snapshot, timeout.Token);
 
         var saved = (await database.Store.ReadAsync("owner-a", snapshot.Id, timeout.Token)).ShouldNotBeNull();
         saved.Transactions.Single(item => item.Id == occurrence.Id).ScheduledDate.ShouldBe(date);
         saved.Transactions.Single(item => item.Id == manual.Id).ScheduledDate.ShouldBeNull();
         saved = await ApplyAsync(database.Store, saved, new UndoChange(saved.Version), timeout.Token);
         saved.Transactions.Single(item => item.Id == occurrence.Id).ScheduledDate.ShouldBe(date);
-        saved.Transactions.Single(item => item.Id == occurrence.Id).Memo.ShouldBe("Keep this");
+        saved.Transactions.Single(item => item.Id == occurrence.Id).Memo.ShouldBe("Before the edit");
+        saved.Transactions.Single(item => item.Id == occurrence.Id).Date.ShouldBe(dateChanged ? date.AddDays(-1) : date);
+        saved.Transactions.Single(item => item.Id == manual.Id).ScheduledDate.ShouldBeNull();
         saved = await ApplyAsync(database.Store, saved, new RedoChange(saved.Version), timeout.Token);
         saved.Transactions.Count.ShouldBe(2);
         saved.Transactions.Single(item => item.Id == occurrence.Id).ScheduledDate.ShouldBe(date);
+        saved.Transactions.Single(item => item.Id == occurrence.Id).Memo.ShouldBe("Keep this");
+        saved.Transactions.Single(item => item.Id == occurrence.Id).Date.ShouldBe(date);
         BudgetFacts.Balance(saved, account, date).Working.ShouldBe(985);
+
+        // Normalizing missing identity fields must not hide a real later edit.
+        await using var context = await database.Factory.CreateDbContextAsync(timeout.Token);
+        var changed = await context.Set<BudgetTransaction>().SingleAsync(item => item.Id == occurrence.Id, timeout.Token);
+        changed.Memo = "Later edit";
+        await context.SaveChangesAsync(timeout.Token);
+        (await database.Store.ExecuteAsync("owner-a", saved.Id, new UndoChange(saved.Version), timeout.Token)).IsT1.ShouldBeTrue();
+        var conflicted = (await database.Store.ReadAsync("owner-a", saved.Id, timeout.Token)).ShouldNotBeNull();
+        conflicted.Version.ShouldBe(saved.Version);
+        conflicted.Transactions.Single(item => item.Id == occurrence.Id).Memo.ShouldBe("Later edit");
     }
 
-    private static async Task SeedLegacyAsync(BudgetDatabase database, PlanSnapshot snapshot, CancellationToken token)
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LegacyOccurrenceCreationAndDeletionRestoreStableIdentityAsync(bool deleted)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(3));
+        var token = timeout.Token;
+        await using var database = await BudgetDatabase.CreateAsync(token);
+        var date = new DateOnly(2026, 10, 1);
+        var account = new AccountData(Guid.NewGuid(), "Tracking", AccountKind.Asset, 1000, date, false, "");
+        var occurrence = new TransactionData(Guid.NewGuid(), account.Id, date, "Legacy occurrence", "", -25, null,
+            ClearingState.Uncleared, ClearingState.Uncleared, true, "", [], SourceTemplateId: Guid.NewGuid());
+        var present = new PlanSnapshot(Guid.NewGuid(), "Legacy plan", "", date, 0, [account], [], [], [], [occurrence], false, false, []);
+        var absent = present with { Transactions = [] };
+        await SeedLegacyAsync(database, deleted ? present : absent, deleted ? absent : present, token);
+        var saved = (await database.Store.ReadAsync("owner-a", present.Id, token)).ShouldNotBeNull();
+        for (var cycle = 0; cycle < 2; cycle++)
+        {
+            saved = await ApplyAsync(database.Store, saved, new UndoChange(saved.Version), token);
+            saved.Transactions.Count.ShouldBe(deleted ? 1 : 0);
+            if (deleted)
+            {
+                saved.Transactions.Single().ScheduledDate.ShouldBe(date);
+                saved.Transactions.Single().Sequence.ShouldBe(0);
+            }
+            saved = await ApplyAsync(database.Store, saved, new RedoChange(saved.Version), token);
+            saved.Transactions.Count.ShouldBe(deleted ? 0 : 1);
+            if (!deleted)
+            {
+                saved.Transactions.Single().ScheduledDate.ShouldBe(date);
+                saved.Transactions.Single().Sequence.ShouldBe(0);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task DeletingMigratedTransactionCanUndoAndRedoWithoutChangingSequenceAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(3));
+        var token = timeout.Token;
+        await using var database = await BudgetDatabase.CreateAsync(token);
+        var date = new DateOnly(2026, 10, 1);
+        var account = new AccountData(Guid.NewGuid(), "Tracking", AccountKind.Asset, 1000, date, false, "");
+        var entry = new TransactionData(Guid.NewGuid(), account.Id, date, "Legacy entry", "", -25, null,
+            ClearingState.Uncleared, ClearingState.Uncleared, false, "", []);
+        var other = entry with { Id = Guid.NewGuid(), Amount = 10 };
+        var original = new PlanSnapshot(Guid.NewGuid(), "Legacy plan", "", date, 0, [account], [], [], [], [entry, other], false, false, []);
+        await SeedLegacyAsync(database, original, original, token);
+        var saved = (await database.Store.ReadAsync("owner-a", original.Id, token)).ShouldNotBeNull();
+        saved.Transactions.ShouldAllBe(item => item.Sequence == 0);
+        saved = await ApplyAsync(database.Store, saved, new DeleteTransactions(saved.Version, [entry.Id]), token);
+        saved.Transactions.Single().Id.ShouldBe(other.Id);
+        saved = await ApplyAsync(database.Store, saved, new UndoChange(saved.Version), token);
+        saved.Transactions.Count.ShouldBe(2);
+        saved.Transactions.ShouldAllBe(item => item.Sequence == 0);
+        BudgetFacts.Balance(saved, account, date).Working.ShouldBe(985);
+        saved = await ApplyAsync(database.Store, saved, new RedoChange(saved.Version), token);
+        saved.Transactions.Single().Id.ShouldBe(other.Id);
+        BudgetFacts.Balance(saved, account, date).Working.ShouldBe(1010);
+        saved = await ApplyAsync(database.Store, saved, new UndoChange(saved.Version), token);
+        saved.Transactions.ShouldAllBe(item => item.Sequence == 0);
+        await using var context = await database.Factory.CreateDbContextAsync(token);
+        (await context.Set<BudgetPlan>().SingleAsync(item => item.Id == original.Id, token)).NextSequence.ShouldBe(0);
+    }
+
+    private static async Task SeedLegacyAsync(BudgetDatabase database, PlanSnapshot before, PlanSnapshot snapshot, CancellationToken token)
     {
         await using var context = await database.Factory.CreateDbContextAsync(token);
         // Only this test's disposable database is downgraded to exercise a real upgrade.
         await context.GetService<IMigrator>().MigrateAsync("20261003005810_AddBudgeting", token);
         var account = snapshot.Accounts.Single();
-        context.Add(new BudgetPlan { Id = snapshot.Id, OwnerId = "owner-a", Name = snapshot.Name, CreatedOn = snapshot.CreatedOn, Version = 1, HistoryCursor = 1 });
+        await context.Database.ExecuteSqlAsync($"""
+            INSERT INTO "BudgetPlans" ("Id", "OwnerId", "Name", "Notes", "CreatedOn", "Version", "HistoryCursor")
+            VALUES ({snapshot.Id}, 'owner-a', {snapshot.Name}, '', {snapshot.CreatedOn}, 1, 1)
+            """, token);
         context.Add(new BudgetAccount { Id = account.Id, PlanId = snapshot.Id, Name = account.Name, Kind = account.Kind, OpeningBalance = account.OpeningBalance, OpenedOn = account.OpenedOn });
         var legacyJson = JsonSerializer.Serialize(snapshot, _legacyJson);
+        var beforeJson = JsonSerializer.Serialize(before, _legacyJson);
         legacyJson.ShouldNotContain("scheduledDate");
-        context.Add(new BudgetHistory { Id = Guid.NewGuid(), PlanId = snapshot.Id, Position = 1, Description = "Legacy change", Before = legacyJson, After = legacyJson, Timestamp = new(2026, 10, 1, 12, 0, 0, TimeSpan.Zero) });
+        beforeJson.ShouldNotContain("scheduledDate");
+        context.Add(new BudgetHistory { Id = Guid.NewGuid(), PlanId = snapshot.Id, Position = 1, Description = "Legacy change", Before = beforeJson, After = legacyJson, Timestamp = new(2026, 10, 1, 12, 0, 0, TimeSpan.Zero) });
         await context.SaveChangesAsync(token);
         foreach (var entry in snapshot.Transactions)
         {

@@ -29,7 +29,7 @@ public sealed class TransactionEditorTests
         var plan = new PlanSnapshot(Guid.NewGuid(), "Household", "", today, 7, [source, destination], [], [], [], [transaction], false, false, []) { Today = today };
         var commands = new List<PlanCommand>();
         var component = context.Render<TransactionEditor>(parameters => parameters
-            .Add(item => item.Plan, plan).Add(item => item.Transaction, transaction)
+            .Add(item => item.Plan, plan).Add(item => item.Payees, []).Add(item => item.Transaction, transaction)
             .Add(item => item.OnCommand, commands.Add).Add(item => item.OnClose, () => { }));
 
         var locked = state == ClearingState.Reconciled || transferState == ClearingState.Reconciled;

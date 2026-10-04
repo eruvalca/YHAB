@@ -10,5 +10,6 @@ internal sealed class BudgetPlan
     public string Notes { get; set; } = string.Empty;
     public DateOnly CreatedOn { get; set; }
     public long Version { get; set; }
+    public long NextSequence { get; set; }
     public int HistoryCursor { get; set; }
 }

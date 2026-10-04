@@ -6,6 +6,7 @@ public sealed partial class CategoryEditor
 {
     [Parameter, EditorRequired] public PlanSnapshot Plan { get; set; } = default!;
     [Parameter] public CategoryData? Category { get; set; }
+    [Parameter] public CategoryMonth? MonthState { get; set; }
     [Parameter, EditorRequired] public DateOnly Month { get; set; }
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
     [Parameter, EditorRequired] public EventCallback OnClose { get; set; }
@@ -44,7 +45,7 @@ public sealed partial class CategoryEditor
         _order = Category?.SortOrder ?? Plan.Categories.Count;
         _hidden = Category?.Hidden ?? false;
         InitializeTarget();
-        _snoozed = Plan.Allocations.Any(item => item.CategoryId == Category?.Id && item.Month == Month && item.Snoozed);
+        _snoozed = MonthState?.Snoozed ?? false;
         _replacements = [new(Guid.Empty, Guid.Empty, "No history to move", "", 0, false, null, null),
             .. Plan.Categories.Where(item => item.Id != Category?.Id && item.CreditAccountId is null)];
     }
@@ -69,6 +70,6 @@ public sealed partial class CategoryEditor
         return OnCommand.InvokeAsync(new SaveCategory(Plan.Version, new(Category?.Id ?? Guid.Empty, _group, _name, _notes, _order, _hidden, Category?.CreditAccountId, target)));
     }
     private Task SnoozeAsync() => OnCommand.InvokeAsync(new AssignMoney(Plan.Version, Category!.Id, Month,
-        Plan.Allocations.SingleOrDefault(item => item.CategoryId == Category.Id && item.Month == Month)?.Amount ?? 0, !_snoozed));
+        MonthState?.Assigned ?? 0, !_snoozed));
     private Task RemoveAsync() => OnCommand.InvokeAsync(new RemoveCategory(Plan.Version, Category!.Id, _replacement == Guid.Empty ? null : _replacement));
 }

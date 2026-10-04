@@ -4,12 +4,15 @@ namespace YHAB.PlaywrightTests;
 
 internal static class BrowserArtifacts
 {
-    internal static async Task CaptureAsync(IPage page, IBrowserContext context, string directory, Action<string> writeOutput)
+    internal static async Task CaptureAsync(IPage page, IBrowserContext context, string directory, Action<string> writeOutput, bool captureTrace = true)
     {
         var screenshot = Path.Combine(directory, "page.png");
         var trace = Path.Combine(directory, "trace.zip");
         await TryCaptureAsync(screenshot, () => page.ScreenshotAsync(new() { Path = screenshot, FullPage = true }), writeOutput);
-        await TryCaptureAsync(trace, () => context.Tracing.StopAsync(new() { Path = trace }), writeOutput);
+        if (captureTrace)
+        {
+            await TryCaptureAsync(trace, () => context.Tracing.StopAsync(new() { Path = trace }), writeOutput);
+        }
     }
 
     private static async Task TryCaptureAsync(string path, Func<Task> capture, Action<string> writeOutput)

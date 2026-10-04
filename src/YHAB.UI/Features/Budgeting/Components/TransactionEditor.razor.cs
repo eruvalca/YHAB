@@ -5,6 +5,7 @@ namespace YHAB.UI.Features.Budgeting.Components;
 public sealed partial class TransactionEditor
 {
     [Parameter, EditorRequired] public PlanSnapshot Plan { get; set; } = default!;
+    [Parameter, EditorRequired] public IReadOnlyList<string> Payees { get; set; } = [];
     [Parameter] public TransactionData? Transaction { get; set; }
     [Parameter] public Guid? AccountId { get; set; }
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
@@ -98,11 +99,11 @@ public sealed partial class TransactionEditor
     {
         if (!NeedsCategory) { return []; }
         if (_split) { return _splits.Select(item => new SplitData(item.Id, item.Category == Guid.Empty ? null : item.Category, item.Amount, item.Memo)).ToArray(); }
-        return [new(FirstSplit?.Id ?? Guid.NewGuid(), _category == Guid.Empty ? null : _category, SignedAmount, "")];
+        return [new(FirstSplit?.Id ?? Guid.CreateVersion7(), _category == Guid.Empty ? null : _category, SignedAmount, "")];
     }
     private sealed class SplitInput
     {
-        public Guid Id { get; set; } = Guid.NewGuid();
+        public Guid Id { get; set; } = Guid.CreateVersion7();
         public Guid Category { get; set; }
         public decimal Amount { get; set; }
         public string Memo { get; set; } = "";

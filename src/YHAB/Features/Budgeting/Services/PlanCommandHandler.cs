@@ -5,24 +5,25 @@ namespace YHAB.Features.Budgeting.Services;
 
 internal static class PlanCommandHandler
 {
-    public static BudgetChangeOutcome Apply(PlanSnapshot plan, PlanCommand command, DateOnly today)
+    public static BudgetChangeOutcome Apply(CommandIds ids, PlanSnapshot plan, PlanCommand command, DateOnly today,
+        BudgetMonth? projection = null, IReadOnlySet<RecurringOccurrence>? posted = null)
         => command switch
         {
-            SaveAccount save => CatalogChanges.Save(plan, save, today),
-            SaveGroup save => CatalogChanges.Save(plan, save),
-            SaveCategory save => CatalogChanges.Save(plan, save),
+            SaveAccount save => CatalogChanges.Save(ids, plan, save, today),
+            SaveGroup save => CatalogChanges.Save(ids, plan, save),
+            SaveCategory save => CatalogChanges.Save(ids, plan, save),
             RemoveCategory remove => CatalogChanges.Remove(plan, remove),
-            SaveTransaction save => TransactionChanges.Save(plan, save, today),
+            SaveTransaction save => TransactionChanges.Save(ids, plan, save, today, posted),
             DeleteTransactions delete => TransactionChanges.Delete(plan, delete),
             UpdateTransactionStates update => TransactionChanges.UpdateStates(plan, update),
             AssignMoney assign => MoneyChanges.Assign(plan, assign),
-            MoveMoney move => MoneyChanges.Move(plan, move, today),
-            AutoAssign auto => MoneyChanges.AutoAssign(plan, auto, today),
-            ReconcileAccount reconcile => MoneyChanges.Reconcile(plan, reconcile, today),
+            MoveMoney move => MoneyChanges.Move(plan, move, today, projection),
+            AutoAssign auto => MoneyChanges.AutoAssign(plan, auto, today, projection),
+            ReconcileAccount reconcile => MoneyChanges.Reconcile(ids, plan, reconcile, today),
             UpdatePlan update => Update(plan, update),
             RenamePayee rename => Rename(plan, rename),
             PostRecurring post when post.ThroughDate <= today && CatalogChanges.ValidDate(post.ThroughDate)
-                => TransactionChanges.PostDue(plan, post.ThroughDate),
+                => TransactionChanges.PostDue(ids, plan, post.ThroughDate, posted),
             _ => new InvalidBudgetChange("This plan operation is not supported."),
         };
 
@@ -38,15 +39,16 @@ internal static class PlanCommandHandler
 
     private static BudgetChangeOutcome Rename(PlanSnapshot plan, RenamePayee command)
     {
-        if (string.IsNullOrWhiteSpace(command.OldName) || string.IsNullOrWhiteSpace(command.NewName) || command.NewName.Length > 200)
+        var error = PayeePatch.ValidationError(command);
+        if (error is not null)
         {
-            return new InvalidBudgetChange("Enter an existing payee and a new name of at most 200 characters.");
+            return new InvalidBudgetChange(error);
         }
-
+        var changes = PayeePatch.Rename(plan.Transactions.Select(item => new TransactionPayee(item.Id, item.Payee)).ToArray(), command)
+            .After.ToDictionary(item => item.Id, item => item.Payee);
         return plan with
         {
-            Transactions = plan.Transactions.Select(item => string.Equals(item.Payee, command.OldName, StringComparison.OrdinalIgnoreCase)
-                ? item with { Payee = command.NewName.Trim() } : item).ToArray(),
+            Transactions = plan.Transactions.Select(item => changes.TryGetValue(item.Id, out var name) ? item with { Payee = name } : item).ToArray(),
         };
     }
 

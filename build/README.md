@@ -39,6 +39,24 @@ control. Do not introduce nested `Directory.Packages.props` files or per-project
 `VersionOverride` entries without a documented need: NuGet automatically imports
 only the nearest central package file.
 
+## Fluent UI lifetime compatibility
+
+The server imports `build/FluentAsset.targets` to serve a generated copy of the
+pinned Fluent UI 5.0.0 initializer. Its bundled FAST definition observers retain
+detached elements, and its theme-string cache retains old theme objects. The
+patch substitutes weak element subscriptions with finalizer cleanup and a weak
+theme-object cache. Live definition-change notifications are preserved.
+
+`YHAB.Build patch-fluent` verifies the original bundle's SHA-256 before applying
+the narrowly scoped replacements. A package upgrade with a different bundle
+fails explicitly: reassess the upstream behavior and remove the compatibility
+fix when it is no longer needed. Do not weaken the checksum check or edit the
+installed NuGet package. The generated module lives under the server's
+`IntermediateOutputPath`, is registered for cleaning, and receives new static
+asset fingerprint/integrity metadata. `FluentDefinitionObservers.js` is the
+maintained callback implementation. Browser validation must use the served asset
+and verify collection of removed controls, themes, and extended navigation.
+
 ## Formatting
 
 For every change set, including configuration and documentation changes, run from

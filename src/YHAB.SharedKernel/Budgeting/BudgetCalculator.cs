@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 namespace YHAB.SharedKernel.Budgeting;
 
 /// <summary>Projects the ledger into monthly envelopes, cash overspending, and credit payment reserves.</summary>
@@ -14,53 +16,83 @@ public static class BudgetCalculator
     {
         ArgumentNullException.ThrowIfNull(plan);
         month = BudgetFacts.Month(month);
-        var start = EarliestMonth(plan, month);
-        var carry = plan.Categories.ToDictionary(item => item.Id, _ => 0m);
-        var balances = plan.Accounts.ToDictionary(item => item.Id, _ => 0m);
+        var opening = Start(plan, month);
+        var entries = plan.Transactions.Where(item => item.Repeat == RepeatFrequency.None).ToLookup(item => BudgetFacts.Month(item.Date));
+        var starts = new Dictionary<DateOnly, BudgetMonthState>();
+        BudgetMonthTransition result;
+        do
+        {
+            starts[opening.Month] = opening;
+            result = AdvanceCore(plan with { Transactions = entries[opening.Month].ToArray() }, opening, today, starts, includeTargets && opening.Month == month);
+            opening = result.Next;
+        } while (opening.Month <= month);
+        return result.Budget;
+    }
+
+    public static BudgetMonthState Start(PlanSnapshot plan, DateOnly through)
+    {
+        ArgumentNullException.ThrowIfNull(plan);
+        return new(EarliestMonth(plan, BudgetFacts.Month(through)), plan.Categories.ToImmutableDictionary(item => item.Id, _ => 0m),
+            plan.Accounts.ToImmutableDictionary(item => item.Id, _ => 0m));
+    }
+
+    /// <summary>Advances one month without mutating inputs. Prior openings supply dated refill target progress.
+    /// Supply funding aggregates to use only this month's allocations and posted entries.
+    /// Without aggregates, the snapshot retains allocations for targets and future assignments.</summary>
+    public static BudgetMonthTransition Advance(PlanSnapshot plan, BudgetMonthState opening, DateOnly today,
+        IReadOnlyDictionary<DateOnly, BudgetMonthState> priorOpenings, BudgetMonthFunding? funding = null, bool includeTargets = true)
+        => AdvanceCore(plan, opening, today, priorOpenings, includeTargets, funding);
+
+    private static BudgetMonthTransition AdvanceCore(PlanSnapshot plan, BudgetMonthState opening, DateOnly today,
+        IReadOnlyDictionary<DateOnly, BudgetMonthState> priorOpenings, bool includeTargets, BudgetMonthFunding? funding = null)
+    {
+        ArgumentNullException.ThrowIfNull(plan);
+        ArgumentNullException.ThrowIfNull(opening);
+        ArgumentNullException.ThrowIfNull(priorOpenings);
+        var month = opening.Month;
+        var balances = opening.Balances.ToDictionary();
         var accounts = plan.Accounts.ToDictionary(item => item.Id);
         var payments = plan.Categories.Where(item => item.CreditAccountId.HasValue)
             .ToDictionary(item => item.CreditAccountId!.Value, item => item.Id);
-        var entries = plan.Transactions.Where(item => item.Repeat == RepeatFrequency.None)
-            .OrderBy(item => item.Date).ThenBy(item => item.Id).ToLookup(item => BudgetFacts.Month(item.Date));
-        BudgetMonth? result = null;
-        for (var current = start; current <= month; current = current.AddMonths(1))
+        var entries = plan.Transactions.Where(item => item.Repeat == RepeatFrequency.None && BudgetFacts.Month(item.Date) == month)
+            .OrderBy(item => item.Date).ThenBy(item => item.Sequence).ThenBy(item => item.Id).ToArray();
+        decimal Carry(Guid categoryId, DateOnly period)
         {
-            var creditActivity = new List<CreditActivity>();
-            var creditPayments = new Dictionary<Guid, CreditPayment>();
-            var rows = plan.Categories.ToDictionary(item => item.Id, item => new WorkingCategory(item, carry[item.Id]));
-            foreach (var allocation in plan.Allocations.Where(item => item.Month == current))
+            if (period == month) { return opening.Carry.GetValueOrDefault(categoryId); }
+            return priorOpenings.TryGetValue(period, out var state) ? state.Carry.GetValueOrDefault(categoryId) : 0;
+        }
+        var future = funding?.FutureAssigned ?? plan.Allocations.Where(item => item.Month > month).Sum(item => item.Amount);
+        var creditActivity = new List<CreditActivity>();
+        var creditPayments = new Dictionary<Guid, CreditPayment>();
+        var rows = plan.Categories.ToDictionary(item => item.Id, item => new WorkingCategory(item, opening.Carry.GetValueOrDefault(item.Id)));
+        foreach (var allocation in plan.Allocations.Where(item => item.Month == month))
+        {
+            if (rows.TryGetValue(allocation.CategoryId, out var row))
             {
-                if (rows.TryGetValue(allocation.CategoryId, out var row))
-                {
-                    row.Assigned = allocation.Amount;
-                    row.Snoozed = allocation.Snoozed;
-                }
+                row.Assigned = allocation.Amount;
+                row.Snoozed = allocation.Snoozed;
             }
-
-            foreach (var account in plan.Accounts.Where(item => BudgetFacts.Month(item.OpenedOn) == current))
-            {
-                balances[account.Id] += account.OpeningBalance;
-            }
-
-            foreach (var entry in entries[current])
-            {
-                ApplyEntry(entry, accounts, balances, rows, payments, creditActivity, creditPayments);
-            }
-
-            var funded = FundCredit(rows, creditActivity);
-            ApplyCreditReserves(entries[current], rows, funded, creditPayments);
-            var output = rows.Values.Select(row => ToCategoryMonth(plan, row, current, today, includeTargets)).ToArray();
-            var liquid = plan.Accounts.Where(account => BudgetFacts.IsCash(account.Kind)).Sum(account => balances[account.Id])
-                + plan.Accounts.Where(account => BudgetFacts.IsCredit(account.Kind)).Sum(account => Math.Max(0, balances[account.Id]));
-            var future = plan.Allocations.Where(item => item.Month > current).Sum(item => item.Amount);
-            var creditOverspending = output.Sum(item => item.CreditOverspending);
-            var available = output.Sum(item => item.Available);
-            result = new(current, liquid - available - creditOverspending - future, output.Sum(item => item.Assigned),
-                output.Sum(item => item.Activity), available, output.Sum(item => item.CashOverspending), creditOverspending, future, output);
-            carry = output.ToDictionary(item => item.Category.Id, item => Math.Max(0, item.Available));
         }
 
-        return result!;
+        foreach (var account in plan.Accounts.Where(item => BudgetFacts.Month(item.OpenedOn) == month))
+        {
+            balances[account.Id] += account.OpeningBalance;
+        }
+        foreach (var entry in entries)
+        {
+            ApplyEntry(entry, accounts, balances, rows, payments, creditActivity, creditPayments);
+        }
+
+        var funded = FundCredit(rows, creditActivity);
+        ApplyCreditReserves(entries, rows, funded, creditPayments);
+        var output = rows.Values.Select(row => ToCategoryMonth(plan, row, month, today, includeTargets, Carry, funding)).ToArray();
+        var liquid = plan.Accounts.Where(account => BudgetFacts.IsCash(account.Kind)).Sum(account => balances[account.Id])
+            + plan.Accounts.Where(account => BudgetFacts.IsCredit(account.Kind)).Sum(account => Math.Max(0, balances[account.Id]));
+        var creditOverspending = output.Sum(item => item.CreditOverspending);
+        var available = output.Sum(item => item.Available);
+        var result = new BudgetMonth(month, liquid - available - creditOverspending - future, output.Sum(item => item.Assigned),
+            output.Sum(item => item.Activity), available, output.Sum(item => item.CashOverspending), creditOverspending, future, output);
+        return new(result, new(month.AddMonths(1), output.ToImmutableDictionary(item => item.Category.Id, item => Math.Max(0, item.Available)), balances.ToImmutableDictionary()));
     }
 
     private static DateOnly EarliestMonth(PlanSnapshot plan, DateOnly month)
@@ -106,8 +138,14 @@ public static class BudgetCalculator
         var debtChange = Math.Min(0, budgetBefore + budgetAmount) - Math.Min(0, budgetBefore);
         var remainingCredit = debtChange;
         var remainingAmount = budgetAmount;
-        foreach (var split in entry.Splits)
+        // Relational rows have no implicit order. Keep rounding remainders stable across
+        // reloads, patch restores, and client/server serialization of the same splits.
+        IReadOnlyList<SplitData> splits = entry.Splits.Count > 1
+            ? entry.Splits.OrderBy(item => item.Id).ToArray()
+            : entry.Splits;
+        for (var index = 0; index < splits.Count; index++)
         {
+            var split = splits[index];
             if (split.CategoryId is not { } categoryId || !rows.TryGetValue(categoryId, out var row))
             {
                 continue;
@@ -256,22 +294,25 @@ public static class BudgetCalculator
         return remaining;
     }
 
-    private static CategoryMonth ToCategoryMonth(PlanSnapshot plan, WorkingCategory row, DateOnly month, DateOnly today, bool includeTargets)
+    private static CategoryMonth ToCategoryMonth(PlanSnapshot plan, WorkingCategory row, DateOnly month, DateOnly today, bool includeTargets,
+        Func<Guid, DateOnly, decimal> carry, BudgetMonthFunding? funding)
     {
         var available = row.Carried + row.Assigned + row.Activity;
         var overspending = Math.Max(0, -available);
         var cash = row.Category.CreditAccountId.HasValue ? overspending
             : Math.Min(overspending, Math.Max(0, -(row.Carried + row.Assigned + row.CashActivity + row.CreditRefunds)));
-        var needed = row.Snoozed || !includeTargets ? 0 : TargetCalculator.Needed(plan, row.Category, month, today, row.Assigned, available, row.Carried);
-        var targetTotal = !includeTargets ? 0 : MonthlyTargetTotal(plan, row, month, today, available);
+        var priorAssigned = funding?.PriorAssigned.GetValueOrDefault(row.Category.Id);
+        var needed = row.Snoozed || !includeTargets ? 0 : TargetCalculator.Needed(plan, row.Category, month, today, row.Assigned, available, row.Carried, carry, priorAssigned);
+        var targetTotal = !includeTargets ? 0 : MonthlyTargetTotal(plan, row, month, today, available, carry, priorAssigned);
         return new(row.Category, row.Assigned, row.Activity, available, cash, overspending - cash, needed,
             targetTotal, row.Snoozed);
     }
 
-    private static decimal MonthlyTargetTotal(PlanSnapshot plan, WorkingCategory row, DateOnly month, DateOnly today, decimal available)
+    private static decimal MonthlyTargetTotal(PlanSnapshot plan, WorkingCategory row, DateOnly month, DateOnly today, decimal available,
+        Func<Guid, DateOnly, decimal> carry, decimal? priorAssigned)
         => row.Category.Target?.Cadence is TargetCadence.Monthly or TargetCadence.Weekly
             ? TargetCalculator.Needed(plan, row.Category, month, today, 0, 0, 0)
-            : TargetCalculator.Needed(plan, row.Category, month, today, 0, available - row.Assigned, row.Carried);
+            : TargetCalculator.Needed(plan, row.Category, month, today, 0, available - row.Assigned, row.Carried, carry, priorAssigned);
 
     private sealed class WorkingCategory(CategoryData category, decimal carried)
     {

@@ -21,6 +21,27 @@ internal sealed class HttpBudgetClient(HttpClient http) : IBudgetClient
     public async Task<PlanSnapshot> ReadAsync(Guid planId, CancellationToken cancellationToken = default)
         => await ReadAsync<PlanSnapshot>($"api/plans/{planId}", cancellationToken);
 
+    public Task<PlanView> ReadViewAsync(Guid planId, CancellationToken cancellationToken = default)
+        => ReadAsync<PlanView>($"api/plans/{planId}/view", cancellationToken);
+
+    public Task<PlanMonthView> ReadWorkspaceAsync(Guid planId, DateOnly? month, CancellationToken cancellationToken = default)
+        => ReadAsync<PlanMonthView>(month is { } date ? string.Create(System.Globalization.CultureInfo.InvariantCulture, $"api/plans/{planId}/workspace?month={date:yyyy-MM-dd}") : $"api/plans/{planId}/workspace", cancellationToken);
+
+    public Task<long> ReadRevisionAsync(Guid planId, CancellationToken cancellationToken = default)
+        => ReadAsync<long>($"api/plans/{planId}/revision", cancellationToken);
+
+    public Task<BudgetMonth> ReadMonthAsync(Guid planId, DateOnly month, long version, CancellationToken cancellationToken = default)
+        => ReadAsync<BudgetMonth>(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"api/plans/{planId}/months/{month:yyyy-MM-dd}?version={version}"), cancellationToken);
+
+    public Task<RegisterPage> ReadRegisterAsync(Guid planId, RegisterQuery query, CancellationToken cancellationToken = default)
+        => ReadAsync<RegisterPage>($"api/plans/{planId}/register?query={Uri.EscapeDataString(JsonSerializer.Serialize(query, _json))}", cancellationToken);
+
+    public Task<ReportView> ReadReportsAsync(Guid planId, DateOnly from, DateOnly through, CancellationToken cancellationToken = default)
+        => ReadAsync<ReportView>(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"api/plans/{planId}/reports?from={from:yyyy-MM-dd}&through={through:yyyy-MM-dd}"), cancellationToken);
+
+    public Task<IReadOnlyList<string>> ReadPayeesAsync(Guid planId, CancellationToken cancellationToken = default)
+        => ReadAsync<IReadOnlyList<string>>($"api/plans/{planId}/payees", cancellationToken);
+
     public async Task ExecuteAsync(Guid planId, PlanCommand command, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(command);
