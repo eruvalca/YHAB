@@ -7,6 +7,7 @@ namespace YHAB.PlaywrightTests;
 
 internal static class BrowserMemory
 {
+    // CDP cleanup deliberately ignores test cancellation; its waits have independent timeouts.
     private static readonly string[] _memoryCategories = ["disabled-by-default-memory-infra"];
     private static readonly string[] _excludedCategories = ["*"];
     public static async Task SnapshotAsync(IBrowserContext context, IPage page, string name)
@@ -22,14 +23,14 @@ internal static class BrowserMemory
         chunks.OnEvent += WriteChunk;
         try
         {
-            await session.SendAsync("HeapProfiler.takeHeapSnapshot").WaitAsync(TimeSpan.FromSeconds(45));
-            var native = await session.SendAsync("Memory.getAllTimeSamplingProfile").WaitAsync(TimeSpan.FromSeconds(30));
-            await File.WriteAllTextAsync(Path.Combine(directory, $"{name}-native.json"), JsonSerializer.Serialize(native));
+            await session.SendAsync("HeapProfiler.takeHeapSnapshot").WaitAsync(TimeSpan.FromSeconds(45), Xunit.TestContext.Current.CancellationToken);
+            var native = await session.SendAsync("Memory.getAllTimeSamplingProfile").WaitAsync(TimeSpan.FromSeconds(30), Xunit.TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(Path.Combine(directory, $"{name}-native.json"), JsonSerializer.Serialize(native), Xunit.TestContext.Current.CancellationToken);
         }
         finally
         {
             chunks.OnEvent -= WriteChunk;
-            await session.DetachAsync().WaitAsync(TimeSpan.FromSeconds(30));
+            await session.DetachAsync().WaitAsync(TimeSpan.FromSeconds(30), CancellationToken.None);
         }
         await DumpNativeAsync(context.Browser.ShouldNotBeNull(), Path.Combine(directory, $"{name}-allocators.json"));
     }
@@ -49,17 +50,17 @@ internal static class BrowserMemory
             {
                 ["transferMode"] = "ReturnAsStream",
                 ["traceConfig"] = new { includedCategories = _memoryCategories, excludedCategories = _excludedCategories, traceBufferSizeInKb = 8192 },
-            }).WaitAsync(TimeSpan.FromSeconds(30));
+            }).WaitAsync(TimeSpan.FromSeconds(30), Xunit.TestContext.Current.CancellationToken);
             try
             {
-                var dump = (await session.SendAsync("Tracing.requestMemoryDump", new(StringComparer.Ordinal) { ["deterministic"] = false, ["levelOfDetail"] = "detailed" }).WaitAsync(TimeSpan.FromSeconds(30))).ShouldNotBeNull();
+                var dump = (await session.SendAsync("Tracing.requestMemoryDump", new(StringComparer.Ordinal) { ["deterministic"] = false, ["levelOfDetail"] = "detailed" }).WaitAsync(TimeSpan.FromSeconds(30), Xunit.TestContext.Current.CancellationToken)).ShouldNotBeNull();
                 dump.GetProperty("success").GetBoolean().ShouldBeTrue();
             }
             finally
             {
-                await session.SendAsync("Tracing.end").WaitAsync(TimeSpan.FromSeconds(30));
+                await session.SendAsync("Tracing.end").WaitAsync(TimeSpan.FromSeconds(30), CancellationToken.None);
             }
-            var result = await complete.Task.WaitAsync(TimeSpan.FromSeconds(30));
+            var result = await complete.Task.WaitAsync(TimeSpan.FromSeconds(30), Xunit.TestContext.Current.CancellationToken);
             result.GetProperty("dataLossOccurred").GetBoolean().ShouldBeFalse();
             var stream = result.GetProperty("stream").GetString().ShouldNotBeNull();
             try
@@ -67,7 +68,7 @@ internal static class BrowserMemory
                 await using var writer = new StreamWriter(path);
                 while (true)
                 {
-                    var chunk = (await session.SendAsync("IO.read", new(StringComparer.Ordinal) { ["handle"] = stream }).WaitAsync(TimeSpan.FromSeconds(30))).ShouldNotBeNull();
+                    var chunk = (await session.SendAsync("IO.read", new(StringComparer.Ordinal) { ["handle"] = stream }).WaitAsync(TimeSpan.FromSeconds(30), Xunit.TestContext.Current.CancellationToken)).ShouldNotBeNull();
                     var data = chunk.GetProperty("data").GetString().ShouldNotBeNull();
                     await writer.WriteAsync(chunk.TryGetProperty("base64Encoded", out var encoded) && encoded.GetBoolean()
                         ? System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(data)) : data);
@@ -76,13 +77,13 @@ internal static class BrowserMemory
             }
             finally
             {
-                await session.SendAsync("IO.close", new(StringComparer.Ordinal) { ["handle"] = stream }).WaitAsync(TimeSpan.FromSeconds(30));
+                await session.SendAsync("IO.close", new(StringComparer.Ordinal) { ["handle"] = stream }).WaitAsync(TimeSpan.FromSeconds(30), CancellationToken.None);
             }
         }
         finally
         {
             events.OnEvent -= Completed;
-            await session.DetachAsync().WaitAsync(TimeSpan.FromSeconds(30));
+            await session.DetachAsync().WaitAsync(TimeSpan.FromSeconds(30), CancellationToken.None);
         }
     }
 
@@ -97,30 +98,30 @@ internal static class BrowserMemory
         var session = await context.NewCDPSessionAsync(page);
         try
         {
-            await session.SendAsync("HeapProfiler.collectGarbage").WaitAsync(TimeSpan.FromSeconds(30));
-            firstCollectionDom = (await session.SendAsync("Memory.getDOMCounters").WaitAsync(TimeSpan.FromSeconds(30))).ShouldNotBeNull();
+            await session.SendAsync("HeapProfiler.collectGarbage").WaitAsync(TimeSpan.FromSeconds(30), Xunit.TestContext.Current.CancellationToken);
+            firstCollectionDom = (await session.SendAsync("Memory.getDOMCounters").WaitAsync(TimeSpan.FromSeconds(30), Xunit.TestContext.Current.CancellationToken)).ShouldNotBeNull();
             // Weak cleanup can enqueue work for a later task. Sample after a
             // rendering opportunity and a second fixed collection, never an
             // unbounded collect-until-the-assertion-passes loop.
-            await page.EvaluateAsync("() => new Promise(resolve => requestAnimationFrame(() => resolve()))").WaitAsync(TimeSpan.FromSeconds(30));
-            await session.SendAsync("HeapProfiler.collectGarbage").WaitAsync(TimeSpan.FromSeconds(30));
-            heap = (await session.SendAsync("Runtime.getHeapUsage").WaitAsync(TimeSpan.FromSeconds(30))).ShouldNotBeNull();
-            dom = (await session.SendAsync("Memory.getDOMCounters").WaitAsync(TimeSpan.FromSeconds(30))).ShouldNotBeNull();
+            await page.EvaluateAsync("() => new Promise(resolve => requestAnimationFrame(() => resolve()))").WaitAsync(TimeSpan.FromSeconds(30), Xunit.TestContext.Current.CancellationToken);
+            await session.SendAsync("HeapProfiler.collectGarbage").WaitAsync(TimeSpan.FromSeconds(30), Xunit.TestContext.Current.CancellationToken);
+            heap = (await session.SendAsync("Runtime.getHeapUsage").WaitAsync(TimeSpan.FromSeconds(30), Xunit.TestContext.Current.CancellationToken)).ShouldNotBeNull();
+            dom = (await session.SendAsync("Memory.getDOMCounters").WaitAsync(TimeSpan.FromSeconds(30), Xunit.TestContext.Current.CancellationToken)).ShouldNotBeNull();
             sample = (heap.GetProperty("usedSize").GetInt64(), dom.GetProperty("nodes").GetInt32());
             // .NET's memory view is short-lived: read the length synchronously and never retain the view.
-            wasmBytes = await page.EvaluateAsync<long>("getDotnetRuntime(0).localHeapViewU8().byteLength").WaitAsync(TimeSpan.FromSeconds(30));
+            wasmBytes = await page.EvaluateAsync<long>("getDotnetRuntime(0).localHeapViewU8().byteLength").WaitAsync(TimeSpan.FromSeconds(30), Xunit.TestContext.Current.CancellationToken);
             wasmBytes.ShouldBeGreaterThan(0);
             write($"{label}: renderer={renderer}; post-GC JS heap={heap.GetProperty("usedSize").GetInt64():N0} B; WASM linear capacity={wasmBytes:N0} B; DOM={dom.GetProperty("nodes").GetInt32():N0}; documents={dom.GetProperty("documents").GetInt32()}; listeners={dom.GetProperty("jsEventListeners").GetInt32()}. WASM capacity is not live managed-object usage.");
             write($"{label}: first-collection DOM={firstCollectionDom.GetProperty("nodes").GetInt32():N0}; documents={firstCollectionDom.GetProperty("documents").GetInt32()}; listeners={firstCollectionDom.GetProperty("jsEventListeners").GetInt32()}.");
         }
         finally
         {
-            await session.DetachAsync().WaitAsync(TimeSpan.FromSeconds(30));
+            await session.DetachAsync().WaitAsync(TimeSpan.FromSeconds(30), CancellationToken.None);
         }
         var browserSession = await browser.NewBrowserCDPSessionAsync();
         try
         {
-            var processes = (await browserSession.SendAsync("SystemInfo.getProcessInfo").WaitAsync(TimeSpan.FromSeconds(30))).ShouldNotBeNull().GetProperty("processInfo");
+            var processes = (await browserSession.SendAsync("SystemInfo.getProcessInfo").WaitAsync(TimeSpan.FromSeconds(30), Xunit.TestContext.Current.CancellationToken)).ShouldNotBeNull().GetProperty("processInfo");
             long privateBytes = 0, workingSet = 0;
             var sampled = 0;
             var exited = 0;
@@ -150,12 +151,12 @@ internal static class BrowserMemory
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
                 var data = new { label, renderer, heap, dom, firstCollectionDom, wasmBytes, processes = details };
-                await File.AppendAllTextAsync(path, JsonSerializer.Serialize(data, JsonSerializerOptions.Web) + Environment.NewLine);
+                await File.AppendAllTextAsync(path, JsonSerializer.Serialize(data, JsonSerializerOptions.Web) + Environment.NewLine, Xunit.TestContext.Current.CancellationToken);
             }
         }
         finally
         {
-            await browserSession.DetachAsync().WaitAsync(TimeSpan.FromSeconds(30));
+            await browserSession.DetachAsync().WaitAsync(TimeSpan.FromSeconds(30), CancellationToken.None);
         }
         return sample;
     }

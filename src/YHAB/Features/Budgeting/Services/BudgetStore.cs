@@ -44,7 +44,7 @@ internal sealed class BudgetStore(IDbContextFactory<ApplicationDbContext> contex
     {
         await using var strategyContext = await contextFactory.CreateDbContextAsync(cancellationToken);
         var strategy = strategyContext.Database.CreateExecutionStrategy();
-        return await strategy.ExecuteAsync(async () =>
+        return await strategy.ExecuteAsync(async _ =>
         {
             await using var database = await contextFactory.CreateDbContextAsync(cancellationToken);
             database.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
@@ -59,7 +59,7 @@ internal sealed class BudgetStore(IDbContextFactory<ApplicationDbContext> contex
             var snapshot = await BudgetSnapshotMapping.LoadAsync(database, plan, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return snapshot with { Today = clock.Today };
-        });
+        }, cancellationToken);
     }
 
     public async Task<BudgetChangeOutcome> ExecuteAsync(string ownerId, Guid planId, PlanCommand command, CancellationToken cancellationToken)
@@ -76,7 +76,7 @@ internal sealed class BudgetStore(IDbContextFactory<ApplicationDbContext> contex
     {
         await using var strategyContext = await contextFactory.CreateDbContextAsync(cancellationToken);
         var strategy = strategyContext.Database.CreateExecutionStrategy();
-        return await strategy.ExecuteAsync(async () =>
+        return await strategy.ExecuteAsync(async _ =>
         {
             await using var database = await contextFactory.CreateDbContextAsync(cancellationToken);
             await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
@@ -151,7 +151,7 @@ internal sealed class BudgetStore(IDbContextFactory<ApplicationDbContext> contex
                 invalid => Task.FromResult(new Execution(invalid, false)),
                 missing => Task.FromResult(new Execution(missing, false)),
                 conflict => Task.FromResult(new Execution(conflict, false)));
-        });
+        }, cancellationToken);
     }
 
     private sealed record Execution(BudgetChangeOutcome Outcome, bool Committed);

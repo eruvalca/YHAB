@@ -128,6 +128,7 @@ public sealed class AuthenticationStateRevalidationTests
         var scope = Substitute.For<IServiceScope, IAsyncDisposable>();
         var services = Substitute.For<IServiceProvider>();
         services.GetService(typeof(UserManager<ApplicationUser>)).Returns(users);
+        services.GetService(typeof(IdentityCancellation)).Returns(new IdentityCancellation());
         scope.ServiceProvider.Returns(services);
         return scope;
     }

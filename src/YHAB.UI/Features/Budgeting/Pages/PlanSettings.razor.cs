@@ -16,9 +16,11 @@ public sealed partial class PlanSettings(IBudgetClient budgets)
     private bool _failed;
     protected override async Task OnInitializedAsync()
     {
+        using var operation = CreateOperation();
+        var token = operation.Token;
         try
         {
-            await LoadAsync();
+            await LoadAsync(token);
             Settings ??= new() { Name = _plan!.Name, Notes = _plan.Notes, Version = _plan.Version };
             Payee ??= new() { Version = _plan!.Version };
         }
@@ -28,22 +30,33 @@ public sealed partial class PlanSettings(IBudgetClient budgets)
     private Task RenameAsync() => ExecuteAsync(new RenamePayee(Payee.Version, Payee.OldName, Payee.NewName), "Payee renamed.");
     private async Task ExecuteAsync(PlanCommand command, string message)
     {
+        using var operation = CreateOperation();
+        var token = operation.Token;
+        var saved = false;
         try
         {
-            await budgets.ExecuteAsync(PlanId, command);
-            await LoadAsync();
+            await budgets.ExecuteAsync(PlanId, command, token);
+            saved = true;
+            await LoadAsync(token);
             Settings.Version = _plan!.Version;
             Payee.Version = _plan.Version;
             _message = message;
         }
-        catch (BudgetRequestException exception) { _message = exception.Message; _failed = true; }
+        catch (BudgetRequestException exception)
+        {
+            _message = saved ? "Your change was saved. Reload to update the displayed settings." : exception.Message;
+            _failed = true;
+        }
     }
-    private async Task LoadAsync()
+    private async Task LoadAsync(CancellationToken cancellationToken)
     {
-        var view = await budgets.ReadViewAsync(PlanId);
+        var view = await budgets.ReadViewAsync(PlanId, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        var payees = await budgets.ReadPayeesAsync(PlanId, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
         _plan = view.Catalog;
         _balances = view.Balances;
-        _payees = await budgets.ReadPayeesAsync(PlanId);
+        _payees = payees;
     }
     private sealed class SettingsInput
     {

@@ -255,16 +255,39 @@ Razor code-behind too. The explicit-discard preference does not justify discardi
 the asynchronous operation itself; preserve any required `await`. The explicit
 severity records the warning already enabled by the SDK's `All` analysis mode.
 
-Forward cancellation tokens to supporting calls (`CA2016`, warning). The rule
-checks methods with a final `CancellationToken` parameter and calls that can
-accept that token. Explicit `CancellationToken.None` or `default` remains an
-allowed opt-out when cancellation should deliberately not propagate.
+### Cancellation enforcement
 
-In Razor code-behind, apply this to token-taking helpers while preserving Blazor
-lifecycle and callback signatures. The rule does not enforce every use of tokens
-stored in component fields or obtained from `HttpContext`; choose the appropriate
-operation lifetime deliberately. The explicit severity records the warning already
-enabled by the SDK's `All` analysis mode.
+Cancellation diagnostics are warnings and therefore fail builds:
+
+| Rule | Enforcement |
+| --- | --- |
+| `CA2016` | Forward the enclosing method's final token parameter to supporting calls. |
+| `MA0040` | Use an available token, including accessible fields/properties, for cancellable calls. |
+| `MA0032` | Identify cancellable calls in methods that have no available token. |
+| `CA1068` | Put token parameters last, subject to the rule's framework/signature exceptions. |
+| `MA0079`, `MA0080` | Forward tokens to async enumeration, including methods without an available token. |
+
+Keep application I/O contracts explicit: `IBudgetClient` and both implementations
+require a final token without a default value. Omitting the argument is then a C#
+compile error. A contract regression test prevents optional defaults reappearing.
+New application I/O services follow the same convention; request-bound Identity
+workflows use the documented scoped `IdentityCancellation` bridge. Framework overrides,
+event handlers and callbacks retain their required signatures; obtain their token
+from the appropriate lifetime and pass it to helpers. MA0032 deliberately excludes
+some constrained signatures, so it is not a universal declaration rule.
+
+These analyzers do not prove cancellation ownership, token identity, propagation
+through every abstraction, disposal, or behavior after a database commit. Explicit
+`CancellationToken.None`/`default` can bypass forwarding rules. Use such opt-outs
+only at a documented boundary, such as host-owned shutdown or independent cleanup;
+do not silence a diagnostic by supplying an unrelated token. APIs that do not
+accept cancellation (some Identity, authentication-state, and Playwright APIs)
+need framework-specific handling; canceling `WaitAsync` only cancels the wait.
+
+See [application cancellation lifetimes](../docs/budgeting.md#cancellation-lifetimes)
+and the regression coverage in [tests/README.md](../tests/README.md).
+Rule references: [CA2016](https://learn.microsoft.com/dotnet/fundamentals/code-analysis/quality-rules/ca2016),
+[Meziantou rules](https://github.com/meziantou/Meziantou.Analyzer/tree/main/docs/Rules).
 
 Eligible private fields must be `readonly` (`IDE0044`, warning) when assigned only
 at declaration or during construction. This includes handwritten Razor code-behind;

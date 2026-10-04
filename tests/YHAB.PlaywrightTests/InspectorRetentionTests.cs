@@ -97,11 +97,11 @@ public sealed class InspectorRetentionTests(ITestOutputHelper output)
         var session = await browser.NewBrowserCDPSessionAsync();
         try
         {
-            var result = (await session.SendAsync("SystemInfo.getProcessInfo").WaitAsync(TimeSpan.FromSeconds(30))).ShouldNotBeNull();
+            var result = (await session.SendAsync("SystemInfo.getProcessInfo").WaitAsync(TimeSpan.FromSeconds(30), Xunit.TestContext.Current.CancellationToken)).ShouldNotBeNull();
             return result.GetProperty("processInfo").EnumerateArray()
                 .Where(item => string.Equals(item.GetProperty("type").GetString(), "renderer", StringComparison.Ordinal))
                 .Select(item => checked((int)item.GetProperty("id").GetDouble())).Order().ToArray();
         }
-        finally { await session.DetachAsync().WaitAsync(TimeSpan.FromSeconds(30)); }
+        finally { await session.DetachAsync().WaitAsync(TimeSpan.FromSeconds(30), CancellationToken.None); }
     }
 }

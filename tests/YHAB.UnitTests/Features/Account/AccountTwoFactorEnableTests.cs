@@ -21,7 +21,7 @@ public sealed class AccountTwoFactorEnableTests
         var user = new ApplicationUser();
         identity.Users.Options.Tokens.AuthenticatorTokenProvider = "custom-provider";
         identity.Users.VerifyTwoFactorTokenAsync(user, "custom-provider", "123456").Returns(false);
-        var service = new AccountTwoFactorService(identity.Users, identity.SignIn);
+        var service = new AccountTwoFactorService(identity.Users, identity.SignIn, identity.Cancellation);
 
         var result = await service.EnableAsync(user, "12 3-45 6");
 
@@ -39,7 +39,7 @@ public sealed class AccountTwoFactorEnableTests
         var user = new ApplicationUser();
         ConfigureValidCode(identity, user);
         identity.Users.SetTwoFactorEnabledAsync(user, true).Returns(IdentityResult.Failed());
-        var service = new AccountTwoFactorService(identity.Users, identity.SignIn);
+        var service = new AccountTwoFactorService(identity.Users, identity.SignIn, identity.Cancellation);
 
         var result = await service.EnableAsync(user, "12 3-45 6");
 
@@ -59,7 +59,7 @@ public sealed class AccountTwoFactorEnableTests
         ConfigureValidCode(identity, user);
         identity.Users.SetTwoFactorEnabledAsync(user, true).Returns(IdentityResult.Success);
         identity.Users.CountRecoveryCodesAsync(user).Returns(existingCount);
-        var service = new AccountTwoFactorService(identity.Users, identity.SignIn);
+        var service = new AccountTwoFactorService(identity.Users, identity.SignIn, identity.Cancellation);
 
         var result = await service.EnableAsync(user, "12 3-45 6");
 
@@ -81,7 +81,7 @@ public sealed class AccountTwoFactorEnableTests
         identity.Users.CountRecoveryCodesAsync(user).Returns(0);
         string[] expectedCodes = generatedCount == 1 ? ["first-code"] : _recoveryCodes;
         identity.Users.GenerateNewTwoFactorRecoveryCodesAsync(user, 10).Returns(expectedCodes);
-        var service = new AccountTwoFactorService(identity.Users, identity.SignIn);
+        var service = new AccountTwoFactorService(identity.Users, identity.SignIn, identity.Cancellation);
 
         var result = await service.EnableAsync(user, "12 3-45 6");
 
@@ -101,7 +101,7 @@ public sealed class AccountTwoFactorEnableTests
         identity.Users.SetTwoFactorEnabledAsync(user, true).Returns(IdentityResult.Success);
         identity.Users.CountRecoveryCodesAsync(user).Returns(0);
         identity.Users.GenerateNewTwoFactorRecoveryCodesAsync(user, 10).Returns(empty ? [] : (IEnumerable<string>?)null);
-        var service = new AccountTwoFactorService(identity.Users, identity.SignIn);
+        var service = new AccountTwoFactorService(identity.Users, identity.SignIn, identity.Cancellation);
 
         var result = await service.EnableAsync(user, "12 3-45 6");
 

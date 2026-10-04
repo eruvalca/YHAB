@@ -188,6 +188,64 @@ stay consistent across queries. Explicit transactions run inside EF's execution
 strategy, including when Aspire enables transient retries. Migrations run through
 Aspire's existing migration resource.
 
+## Cancellation lifetimes
+
+Components that own asynchronous I/O inherit `CancellableComponentBase`; markup-only
+components and editors that just raise events do not need it. `CreateOperation()`
+links the component lifetime to the named `RequestAborted` cascade supplied by the
+static root. Capture the operation's token before awaiting and dispose the linked
+source only when that operation finishes. Component disposal cancels lifetime work;
+custom cleanup overrides `DisposeCoreAsync` and calls the base implementation.
+Do not hide/reimplement disposal in derived components or call `StateHasChanged`
+during disposal. Cleanup that must run after cancellation uses its own bounded token.
+
+Static SSR and prerendering link to the current HTTP request. Cascades do not cross
+interactive renderer boundaries: Interactive Server and WebAssembly get a fresh
+component lifetime, independent of the completed prerender request. Tokens and token
+sources are never serialized as component parameters or HTTP payloads. The static
+Identity pages keep their existing forms, cookies, antiforgery, and routing contracts.
+
+The workspace, register, and month board cancel superseded reads and retain generation
+checks and post-await cancellation checks, because a dependency can ignore a token.
+An operation owns its source; the field used to cancel a previous operation is a
+borrowed reference. Never dispose that source while the older operation still uses it.
+Child read delegates explicitly accept tokens. Parent-owned commands retain normal
+`EventCallback` contracts and use the workspace operation's token.
+
+Server-rendered budget calls pass the token through `ServerBudgetClient` to queries
+and commands. WebAssembly passes it through `HttpBudgetClient` to HTTP send and JSON
+reads. Aborting HTTP can cancel the server's `HttpContext.RequestAborted`; minimal API
+token parameters bind to that server token. This is cooperative transport cancellation,
+not transfer of the .NET token itself, and intermediaries can delay disconnect detection.
+EF context creation, database operations, transaction commits, execution-strategy
+retry delays, and long month-replay loops observe cancellation. Background recurrence
+keeps its host shutdown token instead of borrowing a browser/request lifetime.
+
+Cancellation does not undo a committed write. Workspace timeouts preserve the original
+command/operation ID for uncertain writes; a confirmed save followed by a failed refresh
+requires only a refresh. Navigation/disposal cancellation is silent. Read timeouts keep
+editing disabled with a refresh message. No cancellation is converted into a generic
+domain failure or unconditional success, and no background task is launched to finish
+a request-owned write.
+
+Identity's tokenless `UserManager` methods use its supported protected token hook via
+`CancellableUserManager`. A scoped `IdentityCancellation` receives `RequestAborted`
+before cookie authentication. Circuit revalidation sets its own token in a fresh scope;
+the manager does not retain `HttpContext` in a circuit. Direct store initialization
+also receives the scoped token. After the first successful irreversible write in a
+multi-step account operation, `CompleteWrite()` deliberately stops forwarding request
+cancellation so remaining account writes and cookie refresh can finish. Existing partial
+outcomes still distinguish later failure from complete success.
+
+A retained Interactive Server circuit is not disposed on every temporary disconnect.
+Component lifetime cancellation therefore does not mean immediate disconnect cancellation.
+The current reconnect behavior is preserved; a circuit-disconnect policy would need a
+separate, replaceable connection lifetime and restart/recovery rules. Likewise, tokenless
+framework calls cannot be forcibly stopped; check cancellation before publishing results.
+
+Framework references: [Blazor synchronization context and disposal](https://learn.microsoft.com/aspnet/core/blazor/components/synchronization-context?view=aspnetcore-10.0),
+[minimal API special parameter binding](https://learn.microsoft.com/aspnet/core/fundamentals/minimal-apis/parameter-binding?view=aspnetcore-10.0#special-types).
+
 `PreserveRecurringOccurrenceDates` backfills occurrence identities from their
 existing transaction dates and moves the unique occurrence index to the scheduled
 date. Older undo/redo snapshots normalize missing scheduled dates to the persisted

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.JSInterop;
@@ -5,7 +6,7 @@ using YHAB.SharedKernel.Budgeting;
 
 namespace YHAB.UI.Features.Budgeting.Pages;
 
-public sealed partial class Workspace(IBudgetClient budgets, NavigationManager navigation, IJSRuntime javascript) : IAsyncDisposable
+public sealed partial class Workspace(IBudgetClient budgets, NavigationManager navigation, IJSRuntime javascript)
 {
     [Parameter] public Guid PlanId { get; set; }
     [Parameter] public Guid? AccountId { get; set; }
@@ -16,7 +17,8 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
     private DateOnly? _month;
     private PreparedMonth? _preparedMonth;
     private WorkspaceOperation _operation = new();
-    private readonly CancellationTokenSource _lifetime = new();
+    [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = "Borrowed reference: RefreshAsync owns and disposes the source after its work completes; component disposal cancels its linked lifetime.")]
+    private CancellationTokenSource? _refreshCancellation;
     private Task? _poll;
     private bool _hasUpdates;
     private bool _busy;
@@ -32,7 +34,18 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
     protected override void OnInitialized() => navigation.LocationChanged += LocationChanged;
 
     // Budget and all-transactions routes share the same parameter values. Refresh when only the path changes.
-    private void LocationChanged(object? sender, LocationChangedEventArgs args) => _ = InvokeAsync(StateHasChanged);
+    [SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "An async event handler must dispatch every unexpected exception to the Blazor renderer.")]
+    private async void LocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        try
+        {
+            await InvokeAsync(() => { if (!IsDisposed) { StateHasChanged(); } });
+        }
+        catch (Exception exception)
+        {
+            await DispatchExceptionAsync(exception);
+        }
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -52,18 +65,30 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (firstRender && RendererInfo.IsInteractive)
         {
-            _module = await javascript.InvokeAsync<IJSObjectReference>("import", "./_content/YHAB.UI/budget-workspace.js");
-            _reference = DotNetObjectReference.Create(this);
-            await _module.InvokeVoidAsync("connect", _reference);
-            _poll = WatchRevisionAsync();
+            var token = LifetimeToken;
+            try
+            {
+                var module = await javascript.InvokeAsync<IJSObjectReference>("import", token, "./_content/YHAB.UI/budget-workspace.js");
+                if (IsDisposed) { await module.DisposeAsync(); return; }
+                _module = module;
+                _reference = DotNetObjectReference.Create(this);
+                await _module.InvokeVoidAsync("connect", token, _reference);
+                token.ThrowIfCancellationRequested();
+                _poll = WatchRevisionAsync(token);
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested) { /* Disposed during JS initialization. */ }
         }
     }
 
     private async Task RefreshAsync()
     {
         if (_busy) { return; }
+        using var operation = CreateOperation();
+        var token = operation.Token;
+        var previous = _refreshCancellation;
+        _refreshCancellation = operation;
         var planId = PlanId;
         var generation = ++_requestGeneration;
         _busy = true;
@@ -71,7 +96,10 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         var postDue = false;
         try
         {
-            var (view, month) = await ReadWorkspaceAsync(planId, !IsRegister);
+            if (previous is not null) { await previous.CancelAsync(); }
+            token.ThrowIfCancellationRequested();
+            var (view, month) = await ReadWorkspaceAsync(planId, !IsRegister, token);
+            token.ThrowIfCancellationRequested();
             if (generation != _requestGeneration) { return; }
             ApplyView(view, month);
             _operation = _operation.Loaded();
@@ -91,12 +119,14 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         {
             // A previous plan's failed read must not replace the current plan's status.
         }
-        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { /* Normal workspace disposal. */ }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { /* Disposed or superseded read. */ }
+        catch (OperationCanceledException) { if (generation == _requestGeneration) { _error = "Loading your plan timed out. Refresh to try again."; } }
         finally
         {
-            if (generation == _requestGeneration) { _busy = false; }
+            if (ReferenceEquals(_refreshCancellation, operation)) { _refreshCancellation = null; }
+            if (!IsDisposed && generation == _requestGeneration) { _busy = false; }
         }
-        if (postDue && generation == _requestGeneration && Snapshot is { } plan)
+        if (!token.IsCancellationRequested && postDue && generation == _requestGeneration && Snapshot is { } plan)
         {
             await ExecuteAsync(new PostRecurring(plan.Version, plan.Today));
         }
@@ -109,16 +139,20 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
             return;
         }
         _busy = true;
+        using var operation = CreateOperation();
+        var token = operation.Token;
         var planId = PlanId;
         var generation = ++_requestGeneration;
         _operation = WorkspaceOperation.Start(command);
         _error = null;
         try
         {
-            await budgets.ExecuteAsync(planId, command, _lifetime.Token);
+            await budgets.ExecuteAsync(planId, command, token);
+            token.ThrowIfCancellationRequested();
             if (generation != _requestGeneration) { return; }
             _operation = _operation.Saved();
-            var (view, month) = await ReadWorkspaceAsync(planId, !IsRegister);
+            var (view, month) = await ReadWorkspaceAsync(planId, !IsRegister, token);
+            token.ThrowIfCancellationRequested();
             if (generation != _requestGeneration) { return; }
             ApplyView(view, month);
             _operation = _operation.Loaded();
@@ -143,23 +177,35 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         {
             // The previous plan still owns its operation; the new plan owns the visible state.
         }
-        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { /* Normal workspace disposal. */ }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { /* Disposed; a committed write remains committed. */ }
+        catch (OperationCanceledException)
+        {
+            // An HTTP timeout can occur after commit. Retain the original command and operation ID.
+            if (generation == _requestGeneration)
+            {
+                _operation = _operation.Interrupted();
+                _error = _operation.Message;
+            }
+        }
         finally
         {
-            if (generation == _requestGeneration) { _busy = false; }
+            if (!IsDisposed && generation == _requestGeneration) { _busy = false; }
         }
     }
 
     private Task RetryAsync() => _operation is { CanRetry: true, Pending: { } command } ? ExecuteAsync(command) : Task.CompletedTask;
-    private Task<BudgetMonth> LoadMonthAsync(DateOnly month)
+    private async Task<BudgetMonth> LoadMonthAsync(DateOnly month, CancellationToken cancellationToken)
     {
+        using var operation = CancellationTokenSource.CreateLinkedTokenSource(LifetimeToken, cancellationToken, RequestAborted);
+        var token = operation.Token;
+        token.ThrowIfCancellationRequested();
         _month = month;
         return _preparedMonth is { } prepared && prepared.PlanId == PlanId && prepared.Version == Snapshot!.Version && prepared.Budget.Month == month
-            ? Task.FromResult(prepared.Budget)
-            : budgets.ReadMonthAsync(PlanId, month, Snapshot!.Version, _lifetime.Token);
+            ? prepared.Budget
+            : await budgets.ReadMonthAsync(PlanId, month, Snapshot!.Version, token);
     }
 
-    private async Task<(PlanView View, BudgetMonth? Month)> ReadWorkspaceAsync(Guid planId, bool includeMonth)
+    private async Task<(PlanView View, BudgetMonth? Month)> ReadWorkspaceAsync(Guid planId, bool includeMonth, CancellationToken cancellationToken)
     {
         var month = _month;
         // Publish matching navigation and month values together. Only read conflicts
@@ -167,15 +213,15 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         var conflicts = 0;
         while (true)
         {
-            _lifetime.Token.ThrowIfCancellationRequested();
+            cancellationToken.ThrowIfCancellationRequested();
             try
             {
                 if (includeMonth)
                 {
-                    var result = await budgets.ReadWorkspaceAsync(planId, month, _lifetime.Token);
+                    var result = await budgets.ReadWorkspaceAsync(planId, month, cancellationToken);
                     return (result.View, result.Month);
                 }
-                return (await budgets.ReadViewAsync(planId, _lifetime.Token), null);
+                return (await budgets.ReadViewAsync(planId, cancellationToken), null);
             }
             catch (BudgetRequestException exception) when (exception.Status == 409 && ++conflicts < 3)
             {
@@ -193,20 +239,30 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
     }
 
     private sealed record PreparedMonth(Guid PlanId, long Version, BudgetMonth Budget);
-    private Task<RegisterPage> LoadRegisterAsync(RegisterQuery query) => budgets.ReadRegisterAsync(PlanId, query with { Version = Snapshot!.Version }, _lifetime.Token);
-    private Task<IReadOnlyList<string>> LoadPayeesAsync() => budgets.ReadPayeesAsync(PlanId, _lifetime.Token);
+    private async Task<RegisterPage> LoadRegisterAsync(RegisterQuery query, CancellationToken cancellationToken)
+    {
+        using var operation = CancellationTokenSource.CreateLinkedTokenSource(LifetimeToken, cancellationToken, RequestAborted);
+        return await budgets.ReadRegisterAsync(PlanId, query with { Version = Snapshot!.Version }, operation.Token);
+    }
 
-    private async Task WatchRevisionAsync()
+    private async Task<IReadOnlyList<string>> LoadPayeesAsync(CancellationToken cancellationToken)
+    {
+        using var operation = CancellationTokenSource.CreateLinkedTokenSource(LifetimeToken, cancellationToken, RequestAborted);
+        return await budgets.ReadPayeesAsync(PlanId, operation.Token);
+    }
+
+    private async Task WatchRevisionAsync(CancellationToken cancellationToken)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(30));
         try
         {
-            while (await timer.WaitForNextTickAsync(_lifetime.Token))
+            while (await timer.WaitForNextTickAsync(cancellationToken))
             {
                 if (_busy || Snapshot is not { } snapshot) { continue; }
                 try
                 {
-                    var revision = await budgets.ReadRevisionAsync(snapshot.Id, _lifetime.Token);
+                    var revision = await budgets.ReadRevisionAsync(snapshot.Id, cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
                     if (Snapshot?.Id == snapshot.Id && Snapshot.Version < revision)
                     {
                         _hasUpdates = true;
@@ -215,16 +271,17 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
                 }
                 catch (BudgetRequestException) { /* An explicit refresh presents authentication errors. */ }
                 catch (HttpRequestException) { /* Preserve the user's inputs during a temporary disconnection. */ }
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) { /* A polling timeout is retried on the next tick. */ }
             }
         }
-        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { /* The workspace was disposed. */ }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { /* The workspace was disposed. */ }
     }
 
     [JSInvokable]
     public Task HistoryShortcutAsync(bool redo) => InvokeAsync(async () =>
     {
         await (redo ? RedoAsync() : UndoAsync());
-        StateHasChanged();
+        if (!IsDisposed) { StateHasChanged(); }
     });
     private Task UndoAsync() => Snapshot is { CanUndo: true } plan ? ExecuteAsync(new UndoChange(plan.Version)) : Task.CompletedTask;
     private Task RedoAsync() => Snapshot is { CanRedo: true } plan ? ExecuteAsync(new RedoChange(plan.Version)) : Task.CompletedTask;
@@ -232,24 +289,35 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
     private void EditAccount(AccountData account) { _editingAccount = account; _accountEditor = true; }
     private void CloseAccount() => _accountEditor = false;
 
-    public async ValueTask DisposeAsync()
+    protected override async ValueTask DisposeCoreAsync()
     {
         navigation.LocationChanged -= LocationChanged;
-        await _lifetime.CancelAsync();
-        if (_poll is not null) { await _poll; }
-        _lifetime.Dispose();
         try
         {
-            if (_module is not null)
+            if (_poll is not null) { await _poll; }
+        }
+        finally
+        {
+            using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            try
             {
-                await _module.InvokeVoidAsync("disconnect", CancellationToken.None);
-                await _module.DisposeAsync();
+                if (_module is not null)
+                {
+                    // Disconnect must run after component cancellation, with an independent deadline.
+                    try { await _module.InvokeVoidAsync("disconnect", cleanup.Token); }
+                    finally { await _module.DisposeAsync(); }
+                }
+            }
+            catch (JSDisconnectedException)
+            {
+                // A disconnected server circuit has already released its browser listeners.
+            }
+            catch (OperationCanceledException) when (cleanup.IsCancellationRequested) { /* Disconnect exceeded its deadline. */ }
+            finally
+            {
+                _reference?.Dispose();
+                await base.DisposeCoreAsync();
             }
         }
-        catch (JSDisconnectedException)
-        {
-            // A disconnected server circuit has already released its browser listeners.
-        }
-        _reference?.Dispose();
     }
 }

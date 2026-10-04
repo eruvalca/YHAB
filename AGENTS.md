@@ -170,6 +170,24 @@ distinguishes complete success from partial completion.
 
 ## Validation
 
+- Application I/O methods require an explicit final `CancellationToken` without
+  an optional default. The request-bound Identity workflows use the documented
+  scoped `IdentityCancellation` bridge for tokenless manager APIs. Forward the
+  caller's token through HTTP, services, EF and execution-strategy retries;
+  preserve framework override/event signatures.
+  CA2016, CA1068, MA0032, MA0040, MA0079 and MA0080 are build-enforced. Explicit
+  `None`/`default` needs a concrete lifetime/commit/cleanup reason, not a workaround.
+- Components owning asynchronous I/O use `CancellableComponentBase` and linked
+  operation sources; cancel superseded reads, retain stale-result checks, and
+  dispose each source when its operation finishes. Override `DisposeCoreAsync`
+  for cleanup instead of hiding disposal. Use request cancellation for static SSR,
+  component lifetime for interactivity, and host shutdown for background workers.
+  Never serialize tokens or reuse a completed prerender request's token in a circuit.
+- Cancellation is not rollback. Preserve uncertain-write IDs and confirmed-save
+  refresh states; allow required follow-up after an irreversible Identity write
+  through `IdentityCancellation.CompleteWrite()`. See
+  [cancellation lifetimes](docs/budgeting.md#cancellation-lifetimes) for boundaries.
+
 - Compiler and analyzer warnings fail builds through `TreatWarningsAsErrors`.
   `.editorconfig`, `Directory.Build.props`, and `CodeMetricsConfig.txt` govern
   diagnostics. Fix findings without weakening shared settings; keep necessary

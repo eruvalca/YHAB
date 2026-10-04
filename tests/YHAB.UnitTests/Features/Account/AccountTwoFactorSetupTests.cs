@@ -18,7 +18,7 @@ public sealed class AccountTwoFactorSetupTests
         using var identity = IdentityTestContext.Create();
         var user = new ApplicationUser();
         identity.Users.GetAuthenticatorKeyAsync(user).Returns("EXISTINGKEY");
-        var service = new AccountTwoFactorService(identity.Users, identity.SignIn);
+        var service = new AccountTwoFactorService(identity.Users, identity.SignIn, identity.Cancellation);
 
         var result = await service.PrepareAsync(user);
 
@@ -35,7 +35,7 @@ public sealed class AccountTwoFactorSetupTests
         var user = new ApplicationUser();
         identity.Users.GetAuthenticatorKeyAsync(user).Returns(original, "NEWKEY");
         identity.Users.ResetAuthenticatorKeyAsync(user).Returns(IdentityResult.Success);
-        var service = new AccountTwoFactorService(identity.Users, identity.SignIn);
+        var service = new AccountTwoFactorService(identity.Users, identity.SignIn, identity.Cancellation);
 
         var result = await service.PrepareAsync(user);
 
@@ -51,7 +51,7 @@ public sealed class AccountTwoFactorSetupTests
         var user = new ApplicationUser();
         identity.Users.GetAuthenticatorKeyAsync(user).Returns((string?)null);
         identity.Users.ResetAuthenticatorKeyAsync(user).Returns(IdentityResult.Failed());
-        var service = new AccountTwoFactorService(identity.Users, identity.SignIn);
+        var service = new AccountTwoFactorService(identity.Users, identity.SignIn, identity.Cancellation);
 
         var result = await service.PrepareAsync(user);
 
@@ -68,7 +68,7 @@ public sealed class AccountTwoFactorSetupTests
         var user = new ApplicationUser();
         identity.Users.GetAuthenticatorKeyAsync(user).Returns((string?)null, reloaded);
         identity.Users.ResetAuthenticatorKeyAsync(user).Returns(IdentityResult.Success);
-        var service = new AccountTwoFactorService(identity.Users, identity.SignIn);
+        var service = new AccountTwoFactorService(identity.Users, identity.SignIn, identity.Cancellation);
 
         var result = await service.PrepareAsync(user);
 

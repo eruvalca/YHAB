@@ -235,6 +235,8 @@ public sealed class HouseholdBrowserTests(ITestOutputHelper output)
         var firstRow = await page.Locator(".register-table tbody tr").First.InnerTextAsync();
         await Button(page, "Next").ClickAsync();
         await page.Locator(".pagination > span").Filter(new() { HasText = $"Page 2 · {months * 200} transactions" }).WaitForAsync();
+        // The page label changes before its query finishes; wait for the actual rows.
+        await page.WaitForFunctionAsync("previous => document.querySelector('.register-table tbody tr')?.innerText !== previous", firstRow);
         string.Equals(await page.Locator(".register-table tbody tr").First.InnerTextAsync(), firstRow, StringComparison.Ordinal).ShouldBeFalse();
         var search = page.Locator("fluent-field").Filter(new() { Has = page.GetByText("Search transactions", new() { Exact = true }) }).Locator("input");
         await search.FillAsync("Salary");

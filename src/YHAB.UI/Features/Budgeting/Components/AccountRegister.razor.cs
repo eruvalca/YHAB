@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Components;
 using YHAB.SharedKernel.Budgeting;
 
@@ -35,9 +36,11 @@ public sealed partial class AccountRegister
     private readonly List<RegisterCursor?> _cursors = [null];
     private string? _error;
     private int _request;
+    [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = "Borrowed reference: LoadAsync owns and disposes the source after its work completes; component disposal cancels its linked lifetime.")]
+    private CancellationTokenSource? _loadCancellation;
     private bool IsBusy { get => Busy || field || _error is not null; set; }
-    [Parameter, EditorRequired] public Func<RegisterQuery, Task<RegisterPage>> LoadPage { get; set; } = default!;
-    [Parameter, EditorRequired] public Func<Task<IReadOnlyList<string>>> LoadPayees { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<RegisterQuery, CancellationToken, Task<RegisterPage>> LoadPage { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<CancellationToken, Task<IReadOnlyList<string>>> LoadPayees { get; set; } = default!;
     [Parameter] public IReadOnlyList<AccountBalance>? Balances { get; set; }
     private IEnumerable<TransactionData> VisibleEntries => _result?.Rows.Select(item => item.Transaction) ?? [];
     private bool AllVisibleSelected => VisibleEntries.Any() && VisibleEntries.All(item => _selected.Contains(item.Id));
@@ -61,23 +64,37 @@ public sealed partial class AccountRegister
 
     private async Task LoadAsync()
     {
+        using var operation = CreateOperation();
+        var token = operation.Token;
+        var previous = _loadCancellation;
+        _loadCancellation = operation;
         var request = ++_request;
         IsBusy = true;
         _error = null;
         try
         {
-            var result = await LoadPage(new(AccountId, _search, _filter, _sort, _from, _to, _cursors[_page], PageSize, Plan.Version));
+            if (previous is not null) { await previous.CancelAsync(); }
+            token.ThrowIfCancellationRequested();
+            var result = await LoadPage(new(AccountId, _search, _filter, _sort, _from, _to, _cursors[_page], PageSize, Plan.Version), token);
+            token.ThrowIfCancellationRequested();
             if (request != _request) { return; }
-            var payees = _payees ?? await LoadPayees();
+            var payees = _payees ?? await LoadPayees(token);
+            token.ThrowIfCancellationRequested();
             if (request != _request) { return; }
             _result = result;
             _payees = payees;
             _running.Clear();
             foreach (var row in result.Rows) { _running[row.Transaction.Id] = row.RunningBalance; }
         }
-        catch (BudgetRequestException exception) { if (request == _request) { _error = exception.Message; } }
-        catch (HttpRequestException) { if (request == _request) { _error = "Unable to load transactions. Refresh your plan to try again."; } }
-        finally { if (request == _request) { IsBusy = false; } }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { /* Disposed or superseded read. */ }
+        catch (OperationCanceledException) { if (request == _request) { _error = "Loading transactions timed out. Refresh your plan to try again."; } }
+        catch (BudgetRequestException exception) { if (!token.IsCancellationRequested && request == _request) { _error = exception.Message; } }
+        catch (HttpRequestException) { if (!token.IsCancellationRequested && request == _request) { _error = "Unable to load transactions. Refresh your plan to try again."; } }
+        finally
+        {
+            if (ReferenceEquals(_loadCancellation, operation)) { _loadCancellation = null; }
+            if (!IsDisposed && request == _request) { IsBusy = false; }
+        }
     }
     private decimal DisplayAmount(TransactionData entry) => AccountId == entry.TransferAccountId && AccountId.HasValue ? -entry.Amount : entry.Amount;
     private ClearingState DisplayState(TransactionData entry) => AccountId == entry.TransferAccountId && AccountId.HasValue ? entry.TransferState : entry.State;

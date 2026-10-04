@@ -30,4 +30,5 @@ if (builder.ExecutionContext.IsRunMode)
     postgres.WithPgAdmin(pgAdmin => pgAdmin.WithExplicitStart());
 }
 
-await builder.Build().RunAsync();
+// The host owns Ctrl+C/SIGTERM shutdown; there is no outer operation to cancel it.
+await builder.Build().RunAsync(CancellationToken.None);

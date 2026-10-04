@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="YHAB.UnitTests" />
     <ProjectReference Include="..\YHAB.UI\YHAB.UI.csproj" />
     <ProjectReference Include="..\YHAB.SharedKernel\YHAB.SharedKernel.csproj" />
   </ItemGroup>

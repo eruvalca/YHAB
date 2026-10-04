@@ -4,12 +4,13 @@ using YHAB.Features.Account.Models;
 
 namespace YHAB.Features.Account.Services;
 
-internal sealed class AccountRegistrationService(UserManager<ApplicationUser> userManager, IUserStore<ApplicationUser> userStore)
+internal sealed class AccountRegistrationService(UserManager<ApplicationUser> userManager, IUserStore<ApplicationUser> userStore, IdentityCancellation cancellation)
 {
     public async Task<RegistrationOutcome> PasswordAsync(string email, string password)
     {
         var user = await InitializeUserAsync(email);
         var result = await userManager.CreateAsync(user, password);
+        if (result.Succeeded) { cancellation.CompleteWrite(); }
         return result.Succeeded
             ? new RegistrationOutcome.Created(user)
             : new RegistrationOutcome.CreationRejected(result.Errors.ToArray());
@@ -23,6 +24,7 @@ internal sealed class AccountRegistrationService(UserManager<ApplicationUser> us
         {
             return new RegistrationOutcome.CreationRejected(creation.Errors.ToArray());
         }
+        cancellation.CompleteWrite();
         var linking = await userManager.AddLoginAsync(user, login);
         return linking.Succeeded
             ? new RegistrationOutcome.Created(user)
@@ -31,13 +33,15 @@ internal sealed class AccountRegistrationService(UserManager<ApplicationUser> us
 
     private async Task<ApplicationUser> InitializeUserAsync(string email)
     {
+        cancellation.Token.ThrowIfCancellationRequested();
         if (!userManager.SupportsUserEmail)
         {
             throw new NotSupportedException("The default UI requires a user store with email support.");
         }
         var user = new ApplicationUser();
-        await userStore.SetUserNameAsync(user, email, CancellationToken.None);
-        await ((IUserEmailStore<ApplicationUser>)userStore).SetEmailAsync(user, email, CancellationToken.None);
+        await userStore.SetUserNameAsync(user, email, cancellation.Token);
+        await ((IUserEmailStore<ApplicationUser>)userStore).SetEmailAsync(user, email, cancellation.Token);
+        cancellation.Token.ThrowIfCancellationRequested();
         return user;
     }
 }

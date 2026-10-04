@@ -115,7 +115,7 @@ internal sealed class BudgetQueries(IDbContextFactory<ApplicationDbContext> fact
     private async Task<T> ReadAsync<T>(string owner, Guid id, Func<ApplicationDbContext, BudgetPlan, Task<T>> read, CancellationToken token)
     {
         await using var strategyContext = await factory.CreateDbContextAsync(token);
-        return await strategyContext.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        return await strategyContext.Database.CreateExecutionStrategy().ExecuteAsync(async _ =>
         {
             await using var database = await factory.CreateDbContextAsync(token);
             database.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
@@ -125,7 +125,7 @@ internal sealed class BudgetQueries(IDbContextFactory<ApplicationDbContext> fact
             var result = await read(database, plan);
             await transaction.CommitAsync(token);
             return result;
-        });
+        }, token);
     }
 
     private static void RequireVersion(BudgetPlan plan, long version)

@@ -35,7 +35,7 @@ public sealed class AccountEmailChangeServiceTests
             steps.Add("refresh");
             return Task.CompletedTask;
         });
-        var service = new AccountEmailChangeService(identity.Users, identity.SignIn);
+        var service = new AccountEmailChangeService(identity.Users, identity.SignIn, identity.Cancellation);
 
         var result = await service.ChangeAsync(user, "new@example.test", "token");
 
@@ -50,7 +50,7 @@ public sealed class AccountEmailChangeServiceTests
         var user = new ApplicationUser();
         identity.Users.ChangeEmailAsync(user, "new@example.test", "token").Returns(IdentityResult.Failed(
             new IdentityError { Code = "BadToken", Description = "Invalid confirmation token" }));
-        var service = new AccountEmailChangeService(identity.Users, identity.SignIn);
+        var service = new AccountEmailChangeService(identity.Users, identity.SignIn, identity.Cancellation);
 
         var result = await service.ChangeAsync(user, "new@example.test", "token");
 
@@ -73,7 +73,7 @@ public sealed class AccountEmailChangeServiceTests
         });
         identity.Users.SetUserNameAsync(user, "new@example.test").Returns(IdentityResult.Failed(
             new IdentityError { Code = "NameTaken", Description = "Username is already in use" }));
-        var service = new AccountEmailChangeService(identity.Users, identity.SignIn);
+        var service = new AccountEmailChangeService(identity.Users, identity.SignIn, identity.Cancellation);
 
         var result = await service.ChangeAsync(user, "new@example.test", "token");
 

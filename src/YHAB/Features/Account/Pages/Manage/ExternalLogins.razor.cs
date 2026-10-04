@@ -3,11 +3,14 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Identity;
 using YHAB.Data;
 using YHAB.Features.Account.Extensions;
+using YHAB.Features.Account.Services;
 
 namespace YHAB.Features.Account.Pages.Manage;
 
 public sealed partial class ExternalLogins
 {
+    [Inject] private IdentityCancellation Cancellation { get; set; } = default!;
+
     public const string LinkLoginCallbackAction = "LinkLoginCallback";
 
     private ApplicationUser? _user;
@@ -70,6 +73,7 @@ public sealed partial class ExternalLogins
         }
         else
         {
+            Cancellation.CompleteWrite();
             await SignInManager.RefreshSignInAsync(_user);
             RedirectManager.RedirectToCurrentPageWithStatus("The external login was removed.", HttpContext);
         }

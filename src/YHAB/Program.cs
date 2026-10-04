@@ -36,6 +36,7 @@ builder.Services.AddAntiforgery(options => options.HeaderName = "X-CSRF-TOKEN");
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
 builder.Services.AddScoped<IdentityRedirectManager>();
+builder.Services.AddScoped<IdentityCancellation>();
 builder.Services.AddScoped<AccountSignInService>();
 builder.Services.AddScoped<AccountPasskeyService>();
 builder.Services.AddScoped<AccountRegistrationService>();
@@ -73,12 +74,21 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
         options.Stores.SchemaVersion = IdentitySchemaVersions.Version3;
     })
     .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddUserManager<CancellableUserManager>()
     .AddSignInManager()
     .AddDefaultTokenProviders();
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
 var app = builder.Build();
+
+// Request scopes and interactive circuit scopes are distinct. Background revalidation
+// supplies its own token in its fresh scope instead of capturing a request here.
+app.Use(async (context, next) =>
+{
+    context.RequestServices.GetRequiredService<IdentityCancellation>().Token = context.RequestAborted;
+    await next(context);
+});
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -106,6 +116,9 @@ app.Use(async (context, next) =>
     await next(context);
 });
 
+// Explicit ordering ensures cookie validation also sees the scoped request token.
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 
 app.MapStaticAssets();

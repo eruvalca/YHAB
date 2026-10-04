@@ -15,6 +15,40 @@ namespace YHAB.ComponentTests.Features.Budgeting;
 public sealed class WorkspaceTests
 {
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task TimeoutPreservesUncertainOrSavedStateWithoutResendingAsync(bool afterSave)
+    {
+        await using var context = new BunitContext();
+        var (budgets, plan) = Configure(context);
+        if (afterSave)
+        {
+            budgets.ReadViewAsync(plan.Id, Arg.Any<CancellationToken>()).Returns(Task.FromResult(View(plan)),
+                Task.FromException<PlanView>(new TaskCanceledException("HTTP timeout")));
+        }
+        else
+        {
+            budgets.ExecuteAsync(plan.Id, Arg.Any<PlanCommand>(), Arg.Any<CancellationToken>())
+                .Returns(Task.FromException(new TaskCanceledException("HTTP timeout")));
+        }
+        var component = context.Render<Workspace>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+
+        await Button(component, "Undo").ClickAsync();
+
+        component.Find("[role='alert']").TextContent.ShouldContain(afterSave ? "was saved" : "Save status unknown");
+        Commands(budgets).Length.ShouldBe(1);
+        Button(component, "Undo").HasAttribute("disabled").ShouldBeTrue();
+        if (afterSave) { component.FindAll("fluent-button").ShouldNotContain(item => item.TextContent.Contains("Retry save", StringComparison.Ordinal)); }
+        else
+        {
+            var original = Commands(budgets).Single();
+            await Button(component, "Retry save safely").ClickAsync();
+            Commands(budgets).Length.ShouldBe(2);
+            Commands(budgets)[1].ShouldBeSameAs(original);
+        }
+    }
+
+    [Theory]
     [InlineData("Static", false)]
     [InlineData("Server", true)]
     [InlineData("WebAssembly", true)]

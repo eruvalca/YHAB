@@ -9,40 +9,40 @@ internal sealed class HttpBudgetClient(HttpClient http) : IBudgetClient
     private static readonly JsonSerializerOptions _json = new(JsonSerializerDefaults.Web);
     private string? _token;
 
-    public async Task<IReadOnlyList<PlanSummary>> ListAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<PlanSummary>> ListAsync(CancellationToken cancellationToken)
         => await ReadAsync<IReadOnlyList<PlanSummary>>("api/plans", cancellationToken);
 
-    public async Task<Guid> CreateAsync(CreatePlanRequest request, CancellationToken cancellationToken = default)
+    public async Task<Guid> CreateAsync(CreatePlanRequest request, CancellationToken cancellationToken)
     {
         using var response = await SendAsync(HttpMethod.Post, "api/plans", JsonContent.Create(request), cancellationToken);
         return await response.Content.ReadFromJsonAsync<Guid>(cancellationToken);
     }
 
-    public async Task<PlanSnapshot> ReadAsync(Guid planId, CancellationToken cancellationToken = default)
+    public async Task<PlanSnapshot> ReadAsync(Guid planId, CancellationToken cancellationToken)
         => await ReadAsync<PlanSnapshot>($"api/plans/{planId}", cancellationToken);
 
-    public Task<PlanView> ReadViewAsync(Guid planId, CancellationToken cancellationToken = default)
+    public Task<PlanView> ReadViewAsync(Guid planId, CancellationToken cancellationToken)
         => ReadAsync<PlanView>($"api/plans/{planId}/view", cancellationToken);
 
-    public Task<PlanMonthView> ReadWorkspaceAsync(Guid planId, DateOnly? month, CancellationToken cancellationToken = default)
+    public Task<PlanMonthView> ReadWorkspaceAsync(Guid planId, DateOnly? month, CancellationToken cancellationToken)
         => ReadAsync<PlanMonthView>(month is { } date ? string.Create(System.Globalization.CultureInfo.InvariantCulture, $"api/plans/{planId}/workspace?month={date:yyyy-MM-dd}") : $"api/plans/{planId}/workspace", cancellationToken);
 
-    public Task<long> ReadRevisionAsync(Guid planId, CancellationToken cancellationToken = default)
+    public Task<long> ReadRevisionAsync(Guid planId, CancellationToken cancellationToken)
         => ReadAsync<long>($"api/plans/{planId}/revision", cancellationToken);
 
-    public Task<BudgetMonth> ReadMonthAsync(Guid planId, DateOnly month, long version, CancellationToken cancellationToken = default)
+    public Task<BudgetMonth> ReadMonthAsync(Guid planId, DateOnly month, long version, CancellationToken cancellationToken)
         => ReadAsync<BudgetMonth>(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"api/plans/{planId}/months/{month:yyyy-MM-dd}?version={version}"), cancellationToken);
 
-    public Task<RegisterPage> ReadRegisterAsync(Guid planId, RegisterQuery query, CancellationToken cancellationToken = default)
+    public Task<RegisterPage> ReadRegisterAsync(Guid planId, RegisterQuery query, CancellationToken cancellationToken)
         => ReadAsync<RegisterPage>($"api/plans/{planId}/register?query={Uri.EscapeDataString(JsonSerializer.Serialize(query, _json))}", cancellationToken);
 
-    public Task<ReportView> ReadReportsAsync(Guid planId, DateOnly from, DateOnly through, CancellationToken cancellationToken = default)
+    public Task<ReportView> ReadReportsAsync(Guid planId, DateOnly from, DateOnly through, CancellationToken cancellationToken)
         => ReadAsync<ReportView>(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"api/plans/{planId}/reports?from={from:yyyy-MM-dd}&through={through:yyyy-MM-dd}"), cancellationToken);
 
-    public Task<IReadOnlyList<string>> ReadPayeesAsync(Guid planId, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<string>> ReadPayeesAsync(Guid planId, CancellationToken cancellationToken)
         => ReadAsync<IReadOnlyList<string>>($"api/plans/{planId}/payees", cancellationToken);
 
-    public async Task ExecuteAsync(Guid planId, PlanCommand command, CancellationToken cancellationToken = default)
+    public async Task ExecuteAsync(Guid planId, PlanCommand command, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(command);
         var (method, route) = Route(command);
@@ -77,6 +77,7 @@ internal sealed class HttpBudgetClient(HttpClient http) : IBudgetClient
 
     private async Task<T> ReadAsync<T>(string route, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         using var response = await http.GetAsync(new Uri(route, UriKind.Relative), cancellationToken);
         await CheckAsync(response, cancellationToken);
         return await response.Content.ReadFromJsonAsync<T>(cancellationToken)
@@ -85,8 +86,10 @@ internal sealed class HttpBudgetClient(HttpClient http) : IBudgetClient
 
     private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string route, HttpContent content, CancellationToken cancellationToken)
     {
-        _token ??= (await ReadAsync<RequestToken>("api/plans/token", cancellationToken)).Token;
         using var request = new HttpRequestMessage(method, route) { Content = content };
+        cancellationToken.ThrowIfCancellationRequested();
+        _token ??= (await ReadAsync<RequestToken>("api/plans/token", cancellationToken)).Token;
+        cancellationToken.ThrowIfCancellationRequested();
         request.Headers.Add("X-CSRF-TOKEN", _token);
         var response = await http.SendAsync(request, cancellationToken);
         try

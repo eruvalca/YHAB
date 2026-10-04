@@ -118,6 +118,13 @@ dotnet_diagnostic.CA2012.severity = warning
 # Forward cancellation parameters to supporting calls; make intentional opt-outs explicit.
 dotnet_diagnostic.CA2016.severity = warning
 
+# Require available cancellation tokens, including component fields and properties.
+dotnet_diagnostic.MA0040.severity = warning
+dotnet_diagnostic.MA0032.severity = warning
+dotnet_diagnostic.MA0079.severity = warning
+dotnet_diagnostic.MA0080.severity = warning
+dotnet_diagnostic.CA1068.severity = warning
+
 # Fields already receive their type's default value before construction.
 dotnet_diagnostic.CA1805.severity = warning
 

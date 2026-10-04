@@ -12,10 +12,14 @@ public sealed partial class Plans(IBudgetClient budgets, NavigationManager navig
 
     protected override async Task OnInitializedAsync()
     {
+        using var operation = CreateOperation();
+        var token = operation.Token;
         Input ??= new();
         try
         {
-            _plans = await budgets.ListAsync();
+            var plans = await budgets.ListAsync(token);
+            token.ThrowIfCancellationRequested();
+            _plans = plans;
         }
         catch (BudgetRequestException exception)
         {
@@ -25,9 +29,12 @@ public sealed partial class Plans(IBudgetClient budgets, NavigationManager navig
 
     private async Task CreateAsync()
     {
+        using var operation = CreateOperation();
+        var token = operation.Token;
         try
         {
-            var id = await budgets.CreateAsync(new(Input.Name, Input.StarterCategories));
+            var id = await budgets.CreateAsync(new(Input.Name, Input.StarterCategories), token);
+            token.ThrowIfCancellationRequested();
             navigation.NavigateTo($"/plans/{id}");
             return;
         }

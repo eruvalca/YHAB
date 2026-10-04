@@ -7,6 +7,7 @@ using NSubstitute;
 using Shouldly;
 using Xunit;
 using YHAB.Features.Account.Pages.Manage;
+using YHAB.Features.Account.Services;
 
 namespace YHAB.ComponentTests.Features.Account;
 
@@ -14,6 +15,35 @@ namespace YHAB.ComponentTests.Features.Account;
     Justification = "xUnit requires public test classes for discovery.")]
 public sealed class ChangePasswordTests
 {
+    [Fact]
+    public async Task CancellationAfterPasswordCommitStillRefreshesSessionAsync()
+    {
+        await using var context = new BunitContext();
+        var account = context.ConfigureAccount();
+        var user = account.Authenticate();
+        using var request = new CancellationTokenSource();
+        var cancellation = context.Services.GetRequiredService<IdentityCancellation>();
+        cancellation.Token = request.Token;
+        account.Users.HasPasswordAsync(user).Returns(true);
+        account.Users.ChangePasswordAsync(user, "current-password", "new-password").Returns(async _ =>
+        {
+            await request.CancelAsync();
+            return IdentityResult.Success;
+        });
+        account.SignIn.RefreshSignInAsync(user).Returns(_ =>
+        {
+            cancellation.Token.CanBeCanceled.ShouldBeFalse();
+            return Task.CompletedTask;
+        });
+        var component = account.Render<ChangePassword>(context);
+        await FillPasswordAsync(component, "current-password", "new-password", "new-password");
+
+        await component.Find("form").SubmitAsync();
+
+        await account.SignIn.Received(1).RefreshSignInAsync(user);
+        account.StatusCookie.ShouldContain("Your password has been changed");
+    }
+
     [Theory]
     [InlineData(6)]
     [InlineData(100)]

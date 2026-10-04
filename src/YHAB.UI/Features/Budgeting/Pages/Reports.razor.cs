@@ -20,9 +20,12 @@ public sealed partial class Reports(IBudgetClient budgets)
 
     protected override async Task OnParametersSetAsync()
     {
+        using var operation = CreateOperation();
+        var token = operation.Token;
         try
         {
-            var view = await budgets.ReadViewAsync(PlanId);
+            var view = await budgets.ReadViewAsync(PlanId, token);
+            token.ThrowIfCancellationRequested();
             _plan = view.Catalog;
             _balances = view.Balances;
             _through = Parse(To, _plan.Today);
@@ -33,7 +36,8 @@ public sealed partial class Reports(IBudgetClient budgets)
                 _from = BudgetFacts.Month(_plan.Today).AddMonths(-5);
                 _through = _plan.Today;
             }
-            var report = await budgets.ReadReportsAsync(PlanId, _from, _through);
+            var report = await budgets.ReadReportsAsync(PlanId, _from, _through, token);
+            token.ThrowIfCancellationRequested();
             _months = report.Months;
             _spending = report.Spending;
         }

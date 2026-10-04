@@ -3,11 +3,14 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Identity;
 using YHAB.Data;
 using YHAB.Features.Account.Extensions;
+using YHAB.Features.Account.Services;
 
 namespace YHAB.Features.Account.Pages.Manage;
 
 public sealed partial class SetPassword
 {
+    [Inject] private IdentityCancellation Cancellation { get; set; } = default!;
+
     private string? _message;
     private ApplicationUser? _user;
 
@@ -50,6 +53,7 @@ public sealed partial class SetPassword
             return;
         }
 
+        Cancellation.CompleteWrite();
         await SignInManager.RefreshSignInAsync(_user);
         RedirectManager.RedirectToCurrentPageWithStatus("Your password has been set.", HttpContext);
     }

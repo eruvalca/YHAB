@@ -74,10 +74,10 @@ internal sealed class InspectableBrowser : IAsyncDisposable
         var session = await reference.NewBrowserCDPSessionAsync();
         try
         {
-            var result = await session.SendAsync("Browser.getBrowserCommandLine").WaitAsync(TimeSpan.FromSeconds(30));
+            var result = await session.SendAsync("Browser.getBrowserCommandLine").WaitAsync(TimeSpan.FromSeconds(30), Xunit.TestContext.Current.CancellationToken);
             return result!.Value.GetProperty("arguments").EnumerateArray().Select(argument => argument.GetString()!).ToArray();
         }
-        finally { await session.DetachAsync().WaitAsync(TimeSpan.FromSeconds(30)); }
+        finally { await session.DetachAsync().WaitAsync(TimeSpan.FromSeconds(30), CancellationToken.None); }
     }
 
     public async Task ReconnectAsync(IPlaywright playwright)
@@ -85,15 +85,16 @@ internal sealed class InspectableBrowser : IAsyncDisposable
         // Closing a CDP connection preserves the browser's default context.
         // The test proves document/runtime identity survived; no page reload,
         // cache clearing, memory-pressure signal or app-state reset is involved.
-        await Browser.CloseAsync().WaitAsync(TimeSpan.FromSeconds(30));
+        await Browser.CloseAsync().WaitAsync(TimeSpan.FromSeconds(30), Xunit.TestContext.Current.CancellationToken);
         _browser = await playwright.Chromium.ConnectOverCDPAsync(_endpoint!, new() { NoDefaults = true, Timeout = 30000 });
     }
 
+    // Resource cleanup must finish after test cancellation; each wait remains bounded.
     public async ValueTask DisposeAsync()
     {
         try
         {
-            if (_browser?.IsConnected == true) { await _browser.CloseAsync().WaitAsync(TimeSpan.FromSeconds(30)); }
+            if (_browser?.IsConnected == true) { await _browser.CloseAsync().WaitAsync(TimeSpan.FromSeconds(30), CancellationToken.None); }
         }
         finally
         {
@@ -106,7 +107,7 @@ internal sealed class InspectableBrowser : IAsyncDisposable
         if (_started && !_process.HasExited)
         {
             _process.Kill(entireProcessTree: true);
-            await _process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(30));
+            await _process.WaitForExitAsync(CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(30), CancellationToken.None);
         }
         _process.Dispose();
         var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
@@ -118,7 +119,7 @@ internal sealed class InspectableBrowser : IAsyncDisposable
         for (var attempt = 0; attempt < 5; attempt++)
         {
             try { Directory.Delete(_profile, recursive: true); break; }
-            catch (IOException) when (attempt < 4) { await Task.Delay(100); }
+            catch (IOException) when (attempt < 4) { await Task.Delay(100, CancellationToken.None); }
         }
     }
 }

@@ -20,7 +20,7 @@ internal sealed class ValidateRazorCodeBehind
 
     public string DefineConstants { get; set; } = string.Empty;
 
-    public bool Execute()
+    public bool Execute(CancellationToken cancellationToken)
     {
         var paths = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
         var compilePaths = CompileFiles.ToHashSet(paths);
@@ -41,11 +41,12 @@ internal sealed class ValidateRazorCodeBehind
 
         foreach (var path in Components)
         {
+            cancellationToken.ThrowIfCancellationRequested();
 #pragma warning disable S1075 // Razor uses project-relative virtual paths with a leading forward slash, independent of OS path separators.
             var relativePath = "/" + Path.GetRelativePath(ProjectDirectory, path).Replace('\\', '/');
 #pragma warning restore S1075
             capture.Reset();
-            engine.Process(fileSystem.GetItem(relativePath));
+            engine.Process(fileSystem.GetItem(relativePath), cancellationToken);
 
             foreach (var directive in capture.MemberBlocks)
             {
@@ -75,7 +76,7 @@ internal sealed class ValidateRazorCodeBehind
                 continue;
             }
 
-            var root = CSharpSyntaxTree.ParseText(File.ReadAllText(companion), parseOptions, companion).GetRoot();
+            var root = CSharpSyntaxTree.ParseText(File.ReadAllText(companion), parseOptions, companion, cancellationToken: cancellationToken).GetRoot(cancellationToken);
             var matchingClass = root.DescendantNodes().OfType<ClassDeclarationSyntax>().Any(declaration =>
                 !declaration.Ancestors().OfType<TypeDeclarationSyntax>().Any()
                 && string.Equals(declaration.Identifier.ValueText, capture.ClassName, StringComparison.Ordinal)

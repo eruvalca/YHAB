@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using YHAB.Data;
+using YHAB.Features.Account.Services;
 
 namespace YHAB.UnitTests.Features.Account;
 
@@ -16,6 +17,7 @@ internal sealed class IdentityTestContext(
     public IUserEmailStore<ApplicationUser> Store { get; } = store;
     public UserManager<ApplicationUser> Users { get; } = userManager;
     public SignInManager<ApplicationUser> SignIn { get; } = signInManager;
+    public IdentityCancellation Cancellation { get; } = new();
 
     public static IdentityTestContext Create()
     {

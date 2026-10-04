@@ -32,7 +32,7 @@ internal static class BudgetCheckpoints
         IReadOnlyList<BudgetMonthState> states, CancellationToken token)
     {
         await using var strategyContext = await factory.CreateDbContextAsync(token);
-        await strategyContext.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        await strategyContext.Database.CreateExecutionStrategy().ExecuteAsync(async _ =>
         {
             await using var database = await factory.CreateDbContextAsync(token);
             await using var transaction = await database.Database.BeginTransactionAsync(token);
@@ -54,6 +54,6 @@ internal static class BudgetCheckpoints
             }
             await database.SaveChangesAsync(token);
             await transaction.CommitAsync(token);
-        });
+        }, token);
     }
 }

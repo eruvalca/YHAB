@@ -15,6 +15,19 @@ the CLI and editor find `global.json` and `YHAB.slnx`.
 `YHAB.Testing` is a shared support library, not a test project. It configures
 isolated AppHost builders for the Aspire and Playwright projects.
 
+Cancellation regression checks cover required budget-client token contracts, HTTP
+send/antiforgery-bootstrap cancellation, scoped Identity tokens and committed-write
+follow-up, SSR request cancellation, component disposal, superseded register/month
+reads, and uncertain-versus-confirmed workspace saves on timeout.
+`HttpCancellationTests` hosts the real budget minimal endpoints on a test-owned
+Kestrel loopback port with disposable PostgreSQL. It aborts an HTTP request while an
+EF interceptor holds its query, verifies the database callback's token is canceled,
+then verifies a fresh request succeeds. This checks HTTP-to-EF propagation, not the
+time a proxy or PostgreSQL takes to interrupt an already-running SQL statement.
+Existing background-posting checks cover cancellation releasing a database lock.
+Component tests do not establish browser HTTP abort behavior or circuit-disconnect
+semantics; browser workflows continue to cover server/WASM rendering and navigation.
+
 The linked fixture under `tests/Scenarios` supplies identical synthetic household
 data to unit, persistence, and browser tests without adding AppHost dependencies
 to headless projects. The [three-month validation report](../docs/budgeting-validation.md)

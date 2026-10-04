@@ -2,11 +2,14 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Identity;
 using YHAB.Data;
+using YHAB.Features.Account.Services;
 
 namespace YHAB.Features.Account.Pages.Manage;
 
 public sealed partial class Index
 {
+    [Inject] private IdentityCancellation Cancellation { get; set; } = default!;
+
     private ApplicationUser? _user;
     private string? _username;
     private string? _phoneNumber;
@@ -50,6 +53,7 @@ public sealed partial class Index
                 RedirectManager.RedirectToCurrentPageWithStatus("Error: Failed to set phone number.", HttpContext);
                 return;
             }
+            Cancellation.CompleteWrite();
         }
 
         await SignInManager.RefreshSignInAsync(_user);

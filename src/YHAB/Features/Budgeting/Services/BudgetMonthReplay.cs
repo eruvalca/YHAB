@@ -90,6 +90,7 @@ internal static class BudgetMonthReplay
                 .ToArrayAsync(token)).ToLookup(item => item.Month);
             do
             {
+                token.ThrowIfCancellationRequested();
                 if (required.Contains(opening.Month)) { starts[opening.Month] = opening; }
                 var current = catalog with
                 {

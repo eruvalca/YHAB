@@ -16,7 +16,9 @@
 
 @* Load the Fluent baseline above app.css instead of reinjecting it after our overrides. *@
 <body data-theme-color="#0F766E" no-fuib-style>
-    <Routes />
+    <CascadingValue Name="RequestAborted" Value="HttpContext.RequestAborted" IsFixed="true">
+        <Routes />
+    </CascadingValue>
     <ReconnectModal />
     <script src="@Assets["_framework/blazor.web.js"]"></script>
     <script src="@Assets["Features/Account/Components/PasskeySubmit.razor.js"]" type="module"></script>
