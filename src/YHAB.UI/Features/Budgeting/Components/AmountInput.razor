@@ -1,7 +1,7 @@
 <FluentTextInput Id="@Id" Label="@Label" Value="@_text" ValueChanged="EvaluateAsync"
                  Placeholder="0.00 or 25 + 10" InputMode="TextInputMode.Text" MaxLength="200"
                  Class="amount-input" aria-invalid="@(_error is null ? "false" : "true")" aria-describedby="@(_error is null ? null : $"{Id}-error")"
-                 Disabled="@Disabled" />
+                 Margin="0" Width="100%" Disabled="@Disabled" ReadOnly="@ReadOnly" />
 @if (_error is not null)
 {
     <p id="@($"{Id}-error")" class="validation-message" role="alert">@_error</p>

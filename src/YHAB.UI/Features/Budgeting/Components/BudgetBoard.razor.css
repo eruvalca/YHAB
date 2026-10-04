@@ -1,27 +1,24 @@
-.ready-card { padding: clamp(1.25rem, 3vw, 2rem); margin-block: var(--spacingVerticalXXL); border-radius: var(--borderRadiusXLarge); background: var(--colorBrandBackground2); border: 1px solid var(--colorBrandStroke2); }
-.ready-card p { color: var(--colorBrandForeground2); margin-bottom: var(--spacingVerticalS); }
-.ready-card h2 { color: var(--colorBrandForeground1); }
-.ready-card[data-negative="true"] { background: var(--colorPaletteRedBackground1); border-color: var(--colorPaletteRedBorder1); }
-.hero-amount { display: block; font-size: clamp(2rem, 4vw, 3rem); line-height: 1.1; letter-spacing: -0.055em; font-variant-numeric: tabular-nums; color: var(--colorBrandForeground1); }
-.ready-description { max-width: 29rem; }
-.ready-description p { margin-bottom: var(--spacingVerticalL); }
+.budget-summary { position: sticky; top: var(--spacingVerticalS); z-index: 5; padding: var(--spacingVerticalM) var(--spacingHorizontalL); margin-block: var(--spacingVerticalL); border-radius: var(--borderRadiusLarge); background: var(--colorNeutralBackground1); border: 1px solid var(--colorBrandStroke2); box-shadow: var(--shadow4); }
+.budget-summary[data-negative="true"] { border-color: var(--colorPaletteRedBorder1); }
+.ready-balance > span, .budget-total > span { display: block; color: var(--colorNeutralForeground2); font-size: var(--fontSizeBase200); }
+.hero-amount { display: block; font-size: 1.75rem; line-height: 1.2; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; color: var(--colorBrandForeground1); overflow-wrap: anywhere; }
+.budget-totals { border-top: 1px solid var(--colorNeutralStroke2); margin-top: var(--spacingVerticalS); padding-top: var(--spacingVerticalS); }
+.budget-total strong { display: block; font-size: var(--fontSizeBase400); line-height: var(--lineHeightBase400); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .budget-table { min-width: 37rem; }
 .budget-table th:first-child { width: 40%; }
 .budget-table td { vertical-align: middle; }
 .budget-table td:nth-child(2) { min-width: 9rem; width: 20%; }
 .group-row th { padding-block: var(--spacingVerticalL); background: var(--colorNeutralBackground3); font-weight: var(--fontWeightSemibold); }
-.group-row .muted { font-weight: var(--fontWeightRegular); font-size: var(--fontSizeBase200); }
+.group-row .group-balance { font-weight: var(--fontWeightRegular); font-size: var(--fontSizeBase200); }
 .target-caption { display: block; font-weight: var(--fontWeightRegular); color: var(--colorNeutralForeground3); font-size: var(--fontSizeBase100); }
 .target-progress { display: block; width: 80%; height: 0.25rem; margin-top: var(--spacingVerticalS); accent-color: var(--colorBrandBackground); }
 .budget-table small { display: block; }
 .budget-table ::deep .amount-input label { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.budget-table ::deep .amount-input input { text-align: right; font-variant-numeric: tabular-nums; }
+.budget-table ::deep .amount-input fluent-text-input::part(control) { text-align: right; font-variant-numeric: tabular-nums; }
 
 .budget-table ::deep .amount-input { margin-block: 0; }
 
 .month-label { white-space: nowrap; }
 
-body[data-theme="dark"] .hero-amount,
-body[data-theme="dark"] .ready-card h2 { color: var(--colorPaletteTealForeground2); }
-
-body[data-theme="dark"] .ready-card p { color: var(--colorNeutralForeground2); }
+.hero-amount[data-money-tone="positive"] { color: var(--colorPaletteGreenForeground1); }
+.hero-amount[data-money-tone="negative"] { color: var(--colorPaletteRedForeground1); }

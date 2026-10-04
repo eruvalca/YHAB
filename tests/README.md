@@ -156,7 +156,22 @@ do not establish passkey ceremonies or every account workflow.
 
 Browser layout checks verify that Fluent dropdown triggers have no nested native
 border/padding, category links retain their native styling, desktop toolbar
-controls align, and phone pages do not overflow. Theme checks navigate between
+controls align, and phone pages do not overflow.
+Editor dropdown checks include the shadow control's visible border, since its
+minimum width can exceed the host without overflowing the document.
+Budget checks use actual mouse-wheel input to reach the document bottom; locator
+auto-scrolling and keyboard focus alone do not establish wheel scrolling works.
+Sticky-summary checks assign the remaining money in the last category, verify
+Ready to assign reaches zero while the summary stays visible, and check that
+backward keyboard navigation does not place focus beneath the summary.
+Desktop navigation checks verify reclaimed content width, keyboard restoration,
+preference persistence through enhanced navigation and reloads, and mobile drawer
+access after hiding the desktop menu.
+Amount checks cover click/Tab selection, clearing to zero, replacing selected text,
+preserved focus and input identity across saves, and stable formatting when zero
+is cleared again. Component cases cover pending saves, rejected values, blank
+normalization, and no-op expressions without another save.
+Theme checks navigate between
 SSR pages after selecting light, dark, and System preferences, verify the resolved
 color scheme, and emulate OS changes in System mode. A reload alone does not
 exercise Blazor's replacement of body attributes during enhanced navigation.

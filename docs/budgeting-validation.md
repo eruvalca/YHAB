@@ -6,6 +6,118 @@ only tests and documentation. The subsequent BUG-01 investigation changes
 workspace startup as described below. Earlier uncommitted budgeting fixes remain
 part of the tested workspace.
 
+## Compact summary and navigation follow-up
+
+The monthly budget now combines Ready to assign, funding actions, and the four
+totals in one sticky panel. It stays within the budget section while the document
+scrolls normally. Focus handling keeps category controls and editor headings
+below the panel. The desktop shell has a **Hide menu / Show menu** button whose
+local preference survives enhanced navigation and reloads; the phone drawer is
+independent. Both changes preserve the static shell and existing render modes.
+
+The browser regressions assign the final $700 in the last category and verify
+that Ready to assign reaches zero while visible, then undo to restore $700.
+They also check summary height, backward keyboard focus, reclaimed navigation
+width, keyboard restoration, reload/enhanced-navigation persistence, and a mobile
+drawer round trip after hiding the desktop menu. Initial browser runs caught an
+unnecessarily full-width action stack and lost keyboard focus after enhanced
+navigation. The stack now uses its content width. Trace inspection showed that
+SSR patches removed Fluent's browser-added tabindex from the menu toggle;
+explicit `tabindex="0"` preserves it. The test also waits for the mobile dialog
+to leave the modal top layer before testing keyboard access to the page.
+
+The corrected summary measures about 138 px at 1440 px desktop width and 196 px
+at 390 px phone width with the walkthrough plan's balances. Manual wheel scrolling
+held it 8 px from the viewport top over the lower categories. Light/dark checks
+showed no page overflow; focused phone amounts remained visible beneath it.
+
+Validation: solution build passed with zero warnings/errors; 294 unit tests and
+247 component tests passed (zero failures/skips). The final full browser attempt
+passed six of seven cases; after the explicit-tabindex correction, both navigation
+cases passed in a focused rerun (zero failures/skips), resolving the remaining
+failure. No persistence or accounting rules changed.
+
+Commands for this follow-up, from the repository root:
+
+```powershell
+dotnet build YHAB.slnx
+dotnet test --project tests/YHAB.UnitTests/YHAB.UnitTests.csproj --no-build
+dotnet test --project tests/YHAB.ComponentTests/YHAB.ComponentTests.csproj --no-build
+dotnet test --project tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj --no-build
+dotnet test --project tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj --no-build --filter-class '*NavigationTests'
+dotnet format YHAB.slnx --severity warn
+dotnet format YHAB.slnx --severity warn --verify-no-changes
+```
+
+## Spacing, scrolling, and amount-editing follow-up
+
+The later October 3 pass reviewed six additional screenshots and the assignment
+recording. Changes use the existing Fluent 5.0.0 components and theme tokens;
+there are no Identity model changes or migrations. The account link now says
+**Your account**, as requested.
+
+| Finding | Resolution / evidence |
+| --- | --- |
+| UI-07: mouse-wheel scrolling did not reach lower categories | Reproduced with a 1,921 px document inside a 720 px viewport: body overflow was hidden and wheel input left `scrollY` at zero. Override Fluent's baseline body height/overflow for document scrolling. Real wheel tests reach the document bottom at desktop and phone widths. |
+| UI-08: navigation had disconnected gray/black panels | Main, plan, and Identity settings navigation now use transparent resting backgrounds with the subtle Fluent hover token. Active indicators and keyboard focus remain. |
+| UI-09: editor spacing compounded and controls stayed narrow | Fluent's 12 px field margins stacked with 16 px layout gaps. Editors now use zero field margins, full-column text/select controls, and an account grid that collapses to one column on phones. Checkbox sizing stays intrinsic. |
+| UI-10: register search sat below its neighboring selectors | Top-align labeled fields instead of bottom-aligning different-height field wrappers. Browser geometry checks compare the actual control hosts. |
+| UI-11: assignment updates remounted every amount control | Remove the plan revision from input keys; retain category/month identity. Pending fields are read-only instead of disabled, and draft text stays steady until the confirmed result arrives. Browser checks preserve the original DOM input and keyboard focus. No decorative animation was added. |
+| UI-12: empty amounts failed validation and typing required clearing first | Focus selects all; a subsequent click can position the caret. Blank/whitespace commits zero, including clearing an existing zero. Equal-valued expressions do not create another save. Component cases check normalization, invalid-input recovery, and successful/rejected pending writes. |
+| UI-13: long emails wrapped in the shell | A compact **Your account** link replaces the email label; the email remains on account pages. Authentication/navigation tests retain guest and logout coverage. |
+| UI-14: narrow register columns split Outflow/Inflow headings, and split-row removal was above adjacent controls | Keep numeric headings on one line within the horizontally scrollable table; align the split remove action with its memo input. Budget amounts now target the Fluent input's actual shadow part for right alignment. |
+| UI-15: phone transaction selectors protruded into card padding | Fluent's shadow control has a 160 px minimum width even when its host is narrower. Stack money-direction/amount and repeat/flag fields below the small breakpoint; assert the visible dropdown border fits its host, not just the document. |
+
+Positive balances and available funds use green, negatives/outflows use red, and
+funding gaps use amber across the plan, account summary/register, and report
+summaries. Numeric signs and descriptive labels remain visible. Screenshot checks
+also cover forms and dropdown surfaces in both themes.
+
+Validation used `dotnet build YHAB.slnx` (zero warnings/errors), the complete unit
+and component projects (294 and 247 passed), and all seven Playwright cases
+(seven passed, zero failed/skipped), including the 200/400/600-transaction
+household checkpoints and server/WebAssembly transitions. Targeted regression
+evidence includes `ClearingAnAmountCommitsZeroAndClearsValidationAsync`,
+`UnchangedAmountsDoNotCreateAnotherSaveAsync`,
+`PendingSaveKeepsDraftThenDisplaysTheParentResultAsync`, and
+`ManualPlanPurchaseUndoAndReportsAgreeAsync` at both widths. The authenticated
+navigation assertion now expects the requested compact label.
+After the final numeric-heading, split-action alignment, and phone dropdown changes, the full
+solution build, 294 unit tests, 247 component tests, and both affected browser
+workflows passed again (zero failures/skips); the focused browser rerun took
+40 seconds. Formatting application and verification both exited zero.
+
+Early development runs caught zero-normalization and test expectation issues.
+One full browser attempt was interrupted by starting the manual Aspire preview
+while its test AppHosts were active (two passed, four failed before interruption,
+one unfinished). That result was discarded as a validation-session collision;
+the clean seven-case rerun completed in 1m 54s. Run preview and Aspire-based
+tests sequentially. No test parallelism settings or application readiness
+dependencies were weakened.
+
+The hands-on pass covered light/dark navigation, account creation layout,
+category targets, groups, moving money and undo, splits, recurring-frequency
+controls, reconciliation, account filters, reports, plan settings, and Identity
+navigation. A $25 move reduced Ready to assign from $2,000 to $1,975; undo
+restored $2,000. Both themes and the 390 px phone layout were inspected. The final
+phone transaction check measured matching 309 px host/border widths for all six
+dropdowns. Browser warning/error logs and YHAB warning/error telemetry were empty.
+Aspire's existing ENV-02 recurred at 20:51:24 UTC; it remains a hosting dependency
+issue, not a clean-host claim. The temporary preview was stopped normally after
+validation; the database volume was retained.
+
+Commands for this UI pass, from the repository root:
+
+```powershell
+dotnet build YHAB.slnx
+dotnet test --project tests/YHAB.UnitTests/YHAB.UnitTests.csproj --no-build
+dotnet test --project tests/YHAB.ComponentTests/YHAB.ComponentTests.csproj --no-build
+dotnet test --project tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj --no-build
+dotnet test --project tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj --no-build --filter-class '*BudgetWorkflowTests'
+dotnet format YHAB.slnx --severity warn
+dotnet format YHAB.slnx --severity warn --verify-no-changes
+```
+
 ## UI and manual workflow follow-up
 
 On October 3, 2026, a separate synthetic local account and **Household walkthrough**

@@ -1,4 +1,11 @@
 .editor-surface { margin-block: var(--spacingVerticalXL); padding: clamp(1rem, 2vw, 1.75rem); border: 1px solid var(--colorBrandStroke2); border-radius: var(--borderRadiusXLarge); background: var(--colorNeutralBackground1); box-shadow: var(--shadow8); }
 h2 { margin: 0; }
-.editor-surface ::deep .fluent-text-input, .editor-surface ::deep .fluent-select, .editor-surface ::deep .fluent-text-area { width: 100%; }
-
+.editor-surface ::deep fluent-field:has(> fluent-text-input, > fluent-dropdown, > fluent-textarea),
+.editor-surface ::deep fluent-text-input,
+.editor-surface ::deep fluent-dropdown,
+.editor-surface ::deep fluent-textarea { width: 100%; min-width: 0; }
+.editor-surface ::deep p { margin-block: 0; }
+.editor-surface ::deep .field-hint { margin-top: var(--spacingVerticalXS); }
+.editor-surface ::deep .form-field { gap: var(--spacingVerticalXXS); }
+.editor-surface ::deep .form-field input { height: 2rem; padding-block: var(--spacingVerticalXS); }
+.editor-surface ::deep .notice { margin-block: 0; }

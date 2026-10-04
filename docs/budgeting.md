@@ -12,6 +12,8 @@ storage.
    opening date and a signed opening balance; money owed is negative.
 3. Assign money in the monthly table. Amount fields accept decimal arithmetic
    such as `150 + 25`, `(600 - 120) / 3`, and dollar/comma formatting.
+   Clicking or tabbing into an amount selects its current value; a second click
+   can position the caret. Clearing the field and leaving it commits zero.
 4. Add transactions in an account or **All transactions**. Outflows need a
    category; income can go to Ready to assign. Split amounts are signed and must
    total the transaction amount exactly.
@@ -43,6 +45,16 @@ Reconciled entries show their locked state in the editor and cannot be saved.
 Select the entry in the register and use **Mark uncleared / unreconcile** first;
 either reconciled side of a transfer locks the whole entry. Empty category views
 explain that the selected filter has no matching categories.
+Assignment saves preserve the existing inputs and keyboard focus. Amount fields
+are temporarily read-only while a save is pending; a failed save restores the
+last confirmed amount alongside the workspace error. Green marks positive money,
+red marks negative balances/outflows, and amber marks funding still needed.
+Signs, labels, and overspending messages retain the meaning without color.
+The compact monthly summary stays at the top of the viewport as you scroll the
+category table, keeping Ready to assign and all four totals visible. The page
+retains normal document scrolling; keyboard focus and editor headings stay below
+the summary. On desktop, **Hide menu / Show menu** in the site header frees space
+for the plan and remembers your preference across navigation and reloads.
 
 ## Monthly rules
 

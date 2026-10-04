@@ -31,6 +31,18 @@
     color: var(--colorBrandForeground1);
 }
 
+.page ::deep .desktop-menu-toggle {
+    display: none;
+}
+
+.page ::deep .app-layout:not([mobile]) .desktop-menu-toggle {
+    display: inline-flex;
+}
+
+.page ::deep .app-layout:not([mobile]) .site-navigation[data-collapsed="true"] {
+    display: none;
+}
+
 .site-name {
     color: var(--colorBrandForeground1);
     font-size: 1.4rem;

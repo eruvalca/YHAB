@@ -1,6 +1,7 @@
 .register-table { min-width: 53rem; font-size: var(--fontSizeBase200); }
 .register-table small { display: block; margin-top: var(--spacingVerticalXS); color: var(--colorNeutralForeground3); font-weight: var(--fontWeightRegular); }
 .register-table th, .register-table td { padding-block: var(--spacingVerticalM); }
+.register-table th.numeric { white-space: nowrap; }
 .register-table tr[data-selected="true"] { background: var(--colorBrandBackground2); }
 .date-filters { margin-block: var(--spacingVerticalM); }
 .date-filters summary { cursor: pointer; margin-bottom: var(--spacingVerticalS); }
@@ -12,4 +13,3 @@
 .flag[data-flag="Yellow"] { border-color: var(--colorPaletteMarigoldForeground1); }
 .flag[data-flag="Green"] { border-color: var(--colorPaletteGreenForeground1); }
 .flag[data-flag="Purple"] { border-color: var(--colorPalettePurpleForeground1); }
-

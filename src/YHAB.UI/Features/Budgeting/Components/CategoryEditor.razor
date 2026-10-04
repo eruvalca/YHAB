@@ -1,21 +1,21 @@
 <EditorSurface Title="@(Category is null ? "New category" : Category.Name)" OnClose="OnClose">
     <FluentGrid Spacing="3">
-        <FluentGridItem Xs="12" Md="6"><FluentTextInput Label="Category name" @bind-Value="_name" MaxLength="100" /></FluentGridItem>
-        <FluentGridItem Xs="12" Md="6"><FluentSelect TOption="GroupData" TValue="Guid" Label="Category group" Items="Plan.Groups" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="_group" /></FluentGridItem>
+        <FluentGridItem Xs="12" Md="6"><FluentTextInput Margin="0" Label="Category name" @bind-Value="_name" MaxLength="100" /></FluentGridItem>
+        <FluentGridItem Xs="12" Md="6"><FluentSelect Margin="0" TOption="GroupData" TValue="Guid" Label="Category group" Items="Plan.Groups" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="_group" /></FluentGridItem>
         <FluentGridItem Xs="6"><div class="form-field"><label for="category-order">Display order</label><input id="category-order" type="number" @bind="_order" /></div></FluentGridItem>
-        <FluentGridItem Xs="6"><FluentCheckbox Label="Hide category" LabelPosition="LabelPosition.Before" @bind-Value="_hidden" /></FluentGridItem>
-        <FluentGridItem Xs="12"><FluentTextArea Label="Notes" @bind-Value="_notes" MaxLength="4000" /></FluentGridItem>
+        <FluentGridItem Xs="6"><FluentCheckbox Margin="0" Label="Hide category" LabelPosition="LabelPosition.Before" @bind-Value="_hidden" /></FluentGridItem>
+        <FluentGridItem Xs="12"><FluentTextArea Margin="0" Label="Notes" @bind-Value="_notes" MaxLength="4000" /></FluentGridItem>
     </FluentGrid>
-    <FluentCheckbox Label="Set a target" LabelPosition="LabelPosition.Before" @bind-Value="_hasTarget" />
+    <FluentCheckbox Margin="0" Label="Set a target" LabelPosition="LabelPosition.Before" @bind-Value="_hasTarget" />
     @if (_hasTarget)
     {
         <FluentGrid Spacing="3">
-            <FluentGridItem Xs="12" Md="4"><FluentSelect TOption="TargetKind" TValue="TargetKind" Label="Target behavior" Items="_kinds" OptionText="KindLabel" @bind-Value="_kind" /></FluentGridItem>
-            <FluentGridItem Xs="12" Md="4"><FluentSelect TOption="TargetCadence" TValue="TargetCadence" Label="Frequency" Items="_cadences" @bind-Value="_cadence" /></FluentGridItem>
+            <FluentGridItem Xs="12" Md="4"><FluentSelect Margin="0" TOption="TargetKind" TValue="TargetKind" Label="Target behavior" Items="_kinds" OptionText="KindLabel" @bind-Value="_kind" /></FluentGridItem>
+            <FluentGridItem Xs="12" Md="4"><FluentSelect Margin="0" TOption="TargetCadence" TValue="TargetCadence" Label="Frequency" Items="_cadences" @bind-Value="_cadence" /></FluentGridItem>
             <FluentGridItem Xs="12" Md="4"><AmountInput Label="Target amount" @bind-Value="_amount" ValidChanged="value => _valid = value" /></FluentGridItem>
             @if (_cadence == TargetCadence.Weekly)
             {
-                <FluentGridItem Xs="12"><FluentSelect TOption="DayOfWeek" TValue="DayOfWeek" Label="Each" Items="_weekdays" @bind-Value="_weekday" /></FluentGridItem>
+                <FluentGridItem Xs="12"><FluentSelect Margin="0" TOption="DayOfWeek" TValue="DayOfWeek" Label="Each" Items="_weekdays" @bind-Value="_weekday" /></FluentGridItem>
             }
             @if (_cadence is TargetCadence.Yearly or TargetCadence.Custom)
             {
@@ -39,7 +39,7 @@
     {
         <details class="danger-zone"><summary>Remove category</summary>
             <p>Choose where its assignments and transactions should go. This change can be undone.</p>
-            <FluentSelect TOption="CategoryData" TValue="Guid" Label="Move history to" Items="_replacements" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="_replacement" />
+            <FluentSelect Margin="0" TOption="CategoryData" TValue="Guid" Label="Move history to" Items="_replacements" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="_replacement" />
             <FluentButton OnClick="RemoveAsync" Disabled="Busy" Appearance="ButtonAppearance.Outline">Remove and move history</FluentButton>
         </details>
     }

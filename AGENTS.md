@@ -77,8 +77,9 @@ shared kernel, plus Aspire hosting and service defaults.
   from assistive technology. Keep native Identity inputs and submit buttons:
   their static SSR form mapping, browser autofill, and passkey submitter contracts
   must work without an interactive form. Do not bulk-convert them to web components.
-- Static `FluentNavItem` links need `tabindex="0"` because their interactive
-  roving-tabindex initialization does not run. Keep enhanced navigation enabled
+- Static `FluentNavItem` links and `FluentButton` controls need `tabindex="0"`:
+  interactive navigation initialization does not run, and enhanced navigation
+  can remove a web component's browser-added tabindex. Keep enhanced navigation enabled
   for shell links. The shared UI's JS initializer closes the static Fluent mobile
   drawer on `enhancednavigationstart`; do not force full reloads to close it.
   Keep the layout and hamburger IDs stable across server renders. Identity POSTs

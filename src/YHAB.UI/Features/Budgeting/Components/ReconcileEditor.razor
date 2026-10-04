@@ -5,7 +5,7 @@
     @if (_balance != _cleared)
     {
         <div class="notice" data-kind="warning">Difference: @Money(_balance - _cleared). Check missing or uncleared entries before making an adjustment.</div>
-        <FluentCheckbox Label="Create a balance adjustment for this difference" LabelPosition="LabelPosition.Before" @bind-Value="_adjust" />
+        <FluentCheckbox Margin="0" Label="Create a balance adjustment for this difference" LabelPosition="LabelPosition.Before" @bind-Value="_adjust" />
     }
     <FluentButton OnClick="SaveAsync" Disabled="@(Busy || !_valid || (_balance != _cleared && !_adjust))" Appearance="ButtonAppearance.Primary">Finish reconciliation</FluentButton>
 </EditorSurface>

@@ -16,10 +16,10 @@
                 </FluentStack>
             </form>
             <FluentGrid Spacing="3" Class="summary-grid">
-                <FluentGridItem Xs="6" Md="3"><div class="stat"><span>Income</span><strong>@Money(_months.Sum(item => item.Income))</strong></div></FluentGridItem>
-                <FluentGridItem Xs="6" Md="3"><div class="stat"><span>Spending</span><strong>@Money(_months.Sum(item => item.Expense))</strong></div></FluentGridItem>
-                <FluentGridItem Xs="6" Md="3"><div class="stat"><span>Net income</span><strong>@Money(_months.Sum(item => item.NetIncome))</strong></div></FluentGridItem>
-                <FluentGridItem Xs="6" Md="3"><div class="stat"><span>Net worth</span><strong>@Money(_months.Count > 0 ? _months[^1].NetWorth : 0)</strong></div></FluentGridItem>
+                <FluentGridItem Xs="6" Md="3"><div class="stat"><span>Income</span><strong data-money-tone="@MoneyTone(_months.Sum(item => item.Income))">@Money(_months.Sum(item => item.Income))</strong></div></FluentGridItem>
+                <FluentGridItem Xs="6" Md="3"><div class="stat"><span>Spending</span><strong data-money-tone="@MoneyTone(-_months.Sum(item => item.Expense))">@Money(_months.Sum(item => item.Expense))</strong></div></FluentGridItem>
+                <FluentGridItem Xs="6" Md="3"><div class="stat"><span>Net income</span><strong data-money-tone="@MoneyTone(_months.Sum(item => item.NetIncome))">@Money(_months.Sum(item => item.NetIncome))</strong></div></FluentGridItem>
+                <FluentGridItem Xs="6" Md="3"><div class="stat"><span>Net worth</span><strong data-money-tone="@MoneyTone(_months.Count > 0 ? _months[^1].NetWorth : 0)">@Money(_months.Count > 0 ? _months[^1].NetWorth : 0)</strong></div></FluentGridItem>
             </FluentGrid>
             <section class="surface report-section">
                 <h2>Spending by category</h2><p class="muted">Purchases less refunds. Transfers within your budget are excluded.</p>
@@ -38,10 +38,9 @@
             <section class="surface report-section">
                 <h2>Net worth over time</h2><p class="muted">Assets minus debt across budget, loan, and tracking accounts, at the end of each period.</p>
                 <div class="table-container"><table><thead><tr><th scope="col">Month</th><th scope="col" class="numeric">Assets</th><th scope="col" class="numeric">Debt</th><th scope="col" class="numeric">Net worth</th></tr></thead><tbody>
-                    @foreach (var month in _months) { <tr><th scope="row">@month.Month.ToString("MMM yyyy", Culture)</th><td class="numeric">@Money(month.Assets)</td><td class="numeric">@Money(month.Debt)</td><td class="numeric"><strong>@Money(month.NetWorth)</strong></td></tr> }
+                    @foreach (var month in _months) { <tr><th scope="row">@month.Month.ToString("MMM yyyy", Culture)</th><td class="numeric">@Money(month.Assets)</td><td class="numeric">@Money(month.Debt)</td><td class="numeric"><strong data-money-tone="@MoneyTone(month.NetWorth)">@Money(month.NetWorth)</strong></td></tr> }
                 </tbody></table></div>
             </section>
         </FluentGridItem>
     </FluentGrid>
 }
-

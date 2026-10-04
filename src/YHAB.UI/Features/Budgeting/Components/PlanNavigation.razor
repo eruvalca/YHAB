@@ -2,7 +2,7 @@
     <a class="back-link" href="/plans">← All plans</a>
     <p class="eyebrow">YOUR PLAN</p>
     <h2>@Plan.Name</h2>
-    <FluentNav aria-label="Budget pages" UseIcons="true">
+    <FluentNav aria-label="Budget pages" UseIcons="true" BackgroundColor="transparent" BackgroundColorHover="var(--colorSubtleBackgroundHover)">
         <FluentNavItem Href="@($"/plans/{Plan.Id}")" Match="NavLinkMatch.All" IconRest="@(new Icons.Regular.Size20.Wallet())" tabindex="0">Plan your money</FluentNavItem>
         <FluentNavItem Href="@($"/plans/{Plan.Id}/accounts")" Match="NavLinkMatch.All" IconRest="@(new Icons.Regular.Size20.Receipt())" tabindex="0">All transactions</FluentNavItem>
         <FluentNavItem Href="@($"/plans/{Plan.Id}/reports")" IconRest="@(new Icons.Regular.Size20.DataBarVertical())" tabindex="0">Reflect</FluentNavItem>
@@ -17,7 +17,7 @@
     {
         <a @key="account.Id" class="account-nav-link" href="@($"/plans/{Plan.Id}/accounts/{account.Id}")">
             <span>@account.Name<small>@AccountLabel(account.Kind)</small></span>
-            <span class="money">@Money(Balance(Plan, account, Plan.Today).Working)</span>
+            <span class="money" data-money-tone="@MoneyTone(Balance(Plan, account, Plan.Today).Working)">@Money(Balance(Plan, account, Plan.Today).Working)</span>
         </a>
     }
     @if (Plan.Accounts.Any(item => item.Closed))

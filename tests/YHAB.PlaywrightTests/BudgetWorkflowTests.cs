@@ -39,9 +39,12 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         {
             await RegisterAndLoginAsync(page);
             await CreatePlanAsync(page);
+            await VerifyWheelScrollingAsync(page);
             await VerifyBudgetLayoutAsync(page, width);
+            await VerifyCategoryEditorLayoutAsync(page);
             await VerifyApiGuardsAsync(page);
             await AddAccountAndAssignAsync(page);
+            await VerifyStickySummaryAsync(page, width);
             var planUrl = page.Url;
             await PurchaseAsync(page);
             await page.GotoAsync(planUrl);
@@ -151,12 +154,14 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await Input(page, "Assign to Groceries").FillAsync("250 + 50");
         await Input(page, "Assign to Groceries").PressAsync("Tab");
         await page.Locator(".hero-amount").Filter(new() { HasText = "$700.00" }).WaitForAsync();
+        await VerifyAmountEditingAsync(page);
     }
 
     private static async Task PurchaseAsync(IPage page)
     {
         await page.GetByRole(AriaRole.Link, new() { Name = "All transactions", Exact = true }).ClickAsync();
         await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+        await VerifyRegisterAlignmentAsync(page);
         await Button(page, "+ Add transaction").ClickAsync();
         await VerifyEditorFocusAsync(page);
         await VerifyDropdownChromeAsync(page);
@@ -201,8 +206,103 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
     private static ILocator Input(IPage page, string label) => page.Locator("fluent-field")
         .Filter(new() { Has = page.GetByText(label, new() { Exact = true }) }).Locator("input");
 
+    private static async Task VerifyWheelScrollingAsync(IPage page)
+    {
+        await page.GetByRole(AriaRole.Heading, new() { Name = "Plan your money", Exact = true }).ClickAsync();
+        await page.Keyboard.PressAsync("Control+Home");
+        await page.WaitForFunctionAsync("scrollY === 0");
+        await page.Mouse.MoveAsync((await page.EvaluateAsync<int>("innerWidth")) - 40, 700);
+        await page.Mouse.WheelAsync(0, 900);
+        await page.WaitForFunctionAsync("scrollY > 100");
+        await page.Mouse.WheelAsync(0, 10000);
+        await page.WaitForFunctionAsync("scrollY + innerHeight >= document.documentElement.scrollHeight - 2");
+    }
+
+    private static async Task VerifyCategoryEditorLayoutAsync(IPage page)
+    {
+        await page.GetByRole(AriaRole.Button, new() { Name = "Groceries", Exact = true }).ClickAsync();
+        await VerifyEditorFocusAsync(page);
+        var checkboxes = page.Locator(".editor-surface fluent-checkbox");
+        (await checkboxes.CountAsync()).ShouldBe(2);
+        foreach (var checkbox in await checkboxes.AllAsync())
+        {
+            var box = (await checkbox.BoundingBoxAsync()).ShouldNotBeNull();
+            box.Width.ShouldBeLessThanOrEqualTo(24);
+            box.Height.ShouldBeLessThanOrEqualTo(24);
+        }
+        (await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth")).ShouldBeTrue();
+        await Button(page, "Close").ClickAsync();
+    }
+
+    private static async Task VerifyAmountEditingAsync(IPage page)
+    {
+        var amount = Input(page, "Assign to Groceries");
+        var original = (await amount.ElementHandleAsync()).ShouldNotBeNull();
+        await amount.ClickAsync();
+        (await amount.EvaluateAsync<bool>("input => input.selectionStart === 0 && input.selectionEnd === input.value.length")).ShouldBeTrue();
+        await amount.PressAsync("Backspace");
+        await amount.PressAsync("Tab");
+        await page.Locator(".hero-amount").Filter(new() { HasText = "$1,000.00" }).WaitForAsync();
+        (await amount.InputValueAsync()).ShouldBe("0.00");
+        (await original.EvaluateAsync<bool>("input => input.isConnected")).ShouldBeTrue();
+        await amount.ClickAsync();
+        await amount.PressAsync("Backspace");
+        await amount.PressAsync("Tab");
+        await page.WaitForFunctionAsync("() => [...document.querySelectorAll('fluent-field')].find(field => field.querySelector('label')?.textContent === 'Assign to Groceries')?.querySelector('fluent-text-input')?.shadowRoot?.querySelector('input')?.value === '0.00'");
+        (await page.GetByRole(AriaRole.Button, new() { Name = "Utilities", Exact = true })
+            .EvaluateAsync<bool>("button => document.activeElement === button")).ShouldBeTrue();
+        await page.Keyboard.PressAsync("Tab");
+        var next = Input(page, "Assign to Utilities");
+        (await next.EvaluateAsync<bool>("input => input.getRootNode().activeElement === input && input.selectionStart === 0 && input.selectionEnd === input.value.length")).ShouldBeTrue();
+        (await page.Locator(".budget-table [role='alert']").CountAsync()).ShouldBe(0);
+        await amount.ClickAsync();
+        await page.Keyboard.TypeAsync("300");
+        await amount.PressAsync("Tab");
+        await page.Locator(".hero-amount").Filter(new() { HasText = "$700.00" }).WaitForAsync();
+        (await amount.InputValueAsync()).ShouldBe("300.00");
+        await original.DisposeAsync();
+    }
+
+    private static async Task VerifyStickySummaryAsync(IPage page, int width)
+    {
+        var amount = page.Locator(".budget-table tbody fluent-text-input input").Last;
+        await amount.FillAsync("700");
+        await amount.PressAsync("Tab");
+        await page.Locator(".hero-amount").Filter(new() { HasText = "$0.00" }).WaitForAsync();
+        var summary = (await page.Locator(".budget-summary").BoundingBoxAsync()).ShouldNotBeNull();
+        summary.Y.ShouldBeInRange(0, 16);
+        summary.Height.ShouldBeLessThan(width < 768 ? 250 : 155);
+        (await amount.BoundingBoxAsync()).ShouldNotBeNull().Y.ShouldBeGreaterThan(summary.Y + summary.Height);
+        await amount.FocusAsync();
+        await page.Keyboard.PressAsync("Shift+Tab");
+        await page.Keyboard.PressAsync("Shift+Tab");
+        (await page.EvaluateAsync<double>("() => { let element = document.activeElement; while (element.shadowRoot?.activeElement) element = element.shadowRoot.activeElement; return element.getBoundingClientRect().top - document.querySelector('.budget-summary').getBoundingClientRect().bottom; }")).ShouldBeGreaterThan(0);
+        await Button(page, "Undo").ClickAsync();
+        await page.Locator(".hero-amount").Filter(new() { HasText = "$700.00" }).WaitForAsync();
+    }
+
+    private static async Task VerifyRegisterAlignmentAsync(IPage page)
+    {
+        if ((await page.EvaluateAsync<int>("innerWidth")) < 1000)
+        {
+            return;
+        }
+        var search = (await page.Locator(".table-toolbar fluent-text-input").BoundingBoxAsync()).ShouldNotBeNull();
+        foreach (var dropdown in await page.Locator(".table-toolbar fluent-dropdown").AllAsync())
+        {
+            var box = (await dropdown.BoundingBoxAsync()).ShouldNotBeNull();
+            Math.Abs(search.Y - box.Y).ShouldBeLessThan(1);
+        }
+    }
+
     private static async Task VerifyDropdownChromeAsync(IPage page)
     {
+        foreach (var dropdown in await page.Locator(".editor-surface fluent-dropdown").AllAsync())
+        {
+            // Fluent's inner border has its own minimum width. Checking only
+            // document/host overflow misses a border protruding into card padding.
+            (await dropdown.EvaluateAsync<bool>("host => host.shadowRoot.querySelector('.control').getBoundingClientRect().right <= host.getBoundingClientRect().right + 1")).ShouldBeTrue();
+        }
         var controls = page.Locator("fluent-dropdown > button[slot='control']");
         (await controls.CountAsync()).ShouldBeGreaterThan(0);
         foreach (var control in await controls.AllAsync())

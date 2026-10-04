@@ -207,8 +207,15 @@ Render boundaries are deliberate:
   through `afterWebStarted`. It closes the Fluent mobile drawer on
   `enhancednavigationstart`, before the DOM update, including back/forward
   navigation. Stable layout/hamburger IDs preserve their JS wiring across updates.
+  The desktop **Hide menu / Show menu** button stores its preference in local
+  storage and reapplies it after enhanced navigation. It uses the same static
+  shell initializer, without starting a .NET renderer; the mobile drawer remains
+  independent of that preference. Its explicit `tabindex="0"` survives SSR patches
+  that would otherwise remove Fluent's browser-added keyboard focus attribute.
   The shell grows with its content and uses document scrolling, allowing Blazor
   to reset scroll position on navigation and restore it through browser history.
+  `app.css` overrides Fluent's default fixed-height, overflow-hidden body so
+  mouse-wheel and touch scrolling can reach the full document.
   The account settings menu does not use interactive categories or event callbacks.
 - Identity forms retain native inputs, submit buttons, form names, antiforgery,
   and passkey hooks. They receive Fluent token styling while preserving static
@@ -225,6 +232,12 @@ files. Use narrowly scoped `::deep` selectors for child component markup.
 Native button styling excludes slotted controls: Fluent dropdowns render a native
 button in their `control` slot and own its border and padding. Filter toolbars use
 explicit Fluent alignment and zero field margins so labels do not displace actions.
+Editor fields also use zero margins, leaving spacing to their Fluent grid/stack;
+the shared editor surface stretches text inputs, dropdowns, and text areas to the
+available column width while keeping checkbox sizing intrinsic.
+All three navigation menus use transparent resting backgrounds and Fluent's subtle
+hover token. The signed-in shell link reads **Your account**; account details keep
+the email address. Money uses shared `data-money-tone` colors from Fluent tokens.
 
 Custom CSS is limited to application sizing, accessibility, and static form
 compatibility, using Fluent tokens. Prefer Fluent layout/spacing parameters;

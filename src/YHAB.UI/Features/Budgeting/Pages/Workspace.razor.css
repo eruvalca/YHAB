@@ -5,6 +5,7 @@
 }
 
 .workspace-status {
+    min-width: 9rem;
     margin-inline-start: var(--spacingHorizontalS);
     font-size: var(--fontSizeBase200);
 }

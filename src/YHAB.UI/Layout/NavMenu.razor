@@ -5,13 +5,13 @@
 <div class="navigation-content">
     @* Static SSR does not run FluentNav's roving-tabindex initialization. Keep
        native links keyboard reachable, including before Blazor starts. *@
-    <FluentNav UseIcons="true" aria-label="Main navigation">
+    <FluentNav UseIcons="true" BackgroundColor="transparent" BackgroundColorHover="var(--colorSubtleBackgroundHover)" aria-label="Main navigation">
         <FluentNavItem Href="/" Match="NavLinkMatch.All" IconRest="@(new Icons.Regular.Size20.Home())" IconActive="@(new Icons.Filled.Size20.Home())" tabindex="0">Home</FluentNavItem>
         <FluentNavItem Href="plans" IconRest="@(new Icons.Regular.Size20.Wallet())" IconActive="@(new Icons.Filled.Size20.Wallet())" tabindex="0">Your plans</FluentNavItem>
         <FluentNavSectionHeader Title="Account" />
         <AuthorizeView>
             <Authorized>
-                <FluentNavItem Href="Account/Manage" IconRest="@(new Icons.Regular.Size20.Person())" tabindex="0">@context.User.Identity?.Name</FluentNavItem>
+                <FluentNavItem Href="Account/Manage" IconRest="@(new Icons.Regular.Size20.Person())" tabindex="0">Your account</FluentNavItem>
             </Authorized>
             <NotAuthorized>
                 <FluentNavItem Href="Account/Register" IconRest="@(new Icons.Regular.Size20.PersonAdd())" tabindex="0">Register</FluentNavItem>

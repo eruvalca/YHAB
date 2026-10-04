@@ -7,21 +7,28 @@
         <FluentButton OnClick="Current" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle">Today</FluentButton>
     </FluentStack>
 </FluentStack>
-<section class="ready-card" data-negative="@(_budget.ReadyToAssign < 0 ? "true" : "false")">
-    <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalXL)">
-        <div><p>@(_budget.ReadyToAssign < 0 ? "Overassigned" : "Ready to assign")</p><strong class="hero-amount">@Money(_budget.ReadyToAssign)</strong></div>
-        <div class="ready-description"><h2>@ReadyTitle</h2><p>@ReadyDescription</p>
-            <FluentButton OnClick="AutoAssignAsync" Disabled="@(Busy || _budget.ReadyToAssign <= 0)" Appearance="ButtonAppearance.Primary">Fund targets</FluentButton>
-            <FluentButton OnClick="ShowMove" Disabled="Busy" Appearance="ButtonAppearance.Outline">Move money</FluentButton>
+<div class="budget-board">
+<section class="budget-summary" aria-label="Monthly budget summary" data-negative="@(_budget.ReadyToAssign < 0 ? "true" : "false")">
+    <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalAlignment="HorizontalAlignment.SpaceBetween"
+                 HorizontalGap="var(--spacingHorizontalM)" VerticalGap="var(--spacingVerticalS)">
+        <div class="ready-balance" role="status" aria-atomic="true">
+            <span>@(_budget.ReadyToAssign < 0 ? "Overassigned" : "Ready to assign")</span>
+            <strong class="hero-amount" data-money-tone="@MoneyTone(_budget.ReadyToAssign)">@Money(_budget.ReadyToAssign)</strong>
         </div>
+        <FluentStack Width="auto" Wrap="true" HorizontalGap="var(--spacingHorizontalS)" VerticalGap="var(--spacingVerticalXS)">
+            <FluentButton OnClick="AutoAssignAsync" Disabled="@(Busy || _budget.ReadyToAssign <= 0)" Size="ButtonSize.Small" Appearance="ButtonAppearance.Primary">Fund targets</FluentButton>
+            <FluentButton OnClick="ShowMove" Disabled="Busy" Size="ButtonSize.Small" Appearance="ButtonAppearance.Outline">Move money</FluentButton>
+        </FluentStack>
     </FluentStack>
+    <div class="budget-totals">
+        <FluentGrid Spacing="2">
+            <FluentGridItem Xs="6" Sm="3"><div class="budget-total"><span>Assigned</span><strong data-money-tone="@MoneyTone(_budget.Assigned)">@Money(_budget.Assigned)</strong></div></FluentGridItem>
+            <FluentGridItem Xs="6" Sm="3"><div class="budget-total"><span>Activity</span><strong data-money-tone="@MoneyTone(_budget.Activity)">@Money(_budget.Activity)</strong></div></FluentGridItem>
+            <FluentGridItem Xs="6" Sm="3"><div class="budget-total"><span>Available</span><strong data-money-tone="@MoneyTone(_budget.Available)">@Money(_budget.Available)</strong></div></FluentGridItem>
+            <FluentGridItem Xs="6" Sm="3"><div class="budget-total"><span>Underfunded</span><strong data-money-tone="@(_budget.Categories.Any(item => item.TargetNeeded > 0 || item.Available < 0) ? "attention" : "neutral")">@Money(_budget.Categories.Sum(item => Math.Max(item.TargetNeeded, -item.Available)))</strong></div></FluentGridItem>
+        </FluentGrid>
+    </div>
 </section>
-<FluentGrid Spacing="3" Class="summary-grid">
-    <FluentGridItem Xs="6" Md="3"><div class="stat"><span>Assigned</span><strong>@Money(_budget.Assigned)</strong></div></FluentGridItem>
-    <FluentGridItem Xs="6" Md="3"><div class="stat"><span>Activity</span><strong>@Money(_budget.Activity)</strong></div></FluentGridItem>
-    <FluentGridItem Xs="6" Md="3"><div class="stat"><span>Available</span><strong>@Money(_budget.Available)</strong></div></FluentGridItem>
-    <FluentGridItem Xs="6" Md="3"><div class="stat"><span>Underfunded</span><strong>@Money(_budget.Categories.Sum(item => Math.Max(item.TargetNeeded, -item.Available)))</strong></div></FluentGridItem>
-</FluentGrid>
 @if (_budget.CashOverspending + _budget.CreditOverspending > 0)
 {
     <div class="notice" data-kind="warning">@Money(_budget.CashOverspending) cash overspending and @Money(_budget.CreditOverspending) credit overspending. Move money into these categories to cover it.</div>
@@ -52,7 +59,7 @@
             {
                 var rows = Rows(group.Id).ToArray();
                 if (rows.Length == 0) { continue; }
-                <tr class="group-row"><th colspan="4" scope="rowgroup">@group.Name <span class="muted">· @Money(rows.Sum(item => item.Available)) available</span></th></tr>
+                <tr class="group-row"><th colspan="4" scope="rowgroup">@group.Name <span class="group-balance" data-money-tone="@MoneyTone(rows.Sum(item => item.Available))">· @Money(rows.Sum(item => item.Available)) available</span></th></tr>
                 @foreach (var row in rows)
                 {
                     <tr @key="row.Category.Id">
@@ -63,8 +70,8 @@
                                 <progress class="target-progress" max="100" value="@Progress(row)" aria-label="@($"{row.Category.Name} target progress")"></progress>
                             }
                         </th>
-                        <td class="numeric"><AmountInput @key="(row.Category.Id, _month, Plan.Version)" Label="@($"Assign to {row.Category.Name}")" Value="row.Assigned" ValueChanged="amount => AssignAsync(row.Category.Id, amount)" Disabled="Busy" /></td>
-                        <td class="numeric money">@Money(row.Activity)</td>
+                        <td class="numeric"><AmountInput @key="(row.Category.Id, _month)" Label="@($"Assign to {row.Category.Name}")" Value="row.Assigned" ValueChanged="amount => AssignAsync(row.Category.Id, amount)" Disabled="@(!RendererInfo.IsInteractive)" ReadOnly="Busy" /></td>
+                        <td class="numeric money" data-money-tone="@MoneyTone(row.Activity)">@Money(row.Activity)</td>
                         <td class="numeric"><span class="available-pill" data-tone="@Tone(row)">@Money(row.Available)</span>@if (row.Available < 0) { <small>@(row.CashOverspending > 0 ? "Cash overspent" : "Credit overspent")</small> }</td>
                     </tr>
                 }
@@ -78,3 +85,4 @@ else if (!Plan.Groups.Any(group => Rows(group.Id).Any()))
     <div class="empty-state"><h2>No categories match this view</h2><p>Choose another view to see the rest of your plan.</p></div>
 }
 <p class="muted">Positive balances roll forward. @Money(_budget.AssignedInFuture) is assigned in future months. Enter arithmetic such as 150 + 25 in any amount field.</p>
+</div>

@@ -13,9 +13,9 @@
 {
     var balance = Balance(Plan, _account, Plan.Today);
     <FluentGrid Spacing="3" Class="summary-grid">
-        <FluentGridItem Xs="12" Md="4"><div class="stat"><span>Cleared balance</span><strong>@Money(balance.Cleared)</strong></div></FluentGridItem>
-        <FluentGridItem Xs="6" Md="4"><div class="stat"><span>Uncleared</span><strong>@Money(balance.Uncleared)</strong></div></FluentGridItem>
-        <FluentGridItem Xs="6" Md="4"><div class="stat"><span>Working balance</span><strong>@Money(balance.Working)</strong></div></FluentGridItem>
+        <FluentGridItem Xs="12" Md="4"><div class="stat"><span>Cleared balance</span><strong data-money-tone="@MoneyTone(balance.Cleared)">@Money(balance.Cleared)</strong></div></FluentGridItem>
+        <FluentGridItem Xs="6" Md="4"><div class="stat"><span>Uncleared</span><strong data-money-tone="@MoneyTone(balance.Uncleared)">@Money(balance.Uncleared)</strong></div></FluentGridItem>
+        <FluentGridItem Xs="6" Md="4"><div class="stat"><span>Working balance</span><strong data-money-tone="@MoneyTone(balance.Working)">@Money(balance.Working)</strong></div></FluentGridItem>
     </FluentGrid>
     @if (IsLoan(_account.Kind))
     {
@@ -30,8 +30,8 @@
 {
     <ReconcileEditor Plan="Plan" Account="_account" OnCommand="OnCommand" OnClose="CloseEditors" Busy="Busy" />
 }
-<FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Bottom" HorizontalGap="var(--spacingHorizontalM)" Class="table-toolbar">
-    <FluentTextInput Label="Search transactions" @bind-Value="_search" @bind-Value:after="ResetPage" Immediate="true" Placeholder="Payee, category, memo, flag, amount…" Margin="0" />
+<FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Top" HorizontalGap="var(--spacingHorizontalM)" Class="table-toolbar">
+    <FluentTextInput Label="Search transactions" @bind-Value="_search" @bind-Value:after="ResetPage" Immediate="true" Placeholder="Payee, category, memo, flag, amount…" Width="min(100%, 22rem)" Margin="0" />
     <FluentSelect TOption="string" TValue="string" Label="Show" Items="_filters" @bind-Value="_filter" @bind-Value:after="ResetPage" Margin="0" />
     <FluentSelect TOption="string" TValue="string" Label="Sort by" Items="_sorts" @bind-Value="_sort" @bind-Value:after="ResetPage" Margin="0" />
 </FluentStack>
@@ -70,10 +70,10 @@
                         <FluentButton OnClick="() => Duplicate(entry)" Appearance="ButtonAppearance.Subtle">Duplicate</FluentButton>
                     </td>
                     <td>@CategoryLabel(entry)<small>@entry.Memo</small>@if (entry.NeedsApproval) { <span class="approval-badge">Needs approval</span> }</td>
-                    <td class="numeric money">@(amount < 0 ? Money(-amount) : "—")</td>
-                    <td class="numeric money">@(amount > 0 ? Money(amount) : "—")</td>
+                    <td class="numeric money" data-money-tone="@(amount < 0 ? "negative" : "neutral")">@(amount < 0 ? Money(-amount) : "—")</td>
+                    <td class="numeric money" data-money-tone="@(amount > 0 ? "positive" : "neutral")">@(amount > 0 ? Money(amount) : "—")</td>
                     <td><FluentButton OnClick="() => ToggleClearedAsync(entry)" Disabled="@(Busy || entry.Repeat != RepeatFrequency.None || DisplayState(entry) == ClearingState.Reconciled)" Appearance="ButtonAppearance.Subtle">@DisplayState(entry)</FluentButton></td>
-                    @if (_account is not null) { <td class="numeric money">@(entry.Repeat == RepeatFrequency.None ? Money(_running.GetValueOrDefault(entry.Id)) : "—")</td> }
+                    @if (_account is not null) { <td class="numeric money" data-money-tone="@(entry.Repeat == RepeatFrequency.None ? MoneyTone(_running.GetValueOrDefault(entry.Id)) : "neutral")">@(entry.Repeat == RepeatFrequency.None ? Money(_running.GetValueOrDefault(entry.Id)) : "—")</td> }
                 </tr>
             }
         </tbody>

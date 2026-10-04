@@ -10,6 +10,10 @@
                     <div class="menu-toggle">
                         <FluentLayoutHamburger Id="site-menu" PanelHeader="YHAB" />
                     </div>
+                    <FluentButton Class="desktop-menu-toggle" Appearance="ButtonAppearance.Subtle" data-navigation-toggle
+                                  aria-controls="desktop-navigation" aria-expanded="true" tabindex="0">
+                        <span data-navigation-label>Hide menu</span>
+                    </FluentButton>
                     <a class="site-name" href="/">YHAB</a>
                     <span class="site-tagline">A little clarity. A lot of possibility.</span>
                     <div class="theme-control">
@@ -23,7 +27,7 @@
                 </FluentStack>
             </header>
         </FluentLayoutItem>
-        <FluentLayoutItem Area="LayoutArea.Navigation" Class="site-navigation">
+        <FluentLayoutItem Id="desktop-navigation" Area="LayoutArea.Navigation" Class="site-navigation">
             <NavMenu />
         </FluentLayoutItem>
         <FluentLayoutItem Area="LayoutArea.Content" Class="content-area">

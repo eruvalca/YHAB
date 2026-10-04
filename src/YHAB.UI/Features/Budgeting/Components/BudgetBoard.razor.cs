@@ -17,8 +17,6 @@ public sealed partial class BudgetBoard
     private bool _categoryEditor;
     private bool _groupEditor;
     private CategoryData? _category;
-    private string ReadyTitle => _budget.ReadyToAssign switch { < 0 => "Bring your plan back into balance.", > 0 => "What matters to you this month?", _ => "Every dollar has a purpose." };
-    private string ReadyDescription => _budget.ReadyToAssign switch { < 0 => "Reduce assignments or move money back to Ready to assign.", > 0 => "Give this money a job, from everyday essentials to your next big thing.", _ => "Your plan is ready. Adjust it as life happens." };
 
     protected override void OnParametersSet()
     {

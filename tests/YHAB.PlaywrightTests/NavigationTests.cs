@@ -63,6 +63,12 @@ public sealed class NavigationTests(ITestOutputHelper output)
         (await page.EvaluateAsync<double>("performance.timeOrigin")).ShouldBe(origin);
         await AssertDrawerClosedAsync(page, width);
 
+        if (width >= 768)
+        {
+            await VerifyCollapsibleNavigationAsync(page, width, origin);
+            origin = await page.EvaluateAsync<double>("performance.timeOrigin");
+        }
+
         await OpenNavigationAsync(page, width);
         await page.GetByRole(AriaRole.Link, new() { Name = "Home", Exact = true }).ClickAsync();
         await page.Locator(".welcome h1").WaitForAsync();
@@ -87,6 +93,38 @@ public sealed class NavigationTests(ITestOutputHelper output)
         await page.EmulateMediaAsync(new() { ColorScheme = ColorScheme.Light });
         await page.WaitForFunctionAsync("document.body.dataset.theme !== 'dark'");
         errors.ShouldBeEmpty();
+    }
+
+    private static async Task VerifyCollapsibleNavigationAsync(IPage page, int width, double origin)
+    {
+        var navigation = page.Locator("#desktop-navigation");
+        var content = page.Locator(".content-area");
+        var originalWidth = (await content.BoundingBoxAsync()).ShouldNotBeNull().Width;
+        await page.Locator("[data-navigation-toggle]").ClickAsync();
+        (await navigation.IsVisibleAsync()).ShouldBeFalse();
+        (await content.BoundingBoxAsync()).ShouldNotBeNull().Width.ShouldBeGreaterThan(originalWidth + 150);
+        (await page.Locator("[data-navigation-toggle]").GetAttributeAsync("aria-expanded")).ShouldBe("false");
+        await page.Locator(".site-name").ClickAsync();
+        await page.Locator(".welcome h1").WaitForAsync();
+        (await page.EvaluateAsync<double>("performance.timeOrigin")).ShouldBe(origin);
+        (await navigation.IsVisibleAsync()).ShouldBeFalse();
+        await page.ReloadAsync();
+        await page.Locator("[data-navigation-toggle]").Filter(new() { HasText = "Show menu" }).WaitForAsync();
+        (await navigation.IsVisibleAsync()).ShouldBeFalse();
+
+        // A saved desktop preference must not hide the mobile drawer's links.
+        await page.SetViewportSizeAsync(390, 900);
+        await OpenNavigationAsync(page, 390);
+        await page.GetByRole(AriaRole.Link, new() { Name = "Register", Exact = true }).ClickAsync();
+        await page.GetByRole(AriaRole.Heading, new() { Name = "Register", Exact = true }).WaitForAsync();
+        await AssertDrawerClosedAsync(page, 390);
+        await page.SetViewportSizeAsync(width, 900);
+        var toggle = page.Locator("[data-navigation-toggle]");
+        await toggle.WaitForAsync();
+        await toggle.PressAsync("Enter");
+        await navigation.WaitForAsync();
+        (await page.Locator("[data-navigation-toggle]").GetAttributeAsync("aria-expanded")).ShouldBe("true");
+        (await content.BoundingBoxAsync()).ShouldNotBeNull().Width.ShouldBe(originalWidth, 1);
     }
 
     private static async Task VerifyThemeAfterNavigationAsync(IPage page, int width, string destination, string theme)
@@ -116,6 +154,9 @@ public sealed class NavigationTests(ITestOutputHelper output)
             // The custom-element host has no layout box; inspect its actual shadow dialog.
             var drawer = page.Locator("fluent-drawer[hamburger] dialog");
             await drawer.WaitForAsync(new() { State = WaitForSelectorState.Hidden });
+            // The closing animation can hide the dialog before it leaves the
+            // modal top layer. Wait until keyboard focus can reach the page.
+            await page.Locator("fluent-drawer[hamburger] dialog[open]").WaitForAsync(new() { State = WaitForSelectorState.Detached });
             (await drawer.IsVisibleAsync()).ShouldBeFalse();
         }
     }

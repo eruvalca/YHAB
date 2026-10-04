@@ -14,6 +14,11 @@
 
 body {
     margin: 0;
+    /* Fluent's viewport shell defaults to overflow:hidden. This app uses the
+       document scrollbar, including enhanced-navigation scroll restoration. */
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
 }
 
 h1 {
@@ -254,6 +259,9 @@ body { background: var(--colorNeutralBackground2); color: var(--colorNeutralFore
 .category-link:hover { color: var(--colorBrandForeground1); text-decoration: underline; }
 .numeric { text-align: right; font-variant-numeric: tabular-nums; }
 .money { font-variant-numeric: tabular-nums; white-space: nowrap; }
+[data-money-tone="positive"] { color: var(--colorPaletteGreenForeground1); }
+[data-money-tone="negative"] { color: var(--colorPaletteRedForeground1); }
+[data-money-tone="attention"] { color: var(--colorPaletteMarigoldForeground2); }
 .nowrap { white-space: nowrap; }
 .available-pill { display: inline-block; padding: var(--spacingVerticalXS) var(--spacingHorizontalM); border-radius: var(--borderRadiusCircular); background: var(--colorNeutralBackground3); font-weight: var(--fontWeightSemibold); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .available-pill[data-tone="positive"] { background: var(--colorPaletteGreenBackground1); color: var(--colorPaletteGreenForeground1); }
