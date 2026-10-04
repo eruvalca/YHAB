@@ -119,6 +119,13 @@ public sealed partial class ExternalLogin
     private async Task CompleteRegistrationAsync(ApplicationUser user, string provider)
     {
         LogUserCreatedWithExternalProvider(Logger, provider);
+        if (!UserManager.Options.SignIn.RequireConfirmedAccount)
+        {
+            await SignInManager.SignInAsync(user, isPersistent: false, provider);
+            RedirectManager.RedirectTo(ReturnUrl);
+            return;
+        }
+
         var userId = await UserManager.GetUserIdAsync(user);
         var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
         code = code.EncodeIdentityToken();
@@ -128,15 +135,7 @@ public sealed partial class ExternalLogin
             new Dictionary<string, object?>(StringComparer.Ordinal) { ["userId"] = userId, ["code"] = code });
         await EmailSender.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl));
 
-        if (UserManager.Options.SignIn.RequireConfirmedAccount)
-        {
-            RedirectManager.RedirectTo("Account/RegisterConfirmation", new(StringComparer.Ordinal) { ["email"] = Input.Email });
-        }
-        else
-        {
-            await SignInManager.SignInAsync(user, isPersistent: false, provider);
-            RedirectManager.RedirectTo(ReturnUrl);
-        }
+        RedirectManager.RedirectTo("Account/RegisterConfirmation", new(StringComparer.Ordinal) { ["email"] = Input.Email });
     }
 
     [LoggerMessage(EventId = 1009, Level = LogLevel.Information, Message = "{Name} logged in with {LoginProvider} provider.")]

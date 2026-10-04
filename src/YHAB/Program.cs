@@ -12,7 +12,16 @@ using YHAB.Features.Budgeting.Services;
 using YHAB.ServiceDefaults;
 using YHAB.SharedKernel.Budgeting;
 
-var builder = WebApplication.CreateBuilder(args);
+var recoveryCommand = args.Length > 0 && string.Equals(args[0], "recover-account", StringComparison.Ordinal);
+if (recoveryCommand && args.Length < 3)
+{
+    // No host/request exists yet; finish the local usage message before exiting.
+    await Console.Error.WriteLineAsync("Usage: YHAB recover-account <user-id> <https-origin> [host configuration arguments]".AsMemory(), CancellationToken.None);
+    Environment.ExitCode = 2;
+    return;
+}
+
+var builder = WebApplication.CreateBuilder(recoveryCommand ? args[3..] : args);
 
 builder.AddServiceDefaults();
 
@@ -70,7 +79,8 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
     {
-        options.SignIn.RequireConfirmedAccount = true;
+        // Signup is open; an unverified email is not proof of account ownership.
+        options.SignIn.RequireConfirmedAccount = false;
         options.Stores.SchemaVersion = IdentitySchemaVersions.Version3;
     })
     .AddEntityFrameworkStores<ApplicationDbContext>()
@@ -80,7 +90,16 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
-var app = builder.Build();
+await using var app = builder.Build();
+
+if (recoveryCommand)
+{
+    // Maintenance only: share the app's Identity configuration and keys, without
+    // starting HTTP listeners or background workers. Bound database access.
+    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+    Environment.ExitCode = await AccountRecoveryCommand.ExecuteAsync(app.Services, args[1], args[2], Console.Out, timeout.Token);
+    return;
+}
 
 // Request scopes and interactive circuit scopes are distinct. Background revalidation
 // supplies its own token in its fresh scope instead of capturing a request here.

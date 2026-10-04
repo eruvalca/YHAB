@@ -97,8 +97,13 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await page.GetByLabel("Password", new() { Exact = true }).FillAsync(Password);
         await page.GetByLabel("Confirm Password", new() { Exact = true }).FillAsync(Password);
         await page.GetByRole(AriaRole.Button, new() { Name = "Register", Exact = true }).ClickAsync();
-        await page.GetByRole(AriaRole.Link, new() { Name = "Click here to confirm your account" }).ClickAsync();
-        await page.GetByRole(AriaRole.Heading, new() { Name = "Confirm email", Exact = true }).WaitForAsync();
+        await page.Locator(".welcome h1").WaitForAsync();
+        await using (var plans = await page.APIRequest.GetAsync(Address("/api/plans"), new() { IgnoreHTTPSErrors = true }))
+        {
+            plans.Status.ShouldBe(200);
+        }
+        // A later password login must also work while the email remains unverified.
+        await page.Context.ClearCookiesAsync();
         await page.GotoAsync(Address("/Account/Login"));
         await page.GetByLabel("Email", new() { Exact = true }).FillAsync(email);
         await page.GetByLabel("Password", new() { Exact = true }).FillAsync(Password);

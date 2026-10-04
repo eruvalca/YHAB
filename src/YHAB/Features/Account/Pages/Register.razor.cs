@@ -38,6 +38,13 @@ public sealed partial class Register
     {
         LogUserCreatedWithPassword(Logger);
 
+        if (!UserManager.Options.SignIn.RequireConfirmedAccount)
+        {
+            await SignInManager.SignInAsync(user, isPersistent: false);
+            RedirectManager.RedirectTo(ReturnUrl);
+            return;
+        }
+
         var userId = await UserManager.GetUserIdAsync(user);
         var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
         code = code.EncodeIdentityToken();
@@ -47,17 +54,9 @@ public sealed partial class Register
 
         await EmailSender.SendConfirmationLinkAsync(user, Input.Email, HtmlEncoder.Default.Encode(callbackUrl));
 
-        if (UserManager.Options.SignIn.RequireConfirmedAccount)
-        {
-            RedirectManager.RedirectTo(
-                "Account/RegisterConfirmation",
-                new(StringComparer.Ordinal) { ["email"] = Input.Email, ["returnUrl"] = ReturnUrl });
-        }
-        else
-        {
-            await SignInManager.SignInAsync(user, isPersistent: false);
-            RedirectManager.RedirectTo(ReturnUrl);
-        }
+        RedirectManager.RedirectTo(
+            "Account/RegisterConfirmation",
+            new(StringComparer.Ordinal) { ["email"] = Input.Email, ["returnUrl"] = ReturnUrl });
     }
 
     [LoggerMessage(EventId = 1011, Level = LogLevel.Information, Message = "User created a new account with password.")]

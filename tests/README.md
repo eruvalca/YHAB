@@ -15,6 +15,19 @@ the CLI and editor find `global.json` and `YHAB.slnx`.
 `YHAB.Testing` is a shared support library, not a test project. It configures
 isolated AppHost builders for the Aspire and Playwright projects.
 
+Signup regression checks verify immediate sign-in without generating confirmation
+emails, while retaining unverified email state. The shared browser registration
+helper checks authenticated API access immediately after signup, clears cookies,
+and checks a later password login without email confirmation. Recovery component
+tests verify owner-contact guidance with either sender, including after an external
+login fails to link and after an email-reset request for an unconfirmed account.
+They also verify that legacy confirmation pages never expose tokens.
+`AccountRecoveryCommandTests` covers invalid origins, missing accounts, and encoded
+output without account writes.
+`IdentityPersistenceTests.OwnerRecoveryResetsUnconfirmedAccountOnceWithoutChangingTwoFactorAsync`
+uses disposable PostgreSQL and real Identity tokens to verify password replacement,
+single-use reset links, security-stamp rotation, and preserved email/2FA state.
+
 Cancellation regression checks cover required budget-client token contracts, HTTP
 send/antiforgery-bootstrap cancellation, scoped Identity tokens and committed-write
 follow-up, SSR request cancellation, component disposal, superseded register/month

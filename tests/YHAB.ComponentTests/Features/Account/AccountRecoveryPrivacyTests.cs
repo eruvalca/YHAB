@@ -8,6 +8,7 @@ using Shouldly;
 using Xunit;
 using YHAB.Data;
 using YHAB.Features.Account.Pages;
+using YHAB.Features.Account.Services;
 
 namespace YHAB.ComponentTests.Features.Account;
 
@@ -15,6 +16,25 @@ namespace YHAB.ComponentTests.Features.Account;
     Justification = "xUnit requires public test classes for discovery.")]
 public sealed class AccountRecoveryPrivacyTests
 {
+    [Fact]
+    public async Task NoEmailSenderOffersOwnerRecoveryWithoutCollectingOrLookingUpAnEmailAsync()
+    {
+        await using var context = new BunitContext();
+        var account = context.ConfigureAccount();
+        context.Services.AddSingleton<IEmailSender<ApplicationUser>>(new IdentityNoOpEmailSender());
+
+        var component = account.Render<ForgotPassword>(context);
+
+        component.Markup.ShouldContain("temporary password-reset link");
+        component.Markup.ShouldContain("No automated recovery email is sent");
+        component.FindAll("form").ShouldBeEmpty();
+        await account.Users.DidNotReceiveWithAnyArgs().FindByEmailAsync(default!);
+        await account.Users.DidNotReceiveWithAnyArgs().GeneratePasswordResetTokenAsync(default!);
+
+        var confirmation = account.Render<ForgotPasswordConfirmation>(context);
+        confirmation.Markup.ShouldContain("No automated recovery email is sent");
+    }
+
     [Theory]
     [InlineData(false, false)]
     [InlineData(true, false)]
@@ -28,11 +48,15 @@ public sealed class AccountRecoveryPrivacyTests
         account.Users.IsEmailConfirmedAsync(user).Returns(confirmed);
         account.Users.GeneratePasswordResetTokenAsync(user).Returns("token");
         var component = account.Render<ForgotPassword>(context);
+        component.Markup.ShouldContain("Contact the person who runs this YHAB instance");
         await component.Find("input[name='Input.Email']").ChangeAsync(new ChangeEventArgs { Value = "member@example.test" });
 
         await component.Find("form").SubmitAsync();
 
         context.Services.GetRequiredService<NavigationManager>().Uri.ShouldBe("http://localhost/Account/ForgotPasswordConfirmation");
+        var confirmation = account.Render<ForgotPasswordConfirmation>(context);
+        confirmation.Markup.ShouldContain("Contact the person who runs this YHAB instance");
+        confirmation.Markup.ShouldNotContain("member@example.test");
         if (exists && confirmed)
         {
             await account.Emails.Received(1).SendPasswordResetLinkAsync(user, "member@example.test", Arg.Is<string>(link => link.Contains("code=dG9rZW4", StringComparison.Ordinal)));

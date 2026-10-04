@@ -24,16 +24,10 @@
 {
     <h1>Finish setting up your account</h1>
     <ol>
-        <li><a href="Account/ResendEmailConfirmation">Request a confirmation email</a> and confirm your email address.</li>
-        <li><a href="Account/ForgotPassword">Reset your password</a>, then sign in with your email and password.</li>
+        <li><a href="Account/ForgotPassword">Get help recovering your account</a> to set a password.</li>
+        <li>Sign in with your email and new password.</li>
         <li>Open <a href="Account/Manage/ExternalLogins">External logins</a> to manage the external account link.</li>
     </ol>
-    @if (EmailSender is IdentityNoOpEmailSender)
-    {
-        <p>This app has no email sender configured. Use the existing
-            <a href="@(NavigationManager.GetUriWithQueryParameters("Account/RegisterConfirmation", new Dictionary<string, object?>(StringComparer.Ordinal) { ["email"] = Input.Email }))">development confirmation page</a>
-            to confirm your email. Password reset requires an email sender.</p>
-    }
 }
 else
 {

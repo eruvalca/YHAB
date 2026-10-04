@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Identity;
 using YHAB.Data;
 using YHAB.Features.Account.Extensions;
+using YHAB.Features.Account.Services;
 
 namespace YHAB.Features.Account.Pages;
 
@@ -19,6 +20,12 @@ public sealed partial class ForgotPassword
 
     private async Task OnValidSubmitAsync()
     {
+        if (EmailSender is IdentityNoOpEmailSender)
+        {
+            RedirectManager.RedirectTo("Account/ForgotPasswordConfirmation");
+            return;
+        }
+
         var user = await UserManager.FindByEmailAsync(Input.Email);
         if (user is null || !(await UserManager.IsEmailConfirmedAsync(user)))
         {

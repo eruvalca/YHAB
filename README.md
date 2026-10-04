@@ -73,8 +73,8 @@ run `dotnet build YHAB.slnx`, then `aspire run`. The first build/start may
 restore NuGet packages, download Aspire/EF tooling, and pull container images.
 Migrations create Identity and budgeting tables; no user accounts, financial
 accounts, or local credentials are included. Register and sign in, open **Your
-plans**, and create a plan. Suggested categories are optional. The existing local
-development confirmation link is available until a real email sender is configured.
+plans**, and create a plan. Suggested categories are optional. Signup is open and
+signs the user in immediately; no email confirmation or owner approval is required.
 Git initialization is optional and separate.
 
 If this solution was generated, `.template-provenance.json` records its template
@@ -341,15 +341,59 @@ supports a context per Blazor operation; Identity can still resolve the scoped
 context. Dispose factory-created contexts with `await using`.
 
 Identity schema version 3 is retained, including the `AspNetUserPasskeys` table.
-Development registration uses the existing no-op email sender: follow the confirmation
-link on the registration confirmation page before logging in. This setup does not
-configure a production email service or deployment infrastructure.
+Registration and later sign-ins do not require email confirmation, including for
+existing unconfirmed accounts. New addresses remain **unverified** in Identity;
+signup does not send a confirmation message. The legacy registration-confirmation
+page never exposes a confirmation token. Password rules, duplicate-user checks,
+passkeys, and optional two-factor authentication remain in place.
 
-Before production, replace `IdentityNoOpEmailSender` and remove or deliberately
-gate the scaffold confirmation link. The current shortcut checks the sender type,
-not the hosting environment; it is not restricted to Development. External-login
-provider credentials, production secrets, HTTPS/domain configuration, deployment,
-and the desired exposure of health endpoints also require application-specific work.
+`IdentityNoOpEmailSender` remains configured. **Forgot your password?** explains
+owner-assisted recovery instead of promising an email. Email verification and
+email-address changes still require a real sender; adding one later does not
+automatically make unverified addresses eligible for emailed password recovery.
+Owner-assisted recovery instructions remain available on the password-recovery
+and confirmation pages even with a real sender, including when external-login
+linking failed after creating an unconfirmed account without a password.
+External-login provider credentials, production secrets, HTTPS/domain configuration,
+deployment, and health-endpoint exposure require application-specific configuration.
+
+### Owner-assisted password recovery
+
+Users contact the person running their YHAB instance through an established private
+channel. There is no public recovery-token endpoint or admin role to bootstrap.
+The owner verifies the requester against the intended account before generating a
+link. A claimed email address alone is not proof of ownership, because signup does
+not verify it. Do not ask users for passwords or two-factor recovery codes.
+
+From a private shell on the server, under the **same OS/service identity, environment,
+content root, database configuration, and Data Protection key ring** as the web app:
+
+```powershell
+# Run from the deployed YHAB directory; use the actual account ID and site origin.
+dotnet ./YHAB.dll recover-account '<user-id>' 'https://your-yhab-host'
+```
+
+This maintenance command builds the service container without starting an HTTP
+server or background jobs. It uses the existing `ConnectionStrings:yhabdb` settings;
+do not put connection strings in shell history. For local development, keep Aspire
+as the application entry point and run the maintenance DLL with the web resource's
+configuration and `--contentRoot` pointing to `src/YHAB`. The account ID is the
+`Id` column of `AspNetUsers`, available to the owner through the PostgreSQL REPL or
+their secured database administration tool. No account is created if it is missing.
+
+The command prints a reset link to the operator's console (not application logs).
+Keep that terminal private, do not run it through a log-capturing resource command,
+and send the link only to the verified requester. The user opens it, enters their
+existing account email, and chooses their own password. The standard Identity token
+expires after one day and is invalid after a successful password reset; generating
+a link alone changes neither the password nor active sessions. Using it rotates
+the security stamp, so existing sessions are rejected on their next Identity stamp
+validation, not necessarily immediately. Do not change Data Protection keys or
+content roots between generating and using the link.
+
+Password recovery does **not** disable two-factor authentication, remove passkeys,
+or clear lockouts. Users who lose their authenticator should use their saved 2FA
+recovery codes; this command does not bypass the second factor.
 
 ## EF migrations
 
