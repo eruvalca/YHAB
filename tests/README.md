@@ -394,6 +394,28 @@ purchase, reload, undo with the keyboard, redo, verify reports, and reconcile.
 They also check API session, antiforgery, and stale-revision rejection. These tests
 do not establish passkey ceremonies or every account workflow.
 
+`PwaTests` checks the manifest/icon assets and install-button event handling at
+desktop/mobile widths, first-install behavior, authenticated API access without
+caching private responses, offline enhanced navigation and deep-link reloads,
+retry after reconnection, and refusal to synthesize successful offline API GETs
+or POSTs. It also installs a real replacement worker using a distinct script URL
+on the test's isolated origin: an update waits, cancelling the confirmation keeps
+the form, accepting reloads only that tab, and unrelated caches survive cleanup.
+This avoids modifying shared build outputs during concurrent tests.
+A deterministic event-ordering case loads the real app/module with a controlled
+service-worker container: `updatefound` fires before `register()` resolves while
+installation is still pending. Completing that installation must offer an update
+only when the page already has a controller, preserving its document and inputs.
+
+Run these checks with `dotnet test --project
+tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj --filter-class "*PwaTests"`.
+The real-worker cases exercise the same worker used by published builds, through
+the real AppHost.
+Also validate a Release publish and its PWA assets. The synthetic installation
+event checks our browser-event handling, not native OS installation UI. Manually
+verify installation/launch, icon cropping, and upgrade behavior on target devices
+and browsers (especially iOS/Safari) over a stable HTTPS deployment origin.
+
 Browser layout checks verify that Fluent dropdown triggers have no nested native
 border/padding, category links retain their native styling, desktop toolbar
 controls align, and phone pages do not overflow.

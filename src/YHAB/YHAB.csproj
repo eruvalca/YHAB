@@ -37,4 +37,5 @@
   </ItemGroup>
 
   <Import Project="../../build/FluentAsset.targets" />
+  <Import Project="../../build/PwaAssets.targets" />
 </Project>

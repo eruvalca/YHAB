@@ -1,0 +1,64 @@
+/* Self-contained Fluent token fallbacks: this document must work without Blazor. */
+:root {
+    color-scheme: light dark;
+    --colorNeutralBackground1: #ffffff;
+    --colorNeutralForeground1: #242424;
+    --colorBrandBackground: #0f766e;
+    --colorNeutralForegroundOnBrand: #ffffff;
+    --colorBrandForegroundLink: #0f766e;
+    --spacingHorizontalXL: 20px;
+    --spacingVerticalXXXL: 32px;
+    --borderRadiusMedium: 4px;
+    --fontFamilyBase: "Segoe UI", sans-serif;
+}
+
+body {
+    margin: 0;
+    padding: var(--spacingHorizontalXL);
+    background: var(--colorNeutralBackground1);
+    color: var(--colorNeutralForeground1);
+    font-family: var(--fontFamilyBase);
+    line-height: 1.6;
+}
+
+main {
+    max-width: 32rem;
+    margin: clamp(1rem, 8vh, 6rem) auto;
+}
+
+h1 {
+    font-size: clamp(1.5rem, 5vw, 2rem);
+    line-height: 1.25;
+}
+
+img {
+    border-radius: var(--borderRadiusMedium);
+}
+
+a {
+    color: var(--colorBrandForegroundLink);
+}
+
+.retry {
+    display: inline-block;
+    margin-block-start: var(--spacingHorizontalXL);
+    padding: 0.65rem 1.25rem;
+    border-radius: var(--borderRadiusMedium);
+    background: var(--colorBrandBackground);
+    color: var(--colorNeutralForegroundOnBrand);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+a:focus-visible {
+    outline: 3px solid currentColor;
+    outline-offset: 4px;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --colorNeutralBackground1: #1f1f1f;
+        --colorNeutralForeground1: #ffffff;
+        --colorBrandForegroundLink: #5eead4;
+    }
+}

@@ -1,0 +1,60 @@
+<Project>
+  <!-- Hash maintained application inputs, not timestamps. Always enumerate so
+       additions/deletions are detected; unchanged outputs keep their timestamps. -->
+  <Target Name="GeneratePwaWorker" BeforeTargets="AssignTargetPaths"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <_YHABPwaRoot>$([System.IO.Path]::GetFullPath('$(IntermediateOutputPath)pwa/'))</_YHABPwaRoot>
+    </PropertyGroup>
+    <ItemGroup>
+      <_YHABPwaInput Include="../**/*.cs;../**/*.razor;../**/*.js;../**/*.css;../**/*.html;../**/*.json;../**/*.webmanifest;../**/*.png;../**/*.csproj"
+                     Exclude="../**/bin/**;../**/obj/**" />
+      <_YHABPwaInput Include="../../Directory.Build.props;../../Directory.Build.targets;../../Directory.Packages.props;../../global.json;../../build/*.targets;../../build/*.js" />
+    </ItemGroup>
+    <MakeDir Directories="$(_YHABPwaRoot)" />
+    <GetFileHash Files="@(_YHABPwaInput)" Algorithm="SHA256">
+      <Output TaskParameter="Items" ItemName="_YHABPwaHashed" />
+    </GetFileHash>
+    <WriteLinesToFile File="$(_YHABPwaRoot)inputs.txt" Lines="@(_YHABPwaHashed->'%(Identity)|%(FileHash)')"
+                      Overwrite="true" WriteOnlyWhenDifferent="true" Encoding="UTF-8" />
+    <GetFileHash Files="$(_YHABPwaRoot)inputs.txt" Algorithm="SHA256">
+      <Output TaskParameter="Hash" PropertyName="_YHABPwaVersion" />
+    </GetFileHash>
+    <ReadLinesFromFile File="../../build/PwaWorker.js">
+      <Output TaskParameter="Lines" ItemName="_YHABPwaWorkerLines" />
+    </ReadLinesFromFile>
+    <WriteLinesToFile File="$(_YHABPwaRoot)service-worker.js" Lines="self.yhabVersion = '$(_YHABPwaVersion)'%3B;@(_YHABPwaWorkerLines)"
+                      Overwrite="true" WriteOnlyWhenDifferent="true" Encoding="UTF-8" />
+    <ItemGroup>
+      <Content Include="$(_YHABPwaRoot)service-worker.js" Link="wwwroot/service-worker.js" CopyToPublishDirectory="PreserveNewest" />
+      <FileWrites Include="$(_YHABPwaRoot)inputs.txt;$(_YHABPwaRoot)service-worker.js" />
+    </ItemGroup>
+  </Target>
+
+  <!-- Linked Content is discovered against wwwroot by default. Point the runtime
+       file provider at the generated file, as well as including it in publish. -->
+  <Target Name="RegisterPwaWorker" AfterTargets="ResolveCoreStaticWebAssets"
+          DependsOnTargets="GeneratePwaWorker" Condition="'$(DesignTimeBuild)' != 'true'">
+    <ItemGroup>
+      <_YHABPwaOriginal Include="@(StaticWebAsset)"
+                        Condition="'%(StaticWebAsset.Identity)' == '$(_YHABPwaRoot)service-worker.js'" />
+    </ItemGroup>
+    <Error Condition="'@(_YHABPwaOriginal->Count())' != '1'" Text="Expected exactly one generated PWA worker asset." />
+    <ItemGroup>
+      <_YHABPwaCandidate Include="@(_YHABPwaOriginal)">
+        <ContentRoot>$(_YHABPwaRoot)</ContentRoot>
+      </_YHABPwaCandidate>
+      <StaticWebAsset Remove="@(_YHABPwaOriginal)" />
+      <StaticWebAssetEndpoint Remove="@(StaticWebAssetEndpoint)" Condition="'%(StaticWebAssetEndpoint.AssetFile)' == '@(_YHABPwaOriginal)'" />
+    </ItemGroup>
+    <DefineStaticWebAssets CandidateAssets="@(_YHABPwaCandidate)">
+      <Output TaskParameter="Assets" ItemName="_YHABPwaAsset" />
+    </DefineStaticWebAssets>
+    <DefineStaticWebAssetEndpoints CandidateAssets="@(_YHABPwaAsset)" ContentTypeMappings="@(StaticWebAssetContentTypeMapping)">
+      <Output TaskParameter="Endpoints" ItemName="StaticWebAssetEndpoint" />
+    </DefineStaticWebAssetEndpoints>
+    <ItemGroup>
+      <StaticWebAsset Include="@(_YHABPwaAsset)" />
+    </ItemGroup>
+  </Target>
+</Project>

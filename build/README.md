@@ -57,6 +57,40 @@ asset fingerprint/integrity metadata. `FluentDefinitionObservers.js` is the
 maintained callback implementation. Browser validation must use the served asset
 and verify collection of removed controls, themes, and extended navigation.
 
+## PWA build assets
+
+The server imports `build/PwaAssets.targets`. Before `AssignTargetPaths`,
+`GeneratePwaWorker` hashes maintained application C#, Razor, JavaScript, CSS,
+HTML, JSON, manifest, PNG, and project files under `src`, plus central build and
+package configuration and build targets/scripts. It excludes `bin` and `obj`.
+New/deleted inputs participate on the next build; output is rewritten only when
+the content changes. Design-time builds skip generation.
+
+The target prepends that version to the worker source in `build/PwaWorker.js`.
+The generated `obj/<configuration>/<framework>/pwa/service-worker.js` is registered
+as a static web asset before discovery and copied into published `wwwroot`.
+`RegisterPwaWorker` corrects the discovered asset's content root after
+`ResolveCoreStaticWebAssets`, so the development file provider resolves the
+generated file in `obj` instead of looking for a nonexistent file in `wwwroot`.
+Its input list and worker file are registered with `FileWrites` for cleanup.
+Do not edit generated files or bump a handwritten worker version. If new asset
+types or build inputs are introduced, extend the input list deliberately.
+
+The stable `/service-worker.js` URL includes the generated version, so
+application-only changes also trigger browser update detection. Registration uses
+`updateViaCache: none` to revalidate the worker; deployment proxies/CDNs must also
+permit fresh responses at that URL. Deploy the complete publish output together.
+The worker caches only the three public offline fallback assets, removes only
+old `yhab-offline-*` caches on activation, and waits for user consent while an
+existing worker still controls open tabs. Do not apply the standalone Blazor
+WebAssembly template's cached `index.html` strategy to this mixed SSR/Auto app.
+
+Validate both a solution build and `dotnet publish src/YHAB/YHAB.csproj
+--configuration Release --output artifacts/pwa-publish`. Confirm the manifest,
+icons, generated worker, and fallback assets are present. Browser
+checks run against the actual Aspire-hosted application with disposable storage;
+see the [test guide](../tests/README.md#choosing-an-integration-layer).
+
 ## Formatting
 
 For every change set, including configuration and documentation changes, run from

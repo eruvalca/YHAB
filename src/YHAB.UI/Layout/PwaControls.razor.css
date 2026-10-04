@@ -1,0 +1,20 @@
+.pwa-install {
+    margin-block-end: var(--spacingVerticalL);
+    color: var(--colorNeutralForeground2);
+    font-size: var(--fontSizeBase200);
+}
+
+.pwa-install summary {
+    width: fit-content;
+    cursor: pointer;
+    color: var(--colorBrandForegroundLink);
+}
+
+.pwa-install summary:focus-visible {
+    outline: var(--strokeWidthThick) solid var(--colorStrokeFocus2);
+    outline-offset: var(--spacingHorizontalXS);
+}
+
+.pwa-install p {
+    max-width: 60ch;
+}

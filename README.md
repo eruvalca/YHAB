@@ -10,6 +10,48 @@ render boundaries, and the authenticated API. Bank connections, transaction
 imports, photos, shared plans, and one-off scheduled entries are intentionally
 outside the application.
 
+## Installable web app
+
+YHAB supports installation from a compatible browser over HTTPS. Open **Install
+YHAB** above the page content for an install button when the browser offers one,
+or instructions for its menu. On iPhone/iPad, use **Share → Add to Home Screen**.
+An installed app opens **Your plans** in its own window; normal authentication
+still applies. Browser and OS support determine the installation experience.
+
+This is an online application with an offline fallback. After one successful
+visit and service-worker installation, failed full-page and Blazor enhanced GET
+navigations show a connection screen with **Try again**. The worker stores only
+`offline.html`, its stylesheet, and its icon. It never caches account/budget HTML
+or API responses, and never intercepts POSTs or queues saves. A first visit without
+a connection cannot show the fallback. Losing connectivity while already editing
+continues to use the application's existing error/reconnect handling; if a save
+was interrupted, check its status after reconnecting before entering it again.
+The Blazor runtime may manage its own framework-resource cache independently.
+
+New deployments install a worker in the background and offer **Reload to update**
+or **Later**. Finish saves and preserve unsaved entries before confirming the
+reload. Only the tab requesting it reloads; other tabs keep their forms and offer
+their own reload. A later visit or returning to a visible tab checks for updates
+(visibility checks are limited to once per minute). Keep server APIs compatible
+with open clients during deployment; the update prompt cannot make old code
+compatible with a breaking backend change.
+
+The selected Pocket Fan artwork with **YHAB** on its front pocket is kept in
+`design/branding/pocket-fan-yhab.png`. The exported 192px and 512px icons, 180px
+Apple touch icon, and 32px favicon live under `src/YHAB/wwwroot`. The manifest and
+offline document assume the application is hosted at the origin root, as it is
+today. Serve the worker at its stable URL and allow revalidation through any CDN;
+do not give that URL immutable cache rules.
+Use a stable HTTPS origin for a deployed installation.
+
+The same worker runs in development and published builds. Its version comes from
+application content hashes, without a manual version bump; see
+[PWA build assets](build/README.md#pwa-build-assets). To reset a local experiment,
+unregister YHAB's worker and clear its `yhab-offline-*` caches in browser developer
+tools. Changing the local port creates a different service-worker/install origin.
+See [browser validation](tests/README.md#choosing-an-integration-layer) for the
+automated checks and the remaining device-level installation checks.
+
 ## Local prerequisites
 
 - .NET SDK **10.0.401** (selected by `global.json`).
