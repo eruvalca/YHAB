@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <RuntimeIdentifiers>linux-x64</RuntimeIdentifiers>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>aspnet-YHAB-dd7b4c08-caea-4a0d-82c6-e25098843146</UserSecretsId>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
@@ -20,7 +21,7 @@
     <ProjectReference Include="..\YHAB.UI\YHAB.UI.csproj" />
     <ProjectReference Include="..\YHAB.SharedKernel\YHAB.SharedKernel.csproj" />
     <ProjectReference Include="..\YHAB.ServiceDefaults\YHAB.ServiceDefaults.csproj" />
-    <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Aspire.Azure.Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="OneOf" />
     <PackageReference Include="OneOf.SourceGenerator" PrivateAssets="all" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />

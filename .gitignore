@@ -485,6 +485,7 @@ $RECYCLE.BIN/
 
 # Aspire runtime state and local credentials; shared aspire.config.json stays tracked.
 .aspire/
+aspire-output/
 .env.*
 !.env.example
 *.db

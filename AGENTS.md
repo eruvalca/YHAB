@@ -312,8 +312,8 @@ dotnet test --solution YHAB.slnx
 - `/health` includes database readiness; `/alive` checks process liveness
   independently of database availability. Preserve the bounded database
   readiness check and Aspire's monitoring of `/health`. Both endpoints are
-  currently Development-only; changing their exposure is a deliberate
-  deployment decision.
+  enabled in Development or through `HealthChecks:ExposeEndpoints`, which the Azure
+  deployment sets explicitly. Keep readiness and liveness separate.
 - Author migrations through the built-in `yhab-migrations` resource using the
   web project's actual startup model. Keep migrations and snapshot under
   `src/YHAB/Data/Migrations`, namespace `YHAB.Migrations`. Rebuild after

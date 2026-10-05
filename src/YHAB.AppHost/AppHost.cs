@@ -1,9 +1,16 @@
+using Aspire.Hosting.ApplicationModel;
+using YHAB.AppHost;
+
 var builder = DistributedApplication.CreateBuilder(args);
 
-var postgres = builder.AddPostgres("postgres")
-    .WithDataVolume()
-    .WithRepl();
-var database = postgres.AddDatabase("yhabdb", "yhab");
+var postgres = builder.ExecutionContext.IsRunMode
+    ? builder.AddPostgres("postgres")
+        .WithDataVolume()
+        .WithRepl()
+    : null;
+IResourceBuilder<IResourceWithConnectionString> database = postgres is not null
+    ? postgres.AddDatabase("yhabdb", "yhab")
+    : AzureDeployment.AddDatabase(builder);
 
 var web = builder.AddProject<Projects.YHAB>("yhab")
     .WithReference(database)
@@ -23,11 +30,15 @@ var migrations = web.AddEFMigrations("yhab-migrations", "YHAB.Data.ApplicationDb
     .WithMigrationNamespace("YHAB.Migrations");
 #pragma warning restore ASPIREDOTNETTOOL
 
-if (builder.ExecutionContext.IsRunMode)
+if (postgres is not null)
 {
     migrations.RunDatabaseUpdateOnStart();
     web.WaitForCompletion(migrations);
     postgres.WithPgAdmin(pgAdmin => pgAdmin.WithExplicitStart());
+}
+else
+{
+    AzureDeployment.Configure(builder, web, migrations);
 }
 
 // The host owns Ctrl+C/SIGTERM shutdown; there is no outer operation to cancel it.

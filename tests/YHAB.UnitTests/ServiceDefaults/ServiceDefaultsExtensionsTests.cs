@@ -98,11 +98,14 @@ public sealed class ServiceDefaultsExtensionsTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task DevelopmentHealthEndpointsSeparateReadinessFromLivenessAsync(bool explicitStaticCall)
+    [InlineData("Development", false, false)]
+    [InlineData("Development", false, true)]
+    [InlineData("Production", true, false)]
+    [InlineData("Staging", true, true)]
+    public async Task EnabledHealthEndpointsSeparateReadinessFromLivenessAsync(string environment, bool exposeEndpoints, bool explicitStaticCall)
     {
-        var builder = CreateBuilder(Environments.Development);
+        var builder = CreateBuilder(environment);
+        builder.Configuration["HealthChecks:ExposeEndpoints"] = exposeEndpoints.ToString();
         builder.AddDefaultHealthChecks();
         builder.Services.AddHealthChecks().AddCheck("startup", () => HealthCheckResult.Unhealthy());
         await using var app = builder.Build();
@@ -156,6 +159,7 @@ public sealed class ServiceDefaultsExtensionsTests
             ApplicationName = typeof(ServiceDefaultsExtensionsTests).Assembly.GetName().Name,
         });
         builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] = null;
+        builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"] = null;
         return builder;
     }
 }

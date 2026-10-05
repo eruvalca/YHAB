@@ -60,11 +60,14 @@ builder.Services.AddAuthentication(options =>
     })
     .AddIdentityCookies();
 
+// Bundle generation uses this model without a database or Azure login. Dummy credentials prevent Azure token discovery.
+// Ordinary application startup still requires Aspire's connection.
 var connectionString = builder.Configuration.GetConnectionString("yhabdb")
+    ?? (EF.IsDesignTime ? "Host=localhost;Database=yhab;Username=design-time;Password=unused" : null)
     ?? throw new InvalidOperationException("Connection string 'yhabdb' not found. Start the application through Aspire or configure ConnectionStrings:yhabdb.");
 // The factory supports one context per Blazor operation and also registers the scoped context used by Identity.
 builder.Services.AddDbContextFactory<ApplicationDbContext>(options => options.UseNpgsql(connectionString));
-builder.EnrichNpgsqlDbContext<ApplicationDbContext>();
+builder.EnrichAzureNpgsqlDbContext<ApplicationDbContext>();
 // Bound readiness independently of EF's transient retries for normal application operations.
 builder.Services.PostConfigure<HealthCheckServiceOptions>(options =>
 {

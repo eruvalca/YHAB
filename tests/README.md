@@ -15,6 +15,15 @@ the CLI and editor find `global.json` and `YHAB.slnx`.
 `YHAB.Testing` is a shared support library, not a test project. It configures
 isolated AppHost builders for the Aspire and Playwright projects.
 
+The deployment workflow runs all five layers before deploying from `main`.
+`ServiceDefaultsExtensionsTests` checks opt-in production readiness/liveness and
+their default absence outside Development. `DeploymentMigrationsTests` uses Azure
+SDK substitutes to check successful, failed, stopped, and canceled migration jobs;
+these cases do not contact Azure. The existing AppHost startup test still exercises
+local PostgreSQL and migration orchestration. `aspire publish` additionally validates
+the production Bicep and Linux EF bundle. Those checks do not prove an Azure rollout;
+the deployment workflow separately probes the deployed application's endpoints.
+
 Signup regression checks verify immediate sign-in without generating confirmation
 emails, while retaining unverified email state. The shared browser registration
 helper checks authenticated API access immediately after signup, clears cookies,

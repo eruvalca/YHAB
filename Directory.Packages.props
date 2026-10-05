@@ -3,10 +3,16 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
+    <PackageVersion Include="Aspire.Azure.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.6.0" />
+    <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="13.6.0" />
+    <PackageVersion Include="Aspire.Hosting.Azure.ApplicationInsights" Version="13.6.0" />
+    <PackageVersion Include="Aspire.Hosting.Azure.PostgreSQL" Version="13.6.0" />
     <PackageVersion Include="Aspire.Hosting.EntityFrameworkCore" Version="13.6.0-preview.1.26479.8" />
     <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.6.0" />
     <PackageVersion Include="Aspire.Hosting.Testing" Version="13.6.0" />
     <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.6.0" />
+    <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.6.0" />
+    <PackageVersion Include="Azure.ResourceManager.AppContainers" Version="1.6.0" />
     <PackageVersion Include="bunit" Version="2.11.3" />
     <PackageVersion Include="Meziantou.Analyzer" Version="3.0.294" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.12" />

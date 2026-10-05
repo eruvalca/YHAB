@@ -1,6 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
+using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
@@ -76,6 +78,11 @@ public static class Extensions
                 builder.Services.AddOpenTelemetry().UseOtlpExporter();
             }
 
+            if (!string.IsNullOrWhiteSpace(builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"]))
+            {
+                builder.Services.AddOpenTelemetry().UseAzureMonitor();
+            }
+
             return builder;
         }
 
@@ -95,9 +102,8 @@ public static class Extensions
         {
             ArgumentNullException.ThrowIfNull(app);
 
-            // Adding health checks endpoints to applications in non-development environments has security implications.
-            // See https://aka.ms/aspire/healthchecks for details before enabling these endpoints in non-development environments.
-            if (app.Environment.IsDevelopment())
+            // Deployment explicitly opts into status-only probes; responses disclose no database details.
+            if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("HealthChecks:ExposeEndpoints"))
             {
                 // All health checks must pass for app to be considered ready to accept traffic after starting
                 app.MapHealthChecks(HealthEndpointPath);
