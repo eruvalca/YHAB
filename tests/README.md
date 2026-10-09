@@ -17,10 +17,28 @@ isolated AppHost builders for the Aspire and Playwright projects.
 
 The deployment workflow runs all five layers before deploying from `main`.
 On its Ubuntu runner, it exports the test user's public HTTPS development
-certificate, adds it to the system CA store, and verifies trust before testing.
+certificate, adds it to the system CA store and Chromium's NSS database, and
+verifies both before testing. Only the public certificate is imported, using
+NSS's `P,,` trust for this self-signed server certificate.
 Creating the certificate alone does not trust it: Aspire's HTTPS readiness probes
 then fail with `UntrustedRoot`, preventing every AppHost-backed test from starting.
 Browser contexts accepting development certificates do not affect those probes.
+They also do not bypass Chromium's service-worker certificate checks. System-only
+trust lets Aspire start and ordinary pages load, but PWA worker registration
+fails. Chromium 146+ defaults to `$HOME/.local/share/pki/nssdb`, retaining
+`$HOME/.pki/nssdb` when that legacy database exists. The workflow handles both.
+See [Chromium's Linux certificate guidance](https://chromium.googlesource.com/chromium/src/+/HEAD/docs/linux/cert_management.md).
+PWA tests observe the application's own registration rejection and report it
+directly instead of waiting only for a controller timeout; they do not register
+a replacement worker on the application's behalf. Their browser contexts use
+normal TLS validation so missing trust fails at navigation as well.
+
+CI retains TRX results for seven days and uploads browser screenshots/traces on
+failure. These diagnostics come from disposable test accounts and may include
+their cookies and form data; keep them within the repository's artifact access
+controls. Do not upload development/production browser profiles or Aspire
+deployment/dashboard state. Local reports remain opt-in.
+
 `ServiceDefaultsExtensionsTests` checks opt-in production readiness/liveness and
 their default absence outside Development. `DeploymentMigrationsTests` uses Azure
 SDK substitutes to check successful, failed, stopped, and canceled migration jobs;
@@ -381,7 +399,7 @@ dotnet test --project tests/YHAB.AspireIntegrationTests/YHAB.AspireIntegrationTe
 dotnet test --project tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj
 
 # All five projects; requires the infrastructure/browser prerequisites below.
-dotnet test --solution YHAB.slnx --no-build --report-trx --coverage --coverage-output-format cobertura --results-directory TestResults
+dotnet test --solution YHAB.slnx --no-build --max-parallel-test-modules 1 --report-trx --coverage --coverage-output-format cobertura --results-directory TestResults
 ```
 
 TRX and coverage are opt-in. Reports go into the ignored `TestResults` directory;
@@ -499,14 +517,21 @@ Aspire/browser test run is active; this can interrupt its processes or replace
 fingerprinted WebAssembly assets. Build first, then run the infrastructure suites.
 Readiness uses Aspire notifications with bounded cancellation, not HTTP polling
 or fixed sleeps. Use a new browser context for each test; no authentication state
-is shared. Only these local HTTPS contexts ignore development certificate errors.
+is shared. Most local HTTPS contexts ignore development certificate errors;
+PWA contexts require a trusted certificate for both navigation and service workers.
 
 Prerequisites: a running Linux-container Docker engine and available images for
 all three projects; Aspire CLI/bundle and the .NET development HTTPS certificate
 for Aspire/browser tests; the package-matched Chromium binary for Playwright.
 On Linux, install Playwright OS dependencies with `playwright.ps1 install --with-deps chromium`
-in the build agent image/setup. Missing dependencies fail tests rather than
-silently skipping them. Unit/bUnit projects still need none of this infrastructure.
+in the build agent image/setup. Also install `libnss3-tools` and trust the test
+user's development certificate in both OpenSSL and Chromium NSS, using the
+**Create and trust test HTTPS certificate** step in
+[the deployment workflow](../.github/workflows/deploy.yml). Run the certificate
+export and NSS commands as the same user that runs the tests; use `sudo` only
+for package installation and the system CA store. Missing dependencies fail tests
+rather than silently skipping them. Unit/bUnit projects still need none of this
+infrastructure.
 
 Playwright uses `Microsoft.Playwright` directly with our xUnit core MTP runner and
 Shouldly. Do not add a runner integration that brings VSTest or xUnit assertions

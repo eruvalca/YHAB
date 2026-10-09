@@ -47,13 +47,27 @@ public sealed class PwaTests(ITestOutputHelper output)
         await using var context = await browser.NewContextAsync(new()
         {
             BaseURL = app.GetEndpoint("yhab", "https").ToString(),
-            IgnoreHTTPSErrors = true,
             ViewportSize = new() { Width = width, Height = 900 },
         });
         await context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = true });
         var page = await context.NewPageAsync();
         try
         {
+            // Observe the application's own registration attempt. A second register()
+            // call here could hide broken startup code. Keep the original rejection
+            // so a missing browser trust prerequisite fails with its actual cause.
+            await page.AddInitScriptAsync("""
+                (() => {
+                    const register = ServiceWorkerContainer.prototype.register;
+                    ServiceWorkerContainer.prototype.register = async function (...args) {
+                        try { return await register.apply(this, args); }
+                        catch (error) {
+                            window.yhabWorkerRegistrationError = String(error);
+                            throw error;
+                        }
+                    };
+                })();
+                """);
             await verify(page, context);
         }
         finally
@@ -249,7 +263,9 @@ public sealed class PwaTests(ITestOutputHelper output)
         await page.GotoAsync("/Account/Login");
         await page.GetByLabel("Email", new() { Exact = true }).WaitForAsync();
         (await page.EvaluateAsync<string>("async () => (await fetch('/service-worker.js')).headers.get('content-type')")).ShouldStartWith("text/javascript");
-        await page.WaitForFunctionAsync("() => Boolean(navigator.serviceWorker.controller) && Boolean(customElements.get('fluent-button'))");
+        await page.WaitForFunctionAsync("() => Boolean(window.yhabWorkerRegistrationError) || (Boolean(navigator.serviceWorker.controller) && Boolean(customElements.get('fluent-button')))");
+        (await page.EvaluateAsync<string?>("() => window.yhabWorkerRegistrationError ?? null"))
+            .ShouldBeNull("The application's service-worker registration must succeed; check the browser's HTTPS certificate trust if it fails.");
     }
 
     private static async void DismissDialog(object? sender, IDialog dialog) => await dialog.DismissAsync();

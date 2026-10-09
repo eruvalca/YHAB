@@ -679,11 +679,13 @@ dotnet format YHAB.slnx --severity warn
 dotnet format YHAB.slnx --severity warn --verify-no-changes
 dotnet build YHAB.slnx
 pwsh ./tests/YHAB.PlaywrightTests/bin/Debug/net10.0/playwright.ps1 install chromium
-dotnet test --solution YHAB.slnx
+dotnet test --solution YHAB.slnx --max-parallel-test-modules 1
 ```
 
 The unit and component projects can still run individually without external
-processes. Testcontainers covers focused database integration, Aspire integration
+processes. The full-suite command matches CI's project-level concurrency limit
+so database stress does not compete with AppHost/browser startup; per-project
+xUnit settings remain unchanged. Testcontainers covers focused database integration, Aspire integration
 covers the real resource graph and HTTP behavior, and Playwright covers browser
 interaction against its own isolated Aspire application. Test resources are
 disposable and never use the development database volumes. See

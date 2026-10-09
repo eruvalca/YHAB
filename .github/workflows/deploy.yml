@@ -35,12 +35,25 @@ jobs:
       - name: Create and trust test HTTPS certificate
         shell: bash
         run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends libnss3-tools
           # Aspire's HTTPS readiness probes use the runner's OpenSSL trust store.
           # Export only the public certificate from the same user that runs tests.
           dotnet dev-certs https --export-path "$RUNNER_TEMP/yhab-test-https.crt" --format PEM
           sudo cp "$RUNNER_TEMP/yhab-test-https.crt" /usr/local/share/ca-certificates/yhab-test-https.crt
           sudo update-ca-certificates
           openssl verify -CAfile /etc/ssl/certs/ca-certificates.crt "$RUNNER_TEMP/yhab-test-https.crt"
+          # Chromium's service-worker fetches also require NSS trust. Context-level
+          # IgnoreHTTPSErrors does not cover them. M146+ uses this new default path,
+          # unless a legacy database already exists for the same runner user.
+          nssdb="$HOME/.local/share/pki/nssdb"
+          if [[ -d "$HOME/.pki/nssdb" ]]; then nssdb="$HOME/.pki/nssdb"; fi
+          mkdir -p "$nssdb"
+          if [[ ! -f "$nssdb/cert9.db" ]]; then
+            certutil -N -d "sql:$nssdb" --empty-password
+          fi
+          certutil -A -d "sql:$nssdb" -n yhab-test-https -t 'P,,' -i "$RUNNER_TEMP/yhab-test-https.crt"
+          certutil -V -d "sql:$nssdb" -n yhab-test-https -u V
       - name: Check formatting
         run: dotnet format YHAB.slnx --severity warn --verify-no-changes
       - name: Build
@@ -49,7 +62,25 @@ jobs:
         shell: pwsh
         run: ./tests/YHAB.PlaywrightTests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
       - name: Test all layers with isolated resources
-        run: dotnet test --solution YHAB.slnx --configuration Release --no-build --max-parallel-test-modules 1
+        run: dotnet test --solution YHAB.slnx --configuration Release --no-build --max-parallel-test-modules 1 --output Detailed --report-trx --results-directory "${{ runner.temp }}/yhab-test-results"
+      - name: Retain test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: test-results
+          path: ${{ runner.temp }}/yhab-test-results/*.trx
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Retain browser failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: browser-diagnostics
+          path: |
+            tests/YHAB.PlaywrightTests/bin/Release/net10.0/TestResults/**/trace.zip
+            tests/YHAB.PlaywrightTests/bin/Release/net10.0/TestResults/**/*.png
+          retention-days: 7
+          if-no-files-found: warn
       - name: Validate deployment artifacts and migration bundle
         run: aspire publish --environment Production --output-path "$RUNNER_TEMP/yhab-preview" --non-interactive
 
