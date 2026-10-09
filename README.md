@@ -476,9 +476,15 @@ The script creates `rg-yhab-production` and `id-yhab-github`, registers the requ
 Azure providers, and grants the deployment identity **Contributor** and **Role Based
 Access Control Administrator** within that resource group only. Bootstrap requires
 permission to create those assignments and administer the GitHub repository.
-It trusts GitHub OIDC for `repo:eruvalca/YHAB:environment:production`, creates the
-`production` GitHub environment with a `main` branch policy, and writes these
-non-secret environment variables:
+It reads GitHub's effective repository OIDC subject prefix and appends
+`:environment:production` for Azure trust. This includes immutable owner/repository
+IDs when enabled (for example,
+`repo:eruvalca@25803306/YHAB@1402539322:environment:production`), while preserving
+the legacy format for repositories that still use it. Custom subject templates or
+a missing prefix stop bootstrap before Azure resources or roles are changed.
+See [GitHub's immutable subject claims](https://docs.github.com/en/actions/reference/security/oidc#immutable-subject-claims).
+The script creates the `production` GitHub environment with a `main` branch policy
+and writes these non-secret environment variables:
 
 `AZURE_SUBSCRIPTION_ID`, `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`,
 `AZURE_RESOURCE_GROUP`, and `AZURE_LOCATION`.

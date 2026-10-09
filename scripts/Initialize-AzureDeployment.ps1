@@ -16,6 +16,16 @@ $PSNativeCommandUseErrorActionPreference = $true
 # One-time bootstrap only. Aspire owns the application infrastructure and deployment.
 $account = az account show --subscription $SubscriptionId --output json | ConvertFrom-Json
 gh auth status
+$oidcConfiguration = gh api "repos/$Repository/actions/oidc/customization/sub" | ConvertFrom-Json
+if ($oidcConfiguration.use_default -ne $true) {
+    throw 'The repository uses a custom OIDC subject template. Review its claims before configuring Azure trust.'
+}
+$subjectPrefix = [string] $oidcConfiguration.sub_claim_prefix
+if ([string]::IsNullOrWhiteSpace($subjectPrefix) -or -not $subjectPrefix.StartsWith('repo:', [StringComparison]::Ordinal)) {
+    throw 'GitHub did not return a repository OIDC subject prefix. Update the CLI/API support before configuring Azure trust.'
+}
+# GitHub supplies the effective prefix, including immutable owner/repository IDs when enabled.
+$federatedSubject = "${subjectPrefix}:environment:production"
 $environments = gh api "repos/$Repository/environments" | ConvertFrom-Json
 $existingEnvironment = $environments.environments | Where-Object { $_.name -eq 'production' }
 if ($existingEnvironment) {
@@ -51,7 +61,7 @@ foreach ($role in @('b24988ac-6180-42a0-ab88-20f7382dd24c', 'f58310d9-a9f6-439a-
 
 az identity federated-credential create --subscription $SubscriptionId --resource-group $ResourceGroup `
     --identity-name $identity.name --name github-production --issuer 'https://token.actions.githubusercontent.com' `
-    --subject "repo:${Repository}:environment:production" --audiences 'api://AzureADTokenExchange' --output none
+    --subject $federatedSubject --audiences 'api://AzureADTokenExchange' --output none
 
 $environmentPath = "repos/$Repository/environments/production"
 if (-not $existingEnvironment) {
