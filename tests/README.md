@@ -16,6 +16,11 @@ the CLI and editor find `global.json` and `YHAB.slnx`.
 isolated AppHost builders for the Aspire and Playwright projects.
 
 The deployment workflow runs all five layers before deploying from `main`.
+On its Ubuntu runner, it exports the test user's public HTTPS development
+certificate, adds it to the system CA store, and verifies trust before testing.
+Creating the certificate alone does not trust it: Aspire's HTTPS readiness probes
+then fail with `UntrustedRoot`, preventing every AppHost-backed test from starting.
+Browser contexts accepting development certificates do not affect those probes.
 `ServiceDefaultsExtensionsTests` checks opt-in production readiness/liveness and
 their default absence outside Development. `DeploymentMigrationsTests` uses Azure
 SDK substitutes to check successful, failed, stopped, and canceled migration jobs;
@@ -204,6 +209,13 @@ comparison, not a multi-user authentication or deployed multi-host benchmark.
 Thresholds run sequentially within each test. For comparable observations, run
 each measurement method alone, sequentially; full-suite concurrency is suitable
 for correctness checks but distorts process-wide memory/timing observations.
+The AppHost-backed browser scenarios use `BrowserAppHostDefinition`, which opts
+out of parallel execution within the Playwright project. Each case starts a full
+orchestrator, database, migration tooling and Chromium; overlapping those stacks
+caused startup timeouts even with test-module concurrency limited to one, and
+overlapping load/memory scenarios distort their observations. Each case still
+owns and disposes fresh resources. Internal multi-process and concurrent-editor
+checks remain concurrent, with all assertions and deadlines preserved.
 If simultaneous database stress and browser/AppHost startup exhaust local
 resources, run the solution with `--max-parallel-test-modules 1`. This serializes
 test projects while preserving their `all` / `conservative` / `1x` settings;
@@ -240,7 +252,8 @@ through .NET's short-lived `localHeapViewU8()` runtime view, and private
 bytes/working sets of Chromium processes reported by CDP. Linear capacity is not
 live managed-object usage; process working-set sums can double-count shared pages,
 and CDP can omit auxiliary processes. Diagnostic calls have bounded waits. These
-observations do not establish leak freedom. Normal runner parallelism is unchanged.
+observations do not establish leak freedom. The browser collection runs these
+scenarios sequentially; the shared runner settings remain unchanged.
 The probe records DOM counters after an initial collection and again after a
 rendering opportunity and a second fixed collection, allowing weak cleanup to run.
 It never loops collection until a growth assertion passes. Both observations are
@@ -510,6 +523,8 @@ ignored; do not commit traces containing cookies or future test account data.
 Keep the existing parallel settings: test processes, ports, containers and browser
 contexts must be isolated. On constrained CI agents, bound test-module concurrency
 with `--max-parallel-test-modules 1`; this does not change test discovery or skip suites.
+The explicit browser collection opt-out above also prevents complete AppHost
+stacks from competing within the Playwright project.
 
 References (reviewed October 2, 2026): [Aspire testing overview](https://aspire.dev/testing/overview/),
 [AppHost lifecycle and isolation](https://aspire.dev/testing/manage-app-host/),

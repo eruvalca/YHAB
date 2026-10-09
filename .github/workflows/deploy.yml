@@ -32,8 +32,15 @@ jobs:
         run: |
           dotnet tool install Aspire.Cli --version "$ASPIRE_VERSION" --tool-path "$RUNNER_TEMP/aspire"
           echo "$RUNNER_TEMP/aspire" >> "$GITHUB_PATH"
-      - name: Create test HTTPS certificate
-        run: dotnet dev-certs https
+      - name: Create and trust test HTTPS certificate
+        shell: bash
+        run: |
+          # Aspire's HTTPS readiness probes use the runner's OpenSSL trust store.
+          # Export only the public certificate from the same user that runs tests.
+          dotnet dev-certs https --export-path "$RUNNER_TEMP/yhab-test-https.crt" --format PEM
+          sudo cp "$RUNNER_TEMP/yhab-test-https.crt" /usr/local/share/ca-certificates/yhab-test-https.crt
+          sudo update-ca-certificates
+          openssl verify -CAfile /etc/ssl/certs/ca-certificates.crt "$RUNNER_TEMP/yhab-test-https.crt"
       - name: Check formatting
         run: dotnet format YHAB.slnx --severity warn --verify-no-changes
       - name: Build
