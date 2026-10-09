@@ -1,93 +1,55 @@
 @inherits YHAB.UI.Components.CancellableComponentBase
 @if (_error is not null) { <div class="notice" data-kind="error" role="alert">@_error</div> }
-@if (_budget is not null) {
-<FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalM)" Class="page-heading">
-    <div><p class="eyebrow">GIVE EVERY DOLLAR A PURPOSE</p><h1>Plan your money</h1></div>
-    <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalS)" Class="month-navigation">
-        <FluentButton OnClick="PreviousAsync" Disabled="@(_month.Year <= 2000)" Size="ButtonSize.Small" IconOnly="true" Appearance="ButtonAppearance.Subtle" aria-label="Previous month">←</FluentButton>
-        <strong class="month-label">@_month.ToString("MMMM yyyy", Culture)</strong>
-        <FluentButton OnClick="NextAsync" Disabled="@(_month.Year >= 2100)" Size="ButtonSize.Small" IconOnly="true" Appearance="ButtonAppearance.Subtle" aria-label="Next month">→</FluentButton>
-        <FluentButton OnClick="CurrentAsync" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle">Today</FluentButton>
-    </FluentStack>
-</FluentStack>
+@if (_budget is not null)
+{
 <div class="budget-board">
-<section class="budget-summary" aria-label="Monthly budget summary" data-negative="@(_budget.ReadyToAssign < 0 ? "true" : "false")">
-    <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalAlignment="HorizontalAlignment.SpaceBetween"
-                 HorizontalGap="var(--spacingHorizontalM)" VerticalGap="var(--spacingVerticalS)">
-        <div class="ready-balance" role="status" aria-atomic="true">
-            <span>@(_budget.ReadyToAssign < 0 ? "Overassigned" : "Ready to assign")</span>
-            <strong class="hero-amount" data-money-tone="@MoneyTone(_budget.ReadyToAssign)">@Money(_budget.ReadyToAssign)</strong>
-        </div>
-        <FluentStack Width="auto" Wrap="true" HorizontalGap="var(--spacingHorizontalS)" VerticalGap="var(--spacingVerticalXS)">
-            <FluentButton OnClick="AutoAssignAsync" Disabled="@(IsBusy || _budget.ReadyToAssign <= 0)" Size="ButtonSize.Small" Appearance="ButtonAppearance.Primary">Fund targets</FluentButton>
-            <FluentButton OnClick="ShowMove" Disabled="IsBusy" Size="ButtonSize.Small" Appearance="ButtonAppearance.Outline">Move money</FluentButton>
+    <section class="budget-summary" aria-label="Monthly budget summary" data-negative="@(_budget.ReadyToAssign < 0 ? "true" : "false")">
+        <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalAlignment="HorizontalAlignment.SpaceBetween" HorizontalGap="var(--spacingHorizontalM)" VerticalGap="var(--spacingVerticalS)">
+            <div>
+                <h1>Plan your money</h1>
+                <FluentStack Width="auto" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalXS)" Class="month-navigation">
+                    <FluentButton OnClick="PreviousAsync" Disabled="@(_month.Year <= 2000)" Size="ButtonSize.Small" IconOnly="true" Appearance="ButtonAppearance.Subtle" aria-label="Previous month">←</FluentButton>
+                    <strong class="month-label">@_month.ToString("MMMM yyyy", Culture)</strong>
+                    <FluentButton OnClick="NextAsync" Disabled="@(_month.Year >= 2100)" Size="ButtonSize.Small" IconOnly="true" Appearance="ButtonAppearance.Subtle" aria-label="Next month">→</FluentButton>
+                    <FluentButton OnClick="CurrentAsync" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle">Today</FluentButton>
+                </FluentStack>
+            </div>
+            <div class="ready-balance" role="status" aria-atomic="true">
+                <span>@(_budget.ReadyToAssign < 0 ? "Overassigned" : "Ready to assign")</span>
+                <strong class="hero-amount" data-money-tone="@MoneyTone(_budget.ReadyToAssign)">@Money(_budget.ReadyToAssign)</strong>
+            </div>
+            <FluentStack Width="auto" Wrap="true" HorizontalGap="var(--spacingHorizontalS)" VerticalGap="var(--spacingVerticalXS)">
+                <FluentButton OnClick="AutoAssignAsync" Disabled="@(IsBusy || _budget.ReadyToAssign <= 0)" Size="ButtonSize.Small" Appearance="ButtonAppearance.Primary">Fund targets</FluentButton>
+                <FluentButton OnClick="ShowMove" Disabled="IsBusy" Size="ButtonSize.Small" Appearance="ButtonAppearance.Outline">Move money</FluentButton>
+            </FluentStack>
         </FluentStack>
+        <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalL)" VerticalGap="var(--spacingVerticalXS)" Class="budget-totals">
+            <div class="budget-total"><span>Assigned</span> <strong>@Money(_budget.Assigned)</strong></div>
+            <div class="budget-total"><span>Activity</span> <strong>@Money(_budget.Activity)</strong></div>
+            <div class="budget-total"><span>Available</span> <strong>@Money(_budget.Available)</strong></div>
+            <div class="budget-total"><span>Underfunded</span> <strong data-money-tone="@(_budget.Categories.Any(item => item.TargetNeeded > 0 || item.Available < 0) ? "attention" : "neutral")">@Money(_budget.Categories.Sum(item => Math.Max(item.TargetNeeded, -item.Available)))</strong></div>
+        </FluentStack>
+    </section>
+    @if (_budget.CashOverspending + _budget.CreditOverspending > 0)
+    {
+        <div class="notice" data-kind="warning">@Money(_budget.CashOverspending) cash overspending and @Money(_budget.CreditOverspending) credit overspending. Move money into these categories to cover it.</div>
+    }
+    @if (_move)
+    {
+        <MoveMoneyEditor Plan="Plan" Month="_month" OnCommand="OnCommand" OnClose="CloseEditors" Busy="IsBusy" />
+    }
+    <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalM)" VerticalGap="var(--spacingVerticalM)" Class="budget-workspace">
+        <div class="budget-categories">
+            <BudgetCategoryTable Plan="Plan" Budget="_budget" OnCommand="OnCommand" OnSelect="EditCategory" Busy="IsBusy" SelectedCategoryId="_category?.Id" />
+        </div>
+        @if (_category is not null)
+        {
+            <aside class="category-details" aria-label="Category details">
+                <CategoryEditor @key="(_category, _month)" Plan="Plan" Category="_category" MonthState="EditingMonth" Month="_month" OnCommand="OnCommand" OnClose="CloseEditors" Busy="IsBusy" />
+            </aside>
+        }
     </FluentStack>
-    <div class="budget-totals">
-        <FluentGrid Spacing="2">
-            <FluentGridItem Xs="6" Sm="3"><div class="budget-total"><span>Assigned</span><strong data-money-tone="@MoneyTone(_budget.Assigned)">@Money(_budget.Assigned)</strong></div></FluentGridItem>
-            <FluentGridItem Xs="6" Sm="3"><div class="budget-total"><span>Activity</span><strong data-money-tone="@MoneyTone(_budget.Activity)">@Money(_budget.Activity)</strong></div></FluentGridItem>
-            <FluentGridItem Xs="6" Sm="3"><div class="budget-total"><span>Available</span><strong data-money-tone="@MoneyTone(_budget.Available)">@Money(_budget.Available)</strong></div></FluentGridItem>
-            <FluentGridItem Xs="6" Sm="3"><div class="budget-total"><span>Underfunded</span><strong data-money-tone="@(_budget.Categories.Any(item => item.TargetNeeded > 0 || item.Available < 0) ? "attention" : "neutral")">@Money(_budget.Categories.Sum(item => Math.Max(item.TargetNeeded, -item.Available)))</strong></div></FluentGridItem>
-        </FluentGrid>
-    </div>
-</section>
-@if (_budget.CashOverspending + _budget.CreditOverspending > 0)
-{
-    <div class="notice" data-kind="warning">@Money(_budget.CashOverspending) cash overspending and @Money(_budget.CreditOverspending) credit overspending. Move money into these categories to cover it.</div>
-}
-@if (_move)
-{
-    <MoveMoneyEditor Plan="Plan" Month="_month" OnCommand="OnCommand" OnClose="CloseEditors" Busy="IsBusy" />
-}
-@if (_categoryEditor)
-{
-    <CategoryEditor @key="_category?.Id" Plan="Plan" Category="_category" MonthState="EditingMonth" Month="_month" OnCommand="OnCommand" OnClose="CloseEditors" Busy="IsBusy" />
-}
-@if (_groupEditor)
-{
-    <GroupEditor Plan="Plan" OnCommand="OnCommand" OnClose="CloseEditors" Busy="IsBusy" />
-}
-<FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Bottom" HorizontalGap="var(--spacingHorizontalS)" Class="table-toolbar">
-    <FluentSelect TOption="string" TValue="string" Label="View" Items="_filters" @bind-Value="_filter" Margin="0" />
-    <FluentButton OnClick="AddCategory" Disabled="IsBusy" Appearance="ButtonAppearance.Subtle">+ Category</FluentButton>
-    <FluentButton OnClick="AddGroup" Disabled="IsBusy" Appearance="ButtonAppearance.Subtle">Manage groups</FluentButton>
-</FluentStack>
-<div class="table-container budget-table-container" tabindex="0" aria-label="Monthly category budget">
-    <table class="budget-table">
-        <caption class="visually-hidden">Category budget for @_month.ToString("MMMM yyyy", Culture)</caption>
-        <thead><tr><th scope="col">Category</th><th scope="col" class="numeric">Assigned</th><th scope="col" class="numeric">Activity</th><th scope="col" class="numeric">Available</th></tr></thead>
-        <tbody>
-            @foreach (var group in Plan.Groups.OrderBy(item => item.SortOrder))
-            {
-                var rows = Rows(group.Id).ToArray();
-                if (rows.Length == 0) { continue; }
-                <tr class="group-row"><th colspan="4" scope="rowgroup">@group.Name <span class="group-balance" data-money-tone="@MoneyTone(rows.Sum(item => item.Available))">· @Money(rows.Sum(item => item.Available)) available</span></th></tr>
-                @foreach (var row in rows)
-                {
-                    <tr @key="row.Category.Id">
-                        <th scope="row"><button class="category-link" @onclick="() => EditCategory(row.Category)">@row.Category.Name</button>
-                            @if (row.Category.Target is not null)
-                            {
-                                <small class="target-caption">@TargetCaption(row)</small>
-                                <progress class="target-progress" max="100" value="@Progress(row)" aria-label="@($"{row.Category.Name} target progress")"></progress>
-                            }
-                        </th>
-                        <td class="numeric"><AmountInput @key="(row.Category.Id, _month)" Label="@($"Assign to {row.Category.Name}")" Value="row.Assigned" ValueChanged="amount => AssignAsync(row.Category.Id, amount)" Disabled="@(!RendererInfo.IsInteractive)" ReadOnly="IsBusy" /></td>
-                        <td class="numeric money" data-money-tone="@MoneyTone(row.Activity)">@Money(row.Activity)</td>
-                        <td class="numeric"><span class="available-pill" data-tone="@Tone(row)">@Money(row.Available)</span>@if (row.Available < 0) { <small>@(row.CashOverspending > 0 ? "Cash overspent" : "Credit overspent")</small> }</td>
-                    </tr>
-                }
-            }
-        </tbody>
-    </table>
+    <details class="budget-help"><summary>Plan tips &amp; future assignments</summary><p class="muted">Positive balances roll forward. @Money(_budget.AssignedInFuture) is assigned in future months. Enter arithmetic such as 150 + 25 in any amount field. Drag a move handle to reorder, or click it for move controls. Rename a category beside its name, or press F2 on the name. Select a category to adjust its target.</p></details>
 </div>
-@if (!Plan.Categories.Any()) { <div class="empty-state"><h2>Make space for your priorities</h2><p>Add a category group, then the things you want your money to do.</p></div> }
-else if (!Plan.Groups.Any(group => Rows(group.Id).Any()))
-{
-    <div class="empty-state"><h2>No categories match this view</h2><p>Choose another view to see the rest of your plan.</p></div>
 }
-<p class="muted">Positive balances roll forward. @Money(_budget.AssignedInFuture) is assigned in future months. Enter arithmetic such as 150 + 25 in any amount field.</p>
-</div>
-
-} else if (_error is null) { <p role="status">Loading month…</p> }
+else if (_error is null) { <p role="status">Loading month…</p> }

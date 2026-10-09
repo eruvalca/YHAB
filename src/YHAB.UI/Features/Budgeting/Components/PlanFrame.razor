@@ -1,0 +1,11 @@
+<div class="plan-frame">
+    <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalL)" VerticalGap="var(--spacingVerticalM)" Class="plan-shell">
+        <aside class="plan-sidebar">
+            <details class="plan-drawer">
+                <summary>Plan &amp; accounts</summary>
+                <PlanNavigation Plan="Plan" Balances="Balances" OnAddAccount="OnAddAccount" Busy="Busy" />
+            </details>
+        </aside>
+        <div class="plan-content">@ChildContent</div>
+    </FluentStack>
+</div>

@@ -30,7 +30,7 @@ public sealed class BudgetBoardTests
         var commands = new List<PlanCommand>();
         var component = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, plan)
             .Add(item => item.LoadMonth, (_, _) => Task.FromResult(budget)).Add(item => item.OnCommand, commands.Add));
-        await component.Find(".category-link").ClickAsync();
+        await component.Find(".category-row .category-link").ClickAsync();
         var label = snoozed ? "Resume target this month" : "Snooze target this month";
         await component.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), label, StringComparison.Ordinal)).ClickAsync();
         var command = commands.Single().ShouldBeOfType<AssignMoney>();

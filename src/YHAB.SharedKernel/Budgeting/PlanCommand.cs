@@ -6,6 +6,8 @@ namespace YHAB.SharedKernel.Budgeting;
 [JsonDerivedType(typeof(SaveAccount), "SaveAccount")]
 [JsonDerivedType(typeof(SaveGroup), "SaveGroup")]
 [JsonDerivedType(typeof(SaveCategory), "SaveCategory")]
+[JsonDerivedType(typeof(ReorderGroup), "ReorderGroup")]
+[JsonDerivedType(typeof(ReorderCategory), "ReorderCategory")]
 [JsonDerivedType(typeof(SaveTransaction), "SaveTransaction")]
 [JsonDerivedType(typeof(DeleteTransactions), "DeleteTransactions")]
 [JsonDerivedType(typeof(UpdateTransactionStates), "UpdateTransactionStates")]

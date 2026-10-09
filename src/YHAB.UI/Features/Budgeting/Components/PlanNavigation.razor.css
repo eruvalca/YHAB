@@ -1,11 +1,11 @@
-.plan-navigation { padding: var(--spacingVerticalL) var(--spacingHorizontalM); min-width: 0; }
-.back-link { display: inline-block; margin-bottom: var(--spacingVerticalXXL); font-size: var(--fontSizeBase200); text-decoration: none; }
-h2 { font-size: var(--fontSizeBase500); letter-spacing: -0.025em; overflow-wrap: anywhere; }
-.account-nav-heading { margin-top: var(--spacingVerticalXXXL); }
-.account-nav-link { display: block; padding: var(--spacingVerticalM) var(--spacingHorizontalS); border-bottom: 1px solid var(--colorNeutralStroke2); text-decoration: none; color: var(--colorNeutralForeground1); }
+.plan-navigation { padding: var(--spacingVerticalS) var(--spacingHorizontalXS); min-width: 0; }
+.back-link { display: inline-block; margin-bottom: var(--spacingVerticalS); font-size: var(--fontSizeBase200); text-decoration: none; }
+h2 { font-size: var(--fontSizeBase400); margin-bottom: var(--spacingVerticalS); overflow-wrap: anywhere; }
+.account-nav-heading { margin-top: var(--spacingVerticalL); }
+.account-nav-heading .eyebrow { margin-bottom: var(--spacingVerticalXS); }
+.account-nav-link { display: block; padding: var(--spacingVerticalS) var(--spacingHorizontalXS); text-decoration: none; color: var(--colorNeutralForeground1); font-size: var(--fontSizeBase300); }
 .account-nav-link:hover { background: var(--colorSubtleBackgroundHover); border-radius: var(--borderRadiusMedium); }
-.account-nav-link small { display: block; color: var(--colorNeutralForeground3); font-size: var(--fontSizeBase100); }
-.account-nav-link .money { display: block; margin-top: var(--spacingVerticalXS); font-size: var(--fontSizeBase300); }
-.plan-private { margin-top: var(--spacingVerticalXXXL); color: var(--colorNeutralForeground3); font-size: var(--fontSizeBase200); }
-details { margin-block: var(--spacingVerticalL); }
-@media (max-width: 1023px) { .plan-navigation { border-bottom: 1px solid var(--colorNeutralStroke2); padding: 0 0 var(--spacingVerticalL); } .plan-private { display: none; } .account-nav-heading { margin-top: var(--spacingVerticalL); } .back-link { margin-bottom: var(--spacingVerticalM); } }
+.account-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-nav-link .money { white-space: nowrap; font-size: var(--fontSizeBase200); }
+.plan-private { margin-top: var(--spacingVerticalL); color: var(--colorNeutralForeground3); font-size: var(--fontSizeBase200); }
+details { margin-block: var(--spacingVerticalS); }

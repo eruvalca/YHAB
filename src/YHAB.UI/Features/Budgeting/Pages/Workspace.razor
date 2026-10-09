@@ -13,20 +13,20 @@
 }
 @if (_error is not null)
 {
-    <div class="notice" data-kind="error" role="alert">@_error <FluentButton OnClick="RefreshAsync" Disabled="_busy" Appearance="ButtonAppearance.Subtle">Refresh plan</FluentButton>
+    <div class="notice" data-kind="error" role="alert">@_error <FluentButton OnClick="RefreshAsync" Disabled="_busy" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle">Refresh plan</FluentButton>
         @if (_operation.CanRetry) { <FluentButton OnClick="RetryAsync" Appearance="ButtonAppearance.Subtle">Retry save safely</FluentButton> }
     </div>
 }
 @if (Snapshot is { } plan)
 {
-    <FluentGrid Spacing="4" Class="workspace" aria-busy="@(_busy ? "true" : "false")" data-interactive="@(RendererInfo.IsInteractive ? "true" : "false")" data-renderer="@RendererInfo.Name">
-        <FluentGridItem Xs="12" Lg="3"><PlanNavigation Plan="plan" Balances="_view?.Balances" OnAddAccount="AddAccount" Busy="IsBusy" /></FluentGridItem>
-        <FluentGridItem Xs="12" Lg="9">
+    <div class="workspace" aria-busy="@(_busy ? "true" : "false")" data-interactive="@(RendererInfo.IsInteractive ? "true" : "false")" data-renderer="@RendererInfo.Name">
+        <PlanFrame Plan="plan" Balances="_view?.Balances" OnAddAccount="AddAccount" Busy="IsBusy">
+
             <div class="workspace-toolbar">
                 <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalS)" VerticalGap="var(--spacingVerticalS)" Class="workspace-tools">
-                    <FluentButton OnClick="UndoAsync" Disabled="@(IsBusy || !plan.CanUndo)" Appearance="ButtonAppearance.Subtle" title="Undo (Ctrl+Z)">Undo</FluentButton>
-                    <FluentButton OnClick="RedoAsync" Disabled="@(IsBusy || !plan.CanRedo)" Appearance="ButtonAppearance.Subtle" title="Redo (Ctrl+Shift+Z)">Redo</FluentButton>
-                    <FluentButton OnClick="RefreshAsync" Disabled="_busy" Appearance="ButtonAppearance.Subtle">Refresh</FluentButton>
+                    <FluentButton OnClick="UndoAsync" Disabled="@(IsBusy || !plan.CanUndo)" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle" title="Undo (Ctrl+Z)">Undo</FluentButton>
+                    <FluentButton OnClick="RedoAsync" Disabled="@(IsBusy || !plan.CanRedo)" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle" title="Redo (Ctrl+Shift+Z)">Redo</FluentButton>
+                    <FluentButton OnClick="RefreshAsync" Disabled="_busy" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle">Refresh</FluentButton>
                     <span class="workspace-status muted" role="status">@_operation.Message</span>
                 </FluentStack>
             </div>
@@ -47,8 +47,8 @@
                 <p class="muted">Ctrl+Z undo · Ctrl+Shift+Z redo. Shortcuts leave text fields alone. Your latest 50 changes can be undone.</p>
                 <ol>@foreach (var change in plan.Changes) { <li>@change.Description <small class="muted">@change.Timestamp.ToLocalTime().ToString("g", Culture)</small></li> }</ol>
             </details>
-        </FluentGridItem>
-    </FluentGrid>
+        </PlanFrame>
+    </div>
 }
 else if (_error is null)
 {

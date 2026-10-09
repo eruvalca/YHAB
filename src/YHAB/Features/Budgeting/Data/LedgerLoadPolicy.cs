@@ -6,7 +6,7 @@ namespace YHAB.Features.Budgeting.Data;
 
 internal static class LedgerLoadPolicy
 {
-    public static bool NeedsLedger(PlanCommand? command) => command is not (AssignMoney or MoveMoney or AutoAssign or SaveGroup or SaveCategory or SaveAccount or UpdatePlan or RenamePayee);
+    public static bool NeedsLedger(PlanCommand? command) => command is not (AssignMoney or MoveMoney or AutoAssign or SaveGroup or SaveCategory or ReorderGroup or ReorderCategory or SaveAccount or UpdatePlan or RenamePayee);
     public static async Task<IQueryable<BudgetTransaction>> SelectAsync(ApplicationDbContext database, Guid planId, PlanCommand? command, CancellationToken token)
     {
         var entries = database.Set<BudgetTransaction>().Where(item => item.PlanId == planId);

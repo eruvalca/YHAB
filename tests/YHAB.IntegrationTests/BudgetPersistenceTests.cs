@@ -13,6 +13,38 @@ namespace YHAB.IntegrationTests;
 public sealed class BudgetPersistenceTests
 {
     [Fact]
+    public async Task ReorderingPersistsAtomicallyAndSupportsUndoRedoAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(3));
+        await using var database = await BudgetDatabase.CreateAsync(timeout.Token);
+        var store = database.Store;
+        var id = await store.CreateAsync("owner-a", new("Ordering"), timeout.Token);
+        var plan = (await store.ReadAsync("owner-a", id, timeout.Token)).ShouldNotBeNull();
+        var original = plan;
+        var category = plan.Categories[0];
+        var destination = plan.Groups.First(item => item.Id != category.GroupId);
+        var anchor = plan.Categories.First(item => item.GroupId == destination.Id);
+        var command = new ReorderCategory(plan.Version, category.Id, destination.Id, anchor.Id);
+        plan = await ApplyAsync(store, plan, command, timeout.Token);
+        var ordered = plan.Categories.Where(item => item.GroupId == destination.Id).OrderBy(item => item.SortOrder).ToArray();
+        ordered.Take(2).Select(item => item.Id).ShouldBe([category.Id, anchor.Id]);
+        plan.Categories.Single(item => item.Id == category.Id).ShouldBe(category with { GroupId = destination.Id, SortOrder = 0 });
+        plan.Version.ShouldBe(original.Version + 1);
+        (await store.ExecuteAsync("owner-a", id, new ReorderGroup(original.Version, destination.Id, null), timeout.Token)).IsT3.ShouldBeTrue();
+        plan = await ApplyAsync(store, plan, new UndoChange(plan.Version), timeout.Token);
+        plan.Categories.OrderBy(item => item.Id).ShouldBe(original.Categories.OrderBy(item => item.Id));
+        plan = await ApplyAsync(store, plan, new RedoChange(plan.Version), timeout.Token);
+        plan.Categories.Single(item => item.Id == category.Id).GroupId.ShouldBe(destination.Id);
+        plan = await ApplyAsync(store, plan, new ReorderGroup(plan.Version, destination.Id, plan.Groups.OrderBy(item => item.SortOrder).First().Id), timeout.Token);
+        plan.Groups.OrderBy(item => item.SortOrder).First().Id.ShouldBe(destination.Id);
+        plan = await ApplyAsync(store, plan, new UndoChange(plan.Version), timeout.Token);
+        plan.Groups.OrderBy(item => item.Id).ShouldBe(original.Groups.OrderBy(item => item.Id));
+        plan.Allocations.ShouldBe(original.Allocations);
+        plan.Transactions.ShouldBe(original.Transactions);
+    }
+
+    [Fact]
     public async Task MergingAssignedCategoryPersistsHistoryAndSupportsUndoRedoAsync()
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);

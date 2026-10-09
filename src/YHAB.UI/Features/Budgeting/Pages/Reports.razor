@@ -5,43 +5,40 @@
 @if (_error is not null) { <div class="notice" data-kind="error" role="alert">@_error</div> }
 @if (_plan is { } plan)
 {
-    <FluentGrid Spacing="4">
-        <FluentGridItem Xs="12" Lg="3"><PlanNavigation Plan="plan" Balances="_balances" /></FluentGridItem>
-        <FluentGridItem Xs="12" Lg="9">
-            <p class="eyebrow">A STEP BACK. A CLEARER PICTURE.</p><h1>Reflect</h1><p class="lead">See where your money went, and how far you've come.</p>
-            <form method="get" class="report-filter">
-                <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalM)">
-                    <div class="form-field"><label for="report-from">From</label><input id="report-from" name="from" type="date" value="@_from.ToString("yyyy-MM-dd", Culture)" required /></div>
-                    <div class="form-field"><label for="report-to">Through</label><input id="report-to" name="to" type="date" value="@_through.ToString("yyyy-MM-dd", Culture)" required /></div>
-                    <button class="primary-action" type="submit">Update reports</button>
-                </FluentStack>
-            </form>
-            <FluentGrid Spacing="3" Class="summary-grid">
-                <FluentGridItem Xs="6" Md="3"><div class="stat"><span>Income</span><strong data-money-tone="@MoneyTone(_months.Sum(item => item.Income))">@Money(_months.Sum(item => item.Income))</strong></div></FluentGridItem>
-                <FluentGridItem Xs="6" Md="3"><div class="stat"><span>Spending</span><strong data-money-tone="@MoneyTone(-_months.Sum(item => item.Expense))">@Money(_months.Sum(item => item.Expense))</strong></div></FluentGridItem>
-                <FluentGridItem Xs="6" Md="3"><div class="stat"><span>Net income</span><strong data-money-tone="@MoneyTone(_months.Sum(item => item.NetIncome))">@Money(_months.Sum(item => item.NetIncome))</strong></div></FluentGridItem>
-                <FluentGridItem Xs="6" Md="3"><div class="stat"><span>Net worth</span><strong data-money-tone="@MoneyTone(_months.Count > 0 ? _months[^1].NetWorth : 0)">@Money(_months.Count > 0 ? _months[^1].NetWorth : 0)</strong></div></FluentGridItem>
-            </FluentGrid>
-            <section class="surface report-section">
-                <h2>Spending by category</h2><p class="muted">Purchases less refunds. Transfers within your budget are excluded.</p>
-                @foreach (var row in _spending)
-                {
-                    <div class="spending-row"><FluentStack HorizontalGap="var(--spacingHorizontalL)"><span>@row.Name</span><strong class="money">@Money(row.Amount)</strong></FluentStack><meter min="0" max="@MaxSpending" value="@Math.Max(0, row.Amount)" aria-label="@($"{row.Name}: {Money(row.Amount)}")"></meter></div>
-                }
-                @if (_spending.Count == 0) { <p>No categorized spending in this period.</p> }
-            </section>
-            <section class="surface report-section">
-                <h2>Income & expense</h2>
-                <div class="table-container"><table><thead><tr><th scope="col">Month</th><th scope="col" class="numeric">Income</th><th scope="col" class="numeric">Expense</th><th scope="col" class="numeric">Net income</th></tr></thead><tbody>
-                    @foreach (var month in _months) { <tr><th scope="row">@month.Month.ToString("MMM yyyy", Culture)</th><td class="numeric">@Money(month.Income)</td><td class="numeric">@Money(month.Expense)</td><td class="numeric">@Money(month.NetIncome)</td></tr> }
-                </tbody></table></div>
-            </section>
-            <section class="surface report-section">
-                <h2>Net worth over time</h2><p class="muted">Assets minus debt across budget, loan, and tracking accounts, at the end of each period.</p>
-                <div class="table-container"><table><thead><tr><th scope="col">Month</th><th scope="col" class="numeric">Assets</th><th scope="col" class="numeric">Debt</th><th scope="col" class="numeric">Net worth</th></tr></thead><tbody>
-                    @foreach (var month in _months) { <tr><th scope="row">@month.Month.ToString("MMM yyyy", Culture)</th><td class="numeric">@Money(month.Assets)</td><td class="numeric">@Money(month.Debt)</td><td class="numeric"><strong data-money-tone="@MoneyTone(month.NetWorth)">@Money(month.NetWorth)</strong></td></tr> }
-                </tbody></table></div>
-            </section>
-        </FluentGridItem>
-    </FluentGrid>
+    <PlanFrame Plan="plan" Balances="_balances">
+        <p class="eyebrow">A STEP BACK. A CLEARER PICTURE.</p><h1>Reflect</h1><p class="lead">See where your money went, and how far you've come.</p>
+        <form method="get" class="report-filter">
+            <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalM)">
+                <div class="form-field"><label for="report-from">From</label><input id="report-from" name="from" type="date" value="@_from.ToString("yyyy-MM-dd", Culture)" required /></div>
+                <div class="form-field"><label for="report-to">Through</label><input id="report-to" name="to" type="date" value="@_through.ToString("yyyy-MM-dd", Culture)" required /></div>
+                <button class="primary-action" type="submit">Update reports</button>
+            </FluentStack>
+        </form>
+        <FluentGrid Spacing="3" Class="summary-grid">
+            <FluentGridItem Xs="6" Md="3"><div class="stat"><span>Income</span><strong data-money-tone="@MoneyTone(_months.Sum(item => item.Income))">@Money(_months.Sum(item => item.Income))</strong></div></FluentGridItem>
+            <FluentGridItem Xs="6" Md="3"><div class="stat"><span>Spending</span><strong data-money-tone="@MoneyTone(-_months.Sum(item => item.Expense))">@Money(_months.Sum(item => item.Expense))</strong></div></FluentGridItem>
+            <FluentGridItem Xs="6" Md="3"><div class="stat"><span>Net income</span><strong data-money-tone="@MoneyTone(_months.Sum(item => item.NetIncome))">@Money(_months.Sum(item => item.NetIncome))</strong></div></FluentGridItem>
+            <FluentGridItem Xs="6" Md="3"><div class="stat"><span>Net worth</span><strong data-money-tone="@MoneyTone(_months.Count > 0 ? _months[^1].NetWorth : 0)">@Money(_months.Count > 0 ? _months[^1].NetWorth : 0)</strong></div></FluentGridItem>
+        </FluentGrid>
+        <section class="surface report-section">
+            <h2>Spending by category</h2><p class="muted">Purchases less refunds. Transfers within your budget are excluded.</p>
+            @foreach (var row in _spending)
+            {
+                <div class="spending-row"><FluentStack HorizontalGap="var(--spacingHorizontalL)"><span>@row.Name</span><strong class="money">@Money(row.Amount)</strong></FluentStack><meter min="0" max="@MaxSpending" value="@Math.Max(0, row.Amount)" aria-label="@($"{row.Name}: {Money(row.Amount)}")"></meter></div>
+            }
+            @if (_spending.Count == 0) { <p>No categorized spending in this period.</p> }
+        </section>
+        <section class="surface report-section">
+            <h2>Income & expense</h2>
+            <div class="table-container"><table><thead><tr><th scope="col">Month</th><th scope="col" class="numeric">Income</th><th scope="col" class="numeric">Expense</th><th scope="col" class="numeric">Net income</th></tr></thead><tbody>
+                @foreach (var month in _months) { <tr><th scope="row">@month.Month.ToString("MMM yyyy", Culture)</th><td class="numeric">@Money(month.Income)</td><td class="numeric">@Money(month.Expense)</td><td class="numeric">@Money(month.NetIncome)</td></tr> }
+            </tbody></table></div>
+        </section>
+        <section class="surface report-section">
+            <h2>Net worth over time</h2><p class="muted">Assets minus debt across budget, loan, and tracking accounts, at the end of each period.</p>
+            <div class="table-container"><table><thead><tr><th scope="col">Month</th><th scope="col" class="numeric">Assets</th><th scope="col" class="numeric">Debt</th><th scope="col" class="numeric">Net worth</th></tr></thead><tbody>
+                @foreach (var month in _months) { <tr><th scope="row">@month.Month.ToString("MMM yyyy", Culture)</th><td class="numeric">@Money(month.Assets)</td><td class="numeric">@Money(month.Debt)</td><td class="numeric"><strong data-money-tone="@MoneyTone(month.NetWorth)">@Money(month.NetWorth)</strong></td></tr> }
+            </tbody></table></div>
+        </section>
+    </PlanFrame>
 }

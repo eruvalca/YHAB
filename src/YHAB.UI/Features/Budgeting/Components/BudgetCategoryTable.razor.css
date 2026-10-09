@@ -1,0 +1,31 @@
+.category-catalog { min-width: 0; }
+.category-catalog ::deep .table-toolbar { margin-block: var(--spacingVerticalS); }
+.category-catalog ::deep .table-toolbar label { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.budget-table-container { margin-block: 0; }
+.budget-table { min-width: 35rem; table-layout: fixed; }
+.budget-table th:first-child { width: 49%; }
+.budget-table ::deep th, .budget-table ::deep td { padding: var(--spacingVerticalXS) var(--spacingHorizontalS); vertical-align: middle; }
+.budget-table ::deep td:nth-child(2) { width: 17%; }
+.budget-table ::deep .group-row { background: var(--colorNeutralBackground3); font-weight: var(--fontWeightSemibold); }
+.budget-table ::deep .group-row th, .budget-table ::deep .group-row td { padding-block: var(--spacingVerticalXS); }
+.budget-table ::deep .category-row { cursor: pointer; }
+.budget-table ::deep .category-row:hover { background: var(--colorSubtleBackgroundHover); }
+.budget-table ::deep .category-row[data-selected="true"] { background: var(--colorBrandBackground2); box-shadow: inset 3px 0 var(--colorBrandStroke1); }
+.budget-table ::deep .row-move, .budget-table ::deep .group-toggle, .budget-table ::deep .group-add { flex: 0 0 auto; min-width: 1.5rem; min-height: 1.75rem; padding: 0; border: 0; background: transparent; color: var(--colorNeutralForeground3); }
+.budget-table ::deep .row-move { cursor: grab; }
+.budget-table ::deep .row-move:active { cursor: grabbing; }
+.budget-table ::deep .group-add { font-size: var(--fontSizeBase400); }
+.budget-table ::deep .category-name { flex: 1; min-width: 0; }
+.budget-table ::deep .target-caption { display: block; font-weight: var(--fontWeightRegular); color: var(--colorNeutralForeground3); font-size: var(--fontSizeBase100); line-height: var(--lineHeightBase100); }
+.budget-table ::deep .target-progress { display: block; width: 100%; height: 0.1875rem; margin-top: var(--spacingVerticalXXS); accent-color: var(--colorBrandBackground); }
+.budget-table ::deep .amount-input { margin-block: 0; }
+.budget-table ::deep .amount-input label { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.budget-table ::deep .amount-input fluent-text-input::part(control) { text-align: right; font-variant-numeric: tabular-nums; }
+.budget-table ::deep .available-pill { padding: var(--spacingVerticalXXS) var(--spacingHorizontalS); }
+.budget-table ::deep td small { display: block; font-size: var(--fontSizeBase100); }
+.budget-table ::deep .empty-group td { padding-inline-start: var(--spacingHorizontalXXL); color: var(--colorNeutralForeground3); }
+.budget-table ::deep .drop-end td { padding: var(--spacingVerticalS); border: 1px dashed var(--colorBrandStroke1); color: var(--colorBrandForeground1); }
+.budget-table-container[data-dragging="true"] ::deep tr:hover { outline: 2px solid var(--colorBrandStroke1); outline-offset: -2px; }
+@media (max-width: 600px) {
+    .budget-table ::deep .row-move, .budget-table ::deep .group-toggle, .budget-table ::deep .group-add { min-height: 2rem; }
+}

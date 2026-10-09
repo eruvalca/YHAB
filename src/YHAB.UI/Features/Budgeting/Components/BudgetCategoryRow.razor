@@ -1,0 +1,32 @@
+<tr class="category-row" data-category-id="@Row.Category.Id" data-selected="@(Selected ? "true" : "false")"
+    @onclick="SelectAsync" @ondragover:preventDefault="true" @ondrop="DropAsync">
+    <th scope="row">
+        <FluentStack VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalXS)">
+            <button type="button" class="row-move" draggable="@(!Busy ? "true" : "false")" disabled="@Busy"
+                    aria-label="@($"Move {Row.Category.Name}")" title="Drag to reorder, or click for move controls"
+                    @ondragstart="DragAsync" @ondragend="EndDragAsync" @onclick="ToggleMove" @onclick:stopPropagation="true"><FluentIcon Value="@(new Icons.Regular.Size16.ReOrderDotsVertical())" aria-hidden="true" /></button>
+            <div class="category-name">
+                <InlineNameEditor Label="Category name" Value="@Row.Category.Name" OnSave="RenameAsync" OnSelect="SelectAsync" Busy="Busy" />
+                @if (Row.Category.Target is not null)
+                {
+                    <small class="target-caption">@TargetCaption</small>
+                    <progress class="target-progress" max="100" value="@Progress" aria-label="@($"{Row.Category.Name} target progress")"></progress>
+                }
+            </div>
+        </FluentStack>
+    </th>
+    <td class="numeric" @onclick:stopPropagation="true"><AmountInput @key="(Row.Category.Id, Month)" Label="@($"Assign to {Row.Category.Name}")" Value="Row.Assigned" ValueChanged="AssignAsync" Disabled="@(!RendererInfo.IsInteractive)" ReadOnly="Busy" /></td>
+    <td class="numeric money" data-money-tone="@MoneyTone(Row.Activity)">@Money(Row.Activity)</td>
+    <td class="numeric"><span class="available-pill" data-tone="@Tone">@Money(Row.Available)</span>@if (Row.Available < 0) { <small>@(Row.CashOverspending > 0 ? "Cash overspent" : "Credit overspent")</small> }</td>
+</tr>
+@if (_moving)
+{
+    <tr class="category-move-row"><td colspan="4">
+        <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Bottom" HorizontalGap="var(--spacingHorizontalS)">
+            <FluentButton Size="ButtonSize.Small" OnClick="MoveUpAsync" Disabled="@(Busy || Index == 0)" Appearance="ButtonAppearance.Subtle">Move up</FluentButton>
+            <FluentButton Size="ButtonSize.Small" OnClick="MoveDownAsync" Disabled="@(Busy || Index == Siblings.Length - 1)" Appearance="ButtonAppearance.Subtle">Move down</FluentButton>
+            <FluentSelect TOption="GroupData" TValue="Guid" Label="Move to group" Items="Plan.Groups.OrderBy(item => item.SortOrder)" OptionText="item => item.Name" OptionValue="item => item.Id" Value="Row.Category.GroupId" ValueChanged="MoveToGroupAsync" Disabled="Busy" Margin="0" />
+            <FluentButton Size="ButtonSize.Small" OnClick="ToggleMove" Appearance="ButtonAppearance.Subtle">Done</FluentButton>
+        </FluentStack>
+    </td></tr>
+}

@@ -1,6 +1,5 @@
 <nav class="plan-navigation" aria-label="Plan navigation">
     <a class="back-link" href="/plans">← All plans</a>
-    <p class="eyebrow">YOUR PLAN</p>
     <h2>@Plan.Name</h2>
     <FluentNav aria-label="Budget pages" UseIcons="true" BackgroundColor="transparent" BackgroundColorHover="var(--colorSubtleBackgroundHover)">
         <FluentNavItem Href="@($"/plans/{Plan.Id}")" Match="NavLinkMatch.All" IconRest="@(new Icons.Regular.Size20.Wallet())" tabindex="0">Plan your money</FluentNavItem>
@@ -16,8 +15,8 @@
     @foreach (var account in Plan.Accounts.Where(item => !item.Closed))
     {
         <a @key="account.Id" class="account-nav-link" href="@($"/plans/{Plan.Id}/accounts/{account.Id}")">
-            <span>@account.Name<small>@AccountLabel(account.Kind)</small></span>
-            <span class="money" data-money-tone="@MoneyTone(WorkingBalance(account))">@Money(WorkingBalance(account))</span>
+            <FluentStack VerticalAlignment="VerticalAlignment.Center" HorizontalAlignment="HorizontalAlignment.SpaceBetween" HorizontalGap="var(--spacingHorizontalS)"><span class="account-name" title="@($"{account.Name} · {AccountLabel(account.Kind)}")">@account.Name</span>
+            <span class="money" data-money-tone="@MoneyTone(WorkingBalance(account))">@Money(WorkingBalance(account))</span></FluentStack>
         </a>
     }
     @if (Plan.Accounts.Any(item => item.Closed))

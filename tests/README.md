@@ -416,6 +416,17 @@ purchase, reload, undo with the keyboard, redo, verify reports, and reconcile.
 They also check API session, antiforgery, and stale-revision rejection. These tests
 do not establish passkey ceremonies or every account workflow.
 
+`PlanCatalogTests` exercises inline group/category creation and renaming, real
+desktop drag-and-drop, phone move controls, and target editing across reloads.
+At 1440 × 960 it checks that at least ten target-bearing categories fit in the
+viewport, with category rows between 36 and 64 pixels tall. At phone width it
+checks the collapsed plan navigation and document overflow. `BudgetCatalogTests`
+covers component commands, cancellation, collapse, selection, and preservation
+of existing category metadata. `CatalogOrderingTests` covers destination
+validation, ordering, and preservation of financial history; the persistence
+case `ReorderingPersistsAtomicallyAndSupportsUndoRedoAsync` verifies revisions,
+stale-write rejection, undo and redo against disposable PostgreSQL.
+
 `PwaTests` checks the manifest/icon assets and install-button event handling at
 desktop/mobile widths, first-install behavior, authenticated API access without
 caching private responses, offline enhanced navigation and deep-link reloads,

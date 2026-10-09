@@ -1,24 +1,17 @@
-.budget-summary { position: sticky; top: var(--spacingVerticalS); z-index: 5; padding: var(--spacingVerticalM) var(--spacingHorizontalL); margin-block: var(--spacingVerticalL); border-radius: var(--borderRadiusLarge); background: var(--colorNeutralBackground1); border: 1px solid var(--colorBrandStroke2); box-shadow: var(--shadow4); }
+.budget-summary { position: sticky; top: 0; z-index: 5; padding: var(--spacingVerticalS) var(--spacingHorizontalM); border-radius: var(--borderRadiusMedium); background: var(--colorNeutralBackground1); border: 1px solid var(--colorNeutralStroke2); }
 .budget-summary[data-negative="true"] { border-color: var(--colorPaletteRedBorder1); }
-.ready-balance > span, .budget-total > span { display: block; color: var(--colorNeutralForeground2); font-size: var(--fontSizeBase200); }
-.hero-amount { display: block; font-size: 1.75rem; line-height: 1.2; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; color: var(--colorBrandForeground1); overflow-wrap: anywhere; }
-.budget-totals { border-top: 1px solid var(--colorNeutralStroke2); margin-top: var(--spacingVerticalS); padding-top: var(--spacingVerticalS); }
-.budget-total strong { display: block; font-size: var(--fontSizeBase400); line-height: var(--lineHeightBase400); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.budget-table { min-width: 37rem; }
-.budget-table th:first-child { width: 40%; }
-.budget-table td { vertical-align: middle; }
-.budget-table td:nth-child(2) { min-width: 9rem; width: 20%; }
-.group-row th { padding-block: var(--spacingVerticalL); background: var(--colorNeutralBackground3); font-weight: var(--fontWeightSemibold); }
-.group-row .group-balance { font-weight: var(--fontWeightRegular); font-size: var(--fontSizeBase200); }
-.target-caption { display: block; font-weight: var(--fontWeightRegular); color: var(--colorNeutralForeground3); font-size: var(--fontSizeBase100); }
-.target-progress { display: block; width: 80%; height: 0.25rem; margin-top: var(--spacingVerticalS); accent-color: var(--colorBrandBackground); }
-.budget-table small { display: block; }
-.budget-table ::deep .amount-input label { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.budget-table ::deep .amount-input fluent-text-input::part(control) { text-align: right; font-variant-numeric: tabular-nums; }
-
-.budget-table ::deep .amount-input { margin-block: 0; }
-
+h1 { margin: 0; font-size: var(--fontSizeBase400); line-height: var(--lineHeightBase400); }
+.ready-balance > span { display: block; color: var(--colorNeutralForeground2); font-size: var(--fontSizeBase200); }
+.hero-amount { display: block; font-size: var(--fontSizeBase600); line-height: var(--lineHeightBase600); font-variant-numeric: tabular-nums; color: var(--colorBrandForeground1); }
+.budget-summary ::deep .budget-totals { border-top: 1px solid var(--colorNeutralStroke2); margin-top: var(--spacingVerticalS); padding-top: var(--spacingVerticalXS); font-size: var(--fontSizeBase200); }
+.budget-total > span { color: var(--colorNeutralForeground2); }
+.budget-total strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.budget-categories { flex: 1 1 35rem; min-width: 0; }
+.category-details { flex: 0 1 20rem; min-width: 0; width: 100%; position: sticky; top: 8rem; max-height: calc(100dvh - 8rem); overflow-y: auto; }
+.category-details ::deep .editor-surface { margin-block: var(--spacingVerticalS); padding: var(--spacingVerticalM) var(--spacingHorizontalM); border-radius: var(--borderRadiusMedium); box-shadow: none; }
+.category-details ::deep h2 { font-size: var(--fontSizeBase400); overflow-wrap: anywhere; }
 .month-label { white-space: nowrap; }
-
 .hero-amount[data-money-tone="positive"] { color: var(--colorPaletteGreenForeground1); }
 .hero-amount[data-money-tone="negative"] { color: var(--colorPaletteRedForeground1); }
+.budget-help { margin-block: var(--spacingVerticalM); font-size: var(--fontSizeBase200); }
+@media (max-width: 1200px) { .category-details { flex-basis: 100%; position: static; max-height: none; overflow-y: visible; } }

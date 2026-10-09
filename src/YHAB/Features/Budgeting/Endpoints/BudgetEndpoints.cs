@@ -71,6 +71,8 @@ internal static class BudgetEndpoints
         MapResource<SaveAccount>(group, "accounts");
         MapResource<SaveGroup>(group, "groups");
         MapResource<SaveCategory>(group, "categories");
+        group.MapPost("/{planId:guid}/groups/reorder", MutateAsync<ReorderGroup>);
+        group.MapPost("/{planId:guid}/categories/reorder", MutateAsync<ReorderCategory>);
         MapResource<SaveTransaction>(group, "transactions");
         group.MapPost("/{planId:guid}/transactions/delete", MutateAsync<DeleteTransactions>)
             .WithSummary("Delete Transactions in a privately owned plan.");

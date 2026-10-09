@@ -1,0 +1,76 @@
+<div class="category-catalog">
+    <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Bottom" HorizontalGap="var(--spacingHorizontalS)" Class="table-toolbar">
+        <FluentSelect TOption="string" TValue="string" Label="View" Items="_filters" @bind-Value="_filter" Margin="0" />
+        <FluentButton OnClick="AddGroup" Disabled="Busy" Appearance="ButtonAppearance.Subtle" Size="ButtonSize.Small" IconStart="@(new Icons.Regular.Size16.Add())">Category group</FluentButton>
+        <FluentButton OnClick="AddCategory" Disabled="@(Busy || !Plan.Groups.Any(item => !item.Hidden))" Appearance="ButtonAppearance.Subtle" Size="ButtonSize.Small">+ Category</FluentButton>
+        <FluentButton OnClick="ToggleAll" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle">@(_collapsed.Count == 0 ? "Collapse groups" : "Expand groups")</FluentButton>
+    </FluentStack>
+    @if (_newGroup)
+    {
+        <InlineNameEditor @key="Plan.Version" Label="New group name" Creating="true" OnSave="CreateGroupAsync" OnCancel="CancelCreate" Busy="Busy" />
+    }
+    <div class="table-container budget-table-container" tabindex="0" aria-label="Monthly category budget" data-dragging="@(_dragCategory.HasValue || _dragGroup.HasValue ? "true" : "false")">
+        <table class="budget-table">
+            <caption class="visually-hidden">Category budget for @Budget.Month.ToString("MMMM yyyy", Culture)</caption>
+            <thead><tr><th scope="col">Category</th><th scope="col" class="numeric">Assigned</th><th scope="col" class="numeric">Activity</th><th scope="col" class="numeric">Available</th></tr></thead>
+            @foreach (var group in Groups)
+            {
+                var rows = Rows(group.Id);
+                if (!ShowGroup(group, rows.Length)) { continue; }
+                <tbody @key="group.Id" data-group-id="@group.Id">
+                    <tr class="group-row" @ondragover:preventDefault="true" @ondrop="() => DropGroupAsync(group.Id)">
+                        <th scope="rowgroup">
+                            <FluentStack VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalXS)">
+                                <button type="button" class="row-move" draggable="@(!Busy ? "true" : "false")" disabled="@Busy" aria-label="@($"Move {group.Name}")" title="Drag to reorder, or click for move controls" @ondragstart="() => DragGroup(group.Id)" @ondragend="ClearDrag" @onclick="() => ToggleGroupMove(group.Id)"><FluentIcon Value="@(new Icons.Regular.Size16.ReOrderDotsVertical())" aria-hidden="true" /></button>
+                                <button type="button" class="group-toggle" aria-label="@($"{(_collapsed.Contains(group.Id) ? "Expand" : "Collapse")} {group.Name}")" aria-expanded="@(!_collapsed.Contains(group.Id) ? "true" : "false")" @onclick="() => ToggleGroup(group.Id)">@(_collapsed.Contains(group.Id) ? "▸" : "▾")</button>
+                                <InlineNameEditor Label="Group name" Value="@group.Name" OnSave="name => RenameGroupAsync(group, name)" Busy="Busy" />
+                                <button type="button" class="group-add" disabled="@Busy" aria-label="@($"Add category to {group.Name}")" @onclick="() => AddToGroup(group.Id)">+</button>
+                            </FluentStack>
+                        </th>
+                        <td class="numeric">@Money(rows.Sum(item => item.Assigned))</td>
+                        <td class="numeric">@Money(rows.Sum(item => item.Activity))</td>
+                        <td class="numeric">@Money(rows.Sum(item => item.Available))</td>
+                    </tr>
+                    @if (_movingGroup == group.Id)
+                    {
+                        <tr><td colspan="4">
+                            <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalS)">
+                                <FluentButton Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle" Disabled="@(Busy || Array.IndexOf(Groups, group) == 0)" OnClick="() => MoveGroupAsync(group, -1)">Move group up</FluentButton>
+                                <FluentButton Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle" Disabled="@(Busy || Array.IndexOf(Groups, group) == Groups.Length - 1)" OnClick="() => MoveGroupAsync(group, 1)">Move group down</FluentButton>
+                                <FluentButton Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle" Disabled="Busy" OnClick="() => HideGroupAsync(group)">@(group.Hidden ? "Show group" : "Hide group")</FluentButton>
+                                <FluentButton Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle" OnClick="() => ToggleGroupMove(group.Id)">Done</FluentButton>
+                            </FluentStack>
+                        </td></tr>
+                    }
+                    @if (!_collapsed.Contains(group.Id))
+                    {
+                        @foreach (var row in rows)
+                        {
+                            <BudgetCategoryRow @key="row.Category.Id" Plan="Plan" Row="row" Month="Budget.Month" OnCommand="OnCommand" OnSelect="OnSelect" OnDrag="DragCategory" OnDrop="DropCategoryAsync" Busy="Busy" Selected="@(SelectedCategoryId == row.Category.Id)" />
+                        }
+                        @if (_newCategoryGroup == group.Id)
+                        {
+                            <tr><td colspan="4"><InlineNameEditor @key="Plan.Version" Label="New category name" Creating="true" OnSave="CreateCategoryAsync" OnCancel="CancelCreate" Busy="Busy" /></td></tr>
+                        }
+                        else if (rows.Length == 0)
+                        {
+                            <tr class="empty-group" @ondragover:preventDefault="true" @ondrop="() => DropGroupAsync(group.Id)"><td colspan="4"><button class="category-link" disabled="@Busy" @onclick="() => AddToGroup(group.Id)">Add a category</button><span class="muted"> or drop one here</span></td></tr>
+                        }
+                    }
+                </tbody>
+            }
+            @if (_dragGroup.HasValue)
+            {
+                <tbody><tr class="drop-end" @ondragover:preventDefault="true" @ondrop="DropGroupAtEndAsync"><td colspan="4">Move group to end</td></tr></tbody>
+            }
+        </table>
+    </div>
+    @if (Groups.Length == 0)
+    {
+        <div class="empty-state"><h2>Make space for your priorities</h2><p>Add a category group, then the things you want your money to do.</p></div>
+    }
+    else if (!Groups.Any(group => ShowGroup(group, Rows(group.Id).Length)))
+    {
+        <div class="empty-state"><h2>No categories match this view</h2><p>Choose another view to see the rest of your plan.</p></div>
+    }
+</div>

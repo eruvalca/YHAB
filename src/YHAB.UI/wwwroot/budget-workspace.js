@@ -1,6 +1,26 @@
 let handler;
 let pointerInput;
 
+function startCatalogDrag(event) {
+    const handle = event.target.closest('.budget-table .row-move[draggable="true"]');
+    if (!handle || !event.dataTransfer) return;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', handle.getAttribute('aria-label'));
+}
+
+function submitInlineName(event) {
+    if (event.key !== 'Enter') return;
+    const path = event.composedPath();
+    const form = path.find(element => element instanceof HTMLFormElement && element.matches('.inline-name-form'));
+    const input = path.find(element => element instanceof HTMLInputElement);
+    if (!form || !input) return;
+    // Fluent's native input lives in a shadow root. Commit its change before
+    // submitting, including paste/autofill that hasn't produced a keyup event.
+    event.preventDefault();
+    input.blur();
+    form.requestSubmit();
+}
+
 function amountInput(event) {
     const path = event.composedPath();
     if (!path.some(element => element instanceof Element && element.matches('.amount-input'))) return;
@@ -49,6 +69,8 @@ export function connect(reference) {
     document.addEventListener('focusin', selectAmount);
     document.addEventListener('pointerdown', rememberPointerFocus);
     document.addEventListener('pointerup', finishPointerFocus);
+    document.addEventListener('dragstart', startCatalogDrag);
+    document.addEventListener('keydown', submitInlineName, true);
 }
 export function disconnect() {
     if (handler) document.removeEventListener('keydown', handler);
@@ -56,5 +78,7 @@ export function disconnect() {
     document.removeEventListener('focusin', selectAmount);
     document.removeEventListener('pointerdown', rememberPointerFocus);
     document.removeEventListener('pointerup', finishPointerFocus);
+    document.removeEventListener('dragstart', startCatalogDrag);
+    document.removeEventListener('keydown', submitInlineName, true);
     pointerInput = undefined;
 }

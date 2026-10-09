@@ -1,0 +1,20 @@
+<div class="inline-name" @onclick:stopPropagation="true" @ondblclick:stopPropagation="true">
+    @if (_editing || Creating)
+    {
+        <form @onsubmit="SaveAsync" @onsubmit:preventDefault="true" @onkeydown="KeyDownAsync" class="inline-name-form">
+            <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Bottom" HorizontalGap="var(--spacingHorizontalXS)">
+                <FluentTextInput @ref="_input" Label="@Label" Margin="0" @bind-Value="_name" Immediate="true" MaxLength="100" Disabled="Busy" />
+                @* Blur commits Fluent input changes, so Save must remain available before that change arrives. *@
+                <FluentButton Type="ButtonType.Button" OnClick="SaveAsync" Size="ButtonSize.Small" Appearance="ButtonAppearance.Primary" Disabled="Busy">Save</FluentButton>
+                <FluentButton Type="ButtonType.Button" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle" OnClick="CancelAsync" Disabled="Busy">Cancel</FluentButton>
+            </FluentStack>
+        </form>
+    }
+    else
+    {
+        <FluentStack Width="auto" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalXS)">
+            <button type="button" class="category-link" @onclick="SelectAsync" @ondblclick="BeginEdit" @onkeydown="NameKeyDown" disabled="@Busy">@Value</button>
+            <button type="button" class="rename-name" aria-label="@($"Rename {Value}")" @onclick="BeginEdit" disabled="@Busy">Rename</button>
+        </FluentStack>
+    }
+</div>

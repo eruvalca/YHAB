@@ -45,11 +45,15 @@ public sealed partial class CategoryEditor
         _order = Category?.SortOrder ?? Plan.Categories.Count;
         _hidden = Category?.Hidden ?? false;
         InitializeTarget();
+    }
+    private Guid DefaultGroup => Plan.Groups.Count > 0 ? Plan.Groups[0].Id : Guid.Empty;
+    protected override void OnParametersSet()
+    {
         _snoozed = MonthState?.Snoozed ?? false;
         _replacements = [new(Guid.Empty, Guid.Empty, "No history to move", "", 0, false, null, null),
             .. Plan.Categories.Where(item => item.Id != Category?.Id && item.CreditAccountId is null)];
+        if (!_replacements.Any(item => item.Id == _replacement)) { _replacement = Guid.Empty; }
     }
-    private Guid DefaultGroup => Plan.Groups.Count > 0 ? Plan.Groups[0].Id : Guid.Empty;
     private void InitializeTarget()
     {
         var target = Category?.Target;

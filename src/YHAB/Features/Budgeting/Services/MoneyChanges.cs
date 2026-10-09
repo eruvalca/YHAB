@@ -61,9 +61,12 @@ internal static class MoneyChanges
 
         var month = projection ?? BudgetCalculator.Calculate(plan, command.Month, today);
         var remaining = Math.Max(0, month.ReadyToAssign);
+        var groupOrder = plan.Groups.OrderBy(item => item.SortOrder).ThenBy(item => item.Id)
+            .Select((item, index) => (item.Id, index)).ToDictionary(item => item.Id, item => item.index);
         foreach (var row in month.Categories.OrderByDescending(item => item.Available < 0)
             .ThenBy(item => item.Category.Target?.DueDate ?? DateOnly.MaxValue)
-            .ThenBy(item => item.Category.SortOrder))
+            .ThenBy(item => groupOrder[item.Category.GroupId])
+            .ThenBy(item => item.Category.SortOrder).ThenBy(item => item.Category.Id))
         {
             var need = Math.Max(Math.Max(0, -row.Available), row.TargetNeeded);
             if (row.Snoozed || row.Category.Hidden || plan.Groups.Any(item => item.Id == row.Category.GroupId && item.Hidden) || need == 0 || remaining == 0)

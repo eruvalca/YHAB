@@ -56,6 +56,8 @@ internal sealed class HttpBudgetClient(HttpClient http) : IBudgetClient
         SaveAccount change => ResourceRoute("accounts", change.Account.Id),
         SaveGroup change => ResourceRoute("groups", change.Group.Id),
         SaveCategory change => ResourceRoute("categories", change.Category.Id),
+        ReorderGroup => (HttpMethod.Post, "groups/reorder"),
+        ReorderCategory => (HttpMethod.Post, "categories/reorder"),
         SaveTransaction change => ResourceRoute("transactions", change.Transaction.Id),
         DeleteTransactions => (HttpMethod.Post, "transactions/delete"),
         UpdateTransactionStates => (HttpMethod.Patch, "transactions/status"),

@@ -1,6 +1,6 @@
 .workspace-toolbar {
-    padding-bottom: var(--spacingVerticalM);
-    margin-bottom: var(--spacingVerticalL);
+    padding-bottom: var(--spacingVerticalXS);
+    margin-bottom: var(--spacingVerticalXS);
     border-bottom: 1px solid var(--colorNeutralStroke2);
 }
 

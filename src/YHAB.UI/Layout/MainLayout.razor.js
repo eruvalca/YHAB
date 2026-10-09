@@ -1,12 +1,14 @@
 export function initializeNavigation(blazor) {
     const navigationKey = 'yhab.navigation.collapsed';
-    let navigationCollapsed = false;
+    let navigationPreference = null;
     try {
-        navigationCollapsed = localStorage.getItem(navigationKey) === 'true';
+        navigationPreference = localStorage.getItem(navigationKey);
     } catch {
         // Navigation still works when the browser disallows local storage.
     }
     const updateNavigation = () => {
+        const navigationCollapsed = navigationPreference === 'true' ||
+            (navigationPreference === null && /^\/plans\/[0-9a-f-]{36}(\/|$)/i.test(location.pathname));
         const navigation = document.getElementById('desktop-navigation');
         if (navigation) navigation.dataset.collapsed = String(navigationCollapsed);
         for (const toggle of document.querySelectorAll('[data-navigation-toggle]')) {
@@ -16,10 +18,10 @@ export function initializeNavigation(blazor) {
     };
     document.addEventListener('click', event => {
         if (!event.target.closest('[data-navigation-toggle]')) return;
-        navigationCollapsed = !navigationCollapsed;
+        navigationPreference = document.getElementById('desktop-navigation')?.dataset.collapsed === 'true' ? 'false' : 'true';
         updateNavigation();
         try {
-            localStorage.setItem(navigationKey, String(navigationCollapsed));
+            localStorage.setItem(navigationKey, navigationPreference);
         } catch {
             // Keep the current page usable without a persisted preference.
         }

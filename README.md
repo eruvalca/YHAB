@@ -13,7 +13,7 @@ outside the application.
 ## Installable web app
 
 YHAB supports installation from a compatible browser over HTTPS. Open **Install
-YHAB** above the page content for an install button when the browser offers one,
+YHAB** in the site footer for an install button when the browser offers one,
 or instructions for its menu. On iPhone/iPad, use **Share → Add to Home Screen**.
 An installed app opens **Your plans** in its own window; normal authentication
 still applies. Browser and OS support determine the installation experience.
@@ -258,7 +258,9 @@ Render boundaries are deliberate:
   `enhancednavigationstart`, before the DOM update, including back/forward
   navigation. Stable layout/hamburger IDs preserve their JS wiring across updates.
   The desktop **Hide menu / Show menu** button stores its preference in local
-  storage and reapplies it after enhanced navigation. It uses the same static
+  storage and reapplies it after enhanced navigation. With no stored preference,
+  plan routes collapse the global menu and use their compact plan sidebar.
+  **Plan & accounts** expands that sidebar on smaller screens. It uses the same static
   shell initializer, without starting a .NET renderer; the mobile drawer remains
   independent of that preference. Its explicit `tabindex="0"` survives SSR patches
   that would otherwise remove Fluent's browser-added keyboard focus attribute.

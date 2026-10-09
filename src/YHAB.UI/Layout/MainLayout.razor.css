@@ -11,7 +11,7 @@
 .site-header {
     width: 100%;
     height: 100%;
-    padding-inline: 1.5rem;
+    padding-inline: var(--spacingHorizontalL);
     background: var(--colorNeutralBackground1);
     color: var(--colorNeutralForeground1);
     border-bottom: 1px solid var(--colorNeutralStroke2);
@@ -61,14 +61,14 @@
 
 .content-container {
     width: 100%;
-    max-width: 100rem;
+    max-width: none;
     min-width: 0;
     margin-inline: auto;
-    padding: clamp(1rem, 2vw, 2rem);
+    padding: var(--spacingVerticalM) var(--spacingHorizontalL);
 }
 
 .site-footer {
-    padding-inline: 1.5rem;
+    padding-inline: var(--spacingHorizontalL);
     color: var(--colorNeutralForeground2, #424242);
     border-top: 1px solid var(--colorNeutralStroke2, #e0e0e0);
     font-size: 0.875rem;

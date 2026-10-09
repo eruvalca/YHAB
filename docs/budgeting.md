@@ -29,9 +29,25 @@ storage.
    the selected date range and exclude recurring templates and duplicate
    within-budget transfers.
 
-Use category details to set targets, notes, display order, hidden status, and
-monthly target snoozes. Remove a used category by moving its history to another
-category. Group management supports names, order, and hidden groups. Account
+Create groups with **Category group** above the plan table, and add categories
+with the **+** on a group header. New names are entered directly in the table.
+Use **Rename**, double-click a name, or press F2 on a name to edit it inline;
+Enter saves and Escape cancels. Empty groups remain visible so they can receive
+categories. Collapse individual groups or all groups to focus the plan.
+
+Drag a move handle onto a category to insert before it, or onto a group header
+to append to that group. Drag group handles to reorder whole groups; an end
+drop area appears below the table. Clicking a handle opens **Move up / Move down**
+and a group selector, providing keyboard and touch alternatives. Group move
+controls also hide or show the group; use the **Hidden** view to find it again.
+Each move saves atomically as one revision and one undoable change, including
+normalizing tied display orders. Moving does not change assignments or history.
+
+Select a category row or its name to open its target panel beside the table on
+wide screens or below it on smaller screens. Assignment inputs keep their own
+editing action. The panel supports targets and monthly snoozes; expand **Category
+details** for names, notes, group, and hidden status. Remove a used category by
+moving its history to another category. Account
 details support notes and closing zero-balance accounts. Loan accounts record
 rates and minimum payments; interest and payments are entered manually.
 
@@ -60,7 +76,11 @@ The compact monthly summary stays at the top of the viewport as you scroll the
 category table, keeping Ready to assign and all four totals visible. The page
 retains normal document scrolling; keyboard focus and editor headings stay below
 the summary. On desktop, **Hide menu / Show menu** in the site header frees space
-for the plan and remembers your preference across navigation and reloads.
+for the plan and remembers your preference across navigation and reloads. Without
+a saved preference, the global menu is collapsed within a plan, leaving a single
+compact plan sidebar. On smaller screens, open **Plan & accounts** for navigation.
+The same sidebar is used by transactions, reports, and plan settings. Installation
+controls remain available in the site footer.
 
 ## Monthly rules
 
@@ -85,7 +105,7 @@ for the plan and remembers your preference across navigation and reloads.
   the amount still available. Dated targets spread remaining contributions across
   the months left; refill targets count spending within their target period.
 - **Fund targets** uses only positive Ready to assign and prioritizes overspent
-  categories, then due dates and category order. Hidden and snoozed categories
+  categories, then due dates and the displayed group/category order. Hidden and snoozed categories
   are excluded.
 
 Rules were informed by YNAB's
@@ -370,6 +390,7 @@ plan, and 409 stale revision. Responses are not cacheable.
 | Report summaries | GET `/api/plans/{planId}/reports?from={date}&through={date}` |
 | Distinct payees | GET `/api/plans/{planId}/payees` |
 | Create account/group/category/transaction | POST `/api/plans/{planId}/{collection}` |
+| Move group / category | POST `/api/plans/{planId}/groups/reorder` / `categories/reorder` |
 | Update an item | PUT `/api/plans/{planId}/{collection}/{resourceId}` |
 | Assign money | PUT `/api/plans/{planId}/assignments` |
 | Change clearing / approval | PATCH `/api/plans/{planId}/transactions/status` |

@@ -1,18 +1,12 @@
 <EditorSurface Title="@(Category is null ? "New category" : Category.Name)" OnClose="OnClose">
-    <FluentGrid Spacing="3">
-        <FluentGridItem Xs="12" Md="6"><FluentTextInput Margin="0" Label="Category name" @bind-Value="_name" MaxLength="100" /></FluentGridItem>
-        <FluentGridItem Xs="12" Md="6"><FluentSelect Margin="0" TOption="GroupData" TValue="Guid" Label="Category group" Items="Plan.Groups" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="_group" /></FluentGridItem>
-        <FluentGridItem Xs="6"><div class="form-field"><label for="category-order">Display order</label><input id="category-order" type="number" @bind="_order" /></div></FluentGridItem>
-        <FluentGridItem Xs="6"><FluentCheckbox Margin="0" Label="Hide category" LabelPosition="LabelPosition.Before" @bind-Value="_hidden" /></FluentGridItem>
-        <FluentGridItem Xs="12"><FluentTextArea Margin="0" Label="Notes" @bind-Value="_notes" MaxLength="4000" /></FluentGridItem>
-    </FluentGrid>
+    <h3>Target</h3>
     <FluentCheckbox Margin="0" Label="Set a target" LabelPosition="LabelPosition.Before" @bind-Value="_hasTarget" />
     @if (_hasTarget)
     {
         <FluentGrid Spacing="3">
-            <FluentGridItem Xs="12" Md="4"><FluentSelect Margin="0" TOption="TargetKind" TValue="TargetKind" Label="Target behavior" Items="_kinds" OptionText="KindLabel" @bind-Value="_kind" /></FluentGridItem>
-            <FluentGridItem Xs="12" Md="4"><FluentSelect Margin="0" TOption="TargetCadence" TValue="TargetCadence" Label="Frequency" Items="_cadences" @bind-Value="_cadence" /></FluentGridItem>
-            <FluentGridItem Xs="12" Md="4"><AmountInput Label="Target amount" @bind-Value="_amount" ValidChanged="value => _valid = value" /></FluentGridItem>
+            <FluentGridItem Xs="12"><FluentSelect Margin="0" TOption="TargetKind" TValue="TargetKind" Label="Target behavior" Items="_kinds" OptionText="KindLabel" @bind-Value="_kind" /></FluentGridItem>
+            <FluentGridItem Xs="12"><FluentSelect Margin="0" TOption="TargetCadence" TValue="TargetCadence" Label="Frequency" Items="_cadences" @bind-Value="_cadence" /></FluentGridItem>
+            <FluentGridItem Xs="12"><AmountInput Label="Target amount" @bind-Value="_amount" ValidChanged="value => _valid = value" /></FluentGridItem>
             @if (_cadence == TargetCadence.Weekly)
             {
                 <FluentGridItem Xs="12"><FluentSelect Margin="0" TOption="DayOfWeek" TValue="DayOfWeek" Label="Each" Items="_weekdays" @bind-Value="_weekday" /></FluentGridItem>
@@ -28,6 +22,14 @@
         </FluentGrid>
         <p class="muted">@TargetDescription</p>
     }
+    <details class="category-options"><summary>Category details</summary>
+    <FluentGrid Spacing="3">
+        <FluentGridItem Xs="12"><FluentTextInput Margin="0" Label="Category name" @bind-Value="_name" MaxLength="100" /></FluentGridItem>
+        <FluentGridItem Xs="12"><FluentSelect Margin="0" TOption="GroupData" TValue="Guid" Label="Category group" Items="Plan.Groups" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="_group" /></FluentGridItem>
+        <FluentGridItem Xs="12"><FluentCheckbox Margin="0" Label="Hide category" LabelPosition="LabelPosition.Before" @bind-Value="_hidden" /></FluentGridItem>
+        <FluentGridItem Xs="12"><FluentTextArea Margin="0" Label="Notes" @bind-Value="_notes" MaxLength="4000" /></FluentGridItem>
+    </FluentGrid>
+    </details>
     <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalS)">
         <FluentButton OnClick="SaveAsync" Disabled="@(Busy || !_valid || string.IsNullOrWhiteSpace(_name) || _group == Guid.Empty)" Appearance="ButtonAppearance.Primary">Save category</FluentButton>
         @if (Category?.Target is not null)
@@ -44,4 +46,3 @@
         </details>
     }
 </EditorSurface>
-

@@ -2066,3 +2066,70 @@ dotnet format YHAB.slnx --severity warn --verify-no-changes
 Use `--no-build` only after a matching successful build with unchanged sources.
 Raw TRX output and browser traces/screenshots are ignored local artifacts; the
 durable findings and reproduction instructions belong here.
+
+## Plan density and inline catalog editing — October 9, 2026
+
+The plan workspace now uses a compact month/summary header and a 14rem plan
+sidebar shared with transactions, reports and settings. The global menu collapses
+on plan routes when no explicit preference is saved. Account names and balances
+share a row; installation controls live in the footer while update notices remain
+above page content. The shell still uses document scrolling and static Identity
+navigation/forms.
+
+Groups and categories can be created and renamed inline. Categories and whole
+groups can be dragged into display order; clicking a handle exposes keyboard and
+touch move controls. Selecting a category opens its target panel beside the table
+on wide screens and below it on narrow screens. Ordering is revision-checked,
+atomic and undoable, preserving targets, allocations and transaction history.
+
+At a 1440 × 960 viewport, the browser check requires at least ten fully visible
+categories with targets, row heights of 36–64 pixels, and the first category
+above 320 pixels. The 390-pixel check covers collapsed plan navigation, absence
+of document overflow, editing and persisted target changes.
+These measurements use a disposable seeded plan, not the production plan in the
+reference screenshot. Desktop/phone screenshots and target-panel screenshots
+are saved under the Playwright output's `TestResults` directory.
+
+| Requirement | Evidence |
+| --- | --- |
+| Inline creation, rename, real desktop dragging, phone moves, targets and reload persistence | `PlanCatalogTests.InlineCatalogEditingOrderingAndTargetsPersistAsync` (1440 and 390 pixels). |
+| Assignment refresh preserves an unfinished target | `BudgetCatalogTests.AssignmentRefreshPreservesAnOpenTargetDraftAsync`. |
+| Rename preserves existing category metadata | `BudgetCatalogTests.CreatesGroupAndRenamesCategoryWithoutReplacingTargetAsync`. |
+| Invalid destinations fail; ordering preserves financial data | `CatalogOrderingTests.RejectsMissingForeignAndSelfDestinations` and `CategoryMoveAcrossGroupsPreservesTargetsAndFinancialHistory`. |
+| Revisions, stale writes, undo and redo work in PostgreSQL | `BudgetPersistenceTests.ReorderingPersistsAtomicallyAndSupportsUndoRedoAsync`. |
+| Existing money, navigation and installation/update flows still work | `BudgetWorkflowTests`, `NavigationTests` and `PwaTests`. |
+
+Final completed test runs:
+
+| Layer / selection | Passed | Failed | Skipped |
+| --- | ---: | ---: | ---: |
+| Full unit project | 567 | 0 | 0 |
+| Full component project | 274 | 0 | 0 |
+| PostgreSQL ordering case | 1 | 0 | 0 |
+| Plan catalog, budgeting workflow and navigation browser classes | 6 | 0 | 0 |
+| PWA browser class | 5 | 0 | 0 |
+| Total | 853 | 0 | 0 |
+
+The initial combined 11-case browser run had nine passes and two AppHost startup
+timeouts, before those two cases opened a browser. The final browser runs above
+used separate class batches without changing timeouts or parallel settings and
+both exited zero. This is targeted infrastructure validation, not a full-solution
+test run. The full solution build passed with zero warnings and errors.
+
+Commands run from the repository root after the final source changes:
+
+```powershell
+dotnet format YHAB.slnx --severity warn
+dotnet build YHAB.slnx
+dotnet test --project tests/YHAB.UnitTests/YHAB.UnitTests.csproj --no-build
+dotnet test --project tests/YHAB.ComponentTests/YHAB.ComponentTests.csproj --no-build
+dotnet test --project tests/YHAB.IntegrationTests/YHAB.IntegrationTests.csproj --no-build --filter-method '*ReorderingPersistsAtomicallyAndSupportsUndoRedoAsync'
+dotnet test --project tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj --no-build --filter-class '*PlanCatalogTests' --filter-class '*BudgetWorkflowTests' --filter-class '*NavigationTests'
+dotnet test --project tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj --no-build --filter-class '*PwaTests'
+dotnet format YHAB.slnx --severity warn --verify-no-changes
+```
+
+The formatter needed to run outside the agent sandbox because its build-host
+named pipe was inaccessible inside it. No analyzer settings, test settings,
+packages or production data were changed. Documentation review covered the
+usage guide, setup guide and test guide; agent/build conventions remain accurate.

@@ -1,0 +1,13 @@
+.plan-sidebar { flex: 0 0 14rem; min-width: 0; }
+.plan-content { flex: 1 1 35rem; min-width: 0; }
+.plan-drawer { margin: 0; }
+.plan-drawer > summary { padding: var(--spacingVerticalS) var(--spacingHorizontalS); font-weight: var(--fontWeightSemibold); }
+@media (min-width: 1000px) {
+    .plan-drawer > summary { display: none; }
+    .plan-drawer:not([open]) ::deep > .plan-navigation { display: block; }
+    .plan-drawer::details-content { content-visibility: visible; }
+}
+@media (max-width: 999px) {
+    .plan-sidebar, .plan-content { flex-basis: 100%; }
+    .plan-sidebar { border-bottom: 1px solid var(--colorNeutralStroke2); }
+}

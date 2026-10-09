@@ -4,7 +4,7 @@
 
 <div class="page">
     <FluentLayout Id="app-layout" Class="app-layout" GlobalScrollbar="true" Height="auto">
-        <FluentLayoutItem Area="LayoutArea.Header" Class="header-area" Height="4rem" Padding="0">
+        <FluentLayoutItem Area="LayoutArea.Header" Class="header-area" Height="3rem" Padding="0">
             <header class="site-header">
                 <FluentStack VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalM)" Height="100%" Width="100%">
                     <div class="menu-toggle">
@@ -32,12 +32,12 @@
         </FluentLayoutItem>
         <FluentLayoutItem Area="LayoutArea.Content" Class="content-area">
             <main id="main-content" class="content-container" tabindex="-1">
-                <PwaControls />
+                <PwaUpdateNotice />
                 @Body
             </main>
         </FluentLayoutItem>
         <FluentLayoutItem Area="LayoutArea.Footer">
-            <footer class="site-footer">Your money, with intention. <span>USD · Manual accounts · Private plans</span></footer>
+            <footer class="site-footer"><PwaControls />Your money, with intention. <span>USD · Manual accounts · Private plans</span></footer>
         </FluentLayoutItem>
     </FluentLayout>
 </div>
