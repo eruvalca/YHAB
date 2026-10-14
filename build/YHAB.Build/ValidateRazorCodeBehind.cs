@@ -20,7 +20,7 @@ internal sealed class ValidateRazorCodeBehind
 
     public string DefineConstants { get; set; } = string.Empty;
 
-    public bool Execute(CancellationToken cancellationToken)
+    public async Task<bool> ExecuteAsync(CancellationToken cancellationToken)
     {
         var paths = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
         var compilePaths = CompileFiles.ToHashSet(paths);
@@ -76,7 +76,8 @@ internal sealed class ValidateRazorCodeBehind
                 continue;
             }
 
-            var root = CSharpSyntaxTree.ParseText(File.ReadAllText(companion), parseOptions, companion, cancellationToken: cancellationToken).GetRoot(cancellationToken);
+            var source = await File.ReadAllTextAsync(companion, cancellationToken);
+            var root = await CSharpSyntaxTree.ParseText(source, parseOptions, companion, cancellationToken: cancellationToken).GetRootAsync(cancellationToken);
             var matchingClass = root.DescendantNodes().OfType<ClassDeclarationSyntax>().Any(declaration =>
                 !declaration.Ancestors().OfType<TypeDeclarationSyntax>().Any()
                 && string.Equals(declaration.Identifier.ValueText, capture.ClassName, StringComparison.Ordinal)

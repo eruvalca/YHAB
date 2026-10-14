@@ -50,11 +50,12 @@ public sealed class IdentityEndpointBehaviorTests
     public async Task LinkingLoginClearsExternalCookieAndBindsChallengeToCurrentUserAsync()
     {
         await using var context = EndpointContext.Create();
+        var signIn = context.Identity.SignIn;
         context.Identity.Users.GetUserId(context.Http.User).Returns("current-user");
         context.Http.Request.PathBase = "/app";
         context.SetForm(("provider", "Example"));
         var properties = new AuthenticationProperties();
-        context.Identity.SignIn.ConfigureExternalAuthenticationProperties(
+        signIn.ConfigureExternalAuthenticationProperties(
             "Example", "/app/Account/Manage/ExternalLogins?Action=LinkLoginCallback", "current-user").Returns(properties);
 
         await context.InvokeAsync("/Account/Manage/LinkExternalLogin");
@@ -62,7 +63,7 @@ public sealed class IdentityEndpointBehaviorTests
         Received.InOrder(() =>
         {
             _ = context.Authentication.SignOutAsync(context.Http, IdentityConstants.ExternalScheme, null);
-            context.Identity.SignIn.ConfigureExternalAuthenticationProperties(
+            signIn.ConfigureExternalAuthenticationProperties(
                 "Example", "/app/Account/Manage/ExternalLogins?Action=LinkLoginCallback", "current-user");
             _ = context.Authentication.ChallengeAsync(context.Http, "Example", properties);
         });

@@ -1,0 +1,4 @@
+// Applied only to IsTestProject projects by Directory.Build.props.
+// bUnit MarkupMatches is allowed for semantic HTML assertions; see tests/README.md.
+T:Xunit.Assert;Use Shouldly for general assertions. bUnit MarkupMatches is allowed for semantic HTML assertions.
+N:FluentAssertions;Use Shouldly for general assertions. bUnit MarkupMatches is allowed for semantic HTML assertions.

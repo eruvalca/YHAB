@@ -42,10 +42,15 @@ public sealed class DeploymentMigrationsTests
     {
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         var job = CreateJob(JobExecutionRunningState.Running);
+        var executionPolled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         job.When(resource => resource.GetContainerAppJobExecutionAsync("execution-under-test", Arg.Any<CancellationToken>()))
-            .Do(_ => cancellation.Cancel());
+            .Do(_ => executionPolled.TrySetResult());
 
-        await Should.ThrowAsync<OperationCanceledException>(() => DeploymentMigrations.RunAsync(job, cancellation.Token));
+        var deployment = DeploymentMigrations.RunAsync(job, cancellation.Token);
+        await executionPolled.Task.WaitAsync(TestContext.Current.CancellationToken);
+        await cancellation.CancelAsync();
+
+        await Should.ThrowAsync<OperationCanceledException>(() => deployment);
     }
 
     [Fact]

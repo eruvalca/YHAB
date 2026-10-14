@@ -33,6 +33,9 @@ csharp_prefer_braces = true:warning
 # Enforce C# formatting, including handwritten Razor code-behind.
 dotnet_diagnostic.IDE0055.severity = warning
 
+# Enforce the API policies supplied to each project through AdditionalFiles.
+dotnet_diagnostic.RS0030.severity = warning
+
 # IDE0001: Simplify Names
 dotnet_diagnostic.IDE0001.severity = warning
 
@@ -112,6 +115,10 @@ dotnet_diagnostic.S1075.severity = warning
 # Await available asynchronous alternatives where the analyzer reports them.
 dotnet_diagnostic.S6966.severity = warning
 
+# Flag blocking calls in asynchronous methods and methods that can become async.
+dotnet_diagnostic.MA0042.severity = warning
+dotnet_diagnostic.MA0045.severity = warning
+
 # Consume ValueTask instances correctly, normally by awaiting each instance once.
 dotnet_diagnostic.CA2012.severity = warning
 
@@ -139,6 +146,9 @@ dotnet_diagnostic.CA1863.severity = warning
 
 # Declare typed logging methods and let the source generator implement them.
 dotnet_diagnostic.CA1848.severity = warning
+
+# Match constructor-injected ILogger<T> categories to the containing type.
+dotnet_diagnostic.MA0180.severity = warning
 
 # Avoid expensive log-only argument evaluation when the level is disabled.
 dotnet_diagnostic.CA1873.severity = warning
@@ -215,6 +225,9 @@ dotnet_diagnostic.IDE0033.severity = warning
 # Prefer auto-properties over trivial backing-field/property pairs.
 dotnet_style_prefer_auto_properties = true:warning
 dotnet_diagnostic.IDE0032.severity = warning
+
+# Keep component parameter inputs separate from mutable component-owned state.
+dotnet_diagnostic.MA0121.severity = warning
 
 # Express updates with compound assignment, including null-coalescing assignment.
 dotnet_style_prefer_compound_assignment = true:warning

@@ -27,14 +27,24 @@ Layer-specific setup and commands remain in the [test README](README.md).
   responsive layout, and interactive workflows. Run affected infrastructure suites;
   the full solution test command runs all five projects and requires their tools.
   Keep the full solution build requirement above.
-- Use Shouldly exclusively for assertions in all test projects. Keep xUnit for
+- Use Shouldly for general assertions in all test projects. Keep xUnit for
   test discovery and execution; use `xunit.v3.core.mtp-v2` without the xUnit
-  assertion package. Do not add xUnit `Assert`, FluentAssertions, or bUnit
-  assertion helpers such as `MarkupMatches`. For semantic markup checks, use
-  bUnit's `CompareTo` and assert that its differences `ShouldBeEmpty()`.
-  Use Shouldly assertions inside bUnit's `WaitForAssertionAsync` for asynchronous
-  rendering. Preserve exact exception checks with
+  assertion package. Do not add xUnit `Assert` or FluentAssertions; `RS0030`
+  enforces their API bans. bUnit's `MarkupMatches` is allowed for semantic HTML
+  assertions when its markup-specific failure diagnostics are useful. Using
+  `CompareTo(...).ShouldBeEmpty()` remains valid. Prefer focused DOM assertions
+  when the entire markup structure is not the contract, and use
+  `WaitForAssertionAsync` for assertions that depend on asynchronous rendering.
+  Preserve exact exception checks with
   `Should.Throw<T>(action).ShouldBeOfType<T>()` when derived types must fail.
+- Keep compiled architecture checks in `YHAB.UnitTests/Architecture`; see
+  [architecture boundaries](README.md#architecture-boundaries) for their scope
+  and focused Debug command. Include referenced types when selecting forbidden
+  dependencies and require nonempty subject selections. Review intentional
+  boundary changes with their rule and rationale rather than skipping checks.
+  After changing project-reference policy, run
+  `pwsh ./scripts/Test-ArchitectureProjectReferences.ps1` as well as the compiled
+  checks; it exercises evaluated imports/conditions and the build failure hook.
 - `dotnet test` restores and builds by default. Use `--no-build` only after the
   relevant code and tests have been built with the same configuration and no
   subsequent source changes. Keep coverage and reports opt-in for routine runs.

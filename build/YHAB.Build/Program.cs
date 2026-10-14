@@ -1,7 +1,13 @@
 using YHAB.Build;
 
 using var cancellation = new CancellationTokenSource();
-ConsoleCancelEventHandler cancel = (_, args) => { args.Cancel = true; cancellation.Cancel(); };
+ConsoleCancelEventHandler cancel = (_, args) =>
+{
+    args.Cancel = true;
+#pragma warning disable MA0045 // The synchronous console event must finish cancellation callbacks before the token source can be disposed.
+    cancellation.Cancel();
+#pragma warning restore MA0045
+};
 Console.CancelKeyPress += cancel;
 try
 {
@@ -25,7 +31,7 @@ try
         CompileFiles = (await File.ReadAllLinesAsync(args[4], cancellation.Token)).Where(line => !string.IsNullOrWhiteSpace(line)).ToArray(),
     };
 
-    return validator.Execute(cancellation.Token) ? 0 : 1;
+    return await validator.ExecuteAsync(cancellation.Token) ? 0 : 1;
 }
 finally
 {

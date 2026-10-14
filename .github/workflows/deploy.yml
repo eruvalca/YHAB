@@ -56,6 +56,11 @@ jobs:
           certutil -V -d "sql:$nssdb" -n yhab-test-https -u V
       - name: Check formatting
         run: dotnet format YHAB.slnx --severity warn --verify-no-changes
+      - name: Check project-reference policy
+        shell: pwsh
+        run: ./scripts/Test-ArchitectureProjectReferences.ps1
+      - name: Check architecture before optimization
+        run: dotnet test --project tests/YHAB.UnitTests/YHAB.UnitTests.csproj --configuration Debug --filter-class "YHAB.UnitTests.Architecture.*" --report-trx --report-trx-filename architecture-debug.trx --results-directory "${{ runner.temp }}/yhab-test-results"
       - name: Build
         run: dotnet build YHAB.slnx --configuration Release
       - name: Install test browser

@@ -1,3 +1,4 @@
 <Project>
+  <Import Project="build/Architecture.targets" />
   <Import Project="build/RazorCodeBehind.targets" Condition="'$(UsingMicrosoftNETSdkRazor)' == 'true'" />
 </Project>

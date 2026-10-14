@@ -38,7 +38,7 @@ Markdown links are relative to their containing file.
 | --- | --- |
 | Razor components/code-behind, UI/CSS/JavaScript, layouts/navigation, render modes, Fluent providers/assets/registration in either host, UI tests, or changes to Razor authoring checks | [UI and rendering](src/YHAB.UI/AGENTS.md) |
 | Identity/account pages, forms, redirects, authorization, cookies, passkeys, or changes to host/shared rendering that can affect account behavior; tests of those contracts | [Account](src/YHAB/Features/Account/AGENTS.md) |
-| Server persistence, PostgreSQL/EF configuration, schema/migrations, readiness/liveness, or their wiring in AppHost, service defaults, deployment, and tests | [Server and persistence](src/YHAB/AGENTS.md) |
+| Server feature boundaries, persistence, PostgreSQL/EF configuration, schema/migrations, readiness/liveness, or their wiring in AppHost, service defaults, deployment, and tests | [Server and persistence](src/YHAB/AGENTS.md) |
 | Running/debugging/stopping the application, Aspire resources/tooling/configuration, migration operations, deployment, or infrastructure/browser test orchestration | [Aspire and infrastructure](src/YHAB.AppHost/AGENTS.md) |
 | Selecting, writing, changing, or running tests, including validation of production-only changes | [Tests](tests/AGENTS.md) |
 
@@ -63,6 +63,10 @@ Markdown links are relative to their containing file.
   startup belongs in `YHAB.Client`. Preserve the dependency direction:
   `YHAB.Client` and `YHAB.UI` must not reference the server project.
   Keep `YHAB.SharedKernel` usable by both server and browser code.
+- SharedKernel/UI/Client project references are checked during builds, and compiled
+  dependencies are checked by [architecture tests](tests/README.md#architecture-boundaries).
+  Update the documented design and its checks together when intentionally changing
+  them. Server feature and persistence rules live in the server guide.
 - Fluent UI Blazor services are registered in both hosts. Keep `MainLayout` and
   Identity navigation static. Place `FluentProviders` inside the interactive
   page or subtree that uses them, inheriting its renderer and service scope;
@@ -84,6 +88,11 @@ Markdown links are relative to their containing file.
 - Keep SDK versions in their SDK declarations or `global.json`; they are not
   NuGet `PackageReference` versions. Do not introduce per-project version overrides
   or nested central package files without a deliberate, documented need.
+- In application code, obtain the current instant from an injected `TimeProvider`;
+  server budgeting services use `BudgetClock` for budget-local dates. Pass explicit
+  dates/instants into shared pure calculations. `RS0030` bans direct system-clock
+  properties in the four application projects. See
+  [build rules](build/README.md#banned-apis) for scope.
 
 ## Visibility and inheritance
 

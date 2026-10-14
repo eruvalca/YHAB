@@ -1,0 +1,29 @@
+<Project>
+  <PropertyGroup>
+    <_YhabArchitectureKernel>$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '..', 'src', 'YHAB.SharedKernel', 'YHAB.SharedKernel.csproj'))</_YhabArchitectureKernel>
+    <_YhabArchitectureUi>$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '..', 'src', 'YHAB.UI', 'YHAB.UI.csproj'))</_YhabArchitectureUi>
+    <_YhabArchitectureClient>$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', '..', 'src', 'YHAB.Client', 'YHAB.Client.csproj'))</_YhabArchitectureClient>
+    <_YhabArchitectureBuildTool>$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', 'YHAB.Build', 'YHAB.Build.csproj'))</_YhabArchitectureBuildTool>
+  </PropertyGroup>
+
+  <!-- Validate evaluated items before the build prepares or resolves project references. -->
+  <Target Name="ValidateArchitectureProjectReferences"
+          BeforeTargets="PrepareForBuild;AssignProjectConfiguration"
+          Condition="'$(MSBuildProjectFullPath)' == '$(_YhabArchitectureKernel)' Or '$(MSBuildProjectFullPath)' == '$(_YhabArchitectureUi)' Or '$(MSBuildProjectFullPath)' == '$(_YhabArchitectureClient)'">
+    <ItemGroup>
+      <_YhabArchitectureAllowed Include="$(_YhabArchitectureKernel)"
+                                Condition="'$(MSBuildProjectFullPath)' == '$(_YhabArchitectureUi)' Or '$(MSBuildProjectFullPath)' == '$(_YhabArchitectureClient)'" />
+      <_YhabArchitectureAllowed Include="$(_YhabArchitectureUi)"
+                                Condition="'$(MSBuildProjectFullPath)' == '$(_YhabArchitectureClient)'" />
+      <!-- The existing Razor validator is a build tool, never an application assembly. -->
+      <_YhabArchitectureChecked Include="@(ProjectReference)"
+                                Condition="!('$(UsingMicrosoftNETSdkRazor)' == 'true' And '%(ProjectReference.FullPath)' == '$(_YhabArchitectureBuildTool)' And '%(ProjectReference.ReferenceOutputAssembly)' == 'false')" />
+      <_YhabArchitectureForbidden Include="@(_YhabArchitectureChecked->'%(FullPath)')" />
+      <_YhabArchitectureForbidden Remove="@(_YhabArchitectureAllowed)" />
+    </ItemGroup>
+    <Error Code="YHABARCH001"
+           File="$(MSBuildProjectFullPath)"
+           Condition="'@(_YhabArchitectureForbidden)' != ''"
+           Text="Forbidden ProjectReference '%(_YhabArchitectureForbidden.Identity)'. SharedKernel allows no project references; UI allows only SharedKernel; Client allows only UI and SharedKernel. The Razor validator has a build-only exception. See tests/README.md#architecture-boundaries." />
+  </Target>
+</Project>

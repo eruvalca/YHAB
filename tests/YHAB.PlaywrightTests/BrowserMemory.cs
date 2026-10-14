@@ -19,7 +19,11 @@ internal static class BrowserMemory
         await using var writer = new StreamWriter(Path.Combine(directory, $"{name}.heapsnapshot"));
         var chunks = session.Event("HeapProfiler.addHeapSnapshotChunk");
         void WriteChunk(object? sender, JsonElement? value)
-            => writer.Write(value!.Value.GetProperty("chunk").GetString());
+        {
+#pragma warning disable MA0045 // CDP events are synchronous; finish each write in order before the snapshot completes and the writer is disposed.
+            writer.Write(value!.Value.GetProperty("chunk").GetString());
+#pragma warning restore MA0045
+        }
         chunks.OnEvent += WriteChunk;
         try
         {

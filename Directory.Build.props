@@ -15,6 +15,10 @@
   <!-- Resolve shared analyzer inputs from the repository root. -->
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
     <AdditionalFiles Include="$(MSBuildThisFileDirectory)CodeMetricsConfig.txt" />
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)build/BannedSymbols.ApplicationTime.txt"
+                     Condition="'$(MSBuildProjectName)' == 'YHAB' or '$(MSBuildProjectName)' == 'YHAB.Client' or '$(MSBuildProjectName)' == 'YHAB.UI' or '$(MSBuildProjectName)' == 'YHAB.SharedKernel'" />
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)build/BannedSymbols.Tests.txt"
+                     Condition="'$(IsTestProject)' == 'true'" />
     <!-- Source diagnostics remain governed by .editorconfig; see build/README.md for the SDK workaround. -->
     <GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory)build/AnalyzerCompatibility.globalconfig" />
   </ItemGroup>
@@ -24,11 +28,16 @@
   <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
     <PackageReference Include="Meziantou.Analyzer" PrivateAssets="all"
                       IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
+    <PackageReference Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" PrivateAssets="all"
+                      IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
     <PackageReference Include="SonarAnalyzer.CSharp" PrivateAssets="all"
                       IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
     <PackageReference Include="Roslynator.Analyzers" PrivateAssets="all"
                       IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
     <PackageReference Include="xunit.analyzers" PrivateAssets="all"
+                      IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive"
+                      Condition="'$(IsTestProject)' == 'true'" />
+    <PackageReference Include="NSubstitute.Analyzers.CSharp" PrivateAssets="all"
                       IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive"
                       Condition="'$(IsTestProject)' == 'true'" />
   </ItemGroup>

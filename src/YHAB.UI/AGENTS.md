@@ -24,6 +24,9 @@ assets/provider setup and [build rules](../../build/README.md) for enforcement.
   assess route, query, form, and cascading inputs separately. Use ordinary
   auto-properties, not C# `required` or `init`. This is a Razor call-site check,
   not runtime validation or a guarantee of non-null values.
+- Treat `[Parameter]` properties as caller-owned inputs. Keep editable local state
+  separate and use `EventCallback` to request parent updates; reconcile incoming
+  parameter changes deliberately. `MA0121` checks parameter overwrites.
 
 ## Fluent UI, styling, and layout
 

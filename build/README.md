@@ -187,22 +187,51 @@ including preformatted content, and in string literals. Never edit generated C#.
 
 ## Analyzers
 
-`Directory.Build.props` adds Nova's analyzer packages to all C# projects, including
-the build tooling; `Directory.Packages.props` holds their versions. References use
-`PrivateAssets="all"` so consumers of YHAB packages do not inherit them.
+`Directory.Build.props` supplies the shared analyzer references below;
+`Directory.Packages.props` holds their versions. General analyzers apply to all
+C# projects, including the build tooling; test-specific analyzers are conditional
+on `IsTestProject`. References use `PrivateAssets="all"` so consumers of YHAB
+packages do not inherit them.
 
 | Package | Purpose |
 | --- | --- |
 | Meziantou.Analyzer | Correctness, performance, API usage, and Blazor checks |
+| Microsoft.CodeAnalysis.BannedApiAnalyzers | Repository-specific API bans from project-scoped `BannedSymbols.*.txt` files |
 | SonarAnalyzer.CSharp | Bugs, security, and maintainability checks |
 | Roslynator.Analyzers | C# simplification and style checks |
 | xunit.analyzers | xUnit test checks; included only when `IsTestProject` is `true` |
+| NSubstitute.Analyzers.CSharp | NSubstitute usage checks; included only when `IsTestProject` is `true` |
 
 `YHAB.UnitTests` and `YHAB.ComponentTests` use xUnit with native
 Microsoft.Testing.Platform integration. Shared build props include xUnit analyzers
 for these projects; analyzer references alone do not add a test framework or
 select a runner. See [tests/README.md](../tests/README.md) for the test stack and
 conventions.
+
+NSubstitute analyzers use the same test-only condition as xUnit analyzers. They
+detect incorrect substitute usage, such as configuring or verifying non-virtual
+members, without adding NSubstitute itself or a runtime dependency. Tests that do
+not use NSubstitute retain the analyzer reference for future usage. The package's
+default diagnostic severities apply; warnings fail builds through the shared
+warnings-as-errors policy.
+
+An evaluation of [`IDisposableAnalyzers` 4.0.8](https://github.com/DotNetAnalyzers/IDisposableAnalyzers)
+did not result in adoption. The solution baseline produced 229 warnings, including
+190 in component tests, plus four informational diagnostics. Findings were dominated
+by ownership patterns the analyzer could not follow: bUnit-owned rendered components,
+NSubstitute configuration/verification calls, factory ownership transfer through
+primary constructors, operation-owned cancellation sources stored in borrowed fields,
+and asynchronous callbacks inside correctly awaited test scopes. No production leak
+was confirmed from the reviewed findings. Do not add redundant disposal or dispose
+an in-flight operation's cancellation source merely to satisfy these diagnostics.
+
+Isolated misuse probes confirmed that the package detected leaks, returning disposed
+objects, and using disposed objects. Existing Sonar rules `S2930`/`S2997` already
+caught the first two cases. `IDISP016` added a use-after-disposal finding in the probe;
+it remains a candidate for a separately evaluated, limited rule selection. Revisit
+the package when its handling of these ownership patterns improves or a specific
+gap warrants it. The trial added no persistent package reference, suppression, or
+severity override; existing disposal checks remain unchanged.
 
 Compiler and analyzer warnings emitted during builds fail through
 `TreatWarningsAsErrors`. `.editorconfig` records the agreed style preferences and
@@ -565,11 +594,25 @@ documented exception: the authenticator's `otpauth` URI constant has a field-lev
 single-statement pragma. The surrounding methods and Razor code-behind remain
 checked; preserve the authenticator URI format and Razor's virtual-path convention.
 
-Prefer awaited asynchronous alternatives where reported by `S6966` (warning),
-including host and build-tool entry points. Razor code-behind should use awaitable
-event handlers and asynchronous lifecycle overrides when awaiting I/O, preserving
-framework contracts. Ordinary `await` remains appropriate for component code;
-this rule does not introduce a `ConfigureAwait` requirement.
+Prefer awaited asynchronous alternatives where reported by `S6966`, `MA0042`, and
+`MA0045` (warnings), including host and build-tool entry points.
+[`MA0042`](https://github.com/meziantou/Meziantou.Analyzer/blob/main/docs/Rules/MA0042.md)
+checks blocking calls in methods that are async or can become async without
+changing their return type;
+[`MA0045`](https://github.com/meziantou/Meziantou.Analyzer/blob/main/docs/Rules/MA0045.md)
+also checks synchronous methods that need a return-type change. Await the work
+through the call chain and forward cancellation. Razor code-behind should use
+awaitable event handlers and asynchronous lifecycle overrides when awaiting I/O,
+preserving framework contracts. Ordinary `await` remains appropriate for component
+code; these rules do not introduce a `ConfigureAwait` requirement.
+
+The Razor validator reads companion files and obtains syntax roots asynchronously.
+The deployment cancellation test waits for the first execution poll before awaiting
+cancellation. Two synchronous event callbacks retain statement-level `MA0045`
+exceptions: the build tool's Ctrl+C handler completes cancellation callbacks before
+disposal, and the Playwright heap-snapshot handler writes each CDP chunk in order
+before the snapshot completes. Do not convert these callbacks to unawaited
+`async void` handlers or suppress the rule for their containing files.
 
 Unnecessary default field initialization is checked (`CA1805`, warning). Omit
 redundant initializers such as `= 0` for an `int` field, including in Razor
@@ -601,6 +644,11 @@ component-specific helpers `private static partial` in `.razor.cs`, passing the
 existing injected logger explicitly so its category is preserved. Keep message
 templates, levels, placeholder names, and argument values intact when migrating.
 Razor markup and logger injection do not need to change.
+
+Constructor-injected `ILogger<T>` must use the containing type as its category
+([`MA0180`](https://github.com/meziantou/Meziantou.Analyzer/blob/main/docs/Rules/MA0180.md),
+warning). This catches copied logger types that would put events under the wrong
+category. It complements the source-generated logging checks above.
 
 The migrated account events have explicit IDs 1001–1018 and use their helper
 method names as event names. The template previously logged every event with
@@ -676,6 +724,70 @@ Handwritten `.razor.cs` files receive the C# rules. Coverage of generated Razor 
 depends on the analyzer and rule; do not edit generated output to satisfy a rule.
 The separate policy below enforces component code-behind structure.
 
+## Architecture checks
+
+[`Architecture.targets`](Architecture.targets), imported by the root
+`Directory.Build.targets`, checks evaluated `ProjectReference` items before build
+preparation and project-reference configuration. `YHABARCH001` fails the build when
+SharedKernel references another project, UI references anything except SharedKernel,
+or Client references anything except UI/SharedKernel. Paths are normalized and
+compared with the actual repository projects; matching a filename is insufficient.
+Imports and active conditions count, even when no code uses the reference.
+
+The existing Razor validator is the sole build-tool exception: Razor projects may
+reference the exact `build/YHAB.Build/YHAB.Build.csproj` path with
+`ReferenceOutputAssembly="false"`. A different forbidden reference with that metadata
+still fails, as does an application reference to the validator. Server and hosting
+project references are unrestricted by this target. There is no NuGet allowlist.
+
+ArchUnitNET checks compiled application dependencies in the unit test suite,
+including browser boundaries, server database access, feature contracts, and feature
+cycles. These checks fail tests; `TreatWarningsAsErrors` does not execute them.
+The package is private to the unit test project. CI runs the reference-policy
+regression script and a focused Debug architecture check before the Release build
+and all-layer test run. Debug retains dependencies optimization might remove.
+
+After changing the reference policy, run its regression checks:
+
+```powershell
+pwsh ./scripts/Test-ArchitectureProjectReferences.ps1
+```
+
+The script imports temporary references into the real evaluated projects, tests
+allowed/forbidden paths, metadata and conditions, and verifies that normal builds
+invoke validation. Fixtures and logs stay under ignored `artifacts/`; project/source
+files are not edited. See [architecture boundaries](../tests/README.md#architecture-boundaries)
+for the full design, compiled-test command, and limits.
+
+## Banned APIs
+
+`Microsoft.CodeAnalysis.BannedApiAnalyzers` is centrally pinned and referenced with
+`PrivateAssets="all"`. `RS0030` is a warning and therefore fails builds. The analyzer
+has no built-in ban list: `Directory.Build.props` supplies the policy files as
+`AdditionalFiles` only to their intended projects.
+
+- [`BannedSymbols.ApplicationTime.txt`](BannedSymbols.ApplicationTime.txt) applies
+  to `YHAB`, `YHAB.Client`, `YHAB.UI`, and `YHAB.SharedKernel`. It bans `DateTime.Now`,
+  `DateTime.UtcNow`, `DateTime.Today`, `DateTimeOffset.Now`, and `DateTimeOffset.UtcNow`.
+  Application services obtain the current instant from an injected `TimeProvider`;
+  the server's `BudgetClock` supplies the configured budget-local date. Shared pure
+  calculations accept explicit dates/instants. Registering `TimeProvider.System`
+  at startup and constructing explicit dates remain allowed. Test and build/hosting
+  projects do not receive this clock policy.
+- [`BannedSymbols.Tests.txt`](BannedSymbols.Tests.txt) applies when `IsTestProject`
+  is `true`. It bans `Xunit.Assert` and the `FluentAssertions` namespace, preserving
+  Shouldly for general assertions. bUnit's `MarkupMatches` is allowed as a
+  specialized semantic HTML assertion; see the
+  [test assertion guidance](../tests/README.md#assertions).
+
+Keep new bans small and purposeful, with a diagnostic message explaining the
+replacement. Use documentation-comment symbol IDs, such as `P:` for a property
+and `T:` for a type, following the
+[upstream configuration format](https://github.com/dotnet/roslyn/blob/main/src/RoslynAnalyzers/Microsoft.CodeAnalysis.BannedApiAnalyzers/BannedApiAnalyzers.Help.md).
+API bans check source usage; they do not replace package/dependency checks or
+analyze the internals of referenced libraries. Generated source is analyzed by
+the package's default policy.
+
 ## Required component parameters
 
 Use `[EditorRequired]` alongside `[Parameter]` for inputs a parent must supply for
@@ -683,6 +795,14 @@ a component to serve its purpose. Razor reports omitted required inputs as
 `RZ2012`; the shared `TreatWarningsAsErrors` setting makes these findings fail
 builds, including attributes declared in `.razor.cs` code-behind. Keep parameters
 as ordinary auto-properties; do not use C# `required` or `init` for Blazor inputs.
+
+Do not overwrite caller-owned parameter values from component event handlers or
+other component logic
+([`MA0121`](https://github.com/meziantou/Meziantou.Analyzer/blob/main/docs/Rules/MA0121.md),
+warning). Keep editable state in private members and use `EventCallback` to request
+parent updates. Reconcile local state deliberately when new parameters arrive so
+a parent render cannot unexpectedly reset an edit. This rule checks assignments;
+it does not make objects passed as parameters immutable.
 
 `ShowRecoveryCodes.RecoveryCodes` is required because displaying recovery codes is
 the component's purpose. Its optional `StatusMessage` remains optional.

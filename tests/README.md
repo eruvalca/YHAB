@@ -6,7 +6,7 @@ the CLI and editor find `global.json` and `YHAB.slnx`.
 
 | Project | Scope |
 | --- | --- |
-| `YHAB.UnitTests` | Budget arithmetic, monthly carryover, cash/credit overspending, payment reserves, targets, recurrence, transaction validation, reconciliation, plus Identity and service defaults. |
+| `YHAB.UnitTests` | Budget arithmetic, monthly carryover, cash/credit overspending, payment reserves, targets, recurrence, transaction validation, reconciliation, plus Identity, service defaults, and architecture boundaries. |
 | `YHAB.ComponentTests` | Calculator input events, month-specific assignments, invalid-input feedback, delayed workspace loading and interactive-only recurring posting, account workflows, navigation, error request IDs, and the shared UI's `Counter`, using bUnit. |
 | `YHAB.IntegrationTests` | Real PostgreSQL: migrations and legacy data upgrades, Identity, private plan isolation, cross-plan foreign keys, optimistic concurrency, category merges, editable recurring occurrence dates, durable undo/redo, and deletion of owned ledger data. |
 | `YHAB.AspireIntegrationTests` | The real AppHost, database/migration startup dependencies, readiness, resource endpoints, and cross-process HTTP behavior. |
@@ -336,7 +336,9 @@ verified October 2, 2026:
 | bunit (component project only) | 2.11.3 |
 | xunit.v3.core.mtp-v2 | 4.0.1 |
 | Shouldly | 4.3.0 |
+| TngTech.ArchUnitNET (unit project only) | 0.13.4 |
 | NSubstitute (account tests) | 6.2.0 |
+| NSubstitute.Analyzers.CSharp | 1.0.17 |
 | Bogus (locally seeded fake data) | 35.6.5 |
 | Microsoft.Testing.Platform / Platform.MSBuild | 2.4.1 |
 | Microsoft.Testing.Extensions.TrxReport | 2.4.1 |
@@ -352,6 +354,8 @@ runtime and MSBuild references advance xUnit's transitive 2.4.0 dependencies to
 2.4.1. Test package references use `PrivateAssets="all"`. All test projects
 reference xUnit's core MTP package, which supplies the framework and runner
 without `xunit.v3.assert`; xUnit analyzers remain included by the root build props.
+NSubstitute usage is also checked by a test-only analyzer reference in the shared
+build props; see [build rules](../build/README.md#analyzers) for enforcement and scope.
 
 The root build props recognize the five test-project name suffixes before
 evaluating shared analyzer references. Tests inherit nullable analysis, code style
@@ -368,7 +372,8 @@ so NSubstitute can proxy Identity dependencies closed over the internal
 (`Microsoft.NET.Test.Sdk`, `xunit.runner.visualstudio`) or the legacy
 `TestingPlatformDotnetTestSupport` bridge to these projects. bUnit provides the
 component renderer and comparison tools; xUnit and MTP provide discovery and
-execution, and Shouldly is the exclusive assertion library.
+execution, and Shouldly supplies general assertions. bUnit's `MarkupMatches`
+is allowed for semantic HTML assertions as described below.
 
 Use Bogus for realistic generated fixture values with a per-instance seed
 (`UseSeed` or a locally assigned `Randomizer`). Do not set the global
@@ -415,6 +420,110 @@ MTP reports exit code 8 (zero tests); the outer `dotnet test` command returns a
 nonzero exit code.
 
 ## Configuration
+
+### Architecture boundaries
+
+The architecture policy has two enforcement points: MSBuild rejects forbidden
+evaluated project references during builds, and ArchUnitNET rejects forbidden
+compiled type dependencies during tests.
+
+[`AssemblyDependencyTests`](YHAB.UnitTests/Architecture/AssemblyDependencyTests.cs)
+loads SharedKernel, UI, and Client once. Shouldly reports the descriptions of any
+violations. Subject selections must be nonempty, and forbidden targets include
+referenced types from libraries not loaded as subjects. No xUnit assertion adapter
+or production package reference is needed.
+
+Both project-reference and compiled application-dependency checks enforce:
+
+| Subject | Allowed dependencies on other YHAB assemblies | Additional restrictions |
+| --- | --- | --- |
+| `YHAB.SharedKernel` | None | No ASP.NET Core, JS interop, or Fluent UI types; no server infrastructure listed below. |
+| `YHAB.UI` | `YHAB.SharedKernel` | No server infrastructure listed below. |
+| `YHAB.Client` | `YHAB.UI`, `YHAB.SharedKernel` | No server infrastructure listed below. |
+
+An assembly may use its own types. The application dependency rules recognize
+`YHAB` and `YHAB.*` assembly names, so newly referenced application assemblies must
+be deliberately allowed. The server-infrastructure restriction covers the
+`Microsoft.EntityFrameworkCore`, `Microsoft.AspNetCore.Identity`, `Npgsql`, and
+`Aspire` namespace trees. Shared UI can still use Blazor authorization APIs;
+`Microsoft.AspNetCore.Components.Authorization` is not server Identity. These are
+specific restrictions, not a complete guarantee of browser compatibility.
+
+The build check also rejects unused references and references supplied through
+imports or active conditions. Its sole exception is the existing Razor validator
+at `build/YHAB.Build/YHAB.Build.csproj`, with `ReferenceOutputAssembly="false"`, in
+Razor projects. This exception adds no application dependency. The target compares
+normalized paths, leaves server/hosting references unrestricted, and does not impose
+a NuGet package allowlist. See the [build policy](../build/README.md#architecture-checks)
+and its `Test-ArchitectureProjectReferences.ps1` regression script.
+
+[`ServerDependencyTests`](YHAB.UnitTests/Architecture/ServerDependencyTests.cs)
+loads the server and enforces three additional design decisions:
+
+- **Services own database access.** Direct use of EF Core, Npgsql, ADO.NET
+  (`System.Data`), SQL Server client APIs, `ApplicationDbContext`, or
+  `DbContext`-derived types visible to the compiled model belongs in
+  `YHAB.Features.<Feature>.Services`/`Data`, shared `YHAB.Data`,
+  `YHAB.Migrations`, or the actual `Program` entry point for startup/readiness
+  wiring. Components are checked regardless of namespace; feature `Endpoints`
+  namespaces are checked explicitly. Pages and HTTP handlers call services.
+  Identity's `UserManager`/`SignInManager` APIs remain allowed. This does not
+  require a repository layer or prohibit services from using EF directly.
+- **Cross-feature dependencies use contracts.** Every top-level server feature,
+  including new ones, may depend on another feature only through
+  `YHAB.Features.<OtherFeature>.Contracts` and its descendants. Contracts must
+  not depend on implementation types in any feature, including their own;
+  exposing a service/entity through a contract would defeat the boundary.
+  Introduce contracts only when a consumer needs them. There are currently no
+  cross-feature contracts, so that additional check runs when they exist;
+  feature discovery and each selected subject set must still be nonempty.
+  Server-only contracts stay on the server. Common infrastructure and startup
+  composition remain outside the feature-to-feature restriction.
+- **Top-level features have no dependency cycles.** Each whole
+  `YHAB.Features.<Feature>` subtree is explicitly assigned to one ArchUnitNET
+  slice. Contracts count: `Account -> Budgeting -> Account` fails even if both
+  edges use contracts. Cycles among internal namespaces such as a feature's
+  `Models` and `Services` are allowed. Grouping is automatic, with no feature
+  name allowlist to update when a feature is added.
+
+Run only architecture checks with the repository's native MTP/xUnit syntax:
+
+```powershell
+dotnet test --project tests/YHAB.UnitTests/YHAB.UnitTests.csproj --configuration Debug --filter-class "YHAB.UnitTests.Architecture.*"
+```
+
+The normal unit suite includes them automatically. CI additionally runs this
+focused Debug check, exports its TRX report, then keeps the existing Release
+build and all-layer test run. Debug preserves dependencies that compilation
+optimizations can remove. Compiled architecture violations fail tests and CI;
+project-reference violations fail standalone builds with `YHABARCH001`.
+
+For example, a shared component acquiring an EF `DbContext` dependency fails
+the infrastructure rule with the dependent type in its failure description.
+Move persistence behind a shared contract and keep its implementation on the
+server. Do not bypass a failure with a skip, a blanket exclusion, or an empty
+selection. If the dependency is intentional, review the boundary change and
+update its narrow rule and rationale together.
+
+The compiled checks see type signatures and method-body dependencies. They do not
+inspect string-based reflection, runtime DI registrations, JavaScript, Razor render
+modes, or database behavior. Endpoint classification follows the feature
+`Endpoints` convention; an inline handler in `Program` remains inside its startup
+exception and needs review. Shared infrastructure is trusted and could conceal an
+indirect feature dependency, so these checks do not replace design review.
+Project checks see the items evaluated for the current build/configuration, not
+inactive configurations or references introduced later by custom execution targets.
+They do not check `PackageReference` declarations or the entire transitive closure
+of a third-party package. Compiler platform checks and runtime/component/integration
+tests still matter.
+
+Future policies, such as prohibiting persistence entities in HTTP payloads or
+restricting contract types to framework-independent DTOs/interfaces, require a
+separate design decision. Keep exceptions narrow and justified, and update the
+documented boundary alongside its checks when intentionally changing the design.
+
+See the [ArchUnitNET guide](https://archunitnet.readthedocs.io/en/latest/guide/)
+for namespace, type, member, cycle, and diagram-based rules.
 
 ### Choosing an integration layer
 
@@ -558,18 +667,29 @@ and [Playwright .NET library](https://playwright.dev/dotnet/docs/library).
 
 ### Assertions
 
-Use Shouldly for every assertion in all test projects. The stable version is
+Use Shouldly for general assertions in all test projects. The stable version is
 centrally pinned to 4.3.0 (verified against NuGet's live version feed on September
 26, 2026); the newer 5.0 releases are previews. Import `Shouldly` in test files and
 use APIs such as `ShouldBe`, `ShouldBeTrue`, `ShouldBeEmpty`,
 `ShouldHaveSingleItem`, and `Should.Throw<T>`. xUnit attributes such as `[Fact]`,
 `[Theory]`, and `[InlineData]` continue to define tests.
 
-Do not add the xUnit assertion package, FluentAssertions, or use bUnit assertion
-helpers such as `MarkupMatches`. For semantic HTML checks, obtain differences
-with `component.CompareTo(expectedMarkup)` and assert `differences.ShouldBeEmpty()`.
-This preserves bUnit's semantic comparison instead of comparing raw HTML strings.
-Use Shouldly inside `WaitForAssertionAsync` when awaiting a render.
+Do not add the xUnit assertion package or FluentAssertions. The test-scoped banned
+API list reports their usage as `RS0030`; see the
+[build policy](../build/README.md#banned-apis).
+
+bUnit's `component.MarkupMatches(expectedMarkup)` is allowed for semantic HTML
+assertions when its specialized differences and expected/actual markup make failures
+easier to diagnose. `component.CompareTo(expectedMarkup).ShouldBeEmpty()` also
+remains valid: bUnit performs the semantic comparison and Shouldly asserts that
+there are no differences. Both preserve HTML-aware comparison; raw markup-string
+equality can fail on insignificant whitespace or attribute ordering. No wholesale
+migration between these two forms is required.
+
+Prefer focused DOM assertions for text, attributes, and behavior when the entire
+markup structure is not the contract. Use `WaitForAssertionAsync` around Shouldly
+or `MarkupMatches` assertions that depend on an asynchronous render. See
+[bUnit's markup guidance](https://bunit.dev/docs/verification/verify-markup).
 
 Preserve the strength of existing checks during migrations: single-item checks
 must still verify cardinality, and exact exception-type checks use
@@ -619,10 +739,10 @@ state or class/collection fixtures. This keeps the renderer, services, component
 state, and JS interop setup isolated while methods and theory rows run in parallel.
 Avoid changing bUnit's static defaults from individual tests.
 
-Assert rendered DOM values with Shouldly, or use `CompareTo` followed by
-`ShouldBeEmpty` for semantic markup. Dispatch UI events with helpers such as
-`ClickAsync`, then use `WaitForAssertionAsync` for Shouldly assertions
-that depend on a render; awaiting an event handler alone does not guarantee its
+Assert rendered DOM values with Shouldly; see [Assertions](#assertions) for semantic
+HTML checks. Dispatch UI events with helpers such as `ClickAsync`, then use
+`WaitForAssertionAsync` for assertions that depend on a render;
+awaiting an event handler alone does not guarantee its
 render cycle has finished. Register component dependencies in `context.Services`
 before rendering and configure required calls on `context.JSInterop` (strict by
 default). Keep tests in C# files; any future Razor test helpers must follow the
@@ -803,7 +923,7 @@ versions above, using `all` / `conservative` / `1x` in both projects.
 
 | Component behavior | Exact test evidence |
 | --- | --- |
-| Initial markup, status, and button | `CounterTests.RenderShowsInitialCountAndIncrementButtonAsync` uses semantic markup comparison. |
+| Initial heading, status, and button | `CounterTests.RenderShowsInitialCountAndIncrementButtonAsync` uses focused DOM assertions across static, Server, and WebAssembly renderer settings. |
 | One, two, and five clicks update the displayed status | `CounterTests.ClickingIncrementButtonUpdatesDisplayedCountAsync` (three theory rows) dispatches real Blazor click events and awaits the rendered assertion. |
 | Component state is isolated | `CounterTests.IndependentContextsKeepCounterStateIsolatedAsync` verifies clicking in one context leaves the other at zero. |
 

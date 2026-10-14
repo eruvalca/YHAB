@@ -1,0 +1,7 @@
+// Applied to YHAB, YHAB.Client, YHAB.UI, and YHAB.SharedKernel by Directory.Build.props.
+// Resolve the clock at the application boundary; pass dates/instants into pure calculations.
+P:System.DateTime.Now;Use an injected TimeProvider for the current instant, or BudgetClock for the budget-local date.
+P:System.DateTime.UtcNow;Use an injected TimeProvider for the current instant, or pass an explicit instant into pure calculations.
+P:System.DateTime.Today;Use BudgetClock for the budget-local date, or pass an explicit date into pure calculations.
+P:System.DateTimeOffset.Now;Use an injected TimeProvider for the current instant, or BudgetClock for the budget-local date.
+P:System.DateTimeOffset.UtcNow;Use an injected TimeProvider for the current instant, or pass an explicit instant into pure calculations.
