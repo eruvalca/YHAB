@@ -14,6 +14,9 @@ storage.
    such as `150 + 25`, `(600 - 120) / 3`, and dollar/comma formatting.
    Clicking or tabbing into an amount selects its current value; a second click
    can position the caret. Clearing the field and leaving it commits zero.
+   On a phone these fields ask for the numeric keypad. Its keys cover digits and
+   the decimal separator, so type an expression with a physical keyboard or switch
+   the on-screen keyboard back to letters.
 4. Add transactions in an account or **All transactions**. Outflows need a
    category; income can go to Ready to assign. Split amounts are signed and must
    total the transaction amount exactly.
@@ -67,6 +70,10 @@ Reconciled entries show their locked state in the editor and cannot be saved.
 Select the entry in the register and use **Mark uncleared / unreconcile** first;
 either reconciled side of a transfer locks the whole entry. Empty category views
 explain that the selected filter has no matching categories.
+Editor fields are a comfortable tap size, and a transaction editor collects the
+payee, direction, and amount before the account and transfer. On phones a long
+editor keeps its title, **Close**, and primary save action on screen while the
+rest of the form scrolls.
 Assignment saves preserve the existing inputs and keyboard focus. Amount fields
 are temporarily read-only while a save is pending; a failed save restores the
 last confirmed amount alongside the workspace error. Green marks positive money,
@@ -438,7 +445,7 @@ isolated AppHosts. Browser tests exercise both desktop and phone widths.
 | Transfers, reconciliation, and account locks | `TransferClearingUpdatesOnlyTheSelectedAccountSide`, `CreditBalanceTransferMovesFundedPaymentMoneyToTheNewCard`, `ReconciliationLocksOnlyClearedEntriesAndRequiresExplicitAdjustment`, `ClosingAnAccountRequiresZeroBalanceAndOpeningChangesRespectReconciliation` |
 | Category history and payee management | `MergingAUsedCategoryPreservesAssignmentsSpendingAndAccountBalance`, `MergingAssignedCategoryPersistsHistoryAndSupportsUndoRedoAsync`, `PayeeRenameChangesMatchingPostedAndRecurringEntriesOnly`, `TransactionEditorsUsePayeeProjectionAndRefreshSuggestionsAsync` |
 | Private plans, SQL integrity, durable history, and concurrent edits | `OwnerIsolationHistoryAndConcurrentWritesPersistAcrossContextsAsync`, `DatabaseRejectsCrossPlanReferencesAndAccountDeletionRemovesOwnedLedgerAsync` |
-| Manual browser workflow, calculator entry, keyboard undo/redo, reports, reconciliation, and API guards | `ManualPlanPurchaseUndoAndReportsAgreeAsync` at 1440px and 390px |
+| Manual browser workflow, calculator entry, keyboard undo/redo, reports, reconciliation, and API guards | `ManualPlanPurchaseUndoAndReportsAgreeAsync` at 1440px and 390px, including the phone amount keypad, editor tap size, and sticky editor chrome |
 | Themes, mobile navigation, and SSR document continuity | `FluentNavigationPreservesDocumentAndThemeChoice` at 1280px and 390px |
 | Actual startup, migrations, and database readiness | `AppHostCompletesMigrationsAndServesHealthyApplication` |
 

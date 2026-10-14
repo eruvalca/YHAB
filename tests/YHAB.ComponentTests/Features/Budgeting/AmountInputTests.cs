@@ -70,6 +70,21 @@ public sealed class AmountInputTests
     }
 
     [Fact]
+    public async Task AmountRequestsTheNumericKeyboardOnMobileAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var component = context.Render<AmountInput>(parameters => parameters.Add(item => item.Label, "Amount")
+            .Add(item => item.Size, TextInputSize.Large));
+
+        // Phones pick their virtual keyboard from `inputmode`; the shared UI
+        // initializer mirrors it onto Fluent's shadow control.
+        component.Find("fluent-text-input").GetAttribute("inputmode").ShouldBe("decimal");
+        component.Find("fluent-text-input").GetAttribute("control-size").ShouldBe("large");
+    }
+
+    [Fact]
     public async Task CalculatorEmitsEvaluatedAmountAndRejectsInvalidExpressionAsync()
     {
         await using var context = new BunitContext();

@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
+using Microsoft.FluentUI.AspNetCore.Components;
 using YHAB.SharedKernel.Budgeting;
 
 namespace YHAB.UI.Features.Budgeting.Components;
@@ -11,6 +12,7 @@ public sealed partial class AmountInput
     [Parameter] public EventCallback<decimal> ValueChanged { get; set; }
     [Parameter] public EventCallback<bool> ValidChanged { get; set; }
     [Parameter] public string Id { get; set; } = $"amount-{Guid.CreateVersion7():N}";
+    [Parameter] public TextInputSize Size { get; set; } = TextInputSize.Medium;
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public bool ReadOnly { get; set; }
     private string _text = string.Empty;
