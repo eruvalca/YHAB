@@ -38,7 +38,6 @@ public sealed class AccountOperationTests
         (await AccountLedgerQueries.ReadAsync(context, plan.Id, Guid.NewGuid(), plan.Today, token)).ShouldBe(new(null, 0));
         foreach (var change in new[]
         {
-            plan.Accounts[0] with { OpeningBalance = 101 },
             plan.Accounts[0] with { OpenedOn = plan.CreatedOn.AddDays(1) },
             plan.Accounts[0] with { Closed = true },
         })

@@ -234,7 +234,6 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
 
     private static async Task VerifyPayeeRenameUndoAsync(IPage page)
     {
-        await Button(page, "Close").ClickAsync();
         await OpenPlanNavigationAsync(page);
         await page.GetByRole(AriaRole.Link, new() { Name = "Plan settings", Exact = true }).ClickAsync();
         await page.GetByLabel("Existing payee", new() { Exact = true }).SelectOptionAsync("Neighborhood market");
