@@ -25,18 +25,13 @@ internal sealed class BudgetQueries(IDbContextFactory<ApplicationDbContext> fact
             {
                 account.Id,
                 Opening = account.OpenedOn <= today ? account.OpeningBalance : 0,
-                Cleared = entries.Where(entry => entry.AccountId == account.Id && entry.State != ClearingState.Uncleared).Sum(entry => entry.Amount)
-                    - entries.Where(entry => entry.TransferAccountId == account.Id && entry.TransferState != ClearingState.Uncleared).Sum(entry => entry.Amount),
-                Uncleared = entries.Where(entry => entry.AccountId == account.Id && entry.State == ClearingState.Uncleared).Sum(entry => entry.Amount)
-                    - entries.Where(entry => entry.TransferAccountId == account.Id && entry.TransferState == ClearingState.Uncleared).Sum(entry => entry.Amount),
-                Reconciled = entries.Where(entry => entry.AccountId == account.Id && entry.State == ClearingState.Reconciled).Sum(entry => entry.Amount)
-                    - entries.Where(entry => entry.TransferAccountId == account.Id && entry.TransferState == ClearingState.Reconciled).Sum(entry => entry.Amount),
+                Movement = entries.Where(entry => entry.AccountId == account.Id).Sum(entry => entry.Amount)
+                    - entries.Where(entry => entry.TransferAccountId == account.Id).Sum(entry => entry.Amount),
             }).ToArrayAsync(token);
         var closed = catalog.Accounts.Where(account => account.Closed).Select(account => account.Id).ToArray();
         var due = await database.Set<BudgetTransaction>().AnyAsync(entry => entry.PlanId == id && entry.Repeat != RepeatFrequency.None
             && entry.Date <= today && !closed.Contains(entry.AccountId) && (!entry.TransferAccountId.HasValue || !closed.Contains(entry.TransferAccountId.Value)), token);
-        return new PlanView(catalog, balances.Select(item => new AccountBalance(item.Id, item.Opening + item.Cleared,
-            item.Uncleared, item.Reconciled, item.Opening + item.Cleared + item.Uncleared)).ToArray(), due);
+        return new PlanView(catalog, balances.Select(item => new AccountBalance(item.Id, item.Opening + item.Movement)).ToArray(), due);
     }
 
     public async Task<PlanMonthView> WorkspaceAsync(string owner, Guid id, DateOnly? requestedMonth, CancellationToken token)

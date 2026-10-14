@@ -110,8 +110,6 @@ public sealed class BudgetValidationTests
     [InlineData("payee")]
     [InlineData("memo")]
     [InlineData("flag")]
-    [InlineData("clearing")]
-    [InlineData("transfer-state")]
     [InlineData("repeat")]
     [InlineData("missing-account")]
     [InlineData("closed")]
@@ -121,8 +119,6 @@ public sealed class BudgetValidationTests
     [InlineData("before-transfer-opening")]
     [InlineData("tracking-splits")]
     [InlineData("old-recurring")]
-    [InlineData("reconciled")]
-    [InlineData("reconciled-transfer")]
     [InlineData("empty-splits")]
     [InlineData("duplicate-split")]
     [InlineData("owned-split")]
@@ -143,8 +139,6 @@ public sealed class BudgetValidationTests
             "payee" => entry with { Payee = null! },
             "memo" => entry with { Memo = new string('a', 4001) },
             "flag" => entry with { Flag = "Pink" },
-            "clearing" => entry with { State = (ClearingState)99 },
-            "transfer-state" => entry with { TransferState = (ClearingState)99 },
             "repeat" => entry with { Repeat = (RepeatFrequency)99 },
             "missing-account" => entry with { AccountId = Guid.NewGuid() },
             "before-opening" => entry with { Date = January.AddDays(-1) },
@@ -152,8 +146,6 @@ public sealed class BudgetValidationTests
             "unknown-transfer" => entry with { TransferAccountId = Guid.NewGuid() },
             "before-transfer-opening" => entry with { TransferAccountId = plan.Accounts[1].Id },
             "old-recurring" => entry with { Date = January.AddYears(-6), Repeat = RepeatFrequency.Monthly },
-            "reconciled" => entry with { State = ClearingState.Reconciled },
-            "reconciled-transfer" => entry with { TransferState = ClearingState.Reconciled },
             "empty-splits" => entry with { Splits = [] },
             "duplicate-split" => entry with { Amount = -20, Splits = [entry.Splits[0], entry.Splits[0]] },
             "split-memo" => entry with { Splits = [entry.Splits[0] with { Memo = new string('a', 1001) }] },

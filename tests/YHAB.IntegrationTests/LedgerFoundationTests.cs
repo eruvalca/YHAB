@@ -105,7 +105,7 @@ public sealed class LedgerFoundationTests(ITestOutputHelper output)
         (await database.Store.ExecuteAsync("owner-a", id, new SaveAccount(plan.Version, account), token)).IsT0.ShouldBeTrue();
         plan = (await database.Store.ReadAsync("owner-a", id, token)).ShouldNotBeNull();
         var template = new TransactionData(Guid.Empty, account.Id, plan.Today.AddDays(-259), "Daily", "", -1, null,
-            ClearingState.Uncleared, ClearingState.Uncleared, false, "", [new(Guid.Empty, plan.Categories[0].Id, -1, "")], RepeatFrequency.Daily);
+            "", [new(Guid.Empty, plan.Categories[0].Id, -1, "")], RepeatFrequency.Daily);
         (await database.Store.ExecuteAsync("owner-a", id, new SaveTransaction(plan.Version, template), token)).IsT0.ShouldBeTrue();
         plan = (await database.Store.ReadAsync("owner-a", id, token)).ShouldNotBeNull();
         plan.Transactions.Count.ShouldBe(129);
@@ -143,7 +143,7 @@ public sealed class LedgerFoundationTests(ITestOutputHelper output)
         var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, plan.Today.AddYears(-1), false, "");
         (await database.Store.ExecuteAsync("owner-a", id, new SaveAccount(0, account), token)).IsT0.ShouldBeTrue();
         var template = new TransactionData(Guid.Empty, account.Id, plan.Today.AddDays(-259), "Daily", "", -1, null,
-            ClearingState.Uncleared, ClearingState.Uncleared, false, "", [new(Guid.Empty, plan.Categories[0].Id, -1, "")], RepeatFrequency.Daily);
+            "", [new(Guid.Empty, plan.Categories[0].Id, -1, "")], RepeatFrequency.Daily);
         (await database.Store.ExecuteAsync("owner-a", id, new SaveTransaction(1, template), token)).IsT0.ShouldBeTrue();
         barrier.Armed = true;
         var timer = Stopwatch.StartNew();
@@ -175,11 +175,11 @@ public sealed class LedgerFoundationTests(ITestOutputHelper output)
         await using var context = await database.Factory.CreateDbContextAsync(token);
         // Synthetic bulk input only; all reads and behavior probes use real services and PostgreSQL constraints.
         await context.Database.ExecuteSqlAsync($"""
-            INSERT INTO "BudgetTransaction" ("PlanId", "Id", "AccountId", "Date", "Payee", "Memo", "Amount", "State", "TransferState",
-                "NeedsApproval", "Flag", "Repeat", "Occurrence", "Sequence")
+            INSERT INTO "BudgetTransaction" ("PlanId", "Id", "AccountId", "Date", "Payee", "Memo", "Amount",
+                "Flag", "Repeat", "Occurrence", "Sequence")
             SELECT {id}, gen_random_uuid(), {account.Id}, {account.OpenedOn} + (n % 3650)::int,
                 CASE WHEN n % 10 = 0 THEN 'Salary' ELSE 'Market' END, '', CASE WHEN n % 10 = 0 THEN 100 ELSE -1 END,
-                0, 0, false, '', 0, 0, n FROM generate_series(1, {count}) n;
+                '', 0, 0, n FROM generate_series(1, {count}) n;
             INSERT INTO "BudgetSplit" ("PlanId", "Id", "TransactionId", "CategoryId", "Amount", "Memo")
             SELECT "PlanId", gen_random_uuid(), "Id", CASE WHEN "Amount" < 0 THEN {category} ELSE NULL END, "Amount", ''
             FROM "BudgetTransaction" WHERE "PlanId" = {id};
@@ -202,7 +202,7 @@ public sealed class LedgerFoundationTests(ITestOutputHelper output)
             (await database.Store.ExecuteAsync("owner-a", id, new SaveAccount(plan.Version, account), token)).IsT0.ShouldBeTrue();
             plan = (await database.Store.ReadAsync("owner-a", id, token)).ShouldNotBeNull();
             var template = new TransactionData(Guid.Empty, account.Id, plan.Today.AddDays(1), "Salary", "", 10, null,
-                ClearingState.Uncleared, ClearingState.Uncleared, false, "", [new(Guid.Empty, null, 10, "")], RepeatFrequency.Daily);
+                "", [new(Guid.Empty, null, 10, "")], RepeatFrequency.Daily);
             (await database.Store.ExecuteAsync("owner-a", id, new SaveTransaction(plan.Version, template), token)).IsT0.ShouldBeTrue();
             await using var context = await database.Factory.CreateDbContextAsync(token);
             var stored = await context.Set<BudgetTransaction>().SingleAsync(item => item.PlanId == id, token);
@@ -217,7 +217,7 @@ public sealed class LedgerFoundationTests(ITestOutputHelper output)
         (await database.Store.ReadAsync("owner-a", plans[0], token)).ShouldNotBeNull().Transactions.Count.ShouldBe(1);
         var healthy = (await database.Store.ReadAsync("owner-a", plans[1], token)).ShouldNotBeNull();
         healthy.Transactions.Count.ShouldBe(2);
-        healthy.Transactions.Single(item => item.SourceTemplateId.HasValue).NeedsApproval.ShouldBeTrue();
+        healthy.Transactions.Single(item => item.SourceTemplateId.HasValue).ScheduledDate.ShouldBe(healthy.Today);
         (await database.Store.ReadAsync("owner-a", plans[2], token)).ShouldNotBeNull().Transactions.Count.ShouldBe(1);
         (await database.Recurring.RunBatchAsync(token)).ShouldBe(0);
         using var canceled = new CancellationTokenSource();

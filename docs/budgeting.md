@@ -16,16 +16,13 @@ storage.
    can position the caret. Clearing the field and leaving it commits zero.
 4. Add transactions in an account or **All transactions**. Outflows need a
    category; income can go to Ready to assign. Split amounts are signed and must
-   total the transaction amount exactly.
+   total the transaction amount exactly. Transactions are entered manually and
+   post directly; there is no bank-clearing or approval step.
 5. Transfer between accounts using the transfer selector. One stored transfer
-   supplies both sides, and each side has its own clearing status. Transfers
-   within the budget have no spending category. Transfers across the budget and
-   tracking boundary require categories when money leaves the budget.
-6. Reconcile an account against its posted bank balance. Mark cleared entries
-   first. A difference requires explicit approval of an adjustment; matching
-   cleared entries become reconciled. Unreconcile before editing or deleting
-   locked entries.
-7. Review spending, income/expense, and net worth in **Reflect**. Reports include
+   supplies both sides. Transfers within the budget have no spending category.
+   Transfers across the budget and tracking boundary require categories when
+   money leaves the budget.
+6. Review spending, income/expense, and net worth in **Reflect**. Reports include
    the selected date range and exclude recurring templates and duplicate
    within-budget transfers.
 
@@ -52,9 +49,9 @@ details support notes and closing zero-balance accounts. Loan accounts record
 rates and minimum payments; interest and payments are entered manually.
 
 Plan settings rename the plan, store notes, and rename payees throughout posted
-and recurring entries. The register supports search, date/status filters, sorting,
-flags, duplication, approval, clearing, and bulk deletion. It displays 50 rows per
-page. Horizontal table scrolling preserves the surrounding mobile layout.
+and recurring entries. The register supports search, date filters, sorting, flags,
+duplication, and bulk deletion. It displays 50 rows per page. Horizontal table
+scrolling preserves the surrounding mobile layout.
 Filtering, sorting and cursor paging run in PostgreSQL. The browser receives the
 current page and its split details, not the entire transaction history. Running
 balances include earlier entries even when a search or date filter hides them.
@@ -63,10 +60,7 @@ payees outside the current register page or account. Suggestions refresh with th
 catalog and remain case-insensitively deduplicated in the editor.
 Opening an editor focuses its heading and brings it into view, including when
 editing from a register row below the editor's position on a phone.
-Reconciled entries show their locked state in the editor and cannot be saved.
-Select the entry in the register and use **Mark uncleared / unreconcile** first;
-either reconciled side of a transfer locks the whole entry. Empty category views
-explain that the selected filter has no matching categories.
+Empty category views explain that the selected filter has no matching categories.
 Assignment saves preserve the existing inputs and keyboard focus. Amount fields
 are temporarily read-only while a save is pending; a failed save restores the
 last confirmed amount alongside the workspace error. Green marks positive money,
@@ -120,7 +114,7 @@ While the web host is running, a background worker discovers up to 32 due plans
 at startup and every 30 seconds. Each plan posts at most 128 scheduled occurrences
 per batch; later batches continue from its persisted cursor. An interactive plan
 open and saving an already-due instruction also catch up. Static SSR reads never
-post. All posted occurrences appear as **Needs approval**. Closed accounts pause
+post. Due occurrences are posted directly to the register. Closed accounts pause
 instructions on either transfer side. `Budgeting:AutomaticPosting=false` disables
 the background worker while preserving interactive catch-up.
 The plan's server date uses `Budgeting:TimeZone` (default `America/Chicago`).
@@ -295,8 +289,8 @@ Assignment amounts and posted financial movements invalidate openings after the
 earliest affected month, considering both old and new values. Account opening
 balances/dates/types and account/category identities or credit mappings reset all
 openings. The pure `CheckpointPolicy` preserves openings for names, notes, targets,
-visibility, snoozing, payees and clearing/approval status; these do not change
-financial carry. Transaction order and split identities remain financial inputs
+visibility, snoozing and payees; these do not change financial carry. Transaction
+order and split identities remain financial inputs
 because they can affect credit rounding and payment allocation. This happens in the same
 transaction as the ledger/history write, including undo and automatic posting.
 Publication locks the owned plan row without incrementing its revision. Each
@@ -327,12 +321,8 @@ current allocations. Completed-operation retries return current metadata without
 reloading the ledger. Bulk payee changes project only matching entry IDs/names and
 use one parameterized update; their history does not contain complete transactions.
 Rename, undo and redo preserve financial checkpoints. Account edits use a SQL
-aggregate for first transaction date, reconciliation status and posted balances.
-Reconciliation aggregates the cleared balance and loads only the posted, cleared
-entries on the selected account side through the statement date. Its history
-contains those changed entries and any adjustment, preserving other transfer-side
-states during undo/redo. Aggregate queries still process relevant account history
-in the database; they do not materialize it in the application. Reports aggregate prior movements per account and
+aggregate for first transaction date and posted balances. Aggregate queries still
+process relevant account history in the database; they do not materialize it in the application. Reports aggregate prior movements per account and
 requested movements per account/month and category/month in SQL. The pure report
 calculator adds dated opening balances and builds net worth and spending from those
 totals; transaction and split entities are not loaded. Both aggregate queries and
@@ -350,8 +340,8 @@ and the remaining deployment-scale validation.
 
 Command transformations receive immutable `CommandIds` allocated at the operation
 boundary. Replaying the same snapshot, command, date and IDs produces identical
-data, including credit payment categories, reconciliation adjustments and bounded
-recurring batches. Allocation uses GUID v7; financial ordering still uses explicit
+data, including credit payment categories and bounded recurring batches. Allocation
+uses GUID v7; financial ordering still uses explicit
 transaction sequence numbers. A recurring batch reserves at most 128 occurrences
 and their splits; unused reserved IDs are discarded.
 
@@ -393,10 +383,8 @@ plan, and 409 stale revision. Responses are not cacheable.
 | Move group / category | POST `/api/plans/{planId}/groups/reorder` / `categories/reorder` |
 | Update an item | PUT `/api/plans/{planId}/{collection}/{resourceId}` |
 | Assign money | PUT `/api/plans/{planId}/assignments` |
-| Change clearing / approval | PATCH `/api/plans/{planId}/transactions/status` |
 | Bulk delete entries | POST `/api/plans/{planId}/transactions/delete` |
 | Move money / fund targets | POST `/api/plans/{planId}/money-moves` / `auto-assign` |
-| Reconcile | POST `/api/plans/{planId}/reconciliations` |
 | Plan settings | PUT `/api/plans/{planId}/settings` |
 | Rename payee / merge category | POST `/api/plans/{planId}/payees/rename` / `categories/merge` |
 | Undo / redo / post due repeats | POST `/api/plans/{planId}/undo` / `redo` / `recurring/post-due` |
@@ -432,13 +420,13 @@ isolated AppHosts. Browser tests exercise both desktop and phone widths.
 | Refund cancellation and transferable reserves | `RefundOffsetsCannotFundAnEarlierBalanceTransfer`, `RefundBeforePurchaseReleasesOpeningReserveBeforeBalanceTransfer`, `PartialRefundsAcrossMultiplePurchasesPreserveOnlyFundedReserves` |
 | Split validation and cent preservation | `InvalidSplitTotalsAndForeignCategoryAreRejected`, `SplitRoundingPreservesEveryCentOfPositiveCreditCrossing` |
 | Targets and automatic assignment | `MonthlyBehaviorDistinguishesCarryContributionsAndBalance`, `DatedRefillCountsMoneyAlreadySpentDuringTheTargetPeriod`, `AutoAssignUsesOnlyReadyCashAndSkipsHiddenOrSnoozedTargets` |
-| Recurring entries without one-off scheduling | `RejectsOneOffFutureEntriesButAcceptsRepeatingInstructions`, `DueRecurrencesArePostedOnceWithApprovalAndAnchorDayPreserved`, `FrequenciesRetainTheAnchorAcrossCalendarBoundaries`, `TwiceMonthlyClampsFebruaryAndReturnsToTheOriginalDays` |
+| Recurring entries without one-off scheduling | `RejectsOneOffFutureEntriesButAcceptsRepeatingInstructions`, `DueRecurrencesArePostedOnceAndPreserveTheAnchorDay`, `FrequenciesRetainTheAnchorAcrossCalendarBoundaries`, `TwiceMonthlyClampsFebruaryAndReturnsToTheOriginalDays` |
 | Recurring edits, occurrence identity, and upgrade compatibility | `EditingTemplateDetailsPreservesTheOriginalMonthEndAnchor`, `ChangingTemplateScheduleEstablishesANewAnchor`, `OccurrencesCanShareEditedDatesWithoutLosingIdentityOrHistoryAsync`, `MigrationBackfillsScheduledDatesAndLegacyHistoryCanStillBeRestoredAsync` |
 | Legacy creation/deletion history and stable restored ordering | `LegacyOccurrenceCreationAndDeletionRestoreStableIdentityAsync`, `DeletingMigratedTransactionCanUndoAndRedoWithoutChangingSequenceAsync`, `RestoringLegacyZeroSequenceDoesNotAllocateOrChangeOrder` |
-| Transfers, reconciliation, and account locks | `TransferClearingUpdatesOnlyTheSelectedAccountSide`, `CreditBalanceTransferMovesFundedPaymentMoneyToTheNewCard`, `ReconciliationLocksOnlyClearedEntriesAndRequiresExplicitAdjustment`, `ClosingAnAccountRequiresZeroBalanceAndOpeningChangesRespectReconciliation` |
+| Transfers and account operations | `CreditBalanceTransferMovesFundedPaymentMoneyToTheNewCard`, `ClosingAnAccountRequiresZeroBalanceAndOpeningChangesRemainEditable` |
 | Category history and payee management | `MergingAUsedCategoryPreservesAssignmentsSpendingAndAccountBalance`, `MergingAssignedCategoryPersistsHistoryAndSupportsUndoRedoAsync`, `PayeeRenameChangesMatchingPostedAndRecurringEntriesOnly`, `TransactionEditorsUsePayeeProjectionAndRefreshSuggestionsAsync` |
 | Private plans, SQL integrity, durable history, and concurrent edits | `OwnerIsolationHistoryAndConcurrentWritesPersistAcrossContextsAsync`, `DatabaseRejectsCrossPlanReferencesAndAccountDeletionRemovesOwnedLedgerAsync` |
-| Manual browser workflow, calculator entry, keyboard undo/redo, reports, reconciliation, and API guards | `ManualPlanPurchaseUndoAndReportsAgreeAsync` at 1440px and 390px |
+| Manual browser workflow, calculator entry, keyboard undo/redo, reports, and API guards | `ManualPlanPurchaseUndoAndReportsAgreeAsync` at 1440px and 390px |
 | Themes, mobile navigation, and SSR document continuity | `FluentNavigationPreservesDocumentAndThemeChoice` at 1280px and 390px |
 | Actual startup, migrations, and database readiness | `AppHostCompletesMigrationsAndServesHealthyApplication` |
 

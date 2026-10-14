@@ -10,10 +10,6 @@ public sealed class RegisterPolicyTests
 {
     [Theory]
     [InlineData("All posted", "Newest first", 1)]
-    [InlineData("Needs approval", "Oldest first", 100)]
-    [InlineData("Uncleared", "Payee", 50)]
-    [InlineData("Cleared", "Amount", 50)]
-    [InlineData("Reconciled", "Amount", 50)]
     [InlineData("Recurring", "Newest first", 50)]
     public void SupportedFiltersAndBoundaryPageSizesAreAccepted(string filter, string sort, int size)
         => Should.NotThrow(() => RegisterPolicy.Validate(new(Filter: filter, Sort: sort, PageSize: size)));
@@ -26,6 +22,10 @@ public sealed class RegisterPolicyTests
         foreach (var query in invalid)
         {
             Should.Throw<BudgetRequestException>(() => RegisterPolicy.Validate(query)).Status.ShouldBe(400);
+        }
+        foreach (var filter in new[] { "Needs approval", "Uncleared", "Cleared", "Reconciled" })
+        {
+            Should.Throw<BudgetRequestException>(() => RegisterPolicy.Validate(new(Filter: filter))).Status.ShouldBe(400);
         }
         Should.Throw<ArgumentNullException>(() => RegisterPolicy.Validate(null!));
     }

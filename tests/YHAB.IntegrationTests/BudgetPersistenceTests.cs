@@ -60,7 +60,7 @@ public sealed class BudgetPersistenceTests
         plan = await ApplyAsync(store, plan, new AssignMoney(plan.Version, source, BudgetFacts.Month(plan.Today), 100), timeout.Token);
         plan = await ApplyAsync(store, plan, new AssignMoney(plan.Version, destination, BudgetFacts.Month(plan.Today), 50), timeout.Token);
         var entry = new TransactionData(Guid.NewGuid(), account.Id, plan.Today, "Market", "Preserve memo", -25, null,
-            ClearingState.Cleared, ClearingState.Uncleared, false, "", [new(Guid.NewGuid(), source, -25, "Preserve split")]);
+            "", [new(Guid.NewGuid(), source, -25, "Preserve split")]);
         plan = await ApplyAsync(store, plan, new SaveTransaction(plan.Version, entry), timeout.Token);
 
         plan = await ApplyAsync(store, plan, new RemoveCategory(plan.Version, source, destination), timeout.Token);
@@ -132,7 +132,7 @@ public sealed class BudgetPersistenceTests
             exception.InnerException.ShouldBeOfType<PostgresException>().SqlState.ShouldBe(PostgresErrorCodes.ForeignKeyViolation);
         }
         var plan = (await database.Store.ReadAsync("owner-a", a, timeout.Token)).ShouldNotBeNull();
-        var entry = new TransactionData(Guid.NewGuid(), account.Id, plan.Today, "Store", "", -25, null, ClearingState.Cleared, ClearingState.Uncleared, false, "",
+        var entry = new TransactionData(Guid.NewGuid(), account.Id, plan.Today, "Store", "", -25, null, "",
             [new(Guid.NewGuid(), plan.Categories[0].Id, -25, "")]);
         (await database.Store.ExecuteAsync("owner-a", a, new SaveTransaction(plan.Version, entry), timeout.Token)).IsT0.ShouldBeTrue();
         await using (var context = await database.Factory.CreateDbContextAsync(timeout.Token))

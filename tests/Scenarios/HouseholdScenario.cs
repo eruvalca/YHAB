@@ -61,7 +61,7 @@ internal static class HouseholdScenario
             }
 
             entries.Add(new(Id(key), Id(account), first.AddDays(day - 1), payee, "Synthetic household ledger", amount,
-                transfer.HasValue ? Id(transfer.Value) : null, ClearingState.Cleared, ClearingState.Cleared, false, "", splits));
+                transfer.HasValue ? Id(transfer.Value) : null, "", splits));
         }
 
         Add(1, 1, "Salary", 4200);

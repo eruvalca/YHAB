@@ -169,7 +169,7 @@ public sealed class SustainedContentionTests(ITestOutputHelper output)
             var occurrences = final.Transactions.Where(item => item.SourceTemplateId.HasValue).ToArray();
             occurrences.Length.ShouldBe(Templates * Occurrences);
             occurrences.Select(item => (item.SourceTemplateId, item.ScheduledDate)).Distinct().Count().ShouldBe(Templates * Occurrences);
-            occurrences.ShouldAllBe(item => item.Amount == -1 && item.NeedsApproval);
+            occurrences.ShouldAllBe(item => item.Amount == -1);
             foreach (var template in final.Transactions.Where(item => item.Repeat != RepeatFrequency.None))
             {
                 template.Date.ShouldBe(final.Today.AddDays(1));

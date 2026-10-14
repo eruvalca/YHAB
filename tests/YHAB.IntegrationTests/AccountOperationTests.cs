@@ -34,8 +34,8 @@ public sealed class AccountOperationTests
                 probe.Commands.Count.ShouldBe(1);
             }
         }
-        (await AccountLedgerQueries.ReadAsync(context, plan.Id, plan.Accounts[0].Id, plan.Today, token)).ShouldBe(new(plan.CreatedOn, true, -25, 5));
-        (await AccountLedgerQueries.ReadAsync(context, plan.Id, Guid.NewGuid(), plan.Today, token)).ShouldBe(new(null, false, 0, 0));
+        (await AccountLedgerQueries.ReadAsync(context, plan.Id, plan.Accounts[0].Id, plan.Today, token)).ShouldBe(new(plan.CreatedOn, -25));
+        (await AccountLedgerQueries.ReadAsync(context, plan.Id, Guid.NewGuid(), plan.Today, token)).ShouldBe(new(null, 0));
         foreach (var change in new[]
         {
             plan.Accounts[0] with { OpeningBalance = 101 },
@@ -52,59 +52,7 @@ public sealed class AccountOperationTests
     }
 
     [Fact]
-    public async Task ReconciliationReadsOnlyChangedEntriesAndRestoresThemWithoutTouchingOtherSidesAsync()
-    {
-        var token = TestContext.Current.CancellationToken;
-        var probe = new DatabaseProbe();
-        await using var database = await BudgetDatabase.CreateAsync(token, interceptor: probe);
-        var plan = AccountScenario();
-        await SeedAsync(database, plan, "owner-a", token);
-        await VerifyMonthAsync(database, plan.Id, plan.CreatedOn, token);
-        var openings = await CheckpointsAsync(database, plan.Id, token);
-        openings.Length.ShouldBe(2);
-        probe.Start();
-        var changed = (await database.Store.ExecuteAsync("owner-a", plan.Id, new ReconcileAccount(0, plan.Accounts[0].Id, plan.Today, 102, true), token)).AsT0;
-        probe.Stop();
-        probe.Materialized.GetValueOrDefault(nameof(BudgetTransaction)).ShouldBe(3);
-        changed.Transactions.Count.ShouldBe(4);
-        var full = (await database.Store.ReadAsync("owner-a", plan.Id, token)).ShouldNotBeNull();
-        var balance = BudgetFacts.Balance(full, full.Accounts[0], plan.Today);
-        balance.Cleared.ShouldBe(102);
-        balance.Working.ShouldBe(72);
-        (await CheckpointsAsync(database, plan.Id, token)).ShouldBe(openings.Take(1));
-        await VerifyMonthAsync(database, plan.Id, plan.CreatedOn, token);
-        var expected = plan.Transactions.Select(item => item.Sequence switch
-        {
-            1 or 5 => item with { State = ClearingState.Reconciled },
-            4 => item with { TransferState = ClearingState.Reconciled },
-            _ => item,
-        }).ToArray();
-        var adjustment = full.Transactions.Single(item => item.Sequence == 9);
-        adjustment.Amount.ShouldBe(-3);
-        adjustment.Date.ShouldBe(plan.Today);
-        adjustment.State.ShouldBe(ClearingState.Reconciled);
-        adjustment.Splits.ShouldBeEmpty();
-        ShouldHaveEntries(full with { Transactions = full.Transactions.Where(item => item.Id != adjustment.Id).ToArray() }, plan with { Transactions = expected });
-        await using var context = await database.Factory.CreateDbContextAsync(token);
-        var history = await context.Set<BudgetHistory>().SingleAsync(token);
-        var patch = BudgetHistoryCodec.Deserialize(history).AsT0;
-        patch.Before.Transactions.Count.ShouldBe(3);
-        patch.After.Transactions.Count.ShouldBe(4);
-        (await database.Store.ExecuteAsync("owner-a", plan.Id, new UndoChange(1), token)).IsT0.ShouldBeTrue();
-        ShouldHaveEntries((await database.Store.ReadAsync("owner-a", plan.Id, token)).ShouldNotBeNull(), plan);
-        (await CheckpointsAsync(database, plan.Id, token)).ShouldBe(openings.Take(1));
-        (await database.Store.ExecuteAsync("owner-a", plan.Id, new RedoChange(2), token)).IsT0.ShouldBeTrue();
-        ShouldHaveEntries((await database.Store.ReadAsync("owner-a", plan.Id, token)).ShouldNotBeNull(), full);
-        probe.Start();
-        (await database.Store.ExecuteAsync("owner-a", plan.Id, new ReconcileAccount(3, plan.Accounts[0].Id, plan.Today, 102, false), token)).AsT0.Transactions.ShouldBeEmpty();
-        probe.Stop();
-        probe.Materialized.GetValueOrDefault(nameof(BudgetTransaction)).ShouldBe(0);
-        (await context.Set<BudgetHistory>().CountAsync(token)).ShouldBe(1);
-        (await context.Set<BudgetReceipt>().CountAsync(token)).ShouldBe(4);
-    }
-
-    [Fact]
-    public async Task MetadataAndClearingPreserveCheckpointContentsWhileMoneyChangesRebuildAsync()
+    public async Task MetadataPreservesCheckpointContentsWhileMoneyChangesRebuildAsync()
     {
         var token = TestContext.Current.CancellationToken;
         var probe = new DatabaseProbe();
@@ -123,8 +71,7 @@ public sealed class AccountOperationTests
             new SaveCategory(2, plan.Categories[0] with { Name = "New housing", Hidden = true, Target = new(TargetKind.Refill, TargetCadence.Yearly, 25000, plan.CreatedOn, plan.Today) }),
             new SaveGroup(3, plan.Groups[0] with { Name = "New group" }),
             new AssignMoney(4, allocation.CategoryId, month, allocation.Amount, true),
-            new SaveTransaction(5, entry with { Memo = "Edited memo" }),
-            new UpdateTransactionStates(6, [entry.Id], ClearingState.Uncleared, true, plan.Accounts[0].Id)];
+            new SaveTransaction(5, entry with { Memo = "Edited memo" })];
         foreach (var command in commands)
         {
             probe.Start();
@@ -161,19 +108,19 @@ public sealed class AccountOperationTests
         var plan = HouseholdScenario.Create(1, 200);
         var first = plan.CreatedOn;
         var accounts = plan.Accounts.Take(2).Select((item, index) => item with { OpeningBalance = (index + 1) * 100 }).ToArray();
-        TransactionData Entry(int sequence, int account, decimal amount, ClearingState state, DateOnly date, int? transfer = null, ClearingState transferState = ClearingState.Uncleared, RepeatFrequency repeat = RepeatFrequency.None)
+        TransactionData Entry(int sequence, int account, decimal amount, DateOnly date, int? transfer = null, RepeatFrequency repeat = RepeatFrequency.None)
             => new(HouseholdScenario.Id(90_000 + sequence), accounts[account].Id, date, "Account test", "", amount, transfer.HasValue ? accounts[transfer.Value].Id : null,
-                state, transferState, false, "", [], repeat, repeat == RepeatFrequency.None ? null : date, Sequence: sequence);
+                "", [], repeat, repeat == RepeatFrequency.None ? null : date, Sequence: sequence);
         return plan with
         {
             Accounts = accounts,
             Groups = [],
             Categories = [],
             Allocations = [],
-            Transactions = [Entry(1, 0, -10, ClearingState.Cleared, first.AddDays(1)), Entry(2, 0, -20, ClearingState.Reconciled, first.AddDays(2)),
-                Entry(3, 0, -30, ClearingState.Uncleared, first.AddDays(3)), Entry(4, 1, -40, ClearingState.Reconciled, first.AddDays(4), 0, ClearingState.Cleared),
-                Entry(5, 0, -5, ClearingState.Cleared, first.AddDays(5), 1, ClearingState.Reconciled), Entry(6, 0, -50, ClearingState.Cleared, first.AddMonths(1)),
-                Entry(7, 0, -999, ClearingState.Uncleared, first, repeat: RepeatFrequency.Monthly), Entry(8, 1, -888, ClearingState.Cleared, first.AddDays(1))],
+            Transactions = [Entry(1, 0, -10, first.AddDays(1)), Entry(2, 0, -20, first.AddDays(2)),
+                Entry(3, 0, -30, first.AddDays(3)), Entry(4, 1, -40, first.AddDays(4), 0),
+                Entry(5, 0, -5, first.AddDays(5), 1), Entry(6, 0, -50, first.AddMonths(1)),
+                Entry(7, 0, -999, first, repeat: RepeatFrequency.Monthly), Entry(8, 1, -888, first.AddDays(1))],
         };
     }
 

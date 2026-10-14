@@ -12,7 +12,8 @@ public sealed partial class AccountRegister
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
     [Parameter, EditorRequired] public EventCallback<AccountData> OnEditAccount { get; set; }
     [Parameter] public bool Busy { get; set; }
-    private static readonly string[] _filters = ["All posted", "Needs approval", "Uncleared", "Cleared", "Reconciled", "Recurring"];
+    [Parameter] public IReadOnlyList<AccountBalance>? Balances { get; set; }
+    private static readonly string[] _filters = ["All posted", "Recurring"];
     private static readonly string[] _sorts = ["Newest first", "Oldest first", "Payee", "Amount"];
     private readonly HashSet<Guid> _selected = [];
     private readonly Dictionary<Guid, decimal> _running = [];
@@ -22,9 +23,9 @@ public sealed partial class AccountRegister
     private DateOnly? _from;
     private DateOnly? _to;
     private AccountData? _account;
+    private AccountBalance? SelectedBalance => _account is null ? null : Balances?.Single(item => item.AccountId == _account.Id) ?? BudgetFacts.Balance(Plan, _account, Plan.Today);
     private TransactionData? _transaction;
     private bool _editing;
-    private bool _reconciling;
     private bool _deleting;
     private Guid _editKey;
     private long _version = -1;
@@ -41,10 +42,8 @@ public sealed partial class AccountRegister
     private bool IsBusy { get => Busy || field || _error is not null; set; }
     [Parameter, EditorRequired] public Func<RegisterQuery, CancellationToken, Task<RegisterPage>> LoadPage { get; set; } = default!;
     [Parameter, EditorRequired] public Func<CancellationToken, Task<IReadOnlyList<string>>> LoadPayees { get; set; } = default!;
-    [Parameter] public IReadOnlyList<AccountBalance>? Balances { get; set; }
     private IEnumerable<TransactionData> VisibleEntries => _result?.Rows.Select(item => item.Transaction) ?? [];
     private bool AllVisibleSelected => VisibleEntries.Any() && VisibleEntries.All(item => _selected.Contains(item.Id));
-    private AccountBalance? SelectedBalance => _account is null ? null : Balances?.Single(item => item.AccountId == _account.Id) ?? BudgetFacts.Balance(Plan, _account, Plan.Today);
 
     protected override async Task OnParametersSetAsync()
     {
@@ -97,7 +96,6 @@ public sealed partial class AccountRegister
         }
     }
     private decimal DisplayAmount(TransactionData entry) => AccountId == entry.TransferAccountId && AccountId.HasValue ? -entry.Amount : entry.Amount;
-    private ClearingState DisplayState(TransactionData entry) => AccountId == entry.TransferAccountId && AccountId.HasValue ? entry.TransferState : entry.State;
     private string AccountName(Guid id) => Plan.Accounts.Single(item => item.Id == id).Name;
     private string PayeeLabel(TransactionData entry)
     {
@@ -112,9 +110,8 @@ public sealed partial class AccountRegister
     private string CategoryName(Guid? id) => id.HasValue ? Plan.Categories.Single(item => item.Id == id).Name : "Ready to assign";
     private void Add() { CloseEditors(); _transaction = null; _editKey = Guid.CreateVersion7(); _editing = true; }
     private void Edit(TransactionData entry) { CloseEditors(); _transaction = entry; _editKey = Guid.CreateVersion7(); _editing = true; }
-    private void Duplicate(TransactionData entry) => Edit(entry with { Id = Guid.Empty, Date = Plan.Today, State = ClearingState.Uncleared, TransferState = ClearingState.Uncleared, Repeat = RepeatFrequency.None, Splits = entry.Splits.Select(item => item with { Id = Guid.CreateVersion7() }).ToArray() });
-    private void Reconcile() { CloseEditors(); _reconciling = true; }
-    private void CloseEditors() { _editing = false; _reconciling = false; _deleting = false; }
+    private void Duplicate(TransactionData entry) => Edit(entry with { Id = Guid.Empty, Date = Plan.Today, Repeat = RepeatFrequency.None, Splits = entry.Splits.Select(item => item with { Id = Guid.CreateVersion7() }).ToArray() });
+    private void CloseEditors() { _editing = false; _deleting = false; }
     private Task EditAccountAsync() => OnEditAccount.InvokeAsync(_account!);
     private void Select(Guid id, bool value) { if (value) { _selected.Add(id); } else { _selected.Remove(id); } }
     private void SelectVisible(bool value) { foreach (var entry in VisibleEntries) { Select(entry.Id, value); } }
@@ -124,10 +121,4 @@ public sealed partial class AccountRegister
     private void RequestDelete() => _deleting = true;
     private void CancelDelete() => _deleting = false;
     private Task DeleteAsync() => OnCommand.InvokeAsync(new DeleteTransactions(Plan.Version, _selected.ToArray()));
-    private Task ApproveAsync() => ChangeStatesAsync(null, true);
-    private Task ClearAsync() => ChangeStatesAsync(ClearingState.Cleared, false);
-    private Task UnclearAsync() => ChangeStatesAsync(ClearingState.Uncleared, false);
-    private Task ChangeStatesAsync(ClearingState? state, bool approve) => OnCommand.InvokeAsync(new UpdateTransactionStates(Plan.Version, _selected.ToArray(), state, approve, AccountId));
-    private Task ToggleClearedAsync(TransactionData entry) => OnCommand.InvokeAsync(new UpdateTransactionStates(Plan.Version, [entry.Id],
-        DisplayState(entry) == ClearingState.Uncleared ? ClearingState.Cleared : ClearingState.Uncleared, false, AccountId));
 }

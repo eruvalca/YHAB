@@ -32,40 +32,17 @@ public sealed class HouseholdProgressionTests(ITestOutputHelper output)
     [InlineData(1)]
     [InlineData(2)]
     [InlineData(3)]
-    public void ReconciliationLocksOnlyTheSelectedSideAndRejectsUnapprovedAdjustments(int months)
-    {
-        var plan = HouseholdScenario.Create(months, 1000);
-        var checking = HouseholdScenario.Id(1);
-        var balance = 5400 + 3880 * months;
-        var rejected = PlanCommandHandler.Apply(BudgetTestData.NewIds(), plan, new ReconcileAccount(0, checking, plan.Today, balance + 1, false), plan.Today);
-        rejected.IsT1.ShouldBeTrue();
-        var reconciled = PlanCommandHandler.Apply(BudgetTestData.NewIds(), plan, new ReconcileAccount(0, checking, plan.Today, balance, false), plan.Today);
-        reconciled.IsT0.ShouldBeTrue();
-        var updated = reconciled.AsT0;
-        updated.Transactions.Where(item => item.AccountId == checking).ShouldAllBe(item => item.State == ClearingState.Reconciled);
-        updated.Transactions.Where(item => item.AccountId != checking).ShouldAllBe(item => item.State == ClearingState.Cleared);
-        updated.Transactions.Where(item => item.TransferAccountId.HasValue).ShouldAllBe(item => item.TransferState == ClearingState.Cleared);
-        var purchase = updated.Transactions.First(item => item.AccountId == checking && item.Payee.StartsWith("Market", StringComparison.Ordinal));
-        PlanCommandHandler.Apply(BudgetTestData.NewIds(), updated, new SaveTransaction(0, purchase with { Memo = "Changed" }), plan.Today).IsT1.ShouldBeTrue();
-        PlanCommandHandler.Apply(BudgetTestData.NewIds(), updated, new DeleteTransactions(0, [purchase.Id]), plan.Today).IsT1.ShouldBeTrue();
-        HouseholdChecks.Verify(updated, months, 1000);
-    }
-
-    [Theory]
-    [InlineData(1)]
-    [InlineData(2)]
-    [InlineData(3)]
     public void RecurrenceCrossesShortMonthsWithoutDuplicateOccurrences(int months)
     {
         var plan = HouseholdScenario.Create(months, 1000);
         var template = new TransactionData(Guid.NewGuid(), HouseholdScenario.Id(1), new(2026, 1, 31), "Monthly service", "", -12,
-            null, ClearingState.Uncleared, ClearingState.Uncleared, false, "", [new(Guid.NewGuid(), HouseholdScenario.Id(106), -12, "")], RepeatFrequency.Monthly);
+            null, "", [new(Guid.NewGuid(), HouseholdScenario.Id(106), -12, "")], RepeatFrequency.Monthly);
         var result = PlanCommandHandler.Apply(BudgetTestData.NewIds(), plan, new SaveTransaction(0, template), plan.Today);
         result.IsT0.ShouldBeTrue();
         var posted = result.AsT0;
         var occurrences = posted.Transactions.Where(item => item.SourceTemplateId == template.Id).OrderBy(item => item.Date).ToArray();
         occurrences.Select(item => item.Date).ShouldBe(Enumerable.Range(1, months).Select(HouseholdScenario.End));
-        occurrences.ShouldAllBe(item => item.NeedsApproval && item.ScheduledDate == item.Date);
+        occurrences.ShouldAllBe(item => item.ScheduledDate == item.Date);
         var pending = posted.Transactions.Single(item => item.Id == template.Id);
         pending.Date.ShouldBe(HouseholdScenario.End(months + 1));
         var again = PlanCommandHandler.Apply(BudgetTestData.NewIds(), posted, new PostRecurring(0, plan.Today), plan.Today);
@@ -106,10 +83,10 @@ public sealed class HouseholdProgressionTests(ITestOutputHelper output)
         // Housing has only cash spending; annual bills has no earlier purchases.
         // Mixed cash/card categories would legitimately redistribute existing reserves.
         var cash = new TransactionData(HouseholdScenario.Id(900001), HouseholdScenario.Id(1), plan.Today, "Unexpected cash bill", "",
-            -100, null, ClearingState.Cleared, ClearingState.Uncleared, false, "",
+            -100, null, "",
             [new(Guid.NewGuid(), HouseholdScenario.Id(100), -100, "")]);
         var credit = new TransactionData(HouseholdScenario.Id(900002), HouseholdScenario.Id(3), plan.Today, "Unexpected card bill", "",
-            -(150 * months + 70), null, ClearingState.Cleared, ClearingState.Uncleared, false, "",
+            -(150 * months + 70), null, "",
             [new(Guid.NewGuid(), HouseholdScenario.Id(105), -(150 * months + 70), "")]);
         var first = PlanCommandHandler.Apply(BudgetTestData.NewIds(), plan, new SaveTransaction(0, cash), plan.Today);
         first.IsT0.ShouldBeTrue();

@@ -56,24 +56,11 @@ public sealed class CommandBoundaryTests
     }
 
     [Fact]
-    public void StatusOnlyApprovalKeepsEachTransferSideAndRejectsAnUnrelatedAccount()
-    {
-        var plan = Create();
-        var entry = Entry(plan, 0, -10) with { TransferAccountId = plan.Accounts[1].Id, TransferState = ClearingState.Cleared, NeedsApproval = true, Splits = [] };
-        plan = plan with { Transactions = [entry] };
-        var command = new UpdateTransactionStates(0, [entry.Id], null, true, plan.Accounts[1].Id);
-        var result = TransactionChanges.UpdateStates(plan, command).AsT0.Transactions.Single();
-        result.ShouldBe(entry with { NeedsApproval = false });
-        TransactionChanges.UpdateStates(plan, command with { AccountId = Guid.NewGuid() }).IsT1.ShouldBeTrue();
-        TransactionChanges.UpdateStates(plan, command with { AccountId = plan.Accounts[0].Id, State = ClearingState.Cleared }).AsT0.Transactions.Single().State.ShouldBe(ClearingState.Cleared);
-    }
-
-    [Fact]
-    public void LegacyRecurringMetadataAndApprovalPreserveOccurrenceIdentity()
+    public void LegacyRecurringMetadataPreservesOccurrenceIdentity()
     {
         var plan = Create();
         var template = Entry(plan, 0, -10) with { Repeat = RepeatFrequency.Monthly, AnchorDate = null };
-        var occurrence = template with { Id = Guid.NewGuid(), Repeat = RepeatFrequency.None, SourceTemplateId = template.Id, Splits = [template.Splits[0] with { Id = Guid.NewGuid() }], NeedsApproval = true };
+        var occurrence = template with { Id = Guid.NewGuid(), Repeat = RepeatFrequency.None, SourceTemplateId = template.Id, Splits = [template.Splits[0] with { Id = Guid.NewGuid() }] };
         plan = plan with { Transactions = [template, occurrence] };
         var command = new SaveTransaction(0, template with { Memo = "Keep schedule" });
         var result = TransactionChanges.Save(CommandIds.Allocate(plan, command), plan, command, plan.Today).AsT0;
@@ -81,9 +68,8 @@ public sealed class CommandBoundaryTests
         result.Transactions.Single(item => item.Id == template.Id).AnchorDate.ShouldBe(template.Date);
         var edited = TransactionChanges.Save(NewIds(), result, new(0, occurrence with { Memo = "Legacy occurrence" }), plan.Today).AsT0;
         edited.Transactions.Single(item => item.Id == occurrence.Id).ScheduledDate.ShouldBe(occurrence.Date);
-        var approved = TransactionChanges.UpdateStates(edited, new(0, [occurrence.Id], null, true, null)).AsT0;
-        approved.Transactions.Single(item => item.Id == occurrence.Id).NeedsApproval.ShouldBeFalse();
-        approved.Transactions.Single(item => item.Id == template.Id).Memo.ShouldBe("Keep schedule");
+        edited.Transactions.Single(item => item.Id == occurrence.Id).Memo.ShouldBe("Legacy occurrence");
+        edited.Transactions.Single(item => item.Id == template.Id).Memo.ShouldBe("Keep schedule");
     }
 
     [Fact]

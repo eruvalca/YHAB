@@ -17,7 +17,7 @@ namespace YHAB.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.12")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -589,9 +589,6 @@ namespace YHAB.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
-                    b.Property<bool>("NeedsApproval")
-                        .HasColumnType("boolean");
-
                     b.Property<int>("Occurrence")
                         .HasColumnType("integer");
 
@@ -612,14 +609,8 @@ namespace YHAB.Migrations
                     b.Property<Guid?>("SourceTemplateId")
                         .HasColumnType("uuid");
 
-                    b.Property<int>("State")
-                        .HasColumnType("integer");
-
                     b.Property<Guid?>("TransferAccountId")
                         .HasColumnType("uuid");
-
-                    b.Property<int>("TransferState")
-                        .HasColumnType("integer");
 
                     b.HasKey("PlanId", "Id");
 

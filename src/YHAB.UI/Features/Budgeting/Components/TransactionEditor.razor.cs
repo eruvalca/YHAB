@@ -26,7 +26,6 @@ public sealed partial class TransactionEditor
     private string _direction = "Outflow";
     private string _flag = "None";
     private DateOnly _date;
-    private bool _cleared;
     private bool _amountValid = true;
     private bool _split;
     private RepeatFrequency _repeat;
@@ -42,8 +41,7 @@ public sealed partial class TransactionEditor
                 && !(destination is not null && BudgetFacts.IsBudget(source.Kind) && BudgetFacts.IsBudget(destination.Kind));
         }
     }
-    private bool IsReconciled => Transaction is { State: ClearingState.Reconciled } or { TransferState: ClearingState.Reconciled };
-    private bool CannotSave => Busy || IsReconciled || !_amountValid || _account == Guid.Empty || (_transfer != Guid.Empty && _transfer == _account)
+    private bool CannotSave => Busy || !_amountValid || _account == Guid.Empty || (_transfer != Guid.Empty && _transfer == _account)
         || (_repeat == RepeatFrequency.None && _date > Plan.Today)
         || (NeedsCategory && _split && (_splits.Count == 0 || _splits.Any(item => !item.Valid) || _splits.Sum(item => item.Amount) != SignedAmount));
 
@@ -69,7 +67,6 @@ public sealed partial class TransactionEditor
         _memo = Transaction?.Memo ?? "";
         Amount = Math.Abs(Transaction?.Amount ?? 0);
         _direction = Transaction?.Amount > 0 ? "Inflow" : "Outflow";
-        _cleared = Transaction?.State is ClearingState.Cleared or ClearingState.Reconciled;
         _repeat = Transaction?.Repeat ?? RepeatFrequency.None;
         _flag = string.IsNullOrEmpty(Transaction?.Flag) ? "None" : Transaction.Flag;
         _category = FirstSplit?.CategoryId ?? Guid.Empty;
@@ -92,8 +89,7 @@ public sealed partial class TransactionEditor
     {
         var splits = BuildSplits();
         return OnCommand.InvokeAsync(new SaveTransaction(Plan.Version, new(Transaction?.Id ?? Guid.Empty, _account, _date, _payee, _memo, SignedAmount,
-            _transfer == Guid.Empty ? null : _transfer, _cleared ? ClearingState.Cleared : ClearingState.Uncleared,
-            Transaction?.TransferState ?? ClearingState.Uncleared, false, string.Equals(_flag, "None", StringComparison.Ordinal) ? "" : _flag, splits, _repeat)));
+            _transfer == Guid.Empty ? null : _transfer, string.Equals(_flag, "None", StringComparison.Ordinal) ? "" : _flag, splits, _repeat)));
     }
     private SplitData[] BuildSplits()
     {

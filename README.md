@@ -3,7 +3,7 @@
 A manual envelope-budgeting application built with .NET 10 Blazor, Fluent UI,
 Aspire, PostgreSQL, and ASP.NET Core Identity. Each user has private USD plans,
 manual accounts and transactions, monthly assignments, targets, credit-card
-payment reserves, reconciliation, recurring entries, undo/redo, and reports.
+payment reserves, recurring entries, undo/redo, and reports.
 
 See the [budgeting guide](docs/budgeting.md) for workflows, calculation rules,
 render boundaries, and the authenticated API. Bank connections, transaction
@@ -151,8 +151,8 @@ while it is running. Set `Budgeting:AutomaticPosting` to `false` (environment
 variable `Budgeting__AutomaticPosting=false`) to disable that worker for a run.
 Interactive catch-up remains available. `Budgeting:TimeZone` determines the
 budget's server date and defaults to `America/Chicago`. See the existing
-[budgeting guide](docs/budgeting.md#recurrence-and-history) for scheduling,
-approval, retry and undo behavior.
+[budgeting guide](docs/budgeting.md#recurrence-and-history) for scheduling, retry
+and undo behavior.
 
 ## Debug through Aspire
 

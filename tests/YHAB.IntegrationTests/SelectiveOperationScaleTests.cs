@@ -93,24 +93,18 @@ public sealed class SelectiveOperationScaleTests(ITestOutputHelper output)
             var renamed = (await database.Store.ReadAsync("owner-a", fixture.Id, token)).ShouldNotBeNull();
             renamed.Transactions.Count(item => string.Equals(item.Payee, "Corner store", StringComparison.Ordinal)).ShouldBe(count / 10 * 9);
             var selected = renamed.Transactions.OrderBy(item => item.Sequence).Take(50).ToArray();
-            var cleared = await ApplyAsync("clear 50", new UpdateTransactionStates(version, selected.Select(item => item.Id).ToArray(), ClearingState.Cleared, false, null));
-            cleared.Transactions.Count(item => item.State == ClearingState.Cleared).ShouldBe(50);
-            probe.Materialized.GetValueOrDefault(nameof(BudgetTransaction)).ShouldBe(50);
-            var edited = selected[0] with { State = ClearingState.Cleared, Payee = "Edited merchant" };
+            var edited = selected[0] with { Payee = "Edited merchant" };
             (await ApplyAsync("edit one", new SaveTransaction(version, edited))).Transactions.Single().Payee.ShouldBe("Edited merchant");
             probe.Materialized.GetValueOrDefault(nameof(BudgetTransaction)).ShouldBe(1);
             (await ApplyAsync("delete 50", new DeleteTransactions(version, selected.Select(item => item.Id).ToArray()))).Transactions.ShouldBeEmpty();
             probe.Materialized.GetValueOrDefault(nameof(BudgetTransaction)).ShouldBe(50);
-            var reconciled = await ApplyAsync("reconcile account", new ReconcileAccount(version, fixture.Accounts[0].Id, funded.Today, 1_000_001, true));
-            probe.Materialized.GetValueOrDefault(nameof(BudgetTransaction)).ShouldBe(0);
-            reconciled.Transactions.Count(item => item.State == ClearingState.Reconciled).ShouldBe(1);
             var merged = await ApplyAsync("merge category", new RemoveCategory(version, fixture.Categories[1].Id, fixture.Categories[2].Id));
             merged.Categories.Count.ShouldBe(49);
             merged.Transactions.SelectMany(item => item.Splits).ShouldAllBe(item => item.CategoryId != fixture.Categories[1].Id);
             var view = await database.Queries.ViewAsync("owner-a", fixture.Id, token);
-            view.Balances.Sum(item => item.Working).ShouldBe(fixture.Cash - selected.Sum(item => item.Amount) + 1);
+            view.Balances.Sum(item => item.Working).ShouldBe(fixture.Cash - selected.Sum(item => item.Amount));
             await using var context = await database.Factory.CreateDbContextAsync(token);
-            (await context.Set<BudgetTransaction>().CountAsync(item => item.PlanId == fixture.Id, token)).ShouldBe(count - 49);
+            (await context.Set<BudgetTransaction>().CountAsync(item => item.PlanId == fixture.Id, token)).ShouldBe(count - 50);
             (await context.Set<BudgetReceipt>().CountAsync(item => item.PlanId == fixture.Id, token)).ShouldBe((int)version);
             probe.Start();
             var reports = await database.Queries.ReportsAsync("owner-a", fixture.Id, fixture.Month.AddMonths(-23), funded.Today, token);
@@ -122,7 +116,7 @@ public sealed class SelectiveOperationScaleTests(ITestOutputHelper output)
             reports.Months[^1].NetWorth.ShouldBe(view.Balances.Sum(item => item.Working));
             var firstDue = funded.Today.AddDays(-364);
             var template = new TransactionData(Guid.Empty, fixture.Accounts[1].Id, firstDue, "Daily fee", "", -1, null,
-                ClearingState.Uncleared, ClearingState.Uncleared, false, "", [new(Guid.Empty, fixture.Categories[^1].Id, -1, "")], RepeatFrequency.Daily, firstDue);
+                "", [new(Guid.Empty, fixture.Categories[^1].Id, -1, "")], RepeatFrequency.Daily, firstDue);
             var created = await ApplyAsync("create recurring template", new SaveTransaction(version, template));
             var templateId = created.Transactions.Single(item => item.Repeat == RepeatFrequency.Daily).Id;
             created.Transactions.Count(item => item.SourceTemplateId == templateId).ShouldBe(128);

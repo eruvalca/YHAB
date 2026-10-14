@@ -34,7 +34,7 @@ public sealed class HouseholdPersistenceTests(ITestOutputHelper output)
             output.WriteLine($"{months} months / {plan.Transactions.Count} entries: fresh-context read and arithmetic {timer.ElapsedMilliseconds} ms.");
             timer.Restart();
             await VerifyMutationsAsync(database.Store, plan, months, monthlyCount, timeout.Token);
-            output.WriteLine($"{months} months / {plan.Transactions.Count} entries: mutation, undo/redo, merge, reconciliation and isolation probes {timer.ElapsedMilliseconds} ms.");
+            output.WriteLine($"{months} months / {plan.Transactions.Count} entries: mutation, undo/redo, merge and isolation probes {timer.ElapsedMilliseconds} ms.");
         }
     }
 
@@ -94,9 +94,6 @@ public sealed class HouseholdPersistenceTests(ITestOutputHelper output)
         plan = await ApplyAsync(store, plan, new UndoChange(plan.Version), token);
         HouseholdChecks.Verify(plan, months, monthlyCount);
 
-        plan = await ApplyAsync(store, plan, new ReconcileAccount(plan.Version, HouseholdScenario.Id(1), plan.Today, 5400 + 3880 * months, false), token);
-        plan.Transactions.Where(item => item.AccountId == HouseholdScenario.Id(1)).ShouldAllBe(item => item.State == ClearingState.Reconciled);
-        (await store.ExecuteAsync("owner-a", plan.Id, new DeleteTransactions(plan.Version, [entry.Id]), token)).IsT1.ShouldBeTrue();
         var reloaded = (await store.ReadAsync("owner-a", plan.Id, token)).ShouldNotBeNull();
         reloaded.Version.ShouldBe(plan.Version);
         HouseholdChecks.Verify(reloaded, months, monthlyCount);

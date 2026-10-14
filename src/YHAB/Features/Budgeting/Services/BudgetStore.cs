@@ -213,11 +213,6 @@ internal sealed class BudgetStore(IDbContextFactory<ApplicationDbContext> contex
             var facts = await AccountLedgerQueries.ReadAsync(database, plan.Id, account.Id, clock.Today, token);
             return CatalogChanges.Save(ids, before, save, clock.Today, facts);
         }
-        if (command is ReconcileAccount reconcile)
-        {
-            var facts = await AccountLedgerQueries.ReadAsync(database, plan.Id, reconcile.AccountId, reconcile.Date, token);
-            return MoneyChanges.Reconcile(ids, before, reconcile, clock.Today, facts.ClearedMovement);
-        }
         var outcome = PlanCommandHandler.Apply(ids, before, command, clock.Today, projection);
         if (command is not (PostRecurring or SaveTransaction { Transaction.Repeat: not RepeatFrequency.None }))
         {

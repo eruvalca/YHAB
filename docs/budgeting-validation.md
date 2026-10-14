@@ -5,6 +5,8 @@ March 31, 2026, including February's shorter month. The initial campaign changed
 only tests and documentation. The subsequent BUG-01 investigation changes
 workspace startup as described below. Earlier uncommitted budgeting fixes remain
 part of the tested workspace.
+This is a historical report; clearing, approval and reconciliation references
+describe behavior retired from the current workflow. See the [budgeting guide](budgeting.md).
 
 The foundation/performance sections are chronological. The
 [latest cold-rebuild measurements](#cold-rebuild-profiling-and-combined-dimensions)

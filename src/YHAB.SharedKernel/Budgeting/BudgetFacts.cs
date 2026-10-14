@@ -35,28 +35,13 @@ public static class BudgetFacts
     {
         ArgumentNullException.ThrowIfNull(plan);
         ArgumentNullException.ThrowIfNull(account);
-        var cleared = account.OpenedOn <= through ? account.OpeningBalance : 0;
-        var uncleared = 0m;
-        var reconciled = 0m;
+        var working = account.OpenedOn <= through ? account.OpeningBalance : 0;
         foreach (var entry in plan.Transactions.Where(entry => entry.Repeat == RepeatFrequency.None && entry.Date <= through))
         {
             var transferAmount = entry.TransferAccountId == account.Id ? -entry.Amount : 0;
-            var amount = entry.AccountId == account.Id ? entry.Amount : transferAmount;
-            var state = entry.AccountId == account.Id ? entry.State : entry.TransferState;
-            if (state == ClearingState.Uncleared)
-            {
-                uncleared += amount;
-            }
-            else
-            {
-                cleared += amount;
-                if (state == ClearingState.Reconciled)
-                {
-                    reconciled += amount;
-                }
-            }
+            working += entry.AccountId == account.Id ? entry.Amount : transferAmount;
         }
 
-        return new(account.Id, cleared, uncleared, reconciled, cleared + uncleared);
+        return new(account.Id, working);
     }
 }

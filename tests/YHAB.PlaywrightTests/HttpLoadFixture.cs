@@ -87,11 +87,11 @@ internal sealed class HttpLoadFixture(Guid id, Guid[] accounts, Guid[] categorie
             SELECT @id, @categories[n], @group, 'Editor ' || n, '', n, false, 0, 0, @start, 0, 0 FROM generate_series(1, 8) n;
             INSERT INTO "BudgetAllocation" ("PlanId", "CategoryId", "Month", "Amount", "Snoozed")
             SELECT @id, x, @month, @assigned, false FROM unnest(@categories) x;
-            INSERT INTO "BudgetTransaction" ("PlanId", "Id", "AccountId", "Date", "Payee", "Memo", "Amount", "State", "TransferState", "NeedsApproval", "Flag", "Repeat", "Occurrence", "Sequence")
+            INSERT INTO "BudgetTransaction" ("PlanId", "Id", "AccountId", "Date", "Payee", "Memo", "Amount", "Flag", "Repeat", "Occurrence", "Sequence")
             SELECT @id, gen_random_uuid(), @accounts[1 + n % 2], @today - n % 730, 'Load ledger', '',
-                CASE WHEN n % 10 = 0 THEN 100 ELSE -1 END, 0, 0, false, '', 0, 0, n FROM generate_series(1, 100000) n;
-            INSERT INTO "BudgetTransaction" ("PlanId", "Id", "AccountId", "Date", "Payee", "Memo", "Amount", "State", "TransferState", "NeedsApproval", "Flag", "Repeat", "AnchorDate", "Occurrence", "Sequence")
-            SELECT @id, @templates[n], @accounts[1], @today - 364, 'Daily load schedule', '', -1, 0, 0, false, '', @daily, @today - 364, 0, 100000 + n FROM generate_series(1, 2) n WHERE @includeRecurring;
+                CASE WHEN n % 10 = 0 THEN 100 ELSE -1 END, '', 0, 0, n FROM generate_series(1, 100000) n;
+            INSERT INTO "BudgetTransaction" ("PlanId", "Id", "AccountId", "Date", "Payee", "Memo", "Amount", "Flag", "Repeat", "AnchorDate", "Occurrence", "Sequence")
+            SELECT @id, @templates[n], @accounts[1], @today - 364, 'Daily load schedule', '', -1, '', @daily, @today - 364, 0, 100000 + n FROM generate_series(1, 2) n WHERE @includeRecurring;
             INSERT INTO "BudgetSplit" ("PlanId", "Id", "TransactionId", "CategoryId", "Amount", "Memo")
             SELECT "PlanId", gen_random_uuid(), "Id", CASE WHEN "Amount" < 0 THEN @categories[1 + ("Sequence" % 8)::int] ELSE NULL END, "Amount", ''
             FROM "BudgetTransaction" WHERE "PlanId" = @id;

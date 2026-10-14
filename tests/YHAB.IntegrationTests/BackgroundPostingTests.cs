@@ -22,7 +22,7 @@ public sealed class BackgroundPostingTests
         var account = new AccountData(Guid.NewGuid(), "Tracking", AccountKind.Asset, 1000, today.AddDays(-199), false, "");
         (await database.Store.ExecuteAsync("owner-a", id, new SaveAccount(0, account), token)).IsT0.ShouldBeTrue();
         var template = new TransactionData(Guid.NewGuid(), account.Id, account.OpenedOn, "Daily", "", -1, null,
-            ClearingState.Uncleared, ClearingState.Uncleared, false, "", [], RepeatFrequency.Daily);
+            "", [], RepeatFrequency.Daily);
         (await database.Store.ExecuteAsync("owner-a", id, new SaveTransaction(1, template), token)).IsT0.ShouldBeTrue();
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token);
         pause.Arm();
@@ -67,7 +67,7 @@ public sealed class BackgroundPostingTests
         var account = new AccountData(Guid.NewGuid(), "Tracking", AccountKind.Asset, 1000, today.AddDays(-199), false, "");
         (await database.Store.ExecuteAsync("owner-a", id, new SaveAccount(0, account), token)).IsT0.ShouldBeTrue();
         var template = new TransactionData(Guid.NewGuid(), account.Id, account.OpenedOn, "Daily", "", -1, null,
-            ClearingState.Uncleared, ClearingState.Uncleared, false, "", [], RepeatFrequency.Daily);
+            "", [], RepeatFrequency.Daily);
         (await database.Store.ExecuteAsync("owner-a", id, new SaveTransaction(1, template), token)).IsT0.ShouldBeTrue();
 
         var results = await Task.WhenAll(Enumerable.Range(0, 8)

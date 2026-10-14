@@ -13,7 +13,7 @@ namespace YHAB.UnitTests.Features.Budgeting;
 public sealed class CheckpointPolicyTests
 {
     [Fact]
-    public void PresentationTargetsClearingAndSnoozingPreserveFinancialOpeningsAndInputs()
+    public void PresentationTargetsAndSnoozingPreserveFinancialOpeningsAndInputs()
     {
         var original = Assigned(Create(), 100);
         original = original with { Transactions = [Entry(original, 0, -20) with { Sequence = 7 }] };
@@ -33,8 +33,8 @@ public sealed class CheckpointPolicyTests
             }).Reverse().ToArray(),
             Groups = [original.Groups[0] with { Name = "New group", SortOrder = 8, Hidden = true }],
             Allocations = [original.Allocations[0] with { Snoozed = true }],
-            Transactions = [entry with { Payee = "Other payee", Memo = "Memo", State = ClearingState.Reconciled, TransferState = ClearingState.Cleared,
-                NeedsApproval = true, Flag = "blue", SourceTemplateId = Guid.NewGuid(), ScheduledDate = January, AnchorDate = January, Occurrence = 4,
+            Transactions = [entry with { Payee = "Other payee", Memo = "Memo",
+                Flag = "blue", SourceTemplateId = Guid.NewGuid(), ScheduledDate = January, AnchorDate = January, Occurrence = 4,
                 Splits = entry.Splits.Select(item => item with { Memo = "Split memo" }).Reverse().ToArray() }],
         };
         var patch = LedgerPatch.Between(original, updated);

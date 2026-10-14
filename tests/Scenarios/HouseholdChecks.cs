@@ -14,8 +14,6 @@ internal static class HouseholdChecks
             var account = plan.Accounts.Single(item => item.Id == HouseholdScenario.Id(index + 1));
             var balance = BudgetFacts.Balance(plan, account, HouseholdScenario.End(months));
             balance.Working.ShouldBe(balances[index], account.Name);
-            balance.Cleared.ShouldBe(balances[index], account.Name);
-            balance.Uncleared.ShouldBe(0);
         }
 
         var budget = BudgetCalculator.Calculate(plan, HouseholdScenario.Start.AddMonths(months - 1), HouseholdScenario.End(months));

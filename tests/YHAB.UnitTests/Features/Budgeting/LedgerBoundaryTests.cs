@@ -106,37 +106,23 @@ public sealed class LedgerBoundaryTests
         var overflow = CatalogChanges.Remove(plan, new(0, plan.Categories[0].Id, replacement.Id));
         overflow.IsT1.ShouldBeTrue();
         overflow.AsT1.Message.ShouldContain("combined assignments");
-        var transfer = Entry(plan, 1, -20) with { TransferAccountId = plan.Accounts[0].Id, TransferState = ClearingState.Reconciled, Splits = [] };
+        var transfer = Entry(plan, 1, -20) with { TransferAccountId = plan.Accounts[0].Id, Splits = [] };
         plan = plan with { Transactions = [transfer] };
-        CatalogChanges.Save(BudgetTestData.NewIds(), plan, new SaveAccount(0, plan.Accounts[0] with { OpenedOn = January.AddDays(-1) }), plan.Today).IsT1.ShouldBeTrue();
+        CatalogChanges.Save(BudgetTestData.NewIds(), plan, new SaveAccount(0, plan.Accounts[0] with { OpenedOn = January.AddDays(-1) }), plan.Today).IsT0.ShouldBeTrue();
     }
 
     [Fact]
-    public void BulkDeletionAndStateChangesValidateSelectionAndPreserveOtherEntries()
+    public void BulkDeletionValidatesSelectionAndPreservesOtherEntries()
     {
         var plan = Create();
-        var entry = Entry(plan, 0, -10) with { NeedsApproval = true };
+        var entry = Entry(plan, 0, -10);
         var other = Entry(plan, 1, -20);
         plan = plan with { Transactions = [entry, other] };
         foreach (var ids in new IReadOnlyList<Guid>[] { null!, [], [Guid.NewGuid()] })
         {
             TransactionChanges.Delete(plan, new(0, ids)).IsT1.ShouldBeTrue();
-            TransactionChanges.UpdateStates(plan, new(0, ids, ClearingState.Cleared, false)).IsT1.ShouldBeTrue();
         }
-        TransactionChanges.UpdateStates(plan, new(0, [entry.Id], (ClearingState)99, false)).IsT1.ShouldBeTrue();
-        TransactionChanges.UpdateStates(plan, new(0, [entry.Id], ClearingState.Reconciled, false)).IsT1.ShouldBeTrue();
-        TransactionChanges.UpdateStates(plan, new(0, [entry.Id], ClearingState.Cleared, false, plan.Accounts[1].Id)).IsT1.ShouldBeTrue();
-        var approved = TransactionChanges.UpdateStates(plan, new(0, [entry.Id], null, true)).AsT0;
-        approved.Transactions[0].NeedsApproval.ShouldBeFalse();
-        approved.Transactions[0].State.ShouldBe(ClearingState.Uncleared);
-        approved.Transactions[1].ShouldBe(other);
         TransactionChanges.Delete(plan, new(0, [entry.Id])).AsT0.Transactions.ShouldBe([other]);
-        var transfer = entry with { TransferAccountId = plan.Accounts[1].Id, TransferState = ClearingState.Cleared, Splits = [] };
-        plan = plan with { Transactions = [transfer, other] };
-        var destination = TransactionChanges.UpdateStates(plan, new(0, [transfer.Id], null, true, plan.Accounts[1].Id)).AsT0.Transactions[0];
-        destination.TransferState.ShouldBe(ClearingState.Cleared);
-        destination.State.ShouldBe(ClearingState.Uncleared);
-        destination.NeedsApproval.ShouldBeFalse();
     }
 
     [Fact]
