@@ -1,12 +1,5 @@
 # Aspire 13.5 Breaking Changes - Agent Reference
 
-For repositories already on 13.6, apply the later
-[13.6 release guidance](https://aspire.dev/whats-new/aspire-13-6/) where it supersedes
-this historical reference: Project v2 creation APIs no longer emit
-`ASPIREDOTNETPROJECT001` (the package remains prerelease), and `stop --force`
-preserves named volumes unless eligible volume deletion is explicitly requested
-with `--volumes`. Plain `aspire stop` remains the ordinary shutdown command.
-
 Use this reference when upgrading AppHosts or reviewing generated code, scripts, and CI
 for Aspire 13.5. Sources:
 

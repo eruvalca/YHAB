@@ -104,9 +104,7 @@ Present a table before editing:
 
 Explain:
 
-- In Aspire 13.6, `AddDotnetProject`, `DotnetProjectResource`, and related
-  `WithBuildEnvironment` APIs no longer emit `ASPIREDOTNETPROJECT001`. The
-  `Aspire.Hosting.Dotnet` package remains prerelease and its APIs remain unstable.
+- `ASPIREDOTNETPROJECT001` is an experimental API diagnostic.
 - Project v2 resources have executable-based identity and coordinated initial builds.
 - Known publishing or validation differences, especially Blazor gateway publishing,
   EF custom build inputs, and cross-OS file-app Native AOT.
@@ -158,10 +156,13 @@ language-specific mappings.
   runtime role.
 - Update only straightforward local `IResourceBuilder<ProjectResource>` annotations
   tied to approved resources. Do not broadly rewrite public/custom contracts.
-- Do not add `ASPIREDOTNETPROJECT001` suppressions for the 13.6 Project v2 creation
-  APIs; that diagnostic was removed. Verify the selected package's actual
-  diagnostics and keep any necessary suppressions paired and local to the affected
-  declaration. Never suppress unrelated diagnostics or leave an unbounded disable.
+- C# migrations **must** handle `ASPIREDOTNETPROJECT001` narrowly so the edited
+  AppHost compiles. Prefer paired `#pragma warning disable
+  ASPIREDOTNETPROJECT001` / `#pragma warning restore
+  ASPIREDOTNETPROJECT001` immediately around the approved Project v2 declarations.
+  Use a project-level `NoWarn` only when repository convention and the approved
+  migration scope make that equally narrow. Never suppress unrelated diagnostics
+  or leave an unbounded disable.
   The `AddEFMigrations` overload selected for `IDotnetProgramResource` also requires
   a paired `ASPIREPROJECTS001` suppression around that EF declaration; the legacy
   overload did not. Include this compilation-required edit in the approval scope.

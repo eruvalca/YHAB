@@ -56,12 +56,14 @@ builder.AddDotnetProject("api", "../Api/Api.csproj",
 Preserve existing `ProjectResourceOptions`, including
 `ExcludeKestrelEndpoints`. Do not confuse an omitted argument with explicit null.
 
-In Aspire 13.6, `AddDotnetProject` no longer emits `ASPIREDOTNETPROJECT001`, so
-approved C# Project v2 declarations do not need that suppression. The
-`Aspire.Hosting.Dotnet` package remains prerelease and its APIs remain unstable:
+Because `AddDotnetProject` is experimental, wrap approved C# Project v2
+declarations in a paired, local suppression unless the repository has an equally
+narrow established convention:
 
 ```csharp
+#pragma warning disable ASPIREDOTNETPROJECT001
 var api = builder.AddDotnetProject("api", "../Api/Api.csproj");
+#pragma warning restore ASPIREDOTNETPROJECT001
 ```
 
 Do not add an unbounded file-wide disable or suppress unrelated diagnostics.

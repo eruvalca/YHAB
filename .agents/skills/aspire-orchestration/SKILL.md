@@ -127,7 +127,6 @@ its filesystem path first.
 | Check running AppHosts | `aspire ps` | Manual process inspection |
 | Check resource status | `aspire describe` | `aspire ps --resources` (removed in 13.5) |
 | Remove persistent resources | Confirm data loss and exact AppHost before `aspire stop --force --apphost <filesystem-path>` | Combining `--force` with `--all`, or using it for an ordinary stop |
-| Remove named volumes (13.6+) | Require explicit volume-deletion intent for the exact AppHost before adding `--volumes` to `stop --force`; only eligible Aspire-created, owned volumes are targeted | Assuming `--force` deletes named volumes, or using `--volumes` for routine cleanup |
 | Working in git worktree | `aspire start --non-interactive --isolated --apphost <filesystem-path>` | `aspire_apphost_start` when it cannot request isolation |
 | Running from AI agent | Load available lifecycle tools first; resolve CLI `--apphost` fallbacks to `<filesystem-path>`; add `--non-interactive` | Assuming interactive terminal |
 | Editing unfamiliar API | `aspire docs search <topic>` then `aspire docs api search <query>` for API reference | Guessing API shape |

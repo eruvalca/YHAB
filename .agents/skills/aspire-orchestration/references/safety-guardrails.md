@@ -249,12 +249,6 @@ then permanently removes its persistent resource instances without another confi
 Require explicit data-loss approval and an exact `--apphost` target. Never combine
 `--force` with `--all`.
 
-In Aspire 13.6, `--force` preserves named volumes by default. `--volumes` also
-removes eligible Aspire-created, owned named volumes and requires both `--force`
-and explicit volume-deletion intent. Pre-existing named volumes and bind mounts
-are not targeted; anonymous volumes can still be removed with their persistent
-container. Do not add either cleanup flag to normal validation shutdown.
-
 ---
 
 ## Rule 5: ALWAYS `--format Json` for Machine-Readable Output

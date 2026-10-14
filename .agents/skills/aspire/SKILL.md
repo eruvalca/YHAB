@@ -92,10 +92,6 @@ the bootstrap skills (`aspire-init` / `aspireify`) or to a runtime sub-skill:
 - Treat `aspire stop --force` as data-destructive: it permanently removes persistent
   resources without another prompt. Use it only after explicit confirmation for one
   exact AppHost.
-  In 13.6, it preserves named volumes by default. Adding `--volumes` (which requires
-  `--force`) also deletes eligible Aspire-created, owned named volumes; pre-existing
-  volumes and bind mounts are not targeted. Anonymous volumes may be removed with
-  their persistent container. Neither cleanup flag belongs in routine shutdown.
 - Do not stop or restart the whole AppHost just because one resource changed
 - Use `features.defaultWatchEnabled` only for Aspire default watch; do not treat it as per-resource rebuild, restart, or hot reload
 - Prefer a resource's own framework/runtime hot reload, HMR, or watch workflow when it already handles the change

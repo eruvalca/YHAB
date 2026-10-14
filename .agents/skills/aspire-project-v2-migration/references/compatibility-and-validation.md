@@ -109,8 +109,8 @@ expected hidden coordinated-build resources, but do not broadly scrub the model.
 
 Compilation must cover overload changes, not just creation calls.
 `AddEFMigrations` on `IDotnetProgramResource` requires a narrow, paired
-`ASPIREPROJECTS001` suppression. Project v2 creation calls no longer emit
-`ASPIREDOTNETPROJECT001` in 13.6. Preserve necessary existing Blazor diagnostic scopes.
+`ASPIREPROJECTS001` suppression in addition to `ASPIREDOTNETPROJECT001` on Project
+v2 creation calls. Preserve necessary existing Blazor diagnostic scopes.
 
 Run the repository's smallest relevant restore/build checks, then validate the
 exact AppHost through Aspire:

@@ -17,10 +17,6 @@ aspire stop
 - `aspire stop --force` also permanently deletes persistent resource instances without
   another confirmation. Require explicit data-destructive intent for one exact AppHost;
   never combine it with `--all`.
-  In 13.6, named volumes survive by default. `--volumes` requires `--force` and
-  explicit volume-deletion intent; it targets eligible Aspire-created, owned named
-  volumes, not pre-existing volumes or bind mounts. Anonymous volumes can be removed
-  with their persistent container. Use plain `aspire stop` for ordinary shutdown.
 - Avoid `aspire run` in agent workflows — it blocks the terminal.
 
 ### `aspire run` vs `aspire start`
