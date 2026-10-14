@@ -91,6 +91,8 @@ function Get-WorkspaceSnapshot {
 
 $reviewInstruction = @'
 Documentation is part of implementation work. Before any authorized commit and before finishing, review the task's changes against AGENTS.md and relevant README/feature docs. Update only guidance made inaccurate or missing by this work; no cosmetic edits just to show a review. Keep durable agent rules in AGENTS.md, setup in README.md, build rules in build/README.md, and test conventions in tests/README.md. Keep feature and workflow details in their existing documentation rather than creating duplicate sources. Preserve unrelated changes and installed third-party skill files. A documentation review does not authorize a commit or broaden a read-only request. If no update is needed, leave docs unchanged. When the review is complete, include "Documentation review: complete." followed by the outcome in the final response so the finishing hook does not request it again. Do not report completion when review is pending or blocked.
+
+When adding or changing agent instructions, follow the root AGENTS.md Instruction scope policy: keep repository-wide rules and short routing instructions at the root, put subtree-specific rules in the nearest applicable nested AGENTS.md, and put detailed reusable workflows in repository-owned .agents/skills. Before working in a subtree, discover and read its applicable nested guidance without preloading unrelated instructions. Include scope, discoverability, and duplication in the review; preserve the reach of shared requirements and avoid reorganizing unrelated guidance.
 '@
 
 try {

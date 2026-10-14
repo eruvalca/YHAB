@@ -21,6 +21,25 @@ hashes, candidate paths, and a commit ID under ignored
 or file contents. The baseline covers staged and unstaged changes, non-ignored
 untracked files, and `HEAD`. Repeated prompt events keep the original baseline.
 
+The reminder also directs instruction changes to the
+[instruction scope policy](../AGENTS.md#instruction-scope): repository-wide rules
+and short routing instructions belong at the root, subtree-specific rules belong
+in applicable nested `AGENTS.md` files, and detailed reusable workflows belong in
+repository-owned `.agents/skills`. The agent discovers and reads nested guidance
+for the area it is working in and reviews changed instructions for scope,
+discoverability, and duplication. Existing feature and workflow documentation
+remains the source for those details; instructions should reference it.
+The root [task routing table](../AGENTS.md#read-the-guidance-for-the-task) also
+requires relevant guides when a change affects their contracts from another
+directory, or an operation such as running tests touches no files in that scope.
+
+This is guidance for the agent's review, not automatic file-access injection or
+a semantic placement validator. The hook does not read every nested instruction
+file into context or decide whether a rule applies repository-wide. It retains
+the same one-pass review behavior and does not require reorganizing unrelated
+instructions. Mechanical checks can enforce explicit conventions, but choosing
+the appropriate scope still requires review.
+
 `Stop` compares the baseline with the current workspace. If it changed and the
 final assistant response does not acknowledge a completed documentation review,
 the hook requests one final review through Codex's `decision: "block"`

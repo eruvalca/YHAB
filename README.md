@@ -298,7 +298,9 @@ semantic tables. Do not recreate Bootstrap utilities or add `!important` or
 ornamental animations. Use icons to clarify navigation/actions. Keep form
 labels before their controls and preserve Blazor/Identity behavior hooks when
 editing markup. Check narrow screens, keyboard focus, and text wrapping when
-changing layouts. See `AGENTS.md` for the authoring conventions.
+changing layouts. See the [UI agent guide](src/YHAB.UI/AGENTS.md) for the
+authoring conventions and the [account guide](src/YHAB/Features/Account/AGENTS.md)
+when changes affect Identity.
 
 Setup references: [installation](https://www.fluentui-blazor.net/installation),
 [layout](https://www.fluentui-blazor.net/layout), and the
@@ -626,6 +628,15 @@ Aspire configures the connection and credentials. Stop it from the dashboard whe
 
 ## Agent tools and skills
 
+Repository instructions start in [AGENTS.md](AGENTS.md). It keeps shared rules
+and a [task routing table](AGENTS.md#read-the-guidance-for-the-task) for the scoped
+UI, account, server/persistence, Aspire, and test guides. Read applicable nested
+guidance and follow the task routes when behavior spans directories, including
+when a chat starts at the repository root. The routes also cover operations that
+do not edit the owning directory, such as running Aspire or validating a source
+change. The documentation hook reminds agents to maintain this organization;
+it does not automatically inject every nested guide on file access.
+
 Shared repository skills live only in `.agents/skills`, supported by Codex and
 Copilot CLI. Copilot desktop inherits repository/CLI skills and MCP configuration.
 The Aspire skills use the first-party **aspire-skills v0.0.3** bundle refreshed
@@ -657,8 +668,9 @@ of source control.
 The [Fluent UI Blazor v5 usage skill](.agents/skills/fluentui-blazor-usage/SKILL.md)
 includes setup, data-grid, and theming references. The library is configured as
 described above; installing the skill alone does not configure an MCP server.
-When using its examples, follow
-`AGENTS.md` for code-behind, CSS, static account rendering, and central package
+When using its examples, follow the [UI guide](src/YHAB.UI/AGENTS.md) for
+code-behind and CSS, the [account guide](src/YHAB/Features/Account/AGENTS.md) for
+static account rendering, and [root instructions](AGENTS.md) for central package
 versions. Verify version-sensitive APIs against the Fluent UI Blazor MCP server's
 documentation and the released package source. The v5.0.0 package's assembly file
 version is `5.0.0.26268`, also reported by the installed MCP server. Its version
