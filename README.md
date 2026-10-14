@@ -500,12 +500,17 @@ scope; the workflow's resource permissions remain scoped to the dedicated group.
 
 ### Deployment sequence
 
-[Validate and deploy](.github/workflows/deploy.yml) runs formatting, a Release build,
+[Validate and deploy](.github/workflows/deploy.yml) runs formatting, project-reference
+policy regression checks, Debug architecture tests, a Release build,
 all five test projects using isolated resources, and `aspire publish` on pull requests
 and pushes to `main`. A successful main run signs into Azure with OIDC and runs
 `aspire deploy --environment Production --non-interactive`. Manual dispatch is also
 available on `main`. Runs are serialized without canceling an active deployment;
 a superseded commit cannot begin another deployment.
+
+The workflow's JavaScript actions use SHA-pinned releases targeting Node.js 24,
+including artifact upload and Azure login. This runtime is supplied by the GitHub
+Actions runner and is separate from the application's .NET SDK and NuGet packages.
 
 The AppHost builds/pushes the migration image, provisions the job and its database
 identity, starts the job, and polls **that execution** until success. Only then can

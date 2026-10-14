@@ -70,7 +70,7 @@ jobs:
         run: dotnet test --solution YHAB.slnx --configuration Release --no-build --max-parallel-test-modules 1 --output Detailed --report-trx --results-directory "${{ runner.temp }}/yhab-test-results"
       - name: Retain test results
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: test-results
           path: ${{ runner.temp }}/yhab-test-results/*.trx
@@ -78,7 +78,7 @@ jobs:
           if-no-files-found: warn
       - name: Retain browser failure diagnostics
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: browser-diagnostics
           path: |
@@ -123,7 +123,7 @@ jobs:
         run: |
           dotnet tool install Aspire.Cli --version "$ASPIRE_VERSION" --tool-path "$RUNNER_TEMP/aspire"
           echo "$RUNNER_TEMP/aspire" >> "$GITHUB_PATH"
-      - uses: azure/login@8216e11d8cd9b42fe925c852af8e76311ff067ac # v2
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}

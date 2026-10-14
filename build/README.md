@@ -756,7 +756,11 @@ pwsh ./scripts/Test-ArchitectureProjectReferences.ps1
 The script imports temporary references into the real evaluated projects, tests
 allowed/forbidden paths, metadata and conditions, and verifies that normal builds
 invoke validation. Fixtures and logs stay under ignored `artifacts/`; project/source
-files are not edited. See [architecture boundaries](../tests/README.md#architecture-boundaries)
+files are not edited. Expected rejection probes produce nonzero native exit codes;
+the script explicitly exits successfully only after all assertions pass so GitHub's
+PowerShell wrapper does not mistake the final rejection for a failed regression run.
+Unexpected results still throw and fail the step.
+See [architecture boundaries](../tests/README.md#architecture-boundaries)
 for the full design, compiled-test command, and limits.
 
 ## Banned APIs

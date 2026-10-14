@@ -78,3 +78,7 @@ Assert-ReferencePolicy 'ServerCompositionIsUnrestricted' $server $ui
 Assert-ReferencePolicy 'NormalBuildRunsValidation' $kernel $server -Target 'Build' -Reject
 
 Write-Host "All 16 project-reference policy checks passed. Logs: $fixtureRoot"
+
+# The last probe fails by design. Do not let GitHub's pwsh wrapper propagate its
+# native exit code after every assertion has passed; unexpected results throw above.
+exit 0
