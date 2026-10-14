@@ -2,7 +2,9 @@
 
 These rules govern shared UI and, through the root routing table, Razor, styling,
 navigation, and rendering work in the server, browser host, and tests. Keep the
-root project boundaries, C# conventions, and validation requirements in force.
+root project boundaries and validation requirements in force, and the
+[C# and Razor conventions](../../.github/instructions/csharp.instructions.md) for
+code-behind.
 For account behavior, also read the [account guide](../YHAB/Features/Account/AGENTS.md)
 and its [server ancestor](../YHAB/AGENTS.md), including when shared UI changes can
 affect static Identity pages. See the [root README](../../README.md) for Fluent
@@ -71,6 +73,8 @@ assets/provider setup and [build rules](../../build/README.md) for enforcement.
 - Components owning asynchronous I/O use `CancellableComponentBase` and linked
   operation sources; cancel superseded reads, retain stale-result checks, and
   dispose each source when its operation finishes. Override `DisposeCoreAsync`
-  for cleanup instead of hiding disposal. Use request cancellation for static SSR,
-  component lifetime for interactivity, and host shutdown for background workers.
-  Never serialize tokens or reuse a completed prerender request's token in a circuit.
+  for cleanup instead of hiding disposal. Component lifetime is the cancellation
+  owner for interactive work; the root
+  [cancellation rules](../../AGENTS.md#validation) own the shared token
+  requirements, including the ban on serializing tokens or reusing a completed
+  prerender request's token in a circuit.

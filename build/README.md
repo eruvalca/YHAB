@@ -115,6 +115,11 @@ category. A focused `--include` is useful while editing, but the final verificat
 must cover the whole solution. Warning and error rules are mandatory; rules set
 to suggestion remain review guidance rather than bulk refactoring requirements.
 
+C# style preferences such as namespace form and brace usage live in `.editorconfig`
+and are enforced by the build through `EnforceCodeStyleInBuild` and
+`TreatWarningsAsErrors`. Point to that file instead of restating individual
+preferences in instructions.
+
 `dotnet format` is not a universal EditorConfig validator: it operates on the
 solution's supported source documents and available analyzer fixes. Review Razor
 markup, scripts, documentation, and configuration separately for their applicable
@@ -317,6 +322,24 @@ or reading its result before completion can be unsafe. This applies to handwritt
 Razor code-behind too. The explicit-discard preference does not justify discarding
 the asynchronous operation itself; preserve any required `await`. The explicit
 severity records the warning already enabled by the SDK's `All` analysis mode.
+
+### Sealing and accessibility
+
+Sealing and accessibility diagnostics are warnings and therefore fail builds. Their
+settings and intent live in `.editorconfig`; the limits below are what a reader
+cannot infer from the rule name alone.
+
+| Rule | Limit worth knowing |
+| --- | --- |
+| `S3260` | Applies to private implementation classes. |
+| `MA0053` | Also covers public types, but sees inheritance only within the current project. An intentional base class consumed from another project needs a justified type-level exception. |
+| `CA1515` | Applies to executable projects and excludes class libraries by default, so review those libraries' exported contracts deliberately. `.razor.cs` sets it to `none` because generated components are public. |
+
+`csharp_style_prefer_primary_constructors = true:error` makes `IDE0290` an error
+where the analyzer supports the conversion. The
+[visibility and inheritance](../.github/instructions/csharp.instructions.md#visibility-and-inheritance)
+and [constructor](../.github/instructions/csharp.instructions.md#constructors)
+conventions carry the authoring decisions.
 
 ### Cancellation enforcement
 

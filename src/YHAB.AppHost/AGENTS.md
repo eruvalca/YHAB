@@ -24,8 +24,10 @@ Detailed setup and runtime procedures remain in the [root README](../../README.m
   resource instances and requires explicit destructive intent for one AppHost.
   In 13.6, named volumes are preserved unless `--volumes` is also requested;
   never add either cleanup flag to routine validation.
-- Keep Aspire 13.6.0, the explicitly selected preview EF integration, and
-  the managed EF tool 10.0.12 aligned with the documented setup in `README.md`.
+- Keep the Aspire CLI 13.6.0 workflow pin, the compatible Aspire 13.6.1 package
+  set including the explicitly selected `Aspire.Hosting.EntityFrameworkCore`
+  preview, and the managed EF tool pinned at 10.0.12 in `AppHost.cs` aligned with
+  the documented setup in `README.md`.
   Use `.agents/skills` as the shared skill location; retain the single user-level
   `aspire agent mcp` entry for each agent rather than adding repository duplicates.
 - pgAdmin is an explicit-start, run-mode developer tool. See `README.md` for

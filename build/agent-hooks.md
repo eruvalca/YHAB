@@ -31,6 +31,15 @@ repository-owned `.agents/skills`. The agent discovers and reads nested guidance
 for the area it is working in and reviews changed instructions for scope,
 discoverability, and duplication. Existing feature and workflow documentation
 remains the source for those details; instructions should reference it.
+
+The reminder also carries the
+[instruction hygiene](../AGENTS.md#instruction-scope) test, so an instruction
+change is reviewed with keep, remove, move, and verify in mind rather than only
+for placement: keep information that is true, consequential, and hard to infer;
+remove generic advice, prompt coaxing, tool-enforced rules, exhaustive
+inventories, and obsolete workarounds; move a rule to the narrowest accurate
+scope; and verify anything command-, version-, or workaround-shaped. This applies
+to new instructions and to additions that would widen an existing file.
 The root [task routing table](../AGENTS.md#read-the-guidance-for-the-task) also
 requires relevant guides when a change affects their contracts from another
 directory, or an operation such as running tests touches no files in that scope.
@@ -131,9 +140,11 @@ Verified against the installed GitHub Copilot app and CLI with
 - Copilot combines applicable instruction sources and defines no precedence
   between them, so these files must not restate rules that live in an `AGENTS.md`.
 
-Each `.github/instructions` file therefore only routes the reader to the owning
-guide. Project skills are discovered from `.github/skills`, `.agents/skills`, or
-`.claude/skills`; this repository keeps them only in `.agents/skills`.
+Each `.github/instructions` file either routes the reader to the owning guide or
+owns the rules for its `applyTo` scope, as the C# and Razor conventions do; none
+may repeat a rule stated elsewhere. Project skills are discovered from
+`.github/skills`, `.agents/skills`, or `.claude/skills`; this repository keeps
+them only in `.agents/skills`.
 
 ## Activation and maintenance
 

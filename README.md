@@ -55,8 +55,9 @@ automated checks and the remaining device-level installation checks.
 ## Local prerequisites
 
 - .NET SDK **10.0.401** (selected by `global.json`).
-- Aspire CLI **13.6.0** on `PATH`, matching the AppHost SDK and stable integrations.
-  Follow the [Aspire installation guide](https://aspire.dev/get-started/install/).
+- Aspire CLI **13.6.0** on `PATH` (the version the deployment workflow pins), with
+  the AppHost SDK on **13.6.1**. Follow the
+  [Aspire installation guide](https://aspire.dev/get-started/install/).
 - Docker Desktop running Linux containers, or another Aspire-supported container runtime.
 - A trusted .NET development HTTPS certificate: `dotnet dev-certs https --trust`.
 - Optional VS Code with this repository's recommended C# and Aspire extensions.
@@ -125,7 +126,7 @@ Aspire to allocate an available port instead of using the template's fixed ports
 The other web launch settings preserve the template's environment and Blazor debugging.
 
 The AppHost's `https` profile omits dashboard, OTLP, and resource-service addresses:
-Aspire 13.6.0 supplies secure, dynamically allocated local endpoints. The optional
+Aspire 13.6 supplies secure, dynamically allocated local endpoints. The optional
 AppHost `http` profile sets `ASPIRE_ALLOW_UNSECURED_TRANSPORT=true`, which opts into
 HTTP endpoints with allocated ports. This opt-in applies only when that profile
 is selected; the default `https` profile keeps Aspire's secure defaults.
@@ -334,13 +335,13 @@ An **Exited**, **Failed**, or **Unhealthy** application/database resource, or we
 startup blocked by failed migrations, does require investigation through its logs.
 
 The PostgreSQL image version is the built-in default of
-`Aspire.Hosting.PostgreSQL` 13.6.0. Container lifetime remains Aspire's default
+`Aspire.Hosting.PostgreSQL` 13.6.1. Container lifetime remains Aspire's default
 session lifetime. Data uses an Aspire-managed named volume rather than a repository
 file. This is a fresh PostgreSQL schema; the original SQLite scaffold is removed.
 
 Aspire supplies `ConnectionStrings:yhabdb` to both the application and migration
-tool. The application uses Npgsql EF Core 10.0.3, EF Core 10.0.12, and Aspire's
-Azure Npgsql EF integration 13.6.0 (password authentication locally, managed identity
+tool. The application uses Npgsql EF Core 10.0.3, EF Core 10.0.13, and Aspire's
+Azure Npgsql EF integration 13.6.1 (password authentication locally, managed identity
 in Azure). Its non-pooled `IDbContextFactory<ApplicationDbContext>`
 supports a context per Blazor operation; Identity can still resolve the scoped
 context. Dispose factory-created contexts with `await using`.
@@ -402,7 +403,7 @@ recovery codes; this command does not bypass the second factor.
 
 ## EF migrations
 
-`Aspire.Hosting.EntityFrameworkCore` **13.6.0-preview.1.26479.8** manages
+`Aspire.Hosting.EntityFrameworkCore` **13.6.1-preview.1.26506.6** manages
 `yhab-migrations` and its **dotnet-ef 10.0.12** tool. It does not alter the machine's
 global EF tool. On every start, migrations wait for PostgreSQL and the database;
 the web application starts only after migration success. Failure blocks web startup.
@@ -645,11 +646,13 @@ nested guide on file access.
 
 Copilot loads the root `AGENTS.md` and the nested guides between the repository
 root and the session working directory, but not sibling subtrees, so the root
-routing table remains necessary. The path-scoped routers in
+routing table remains necessary. The path-scoped files in
 [`.github/instructions`](.github/instructions) add an `applyTo` glob per scope,
-which activates the owning guide for matching files regardless of the session
-working directory. Keep them pointers to the guides: Copilot merges instruction
-sources without a precedence rule, so duplicated or conflicting text is unsafe.
+activating for matching files regardless of the session working directory. Most
+route the reader to the owning guide; the
+[C# and Razor conventions](.github/instructions/csharp.instructions.md) own their
+rules. None may repeat a rule stated elsewhere, because Copilot merges instruction
+sources without a precedence rule and duplicated or conflicting text is unsafe.
 See [instruction discovery](build/agent-hooks.md#instruction-discovery).
 
 Shared repository skills live only in `.agents/skills`, supported by Codex and

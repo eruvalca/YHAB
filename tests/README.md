@@ -328,24 +328,26 @@ SSR-to-interactive handoff or SignalR transport.
 ## Supported stack
 
 Existing stack selected September 26, 2026; infrastructure/browser additions
-verified October 2, 2026:
+verified October 2, 2026; all versions re-verified against the repository
+manifests (`Directory.Packages.props`, `global.json`) and the extension baseline
+on October 14, 2026:
 
 | Component | Version |
 | --- | --- |
 | .NET SDK | 10.0.401 |
 | bunit (component project only) | 2.11.3 |
-| xunit.v3.core.mtp-v2 | 4.0.1 |
+| xunit.v3.core.mtp-v2 | 4.0.2 |
 | Shouldly | 4.3.0 |
 | TngTech.ArchUnitNET (unit project only) | 0.13.4 |
 | NSubstitute (account tests) | 6.2.0 |
 | NSubstitute.Analyzers.CSharp | 1.0.17 |
 | Bogus (locally seeded fake data) | 35.6.5 |
-| Microsoft.Testing.Platform / Platform.MSBuild | 2.4.1 |
-| Microsoft.Testing.Extensions.TrxReport | 2.4.1 |
-| Microsoft.Testing.Extensions.CodeCoverage | 18.11.2 |
-| xunit.analyzers | 2.1.0 |
-| Aspire.Hosting.Testing (matches AppHost) | 13.6.0 |
-| Testcontainers.PostgreSql | 4.15.0 |
+| Microsoft.Testing.Platform / Platform.MSBuild | 2.5.1 |
+| Microsoft.Testing.Extensions.TrxReport | 2.5.1 |
+| Microsoft.Testing.Extensions.CodeCoverage | 18.12.0 |
+| xunit.analyzers | 2.2.0 |
+| Aspire.Hosting.Testing (matches AppHost) | 13.6.1 |
+| Testcontainers.PostgreSql | 4.16.0 |
 | Microsoft.Playwright | 1.63.0 |
 | C# Dev Kit (stable baseline) | 3.40.210 |
 
@@ -532,7 +534,7 @@ PostgreSQL SQL translation, migrations, constraints, transactions, Identity stor
 or a service whose dependency injection you need to control. The initial test
 applies real migrations, writes an Identity user, reads it in a fresh scope, and
 checks normalized duplicate-name handling. Each test owns a disposable container
-with dynamic ports, using `postgres:18.3` to match Aspire 13.6.0. Keep the resource
+with dynamic ports, using `postgres:18.3` to match Aspire 13.6. Keep the resource
 reaper enabled; do not use development connection strings or container reuse.
 For future in-process HTTP tests, `WebApplicationFactory` can be combined with
 these containers. This project does not verify AppHost wiring or browser behavior.
@@ -540,7 +542,7 @@ these containers. This project does not verify AppHost wiring or browser behavio
 Use **Aspire integration tests** when the subject is the assembled application:
 resource references, connection injection, migrations before web startup, readiness,
 service discovery and HTTP contracts across process boundaries. These use
-`Aspire.Hosting.Testing` 13.6.0, matching the AppHost rather than independently
+`Aspire.Hosting.Testing` 13.6.1, matching the AppHost rather than independently
 upgrading its testing package. The initial test waits for the real web health
 check and migration completion, then checks health, liveness, Home and Login.
 Aspire starts actual processes, so test DI does not replace services in the web

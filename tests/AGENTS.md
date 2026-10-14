@@ -1,8 +1,10 @@
 # Tests
 
 Read this guide before selecting, writing, or running tests, including validation
-of changes made only in production code. Keep the root build, formatting, C#,
-outcome, and cancellation requirements in force. Read the applicable production
+of changes made only in production code. Keep the root build, formatting, and
+cancellation requirements in force, plus the
+[C# and Razor conventions](../.github/instructions/csharp.instructions.md) for the
+code and outcomes under test. Read the applicable production
 guides from the root routing table for the behavior under test; a test directory
 does not replace the instructions for the code it exercises. UI/bUnit/Playwright
 work also reads the [UI guide](../src/YHAB.UI/AGENTS.md), account tests read the
