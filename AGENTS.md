@@ -15,6 +15,12 @@ shared kernel, plus Aspire hosting and service defaults.
   Put subtree-specific rules in the nearest `AGENTS.md` whose directory scope
   covers the affected files, creating one when needed. Avoid repeating inherited
   rules or moving a shared requirement into a scope that excludes its consumers.
+- Path-scoped GitHub Copilot instruction files in `.github/instructions` carry an
+  `applyTo` glob and activate for matching files whatever the session working
+  directory. Keep each one a short pointer to the owning `AGENTS.md` rather than a
+  second copy of its rules, because Copilot combines instruction sources and
+  defines no precedence between them. See
+  [instruction discovery](build/agent-hooks.md#instruction-discovery).
 - Put detailed, reusable workflows in repository-owned `.agents/skills`, with
   clear activation descriptions and short conditional routing instructions when
   their use is mandatory. This also suits file-type guidance spanning several
@@ -30,9 +36,13 @@ The root rules apply throughout the repository. Before planning, reading, or
 changing the areas below, read the linked guide as well as applicable ancestor
 `AGENTS.md` files. Follow these routes even when the affected code, configuration,
 or tests live outside the guide's own directory. Apply the relevant rules to that
-work; load only the rows needed for the task. Bare paths and commands in these
-guides are relative to the repository root unless explicitly stated otherwise;
-Markdown links are relative to their containing file.
+work; load only the rows needed for the task. Copilot loads this root file and the
+nested guides on the path from the repository root to the session working
+directory, but not sibling subtrees, so this table stays the authoritative router
+for the areas below and for operations that edit no file in their own scope. The
+`.github/instructions` routers reinforce the file-scoped rows for Copilot. Bare
+paths and commands in these guides are relative to the repository root unless
+explicitly stated otherwise; Markdown links are relative to their containing file.
 
 | Area or operation | Required guidance |
 | --- | --- |
@@ -234,9 +244,10 @@ distinguishes complete success from partial completion.
   the instruction scope rules above, setup and runtime workflows in `README.md`,
   build rules in `build/README.md`, and test conventions in `tests/README.md`.
   Update existing feature and workflow documentation rather than duplicating it.
-- The project-owned Codex `UserPromptSubmit` hook supplies this reminder and
-  records a workspace baseline. The companion `Stop` hook requests at most one
-  finishing review when the workspace changes during a turn and the final
-  response lacks a completed-review acknowledgement. These hooks are advisory,
-  not proof of documentation accuracy or a Git commit gate.
+- The project-owned Codex `UserPromptSubmit`/`Stop` hooks and their GitHub Copilot
+  `userPromptSubmitted`/`agentStop` equivalents supply this reminder and record a
+  workspace baseline. The companion finishing hook requests at most one finishing
+  review when the workspace changes during a turn and the final response lacks a
+  completed-review acknowledgement. These hooks are advisory, not proof of
+  documentation accuracy or a Git commit gate.
   See [agent hook maintenance](build/agent-hooks.md) for setup and validation.

@@ -59,6 +59,33 @@ function Invoke-WindowsManifestHook($Handler, [hashtable] $Payload, [string] $Sh
     return @{ ExitCode = $LASTEXITCODE; Output = $output -join "`n" }
 }
 
+# Copilot command hooks send an event-shaped payload with no event name.
+function New-CopilotPayload([string] $SessionId, [hashtable] $Fields) {
+    $payload = @{ sessionId = $SessionId; timestamp = 1791957547163; cwd = $fixtureRoot }
+    foreach ($key in $Fields.Keys) {
+        $payload[$key] = $Fields[$key]
+    }
+    return $payload | ConvertTo-Json -Compress
+}
+
+function Invoke-CopilotHook([string] $PayloadJson) {
+    $output = $PayloadJson | & pwsh -NoProfile -NonInteractive -File $hookScript
+    if ($LASTEXITCODE -ne 0) {
+        throw "Hook exited $LASTEXITCODE."
+    }
+    return ($output -join "`n") | ConvertFrom-Json -AsHashtable
+}
+
+function Invoke-ManifestCommandHook([string] $Command, [string] $PayloadJson, [string] $Shell) {
+    $output = if ($Shell -eq 'cmd') {
+        $PayloadJson | & $env:ComSpec /d /s /c $Command
+    }
+    else {
+        $PayloadJson | & $Shell -NoProfile -NonInteractive -Command $Command
+    }
+    return @{ ExitCode = $LASTEXITCODE; Output = $output -join "`n" }
+}
+
 # All mutations and commits below belong to this isolated, ignored test repo.
 Invoke-FixtureGit @('init', '--quiet')
 Invoke-FixtureGit @('config', 'user.name', 'Hook fixture')
@@ -236,6 +263,50 @@ $result = Invoke-Hook 'UserPromptSubmit' 'no-repo' @{ cwd = (Join-Path $fixtureR
 Assert-Result 'Missing repository warns without dropping the early reminder' (
     $result.systemMessage -and $result.hookSpecificOutput.additionalContext)
 
+# Copilot command hooks send event-shaped payloads without an event name and
+# return protocol-specific output. These cases pin the verified wire contract.
+$copilotSession = 'copilot-session'
+$copilotStop = @{ stopReason = 'end_turn'; stop_hook_active = $false }
+$promptResult = Invoke-CopilotHook (New-CopilotPayload $copilotSession @{ prompt = 'Initial Copilot turn' })
+Assert-Result 'Copilot prompt event injects the reminder as additionalContext' (
+    $promptResult.additionalContext -and -not $promptResult.hookSpecificOutput)
+
+Set-FixtureFile 'copilot.cs' 'class CopilotFixture;'
+$blockedResult = Invoke-CopilotHook (New-CopilotPayload $copilotSession $copilotStop)
+Assert-Result 'Copilot agentStop requests a review after an edit' ($blockedResult.decision -eq 'block')
+
+# The runtime replays a block reason as a new prompt; it must not reset the
+# baseline, or the review would compare the workspace against itself.
+$continuationResult = Invoke-CopilotHook (
+    New-CopilotPayload $copilotSession @{ prompt = [string] $blockedResult.reason })
+Assert-Result 'Copilot block reason arrives as a prompt event' ([bool] $continuationResult.additionalContext)
+Assert-Result 'Copilot stop_hook_active guard prevents a continuation loop' (
+    (Invoke-CopilotHook (New-CopilotPayload $copilotSession @{ stopReason = 'end_turn'; stop_hook_active = $true })).Count -eq 0)
+Assert-Result 'Copilot continuation prompt preserves the original baseline' (
+    (Invoke-CopilotHook (New-CopilotPayload $copilotSession $copilotStop)).decision -eq 'block')
+
+# Copilot sends only a transcript path, so the final response is read from it.
+$transcriptPath = Join-Path $fixtureRoot 'copilot-transcript.jsonl'
+Set-Content -LiteralPath $transcriptPath -Encoding utf8 -Value @(
+    '{"type":"assistant.message","data":{"content":"Fixed the rendering issue."}}'
+    '{"type":"assistant.turn_end","data":{}}'
+)
+$pendingSession = 'copilot-pending'
+Invoke-CopilotHook (New-CopilotPayload $pendingSession @{ prompt = 'Copilot review turn' }) | Out-Null
+Set-FixtureFile 'copilot-pending.cs' 'class CopilotPending;'
+$pendingResult = Invoke-CopilotHook (
+    New-CopilotPayload $pendingSession @{ transcriptPath = $transcriptPath; stopReason = 'end_turn'; stop_hook_active = $false })
+Assert-Result 'Copilot transcript without an acknowledgement still requests review' (
+    $pendingResult.decision -eq 'block')
+
+$ackSession = 'copilot-ack'
+Invoke-CopilotHook (New-CopilotPayload $ackSession @{ prompt = 'Copilot review turn' }) | Out-Null
+Set-FixtureFile 'copilot-ack.cs' 'class CopilotAcknowledged;'
+Add-Content -LiteralPath $transcriptPath -Encoding utf8 -Value '{"type":"assistant.message","data":{"content":"Documentation review: complete. No documentation changes were needed."}}'
+$ackResult = Invoke-CopilotHook (
+    New-CopilotPayload $ackSession @{ transcriptPath = $transcriptPath; stopReason = 'end_turn'; stop_hook_active = $false })
+Assert-Result 'Copilot transcript acknowledgement suppresses the finishing pass' ($ackResult.Count -eq 0)
+
 # Exercise manifest commands through both Windows shell families. A cmd-only
 # check misses PowerShell expansion of $variables inside nested quoted commands.
 $manifest = Get-Content -LiteralPath (Join-Path $repoRoot '.codex/hooks.json') -Raw | ConvertFrom-Json
@@ -252,6 +323,21 @@ Assert-Result 'Manifest registers only the two approved documentation handlers' 
     $startHandler.commandWindows -match 'Invoke-DocumentationReviewHook.ps1' -and
     $stopHandler.command -eq $startHandler.command -and
     $stopHandler.commandWindows -eq $startHandler.commandWindows)
+
+$copilotManifest = Get-Content -LiteralPath (Join-Path $repoRoot '.github/hooks/documentation-review.json') -Raw | ConvertFrom-Json
+$copilotPromptHandler = $copilotManifest.hooks.userPromptSubmitted[0]
+$copilotStopHandler = $copilotManifest.hooks.agentStop[0]
+Assert-Result 'Copilot manifest registers only the two documentation handlers' (
+    $copilotManifest.version -eq 1 -and
+    @($copilotManifest.hooks.PSObject.Properties).Count -eq 2 -and
+    @($copilotManifest.hooks.userPromptSubmitted).Count -eq 1 -and
+    @($copilotManifest.hooks.agentStop).Count -eq 1 -and
+    $copilotPromptHandler.type -eq 'command' -and $copilotStopHandler.type -eq 'command' -and
+    $copilotPromptHandler.powershell -match 'Invoke-DocumentationReviewHook.ps1' -and
+    $copilotPromptHandler.bash -match 'Invoke-DocumentationReviewHook.ps1' -and
+    $copilotStopHandler.powershell -eq $copilotPromptHandler.powershell -and
+    $copilotStopHandler.bash -eq $copilotPromptHandler.bash -and
+    $copilotPromptHandler.timeoutSec -eq 15)
 
 if ($IsWindows) {
     $scriptDirectory = Join-Path $fixtureRoot 'scripts'
@@ -291,6 +377,28 @@ if ($IsWindows) {
             $payload.last_assistant_message = 'Documentation reviewed and updated.'
             $execution = Invoke-WindowsManifestHook $stopHandler $payload $shell
             Assert-Result "$shell Stop launcher accepts an already-completed review" (
+                $execution.ExitCode -eq 0 -and ($execution.Output | ConvertFrom-Json -AsHashtable).Count -eq 0)
+        }
+
+        # Copilot resolves the same script from the Git root, so its command
+        # strings need the same path-with-spaces launcher checks.
+        foreach ($shell in @('pwsh', 'powershell', 'cmd')) {
+            $session = "copilot-launcher-$shell"
+            $promptJson = New-CopilotPayload $session @{ prompt = 'Copilot launcher prompt' }
+            $execution = Invoke-ManifestCommandHook $copilotPromptHandler.powershell $promptJson $shell
+            $result = $execution.Output | ConvertFrom-Json -AsHashtable
+            Assert-Result "$shell Copilot prompt launcher injects the reminder" (
+                $execution.ExitCode -eq 0 -and $result.additionalContext -and -not $result.hookSpecificOutput)
+
+            Set-FixtureFile "copilot-launcher-$shell.md" 'A change after the Copilot prompt hook.'
+            $stopJson = New-CopilotPayload $session @{ stopReason = 'end_turn'; stop_hook_active = $false }
+            $execution = Invoke-ManifestCommandHook $copilotStopHandler.powershell $stopJson $shell
+            Assert-Result "$shell Copilot agentStop launcher requests a review after an edit" (
+                $execution.ExitCode -eq 0 -and ($execution.Output | ConvertFrom-Json -AsHashtable).decision -eq 'block')
+
+            $stopJson = New-CopilotPayload $session @{ stopReason = 'end_turn'; stop_hook_active = $true }
+            $execution = Invoke-ManifestCommandHook $copilotStopHandler.powershell $stopJson $shell
+            Assert-Result "$shell Copilot stop_hook_active guard stays quiet" (
                 $execution.ExitCode -eq 0 -and ($execution.Output | ConvertFrom-Json -AsHashtable).Count -eq 0)
         }
     }

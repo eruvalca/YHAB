@@ -639,8 +639,18 @@ UI, account, server/persistence, Aspire, and test guides. Read applicable nested
 guidance and follow the task routes when behavior spans directories, including
 when a chat starts at the repository root. The routes also cover operations that
 do not edit the owning directory, such as running Aspire or validating a source
-change. The documentation hook reminds agents to maintain this organization;
-it does not automatically inject every nested guide on file access.
+change. The documentation hook runs for Codex and GitHub Copilot and reminds
+agents to maintain this organization; it does not automatically inject every
+nested guide on file access.
+
+Copilot loads the root `AGENTS.md` and the nested guides between the repository
+root and the session working directory, but not sibling subtrees, so the root
+routing table remains necessary. The path-scoped routers in
+[`.github/instructions`](.github/instructions) add an `applyTo` glob per scope,
+which activates the owning guide for matching files regardless of the session
+working directory. Keep them pointers to the guides: Copilot merges instruction
+sources without a precedence rule, so duplicated or conflicting text is unsafe.
+See [instruction discovery](build/agent-hooks.md#instruction-discovery).
 
 Shared repository skills live only in `.agents/skills`, supported by Codex and
 Copilot CLI. Copilot desktop inherits repository/CLI skills and MCP configuration.
@@ -663,12 +673,14 @@ configuration is required. On a new machine, install Aspire on `PATH`, then:
   repository and use the Aspire MCP resource-list tool to verify the connection.
   If several AppHosts are running, select this repository's AppHost explicitly.
 
-The checked-in skills require no additional installation on clone. To refresh the
-Aspire skills, use the matching CLI's `aspire agent init` with the **standard** skill
-location (`.agents/skills`), then review the diff. Avoid creating alternate copies under
-`.github`, `.codex`, or VS Code agent configuration. Keep user secrets, dashboard
-tokens, runtime `.aspire` state, telemetry exports, and temporary browser output out
-of source control.
+The checked-in skills require no additional installation on clone. Keep each
+`SKILL.md` `name` a kebab-case slug matching its directory: Copilot ignores a
+skill whose front matter name is not a slug, without reporting an error. To
+refresh the Aspire skills, use the matching CLI's `aspire agent init` with the
+**standard** skill location (`.agents/skills`), then review the diff. Avoid
+creating alternate copies under `.github`, `.codex`, or VS Code agent
+configuration. Keep user secrets, dashboard tokens, runtime `.aspire` state,
+telemetry exports, and temporary browser output out of source control.
 
 The [Fluent UI Blazor v5 usage skill](.agents/skills/fluentui-blazor-usage/SKILL.md)
 includes setup, data-grid, and theming references. The library is configured as
@@ -687,6 +699,8 @@ installed package instead of copying them verbatim.
 References: [Aspire MCP](https://aspire.dev/reference/cli/commands/aspire-agent-mcp/),
 [Codex skills](https://learn.chatgpt.com/docs/build-skills#where-codex-loads-local-skills),
 [Copilot CLI skills](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-skills),
+[Copilot CLI instructions](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions),
+[Copilot hooks](https://docs.github.com/en/copilot/reference/hooks-reference),
 [Copilot desktop](https://docs.github.com/en/copilot/how-tos/github-copilot-app/customize-github-copilot-app).
 
 ## Validation

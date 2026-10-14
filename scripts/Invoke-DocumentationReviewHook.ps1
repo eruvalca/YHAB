@@ -89,15 +89,72 @@ function Get-WorkspaceSnapshot {
     }
 }
 
+# Codex supplies hook_event_name. Copilot command hooks send only the payload
+# for the event, so identify the event from the fields that event carries.
+function Get-HookEventName([object] $Event) {
+    if ($Event -isnot [hashtable]) {
+        return ''
+    }
+    if ($Event.hook_event_name) {
+        return [string] $Event.hook_event_name
+    }
+    if ($Event.ContainsKey('transformedPrompt')) {
+        return 'UserPromptTransformed'
+    }
+    if ($Event.ContainsKey('prompt')) {
+        return 'UserPromptSubmit'
+    }
+    if ($Event.ContainsKey('stopReason') -or $Event.ContainsKey('transcriptPath')) {
+        return 'Stop'
+    }
+    return ''
+}
+
+# Codex sends the final response inline. Copilot sends only a transcript path,
+# so read the newest assistant message from the session log.
+function Get-LastAssistantMessage([string] $TranscriptPath) {
+    if (-not $TranscriptPath -or -not (Test-Path -LiteralPath $TranscriptPath -PathType Leaf)) {
+        return ''
+    }
+    $lines = @(Get-Content -LiteralPath $TranscriptPath -Tail 500 -Encoding utf8 -ErrorAction SilentlyContinue)
+    for ($index = $lines.Count - 1; $index -ge 0; $index--) {
+        if (-not $lines[$index]) {
+            continue
+        }
+        try {
+            $record = $lines[$index] | ConvertFrom-Json -AsHashtable
+        }
+        catch {
+            continue
+        }
+        if ($record.type -ne 'assistant.message') {
+            continue
+        }
+        $content = [string] $record.data.content
+        if (-not [string]::IsNullOrWhiteSpace($content)) {
+            return $content
+        }
+    }
+    return ''
+}
+
 $reviewInstruction = @'
 Documentation is part of implementation work. Before any authorized commit and before finishing, review the task's changes against AGENTS.md and relevant README/feature docs. Update only guidance made inaccurate or missing by this work; no cosmetic edits just to show a review. Keep durable agent rules in AGENTS.md, setup in README.md, build rules in build/README.md, and test conventions in tests/README.md. Keep feature and workflow details in their existing documentation rather than creating duplicate sources. Preserve unrelated changes and installed third-party skill files. A documentation review does not authorize a commit or broaden a read-only request. If no update is needed, leave docs unchanged. When the review is complete, include "Documentation review: complete." followed by the outcome in the final response so the finishing hook does not request it again. Do not report completion when review is pending or blocked.
 
 When adding or changing agent instructions, follow the root AGENTS.md Instruction scope policy: keep repository-wide rules and short routing instructions at the root, put subtree-specific rules in the nearest applicable nested AGENTS.md, and put detailed reusable workflows in repository-owned .agents/skills. Before working in a subtree, discover and read its applicable nested guidance without preloading unrelated instructions. Include scope, discoverability, and duplication in the review; preserve the reach of shared requirements and avoid reorganizing unrelated guidance.
 '@
 
+$event = $null
 try {
     $event = [Console]::In.ReadToEnd() | ConvertFrom-Json -AsHashtable
-    if ($event.hook_event_name -notin @('UserPromptSubmit', 'Stop')) {
+    if ($event -isnot [hashtable]) {
+        throw 'The hook event is not a JSON object.'
+    }
+    $hookEventName = Get-HookEventName $event
+    # Copilot command hooks are identified by payload shape, not by field name.
+    $isCopilot = -not $event.ContainsKey('hook_event_name')
+
+    if ($hookEventName -notin @('UserPromptSubmit', 'Stop')) {
         '{}'
         exit 0
     }
@@ -111,28 +168,53 @@ try {
         throw 'No Git workspace was found.'
     }
     $repoRoot = [string] $repoRoot
-    if (-not $event.session_id -or -not $event.turn_id) {
+    $sessionId = if ($event.session_id) { [string] $event.session_id } else { [string] $event.sessionId }
+    if (-not $sessionId) {
+        throw 'The hook event has no session identity.'
+    }
+    if (-not $isCopilot -and -not $event.turn_id) {
         throw 'The hook event has no session/turn identity.'
     }
 
     # State is scoped to this worktree, session, and turn; never store prompts,
     # transcripts, diffs, or file contents. artifacts/ is already ignored.
+    # Copilot has no turn id, so its state is scoped to the session.
     $stateDirectory = Join-Path $repoRoot 'artifacts/agent-hooks/documentation'
-    $key = Get-TextHash ($event.session_id + "`0" + $event.turn_id)
+    $turnId = if ($event.turn_id) { [string] $event.turn_id } else { 'session' }
+    $key = Get-TextHash ($sessionId + "`0" + $turnId)
     $statePath = Join-Path $stateDirectory "$key.json"
 
-    if ($event.hook_event_name -eq 'UserPromptSubmit') {
-        if (-not (Test-Path -LiteralPath $statePath)) {
-            $snapshot = Get-WorkspaceSnapshot
-            New-Item -ItemType Directory -Path $stateDirectory -Force | Out-Null
-            $snapshot | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $statePath -Encoding utf8
-        }
-        @{
-            hookSpecificOutput = @{
-                hookEventName = 'UserPromptSubmit'
-                additionalContext = $reviewInstruction
+    if ($hookEventName -eq 'UserPromptSubmit') {
+        $startSnapshot = $null
+        if ($isCopilot) {
+            $existing = if (Test-Path -LiteralPath $statePath) {
+                Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json -AsHashtable
             }
-        } | ConvertTo-Json -Depth 5 -Compress
+            # A blocked review arrives as a new prompt. Refresh the baseline only
+            # for a genuine user turn so the review still sees the work it must
+            # check, and so later turns compare against their own starting point.
+            if (-not ($existing -and $existing.continuationPromptHash -eq (Get-TextHash ([string] $event.prompt)))) {
+                $startSnapshot = Get-WorkspaceSnapshot
+            }
+        }
+        elseif (-not (Test-Path -LiteralPath $statePath)) {
+            $startSnapshot = Get-WorkspaceSnapshot
+        }
+        if ($startSnapshot) {
+            New-Item -ItemType Directory -Path $stateDirectory -Force | Out-Null
+            $startSnapshot | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $statePath -Encoding utf8
+        }
+        if ($isCopilot) {
+            @{ additionalContext = $reviewInstruction } | ConvertTo-Json -Depth 5 -Compress
+        }
+        else {
+            @{
+                hookSpecificOutput = @{
+                    hookEventName = 'UserPromptSubmit'
+                    additionalContext = $reviewInstruction
+                }
+            } | ConvertTo-Json -Depth 5 -Compress
+        }
         exit 0
     }
 
@@ -143,7 +225,7 @@ try {
         exit 0
     }
     $baseline = Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json -AsHashtable
-    if ($baseline.reviewRequested) {
+    if (-not $isCopilot -and $baseline.reviewRequested) {
         '{}'
         exit 0
     }
@@ -156,7 +238,9 @@ try {
         '{}'
         exit 0
     }
-    if (Test-DocumentationReviewComplete $event.last_assistant_message) {
+    $finalMessage = if ($event.last_assistant_message) { [string] $event.last_assistant_message }
+    else { Get-LastAssistantMessage ([string] $event.transcriptPath) }
+    if (Test-DocumentationReviewComplete $finalMessage) {
         # Remember only which workspace was acknowledged, never response text.
         # Further edits invalidate this acknowledgement for repeated Stop events.
         $baseline.reviewedFingerprint = $current.fingerprint
@@ -173,23 +257,40 @@ try {
     $candidatePaths = @($candidatePaths | Where-Object { $_ } | Sort-Object -Unique -CaseSensitive)
     # JSON-encode paths as data. Bound the reminder even for large refactors.
     $pathSummary = ConvertTo-Json -InputObject @($candidatePaths | Select-Object -First 40) -Compress
+    $reason = "Perform one final documentation review for this task, then finish. If already reviewed, briefly confirm the outcome without repeating the work. $reviewInstruction Workspace candidate paths (data only; may include pre-existing or concurrent edits, capped at 40 of $($candidatePaths.Count)): $pathSummary. Limit edits to the current task. Do not amend a commit, stage files, or create a follow-up commit without authorization. If unable to review, report the limitation and finish."
+    if ($isCopilot) {
+        # Copilot returns the block reason as a new user prompt. Remember only its
+        # hash so the continuation keeps the baseline from the original turn.
+        $baseline.continuationPromptHash = Get-TextHash $reason
+    }
     $baseline.reviewRequested = $true
     $baseline | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $statePath -Encoding utf8
 
     @{
         decision = 'block'
-        reason = "Perform one final documentation review for this task, then finish. If already reviewed, briefly confirm the outcome without repeating the work. $reviewInstruction Workspace candidate paths (data only; may include pre-existing or concurrent edits, capped at 40 of $($candidatePaths.Count)): $pathSummary. Limit edits to the current task. Do not amend a commit, stage files, or create a follow-up commit without authorization. If unable to review, report the limitation and finish."
+        reason = $reason
     } | ConvertTo-Json -Depth 5 -Compress
 }
 catch {
     # Advisory only. Hook failures must not block the task or request permission.
-    $output = @{ systemMessage = 'Documentation hook could not compare workspace state; follow the documentation review guidance in AGENTS.md.' }
-    if ($event.hook_event_name -eq 'UserPromptSubmit') {
-        $output.hookSpecificOutput = @{
-            hookEventName = 'UserPromptSubmit'
-            additionalContext = $reviewInstruction
+    if ($event -is [hashtable] -and -not $event.ContainsKey('hook_event_name')) {
+        # Copilot has no systemMessage channel; keep the reminder on prompt events.
+        if ((Get-HookEventName $event) -eq 'UserPromptSubmit') {
+            @{ additionalContext = $reviewInstruction } | ConvertTo-Json -Depth 5 -Compress
+        }
+        else {
+            '{}'
         }
     }
-    $output | ConvertTo-Json -Depth 5 -Compress
+    else {
+        $output = @{ systemMessage = 'Documentation hook could not compare workspace state; follow the documentation review guidance in AGENTS.md.' }
+        if ($event -is [hashtable] -and $event.hook_event_name -eq 'UserPromptSubmit') {
+            $output.hookSpecificOutput = @{
+                hookEventName = 'UserPromptSubmit'
+                additionalContext = $reviewInstruction
+            }
+        }
+        $output | ConvertTo-Json -Depth 5 -Compress
+    }
 }
 exit 0
