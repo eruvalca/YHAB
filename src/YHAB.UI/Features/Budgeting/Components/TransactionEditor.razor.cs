@@ -93,13 +93,13 @@ public sealed partial class TransactionEditor
         var splits = BuildSplits();
         return OnCommand.InvokeAsync(new SaveTransaction(Plan.Version, new(Transaction?.Id ?? Guid.Empty, _account, _date, _payee, _memo, SignedAmount,
             _transfer == Guid.Empty ? null : _transfer, _cleared ? ClearingState.Cleared : ClearingState.Uncleared,
-            Transaction?.TransferState ?? ClearingState.Uncleared, false, string.Equals(_flag, "None", StringComparison.Ordinal) ? "" : _flag, splits, _repeat)));
+            Transaction?.TransferState ?? ClearingState.Uncleared, Transaction?.NeedsApproval ?? false, string.Equals(_flag, "None", StringComparison.Ordinal) ? "" : _flag, splits, _repeat)));
     }
     private SplitData[] BuildSplits()
     {
         if (!NeedsCategory) { return []; }
         if (_split) { return _splits.Select(item => new SplitData(item.Id, item.Category == Guid.Empty ? null : item.Category, item.Amount, item.Memo)).ToArray(); }
-        return [new(FirstSplit?.Id ?? Guid.CreateVersion7(), _category == Guid.Empty ? null : _category, SignedAmount, "")];
+        return [new(FirstSplit?.Id ?? Guid.CreateVersion7(), _category == Guid.Empty ? null : _category, SignedAmount, FirstSplit?.Memo ?? "")];
     }
     private sealed class SplitInput
     {

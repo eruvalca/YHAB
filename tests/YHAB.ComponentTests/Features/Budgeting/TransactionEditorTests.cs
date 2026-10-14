@@ -53,4 +53,31 @@ public sealed class TransactionEditorTests
             saved.TransferAccountId.ShouldBe(destination.Id);
         }
     }
+
+    [Fact]
+    public async Task EditingTransactionPreservesApprovalAndSingleSplitMemoAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var today = new DateOnly(2026, 10, 3);
+        var source = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var group = new GroupData(Guid.NewGuid(), "Everyday", 0);
+        var category = new CategoryData(Guid.NewGuid(), group.Id, "Groceries", "", 0, false, null, null);
+        var split = new SplitData(Guid.NewGuid(), category.Id, -20, "Work lunch");
+        var transaction = new TransactionData(Guid.NewGuid(), source.Id, today, "Cafe", "", -20,
+            null, ClearingState.Uncleared, ClearingState.Uncleared, true, "", [split]);
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Household", "", today, 7, [source], [group], [category], [], [transaction], false, false, []) { Today = today };
+        var commands = new List<PlanCommand>();
+        var component = context.Render<TransactionEditor>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.Payees, []).Add(item => item.Transaction, transaction)
+            .Add(item => item.OnCommand, commands.Add).Add(item => item.OnClose, () => { }));
+
+        var save = component.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Save transaction", StringComparison.Ordinal));
+        await save.ClickAsync();
+
+        var saved = commands.Single().ShouldBeOfType<SaveTransaction>().Transaction;
+        saved.NeedsApproval.ShouldBeTrue();
+        saved.Splits.Single().Memo.ShouldBe("Work lunch");
+    }
 }
