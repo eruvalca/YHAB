@@ -563,9 +563,10 @@ migration can likewise declare its class sealed. MA0053 recognizes subclasses
 within the same project, so review usage in other projects and document a
 type-level exception when a public class is intentionally a base class there.
 Abstract classes and the analyzer's default exceptions for exception types and
-types declaring virtual members remain unchanged. `AGENTS.md` records the broader
-authoring convention of narrow visibility and sealing by default; these sealing
-rules do not enforce accessibility.
+types declaring virtual members remain unchanged. The
+[C# and Razor conventions](../.github/instructions/csharp.instructions.md) record
+the broader authoring convention of narrow visibility and sealing by default; these
+sealing rules do not enforce accessibility.
 
 Public types in executable projects are checked (`CA1515`, warning). Use
 `internal` for application implementation types; keep the rule's default exclusion

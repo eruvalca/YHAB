@@ -311,9 +311,10 @@ semantic tables. Do not recreate Bootstrap utilities or add `!important` or
 ornamental animations. Use icons to clarify navigation/actions. Keep form
 labels before their controls and preserve Blazor/Identity behavior hooks when
 editing markup. Check narrow screens, keyboard focus, and text wrapping when
-changing layouts. See the [UI agent guide](src/YHAB.UI/AGENTS.md) for the
-authoring conventions and the [account guide](src/YHAB/Features/Account/AGENTS.md)
-when changes affect Identity.
+changing layouts. See the [UI instructions](.github/instructions/ui.instructions.md)
+for the authoring conventions and the
+[account instructions](.github/instructions/account.instructions.md) when changes
+affect Identity.
 
 Setup references: [installation](https://www.fluentui-blazor.net/installation),
 [layout](https://www.fluentui-blazor.net/layout), and the
@@ -646,29 +647,25 @@ Aspire configures the connection and credentials. Stop it from the dashboard whe
 
 ## Agent tools and skills
 
-Repository instructions start in [AGENTS.md](AGENTS.md). It keeps shared rules
-and a [task routing table](AGENTS.md#read-the-guidance-for-the-task) for the scoped
-UI, account, server/persistence, Aspire, and test guides. Read applicable nested
-guidance and follow the task routes when behavior spans directories, including
-when a chat starts at the repository root. The routes also cover operations that
-do not edit the owning directory, such as running Aspire or validating a source
-change. The documentation hook runs for Codex and GitHub Copilot and reminds
-agents to maintain this organization; it does not automatically inject every
-nested guide on file access.
+Repository instructions start in
+[`.github/copilot-instructions.md`](.github/copilot-instructions.md). It keeps
+shared rules and names the path-specific files per scope. Follow those routes even
+when behavior spans directories or the operation edits no file in the owning
+directory, such as running Aspire or validating a source change. The documentation
+hook runs for Copilot and reminds agents to maintain this organization; it does not
+otherwise inject guidance.
 
-Copilot loads the root `AGENTS.md` and the nested guides between the repository
-root and the session working directory, but not sibling subtrees, so the root
-routing table remains necessary. The path-scoped files in
-[`.github/instructions`](.github/instructions) add an `applyTo` glob per scope,
-activating for matching files regardless of the session working directory. Most
-route the reader to the owning guide; the
-[C# and Razor conventions](.github/instructions/csharp.instructions.md) own their
-rules. None may repeat a rule stated elsewhere, because Copilot merges instruction
-sources without a precedence rule and duplicated or conflicting text is unsafe.
-See [instruction discovery](build/agent-hooks.md#instruction-discovery).
+Each path-specific file in [`.github/instructions`](.github/instructions) carries
+an `applyTo` glob, so Copilot loads it for matching files whatever the session
+working directory. An operation that touches no matching file therefore loads no
+path-specific rules, which is why the repository-wide file names each one. A
+path-specific file owns its scoped rules or routes the reader to the owning guide;
+none may repeat a rule stated elsewhere, because Copilot merges instruction sources
+without a precedence rule and duplicated or conflicting text is unsafe. See
+[instruction sources and scope](build/agent-hooks.md#instruction-sources-and-scope).
 
-Shared repository skills live only in `.agents/skills`, supported by Codex and
-Copilot CLI. Copilot desktop inherits repository/CLI skills and MCP configuration.
+Shared repository skills live only in `.agents/skills`, supported by Copilot CLI.
+Copilot desktop inherits repository/CLI skills and MCP configuration.
 The Aspire skills use the first-party **aspire-skills v0.0.3** bundle refreshed
 with CLI 13.6.0. Local corrections document 13.6's Project v2 diagnostic changes
 and the distinction between persistent-resource cleanup and volume deletion.
@@ -676,11 +673,10 @@ Reconcile those corrections when refreshing the skills; use installed package/AP
 evidence and current documentation when upstream guidance differs. Project v2
 migration remains deferred; the AppHost continues to use `AddProject`.
 
-The existing user-level Codex and Copilot MCP entries run **`aspire agent mcp`**.
-Keep a single entry per agent. No repository MCP duplicate or VS Code agent
-configuration is required. On a new machine, install Aspire on `PATH`, then:
+The user-level Copilot MCP entry runs **`aspire agent mcp`**. Keep a single entry.
+No repository MCP duplicate or VS Code agent configuration is required. On a new
+machine, install Aspire on `PATH`, then:
 
-- Codex: `codex mcp add aspire -- aspire agent mcp` (unless already configured).
 - Copilot CLI: use `/mcp add` to add a local/stdio server named `aspire`, command
   `aspire`, arguments `agent mcp`, at user scope. Its configuration is stored in
   `~/.copilot/mcp-config.json` and is inherited by Copilot desktop.
@@ -688,21 +684,34 @@ configuration is required. On a new machine, install Aspire on `PATH`, then:
   repository and use the Aspire MCP resource-list tool to verify the connection.
   If several AppHosts are running, select this repository's AppHost explicitly.
 
-The checked-in skills require no additional installation on clone. Keep each
-`SKILL.md` `name` a kebab-case slug matching its directory: Copilot ignores a
-skill whose front matter name is not a slug, without reporting an error. To
-refresh the Aspire skills, use the matching CLI's `aspire agent init` with the
+The checked-in skills require no additional installation on clone. Keep each skill
+a directory holding a `SKILL.md` whose front-matter `name` is a kebab-case slug
+matching that directory, with a short `description`. `copilot skill list` is the
+authority on what actually loads: it reports each rejected `SKILL.md` and the
+reason on standard error while still exiting 0, so check its output rather than
+assuming a skill loaded. Two failures are easy to hit: a `description` longer than
+1024 characters, and a `SKILL.md` placed directly in `.agents/skills`, which loads
+in place of the directory skills and silently hides them.
+
+To refresh the Aspire skills, use the matching CLI's `aspire agent init` with the
 **standard** skill location (`.agents/skills`), then review the diff. Avoid
-creating alternate copies under `.github`, `.codex`, or VS Code agent
-configuration. Keep user secrets, dashboard tokens, runtime `.aspire` state,
+creating alternate copies under `.github` or VS Code agent configuration. Keep
+user secrets, dashboard tokens, runtime `.aspire` state,
 telemetry exports, and temporary browser output out of source control.
+
+The repository-authored
+[instruction hygiene skill](.agents/skills/instruction-hygiene/SKILL.md) is
+written to apply to any repository; its references cover instruction source
+locations and scope, a section-by-section checklist, and anti-patterns.
 
 The [Fluent UI Blazor v5 usage skill](.agents/skills/fluentui-blazor-usage/SKILL.md)
 includes setup, data-grid, and theming references. The library is configured as
 described above; installing the skill alone does not configure an MCP server.
-When using its examples, follow the [UI guide](src/YHAB.UI/AGENTS.md) for
-code-behind and CSS, the [account guide](src/YHAB/Features/Account/AGENTS.md) for
-static account rendering, and [root instructions](AGENTS.md) for central package
+When using its examples, follow the
+[UI instructions](.github/instructions/ui.instructions.md) for code-behind and CSS,
+the [account instructions](.github/instructions/account.instructions.md) for static
+account rendering, and the
+[repository-wide instructions](.github/copilot-instructions.md) for central package
 versions. Verify version-sensitive APIs against the Fluent UI Blazor MCP server's
 documentation and the released package source. The v5.0.0 package's assembly file
 version is `5.0.0.26268`, also reported by the installed MCP server. Its version
@@ -712,7 +721,6 @@ still use prerelease APIs, so verify component names and parameters against the
 installed package instead of copying them verbatim.
 
 References: [Aspire MCP](https://aspire.dev/reference/cli/commands/aspire-agent-mcp/),
-[Codex skills](https://learn.chatgpt.com/docs/build-skills#where-codex-loads-local-skills),
 [Copilot CLI skills](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-skills),
 [Copilot CLI instructions](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions),
 [Copilot hooks](https://docs.github.com/en/copilot/reference/hooks-reference),

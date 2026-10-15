@@ -8,8 +8,8 @@ applyTo:
 
 Handwritten C# and Razor conventions for every project. These are path-scoped to
 the files they govern so changes to documentation, workflows, or configuration do
-not carry them. The root [AGENTS.md](../../AGENTS.md) rules for project
-boundaries, dependencies, and validation apply on top.
+not carry them. The [repository-wide instructions](../copilot-instructions.md)
+rules for project boundaries, dependencies, and validation apply on top.
 
 ## Visibility and inheritance
 

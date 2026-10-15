@@ -49,7 +49,8 @@ to adopt this syntax.
    argument guards, including their receiver names; annotations do not validate
    values at runtime. Nullable receivers are valid when handling null is intended.
 6. Migrate actual bindings, inspect the diff, and build with the repository's
-   analyzers enabled. Use the existing build/test workflow in AGENTS.md; do not
+   analyzers enabled. Use the existing build/test workflow in
+   `.github/copilot-instructions.md`; do not
    suppress diagnostics broadly or introduce a custom syntax gate.
 
 ## Boundaries that affect correctness
