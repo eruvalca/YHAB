@@ -6,7 +6,7 @@
 .date-filters { margin-block: var(--spacingVerticalM); }
 .date-filters summary { cursor: pointer; margin-bottom: var(--spacingVerticalS); }
 .date-filters .form-field { max-width: 13rem; }
-.register-table {.flag { font-size: var(--fontSizeBase100); border-inline-start: 3px solid var(--colorBrandStroke1); padding-inline-start: var(--spacingHorizontalXS); }
+.flag { font-size: var(--fontSizeBase100); border-inline-start: 3px solid var(--colorBrandStroke1); padding-inline-start: var(--spacingHorizontalXS); }
 .flag[data-flag="Red"] { border-color: var(--colorPaletteRedForeground1); }
 .flag[data-flag="Orange"] { border-color: var(--colorPaletteDarkOrangeForeground1); }
 .flag[data-flag="Yellow"] { border-color: var(--colorPaletteMarigoldForeground1); }
