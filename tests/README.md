@@ -596,6 +596,10 @@ border/padding, category links retain their native styling, desktop toolbar
 controls align, and phone pages do not overflow.
 Editor dropdown checks include the shadow control's visible border, since its
 minimum width can exceed the host without overflowing the document.
+Phone editor checks run the transaction editor at 390px: the amount field must
+request the numeric keyboard on Fluent's shadow control, editor fields must meet a
+40px tap height, and the heading and action row must remain in the viewport while a
+long form scrolls.
 Budget checks use actual mouse-wheel input to reach the document bottom; locator
 auto-scrolling and keyboard focus alone do not establish wheel scrolling works.
 Sticky-summary checks assign the remaining money in the last category, verify
@@ -607,7 +611,9 @@ access after hiding the desktop menu.
 Amount checks cover click/Tab selection, clearing to zero, replacing selected text,
 preserved focus and input identity across saves, and stable formatting when zero
 is cleared again. Component cases cover pending saves, rejected values, blank
-normalization, and no-op expressions without another save.
+normalization, no-op expressions without another save, comma-decimal keypad entry,
+the sign control that replaces the missing keypad minus key, and text-mode fields
+that keep the full keyboard.
 Theme checks navigate between
 SSR pages after selecting light, dark, and System preferences, verify the resolved
 color scheme, and emulate OS changes in System mode. A reload alone does not

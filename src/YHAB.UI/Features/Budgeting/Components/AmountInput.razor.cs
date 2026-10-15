@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
+using Microsoft.FluentUI.AspNetCore.Components;
 using YHAB.SharedKernel.Budgeting;
 
 namespace YHAB.UI.Features.Budgeting.Components;
@@ -11,6 +12,9 @@ public sealed partial class AmountInput
     [Parameter] public EventCallback<decimal> ValueChanged { get; set; }
     [Parameter] public EventCallback<bool> ValidChanged { get; set; }
     [Parameter] public string Id { get; set; } = $"amount-{Guid.CreateVersion7():N}";
+    [Parameter] public TextInputSize Size { get; set; } = TextInputSize.Medium;
+    [Parameter] public TextInputMode InputMode { get; set; } = TextInputMode.Decimal;
+    [Parameter] public bool AllowNegative { get; set; }
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public bool ReadOnly { get; set; }
     private string _text = string.Empty;
@@ -64,5 +68,23 @@ public sealed partial class AmountInput
             }
         }
         await ValidChanged.InvokeAsync(true);
+    }
+
+    private async Task ToggleSignAsync()
+    {
+        if (Disabled || ReadOnly)
+        {
+            return;
+        }
+
+        // Negate what the field currently shows, falling back to the saved value
+        // when the draft is not yet a valid amount. Reusing the evaluation path
+        // keeps validation and change notification in one place.
+        if (!AmountExpression.TryEvaluate(_text, out var current))
+        {
+            current = Value;
+        }
+
+        await EvaluateAsync((-current).ToString("0.00", CultureInfo.InvariantCulture));
     }
 }

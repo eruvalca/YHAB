@@ -70,6 +70,84 @@ public sealed class AmountInputTests
     }
 
     [Fact]
+    public async Task AmountRequestsTheNumericKeyboardOnMobileAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var component = context.Render<AmountInput>(parameters => parameters.Add(item => item.Label, "Amount")
+            .Add(item => item.Size, TextInputSize.Large));
+
+        // Phones pick their virtual keyboard from `inputmode`; the shared UI
+        // initializer mirrors it onto Fluent's shadow control.
+        component.Find("fluent-text-input").GetAttribute("inputmode").ShouldBe("decimal");
+        component.Find("fluent-text-input").GetAttribute("control-size").ShouldBe("large");
+    }
+
+    [Fact]
+    public async Task CommaDecimalsFromALocalKeypadAreNotReadAsGroupingAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var values = new List<decimal>();
+        var component = context.Render<AmountInput>(parameters => parameters.Add(item => item.Label, "Amount")
+            .Add(item => item.Value, 0m).Add(item => item.ValueChanged, values.Add));
+
+        await component.Find("fluent-text-input").ChangeAsync(new() { Value = "12,50" });
+        values.ShouldBe([12.50m]);
+        component.Render(parameters => parameters.Add(item => item.Value, 12.50m));
+        component.Find("fluent-text-input").GetAttribute("value").ShouldBe("12.50");
+    }
+
+    [Fact]
+    public async Task SignedFieldsOfferASignToggleThatNegatesTheDraftAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var values = new List<decimal>();
+        var component = context.Render<AmountInput>(parameters => parameters.Add(item => item.Label, "Opening balance")
+            .Add(item => item.Value, 800m).Add(item => item.ValueChanged, values.Add).Add(item => item.AllowNegative, true));
+
+        var sign = component.Find("fluent-button.amount-sign");
+        sign.TextContent.Trim().ShouldBe("±");
+        sign.GetAttribute("aria-label").ShouldBe("Change the sign of Opening balance");
+
+        await sign.ClickAsync();
+        values.ShouldBe([-800m]);
+        component.Render(parameters => parameters.Add(item => item.Value, -800m).Add(item => item.AllowNegative, true));
+        await component.Find("fluent-button.amount-sign").ClickAsync();
+        values.ShouldBe([-800m, 800m]);
+        component.Render(parameters => parameters.Add(item => item.Value, 800m).Add(item => item.AllowNegative, true));
+        component.Find("fluent-text-input").GetAttribute("value").ShouldBe("800.00");
+    }
+
+    [Fact]
+    public async Task FieldsWithoutNegativeAmountsDoNotOfferASignToggleAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var component = context.Render<AmountInput>(parameters => parameters.Add(item => item.Label, "Amount")
+            .Add(item => item.Value, 0m));
+
+        component.FindAll("fluent-button.amount-sign").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task TextModeFieldsKeepTheFullKeyboardForSignedEntryAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var component = context.Render<AmountInput>(parameters => parameters.Add(item => item.Label, "Assigned")
+            .Add(item => item.Value, 0m).Add(item => item.InputMode, TextInputMode.Text));
+
+        component.Find("fluent-text-input").GetAttribute("inputmode").ShouldBe("text");
+    }
+
+    [Fact]
     public async Task CalculatorEmitsEvaluatedAmountAndRejectsInvalidExpressionAsync()
     {
         await using var context = new BunitContext();

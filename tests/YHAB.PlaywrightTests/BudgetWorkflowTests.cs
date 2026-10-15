@@ -47,7 +47,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             await AddAccountAndAssignAsync(page);
             await VerifyStickySummaryAsync(page, width);
             var planUrl = page.Url;
-            await PurchaseAsync(page);
+            await PurchaseAsync(page, width);
             await page.GotoAsync(planUrl);
             await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
             await page.Locator(".hero-amount").Filter(new() { HasText = "$700.00" }).WaitForAsync();
@@ -206,7 +206,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await VerifyAmountEditingAsync(page);
     }
 
-    private static async Task PurchaseAsync(IPage page)
+    private static async Task PurchaseAsync(IPage page, int width)
     {
         await OpenPlanNavigationAsync(page);
         await page.GetByRole(AriaRole.Link, new() { Name = "All transactions", Exact = true }).ClickAsync();
@@ -214,6 +214,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await VerifyRegisterAlignmentAsync(page);
         await Button(page, "+ Add transaction").ClickAsync();
         await VerifyEditorFocusAsync(page);
+        await VerifyMobileTransactionEntryAsync(page, width);
         await VerifyDropdownChromeAsync(page);
         await VerifyTextUndoOwnershipAsync(page);
         await Input(page, "Payee").FillAsync("Neighborhood market");
@@ -260,6 +261,37 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         var heading = (await page.Locator(".editor-surface h2").BoundingBoxAsync()).ShouldNotBeNull();
         heading.Y.ShouldBeGreaterThanOrEqualTo(0);
         (heading.Y + heading.Height).ShouldBeLessThanOrEqualTo((await page.EvaluateAsync<int>("innerHeight")));
+    }
+
+    // Phones get the numeric keyboard for amounts and keep the editor's title and
+    // primary action on screen, so rework of the phone layout cannot regress
+    // silently behind the desktop assertions.
+    private static async Task VerifyMobileTransactionEntryAsync(IPage page, int width)
+    {
+        if (width >= 700)
+        {
+            return;
+        }
+        var amount = Input(page, "Amount");
+        // Fluent renders `inputmode` on the host element only; the shared UI
+        // initializer is what puts it on the native control the phone reads.
+        (await amount.EvaluateAsync<string?>("input => input.getAttribute('inputmode')")).ShouldBe("decimal");
+        var field = (await page.Locator(".editor-surface .amount-input").First.BoundingBoxAsync()).ShouldNotBeNull();
+        field.Height.ShouldBeGreaterThanOrEqualTo(40);
+        var surface = (await page.Locator(".editor-surface").BoundingBoxAsync()).ShouldNotBeNull();
+        var viewport = await page.EvaluateAsync<int>("innerHeight");
+        if (surface.Height <= viewport)
+        {
+            return;
+        }
+        await page.EvaluateAsync("() => window.scrollBy({ top: Math.round(innerHeight / 2), behavior: 'instant' })");
+        var heading = (await page.Locator(".editor-surface h2").BoundingBoxAsync()).ShouldNotBeNull();
+        heading.Y.ShouldBeGreaterThanOrEqualTo(0);
+        (heading.Y + heading.Height).ShouldBeLessThanOrEqualTo(viewport);
+        var save = (await Button(page, "Save transaction").BoundingBoxAsync()).ShouldNotBeNull();
+        save.Y.ShouldBeGreaterThanOrEqualTo(0);
+        (save.Y + save.Height).ShouldBeLessThanOrEqualTo(viewport);
+        await page.EvaluateAsync("() => window.scrollBy({ top: Math.round(-innerHeight / 2), behavior: 'instant' })");
     }
 
     private static ILocator Input(IPage page, string label) => page.Locator("fluent-field")
