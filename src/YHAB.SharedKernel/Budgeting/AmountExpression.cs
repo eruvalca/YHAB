@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 
 namespace YHAB.SharedKernel.Budgeting;
 
@@ -17,7 +18,8 @@ public static class AmountExpression
 
         try
         {
-            var parser = new Parser(expression.Replace(",", string.Empty, StringComparison.Ordinal)
+            var parser = new Parser(NormalizeDecimalSeparators(expression)
+                .Replace(",", string.Empty, StringComparison.Ordinal)
                 .Replace("$", string.Empty, StringComparison.Ordinal));
             var value = parser.Parse();
             if (Math.Abs(value) > MaximumAmount)
@@ -32,6 +34,61 @@ public static class AmountExpression
         {
             return false;
         }
+    }
+
+    /// <summary>
+    /// A device keyboard offers the local decimal separator, which can be a comma.
+    /// Reading every comma as thousands grouping turned a typed <c>12,50</c> into
+    /// <c>1250.00</c>, so a dotted fraction otherwise stays the only decimal form.
+    /// </summary>
+    private static string NormalizeDecimalSeparators(string expression)
+    {
+        var builder = new StringBuilder(expression.Length);
+        var index = 0;
+        while (index < expression.Length)
+        {
+            if (!IsNumberCharacter(expression[index]))
+            {
+                builder.Append(expression[index++]);
+                continue;
+            }
+
+            var start = index;
+            while (index < expression.Length && IsNumberCharacter(expression[index]))
+            {
+                index++;
+            }
+
+            builder.Append(NormalizeNumber(expression.AsSpan(start, index - start)));
+        }
+
+        return builder.ToString();
+    }
+
+    private static bool IsNumberCharacter(char character) => char.IsAsciiDigit(character) || character is ',' or '.';
+
+    private static string NormalizeNumber(ReadOnlySpan<char> number)
+    {
+        var comma = number.LastIndexOf(',');
+        var fraction = number.Length - comma - 1;
+        if (comma < 0 || fraction is < 1 or > 2)
+        {
+            return number.ToString();
+        }
+
+        // A one- or two-digit tail after the final comma is a fraction, so any
+        // remaining separators in the whole part were grouping under either
+        // convention ("1,234.56" and "1.234,56" both resolve to 1234.56 here).
+        var whole = new StringBuilder(number.Length);
+        foreach (var character in number[..comma])
+        {
+            if (char.IsAsciiDigit(character))
+            {
+                whole.Append(character);
+            }
+        }
+
+        return string.Concat(whole.Length == 0 ? "0" : whole.ToString(), ".", number[(comma + 1)..].ToString());
     }
 
     private sealed class Parser(string text)

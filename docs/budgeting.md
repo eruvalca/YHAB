@@ -14,9 +14,13 @@ storage.
    such as `150 + 25`, `(600 - 120) / 3`, and dollar/comma formatting.
    Clicking or tabbing into an amount selects its current value; a second click
    can position the caret. Clearing the field and leaving it commits zero.
-   On a phone these fields ask for the numeric keypad. Its keys cover digits and
-   the decimal separator, so type an expression with a physical keyboard or switch
-   the on-screen keyboard back to letters.
+   A comma followed by one or two digits reads as a decimal fraction, so a
+   keypad's `12,50` is 12.50 while `1,234.56` keeps its grouping.
+   On a phone, editor amount fields ask for the numeric keypad. A numeric keypad
+   has no minus key, so fields that accept a negative amount (an opening balance,
+   a reconciliation balance, and split amounts) also show a sign control. The
+   monthly assignment field keeps the full keyboard for signed entry in the dense
+   table.
 4. Add transactions in an account or **All transactions**. Outflows need a
    category; income can go to Ready to assign. Split amounts are signed and must
    total the transaction amount exactly.
@@ -445,7 +449,7 @@ isolated AppHosts. Browser tests exercise both desktop and phone widths.
 | Transfers, reconciliation, and account locks | `TransferClearingUpdatesOnlyTheSelectedAccountSide`, `CreditBalanceTransferMovesFundedPaymentMoneyToTheNewCard`, `ReconciliationLocksOnlyClearedEntriesAndRequiresExplicitAdjustment`, `ClosingAnAccountRequiresZeroBalanceAndOpeningChangesRespectReconciliation` |
 | Category history and payee management | `MergingAUsedCategoryPreservesAssignmentsSpendingAndAccountBalance`, `MergingAssignedCategoryPersistsHistoryAndSupportsUndoRedoAsync`, `PayeeRenameChangesMatchingPostedAndRecurringEntriesOnly`, `TransactionEditorsUsePayeeProjectionAndRefreshSuggestionsAsync` |
 | Private plans, SQL integrity, durable history, and concurrent edits | `OwnerIsolationHistoryAndConcurrentWritesPersistAcrossContextsAsync`, `DatabaseRejectsCrossPlanReferencesAndAccountDeletionRemovesOwnedLedgerAsync` |
-| Manual browser workflow, calculator entry, keyboard undo/redo, reports, reconciliation, and API guards | `ManualPlanPurchaseUndoAndReportsAgreeAsync` at 1440px and 390px, including the phone amount keypad, editor tap size, and sticky editor chrome |
+| Manual browser workflow, calculator entry, keyboard undo/redo, reports, reconciliation, and API guards | `ManualPlanPurchaseUndoAndReportsAgreeAsync` at 1440px and 390px, including the phone amount keypad, editor tap size, sticky editor chrome, and the signed-balance sign control |
 | Themes, mobile navigation, and SSR document continuity | `FluentNavigationPreservesDocumentAndThemeChoice` at 1280px and 390px |
 | Actual startup, migrations, and database readiness | `AppHostCompletesMigrationsAndServesHealthyApplication` |
 

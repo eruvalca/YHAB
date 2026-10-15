@@ -299,7 +299,10 @@ forward the host's `inputmode` attribute to it, so setting Fluent's `InputMode`
 parameter alone cannot change a phone's virtual keyboard. The same
 `afterWebStarted` initializer runs `input-mode.js`, which mirrors that attribute
 onto the shadow control. Set `InputMode` on the Fluent component and let the
-initializer supply the browser behavior.
+initializer supply the browser behavior. `AmountInput` asks for the decimal keypad
+by default; because that keypad has no minus key, set `AllowNegative` where a field
+accepts a negative amount so it renders a sign control, or keep
+`InputMode="TextInputMode.Text"` where the surrounding layout cannot host one.
 
 Custom CSS is limited to application sizing, accessibility, and static form
 compatibility, using Fluent tokens. Prefer Fluent layout/spacing parameters;

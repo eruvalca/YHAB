@@ -6,7 +6,7 @@
                       OptionText="AccountLabel" @bind-Value="_kind" Disabled="@(_id != Guid.Empty)" /></FluentGridItem>
         <FluentGridItem Xs="12" Sm="6"><div class="form-field"><label for="account-opening-date">Opening date</label><input id="account-opening-date" type="date" @bind="_openedOn" /></div></FluentGridItem>
         <FluentGridItem Xs="12" Sm="6">
-            <AmountInput Label="Opening balance" Size="TextInputSize.Large" @bind-Value="_balance" ValidChanged="value => _amountValid = value" />
+            <AmountInput Label="Opening balance" Size="TextInputSize.Large" AllowNegative="true" @bind-Value="_balance" ValidChanged="value => _amountValid = value" />
             <p class="field-hint">Use a negative balance for money you owe.</p>
         </FluentGridItem>
         @if (BudgetFacts.IsLoan(_kind))

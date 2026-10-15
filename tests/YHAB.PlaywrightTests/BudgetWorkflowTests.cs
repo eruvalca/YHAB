@@ -244,6 +244,16 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await Button(page, "Reconcile").ClickAsync();
         await VerifyEditorFocusAsync(page);
         (await Input(page, "Bank's posted balance").InputValueAsync()).ShouldBe("925.00");
+        // The numeric keypad has no minus key, so a signed field carries its own
+        // sign toggle. The difference notice is the observable render that proves
+        // each toggle settled before the value is read.
+        var difference = page.Locator(".editor-surface .notice").Filter(new() { HasText = "Difference" });
+        await Button(page, "±").ClickAsync();
+        await difference.WaitForAsync();
+        (await Input(page, "Bank's posted balance").InputValueAsync()).ShouldBe("-925.00");
+        await Button(page, "±").ClickAsync();
+        await difference.WaitForAsync(new() { State = WaitForSelectorState.Detached });
+        (await Input(page, "Bank's posted balance").InputValueAsync()).ShouldBe("925.00");
         await Button(page, "Finish reconciliation").ClickAsync();
         await Button(page, "Reconciled").WaitForAsync();
         var balance = page.Locator(".stat").Filter(new() { HasText = "Cleared balance" });

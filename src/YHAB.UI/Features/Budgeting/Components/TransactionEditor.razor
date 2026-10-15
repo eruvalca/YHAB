@@ -25,7 +25,7 @@
             {
                 <FluentGrid @key="split.Id" Spacing="2">
                     <FluentGridItem Xs="12" Md="5"><FluentSelect Margin="0" Size="ListSize.Large" TOption="CategoryData" TValue="Guid" Label="Split category" Items="_categories" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="split.Category" /></FluentGridItem>
-                    <FluentGridItem Xs="6" Md="3"><AmountInput Label="Split amount" Size="TextInputSize.Large" @bind-Value="split.Amount" ValidChanged="value => split.Valid = value" /></FluentGridItem>
+                    <FluentGridItem Xs="6" Md="3"><AmountInput Label="Split amount" Size="TextInputSize.Large" AllowNegative="true" @bind-Value="split.Amount" ValidChanged="value => split.Valid = value" /></FluentGridItem>
                     <FluentGridItem Xs="6" Md="4">
                         <FluentStack VerticalAlignment="VerticalAlignment.Bottom" HorizontalGap="var(--spacingHorizontalS)">
                             <FluentTextInput Margin="0" Size="TextInputSize.Large" Label="Split memo" @bind-Value="split.Memo" MaxLength="1000" />
