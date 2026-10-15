@@ -287,10 +287,22 @@ button in their `control` slot and own its border and padding. Filter toolbars u
 explicit Fluent alignment and zero field margins so labels do not displace actions.
 Editor fields also use zero margins, leaving spacing to their Fluent grid/stack;
 the shared editor surface stretches text inputs, dropdowns, and text areas to the
-available column width while keeping checkbox sizing intrinsic.
+available column width while keeping checkbox sizing intrinsic. On phone widths it
+also keeps the heading, **Close**, and the `editor-actions` row on screen while the
+rest of a long form scrolls.
 All three navigation menus use transparent resting backgrounds and Fluent's subtle
 hover token. The signed-in shell link reads **Your account**; account details keep
 the email address. Money uses shared `data-money-tone` colors from Fluent tokens.
+
+A Fluent web component keeps its native control in a shadow root and does not
+forward the host's `inputmode` attribute to it, so setting Fluent's `InputMode`
+parameter alone cannot change a phone's virtual keyboard. The same
+`afterWebStarted` initializer runs `input-mode.js`, which mirrors that attribute
+onto the shadow control. Set `InputMode` on the Fluent component and let the
+initializer supply the browser behavior. `AmountInput` asks for the decimal keypad
+by default; because that keypad has no minus key, set `AllowNegative` where a field
+accepts a negative amount so it renders a sign control, or keep
+`InputMode="TextInputMode.Text"` where the surrounding layout cannot host one.
 
 Custom CSS is limited to application sizing, accessibility, and static form
 compatibility, using Fluent tokens. Prefer Fluent layout/spacing parameters;

@@ -1,5 +1,6 @@
 .editor-surface { margin-block: var(--spacingVerticalXL); padding: clamp(1rem, 2vw, 1.75rem); border: 1px solid var(--colorBrandStroke2); border-radius: var(--borderRadiusXLarge); background: var(--colorNeutralBackground1); box-shadow: var(--shadow8); }
 h2 { margin: 0; }
+.editor-surface ::deep .editor-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacingHorizontalS); }
 .editor-surface ::deep fluent-field:has(> fluent-text-input, > fluent-dropdown, > fluent-textarea),
 .editor-surface ::deep fluent-text-input,
 .editor-surface ::deep fluent-dropdown,
@@ -9,3 +10,34 @@ h2 { margin: 0; }
 .editor-surface ::deep .form-field { gap: var(--spacingVerticalXXS); }
 .editor-surface ::deep .form-field input { height: 2rem; padding-block: var(--spacingVerticalXS); }
 .editor-surface ::deep .notice { margin-block: 0; }
+
+/* Phone layouts keep the title, Close, and the primary action on screen while
+   the rest of the form scrolls, so a long transaction never strands them. */
+@media (max-width: 700px) {
+    .editor-surface { padding: var(--spacingVerticalL) var(--spacingHorizontalM); }
+    .editor-surface ::deep .editor-heading {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        margin-inline: calc(var(--spacingHorizontalM) * -1);
+        padding: var(--spacingVerticalS) var(--spacingHorizontalM);
+        background: var(--colorNeutralBackground1);
+        border-bottom: 1px solid var(--colorNeutralStroke2);
+        border-start-start-radius: var(--borderRadiusXLarge);
+        border-start-end-radius: var(--borderRadiusXLarge);
+    }
+    .editor-surface ::deep .editor-actions {
+        position: sticky;
+        bottom: 0;
+        z-index: 5;
+        margin-inline: calc(var(--spacingHorizontalM) * -1);
+        padding: var(--spacingVerticalS) var(--spacingHorizontalM);
+        background: var(--colorNeutralBackground1);
+        border-top: 1px solid var(--colorNeutralStroke2);
+        border-end-start-radius: var(--borderRadiusXLarge);
+        border-end-end-radius: var(--borderRadiusXLarge);
+    }
+    .editor-surface ::deep .editor-actions > fluent-button { flex: 1 1 8rem; }
+    /* Native date/number fields follow the larger Fluent controls beside them. */
+    .editor-surface ::deep .form-field input { height: 2.5rem; padding-block: var(--spacingVerticalS); }
+}
