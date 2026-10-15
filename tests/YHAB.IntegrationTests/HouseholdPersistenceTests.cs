@@ -93,13 +93,6 @@ public sealed class HouseholdPersistenceTests(ITestOutputHelper output)
         ReportCalculator.Spending(plan, HouseholdScenario.Start, plan.Today).Single(item => item.CategoryId == groceries).Amount.ShouldBe(1160 * months);
         plan = await ApplyAsync(store, plan, new UndoChange(plan.Version), token);
         HouseholdChecks.Verify(plan, months, monthlyCount);
-
-        plan = await ApplyAsync(store, plan, new ReconcileAccount(plan.Version, HouseholdScenario.Id(1), plan.Today, 5400 + 3880 * months, false), token);
-        plan.Transactions.Where(item => item.AccountId == HouseholdScenario.Id(1)).ShouldAllBe(item => item.State == ClearingState.Reconciled);
-        (await store.ExecuteAsync("owner-a", plan.Id, new DeleteTransactions(plan.Version, [entry.Id]), token)).IsT1.ShouldBeTrue();
-        var reloaded = (await store.ReadAsync("owner-a", plan.Id, token)).ShouldNotBeNull();
-        reloaded.Version.ShouldBe(plan.Version);
-        HouseholdChecks.Verify(reloaded, months, monthlyCount);
     }
 
     private static async Task<PlanSnapshot> ApplyAsync(BudgetStore store, PlanSnapshot plan, PlanCommand command, CancellationToken token)

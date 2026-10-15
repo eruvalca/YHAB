@@ -14,10 +14,7 @@ internal static class AccountLedgerQueries
                 item.Date,
                 Posted = item.Repeat == RepeatFrequency.None && item.Date <= through,
                 Amount = item.AccountId == accountId ? item.Amount : -item.Amount,
-                State = item.AccountId == accountId ? item.State : item.TransferState,
             }).GroupBy(_ => 1).Select(group => new AccountLedgerFacts(group.Min(item => (DateOnly?)item.Date),
-                group.Any(item => item.State == ClearingState.Reconciled),
-                group.Sum(item => item.Posted ? item.Amount : 0),
-                group.Sum(item => item.Posted && item.State != ClearingState.Uncleared ? item.Amount : 0)))
-            .SingleOrDefaultAsync(token) ?? new(null, false, 0, 0);
+                group.Sum(item => item.Posted ? item.Amount : 0)))
+            .SingleOrDefaultAsync(token) ?? new(null, 0);
 }

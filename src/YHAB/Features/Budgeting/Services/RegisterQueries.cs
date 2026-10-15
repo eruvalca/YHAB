@@ -62,10 +62,6 @@ internal static class RegisterQueries
         return request.Filter switch
         {
             "Recurring" => query.Where(entry => entry.Repeat != RepeatFrequency.None),
-            "Needs approval" => query.Where(entry => entry.Repeat == RepeatFrequency.None && entry.NeedsApproval),
-            "Uncleared" => query.Where(entry => entry.Repeat == RepeatFrequency.None && (entry.TransferAccountId == request.AccountId && request.AccountId.HasValue ? entry.TransferState : entry.State) == ClearingState.Uncleared),
-            "Cleared" => query.Where(entry => entry.Repeat == RepeatFrequency.None && (entry.TransferAccountId == request.AccountId && request.AccountId.HasValue ? entry.TransferState : entry.State) == ClearingState.Cleared),
-            "Reconciled" => query.Where(entry => entry.Repeat == RepeatFrequency.None && (entry.TransferAccountId == request.AccountId && request.AccountId.HasValue ? entry.TransferState : entry.State) == ClearingState.Reconciled),
             _ => query.Where(entry => entry.Repeat == RepeatFrequency.None),
         };
 

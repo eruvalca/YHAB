@@ -31,7 +31,7 @@ public sealed class RecurringPersistenceTests
         var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, start, false, "");
         plan = await ApplyAsync(store, plan, new SaveAccount(plan.Version, account), timeout.Token);
         var template = new TransactionData(Guid.NewGuid(), account.Id, start, "Daily", "", -25, null,
-            ClearingState.Uncleared, ClearingState.Uncleared, false, "", [new(Guid.NewGuid(), plan.Categories[0].Id, -25, "")], RepeatFrequency.Daily);
+            "", [new(Guid.NewGuid(), plan.Categories[0].Id, -25, "")], RepeatFrequency.Daily);
         plan = await ApplyAsync(store, plan, new SaveTransaction(plan.Version, template), timeout.Token);
         var occurrence = plan.Transactions.Single(item => item.SourceTemplateId == template.Id && item.Date == start);
 
@@ -76,7 +76,7 @@ public sealed class RecurringPersistenceTests
         var date = new DateOnly(2026, 10, 1);
         var account = new AccountData(Guid.NewGuid(), "Tracking", AccountKind.Asset, 1000, date, false, "");
         var occurrence = new TransactionData(Guid.NewGuid(), account.Id, date, "Legacy recurrence", "Keep this", -25, null,
-            ClearingState.Uncleared, ClearingState.Uncleared, true, "", [], SourceTemplateId: Guid.NewGuid());
+            "", [], SourceTemplateId: Guid.NewGuid());
         var manual = occurrence with { Id = Guid.NewGuid(), SourceTemplateId = null, Payee = "Manual", Amount = 10 };
         var snapshot = new PlanSnapshot(Guid.NewGuid(), "Legacy plan", "", date, 0, [account], [], [], [], [occurrence, manual], false, false, []);
 
@@ -124,7 +124,7 @@ public sealed class RecurringPersistenceTests
         var date = new DateOnly(2026, 10, 1);
         var account = new AccountData(Guid.NewGuid(), "Tracking", AccountKind.Asset, 1000, date, false, "");
         var occurrence = new TransactionData(Guid.NewGuid(), account.Id, date, "Legacy occurrence", "", -25, null,
-            ClearingState.Uncleared, ClearingState.Uncleared, true, "", [], SourceTemplateId: Guid.NewGuid());
+            "", [], SourceTemplateId: Guid.NewGuid());
         var present = new PlanSnapshot(Guid.NewGuid(), "Legacy plan", "", date, 0, [account], [], [], [], [occurrence], false, false, []);
         var absent = present with { Transactions = [] };
         await SeedLegacyAsync(database, deleted ? present : absent, deleted ? absent : present, token);
@@ -158,7 +158,7 @@ public sealed class RecurringPersistenceTests
         var date = new DateOnly(2026, 10, 1);
         var account = new AccountData(Guid.NewGuid(), "Tracking", AccountKind.Asset, 1000, date, false, "");
         var entry = new TransactionData(Guid.NewGuid(), account.Id, date, "Legacy entry", "", -25, null,
-            ClearingState.Uncleared, ClearingState.Uncleared, false, "", []);
+            "", []);
         var other = entry with { Id = Guid.NewGuid(), Amount = 10 };
         var original = new PlanSnapshot(Guid.NewGuid(), "Legacy plan", "", date, 0, [account], [], [], [], [entry, other], false, false, []);
         await SeedLegacyAsync(database, original, original, token);
@@ -202,7 +202,7 @@ public sealed class RecurringPersistenceTests
                 INSERT INTO "BudgetTransaction" ("PlanId", "Id", "AccountId", "Date", "Payee", "Memo", "Amount",
                     "State", "TransferState", "NeedsApproval", "Flag", "Repeat", "Occurrence", "SourceTemplateId")
                 VALUES ({snapshot.Id}, {entry.Id}, {entry.AccountId}, {entry.Date}, {entry.Payee}, {entry.Memo}, {entry.Amount},
-                    0, 0, {entry.NeedsApproval}, '', 0, 0, {entry.SourceTemplateId})
+                    0, 0, false, '', 0, 0, {entry.SourceTemplateId})
                 """, token);
         }
         await context.GetService<IMigrator>().MigrateAsync(cancellationToken: token);

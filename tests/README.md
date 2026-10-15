@@ -6,11 +6,11 @@ the CLI and editor find `global.json` and `YHAB.slnx`.
 
 | Project | Scope |
 | --- | --- |
-| `YHAB.UnitTests` | Budget arithmetic, monthly carryover, cash/credit overspending, payment reserves, targets, recurrence, transaction validation, reconciliation, plus Identity, service defaults, and architecture boundaries. |
+| `YHAB.UnitTests` | Budget arithmetic, monthly carryover, cash/credit overspending, payment reserves, targets, recurrence, transaction validation, plus Identity, service defaults, and architecture boundaries. |
 | `YHAB.ComponentTests` | Calculator input events, month-specific assignments, invalid-input feedback, delayed workspace loading and interactive-only recurring posting, account workflows, navigation, error request IDs, and the shared UI's `Counter`, using bUnit. |
 | `YHAB.IntegrationTests` | Real PostgreSQL: migrations and legacy data upgrades, Identity, private plan isolation, cross-plan foreign keys, optimistic concurrency, category merges, editable recurring occurrence dates, durable undo/redo, and deletion of owned ledger data. |
 | `YHAB.AspireIntegrationTests` | The real AppHost, database/migration startup dependencies, readiness, resource endpoints, and cross-process HTTP behavior. |
-| `YHAB.PlaywrightTests` | Real Chromium: Fluent controls, desktop/mobile navigation, persistent themes, drawer behavior, document continuity, manual plan/purchase/undo/report/reconciliation workflows, and API authentication/antiforgery/revision guards. |
+| `YHAB.PlaywrightTests` | Real Chromium: Fluent controls, desktop/mobile navigation, persistent themes, drawer behavior, document continuity, manual plan/purchase/undo/report workflows, and API authentication/antiforgery/revision guards. |
 
 `YHAB.Testing` is a shared support library, not a test project. It configures
 isolated AppHost builders for the Aspire and Playwright projects.
@@ -138,13 +138,13 @@ IDs in another owner's plan, literal Unicode names, checkpoint retention and und
 after a recurring template advances. Compare ledger snapshots in stable identity
 or sequence order; the full persistence read has no presentation-order contract.
 
-`AccountLedgerFactsTests` exercises transfer direction, clearing sides, recurrence
-and date exclusion, empty accounts and reconciliation with precomputed balances.
+`AccountLedgerFactsTests` exercises transfer direction, recurrence and date
+exclusion, empty accounts and movement with precomputed balances.
 `CheckpointPolicyTests` distinguishes financial invalidation from metadata edits,
 including transaction/split ordering, old/new dates, target changes and zero-value
 allocations. `AccountOperationTests` compares database aggregates with ledger
-facts, checks overlapping foreign identities, verifies exact selective reconciliation
-and undo/redo results, and compares retained checkpoint contents with full replay.
+facts, checks overlapping foreign identities, verifies exact account-save
+rejection and undo/redo results, and compares retained checkpoint contents with full replay.
 For SQL round trips, compare every transaction and split field by value in a stable
 order; decimal JSON spelling (`10` versus `10.00`) is not a financial difference.
 
@@ -163,7 +163,7 @@ an empty worker pass. Keep row/filter bounds on the captured plans; elapsed-time
 samples alone cannot detect a regression to scanning posted history.
 
 `CommandBranchTests` covers account-side opening-date boundaries, category merging
-with uncategorized income, payment-category rejection and scoped/global approval.
+with uncategorized income and payment-category rejection.
 `SelectiveOperationScaleTests` measures every command type, retries, history, funding,
 bulk operations and reports at 10k/50k/100k entries, plus catalogs up to 100 accounts,
 500 categories and 120,000 allocations. Bulk payee checks include undo/redo and
@@ -171,7 +171,7 @@ history size at each threshold. EF materialization counters count entity instanc
 not ordinary LINQ DTO projections; use persisted cardinality and SQL evidence for
 those projections. The desktop/phone `BudgetWorkflowTests` also renames through the
 static settings form, restores/reapplies through interactive history, and checks
-reconciliation, balance and updated suggestions. `SustainedContentionTests` runs separate
+balances and updated suggestions. `SustainedContentionTests` runs separate
 service providers against one disposable database: 60-second offered-load windows
 with 1/4/8 editors, competing recurring processors, and a register reader. The
 paced case deliberately schedules two edits/second/editor; this timer models load,
@@ -554,7 +554,7 @@ Navigation tests run Home → Register → Home at desktop and mobile widths, ch
 that the drawer closes, verify theme persistence, check JavaScript errors/overflow,
 and assert unchanged `performance.timeOrigin`. Budget workflow tests register a
 disposable user, create a plan, evaluate amount expressions, assign money, enter a
-purchase, reload, undo with the keyboard, redo, verify reports, and reconcile.
+purchase, reload, undo with the keyboard, redo, and verify reports.
 They also check API session, antiforgery, and stale-revision rejection. These tests
 do not establish passkey ceremonies or every account workflow.
 
@@ -612,10 +612,8 @@ Theme checks navigate between
 SSR pages after selecting light, dark, and System preferences, verify the resolved
 color scheme, and emulate OS changes in System mode. A reload alone does not
 exercise Blazor's replacement of body attributes during enhanced navigation.
-Opening account, transaction, and reconciliation editors must focus a visible
-heading; browser checks also reopen a reconciled entry from its register row.
-The reconciliation-editor component cases cover locks on either transfer side,
-the displayed clearing state, and saving an unlocked cleared transfer.
+Opening account and transaction editors must focus a visible
+heading; browser checks also reopen an entry from its register row.
 
 Both Aspire and Playwright tests use `YHAB.Testing.TestAppHost`, a small shared
 library that removes container volume/bind mounts and enforces session lifetimes

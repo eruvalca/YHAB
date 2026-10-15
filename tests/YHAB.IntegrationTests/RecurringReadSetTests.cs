@@ -23,7 +23,7 @@ public sealed class RecurringReadSetTests(ITestOutputHelper output)
         var start = today.AddDays(-1000);
         var account = new AccountData(Guid.NewGuid(), "Tracking", AccountKind.Asset, 10_000, start, false, "");
         var template = new TransactionData(Guid.NewGuid(), account.Id, today.AddDays(-2), "Daily", "", -1, null,
-            ClearingState.Uncleared, ClearingState.Uncleared, false, "", [], RepeatFrequency.Daily, start, 998, Sequence: 1);
+            "", [], RepeatFrequency.Daily, start, 998, Sequence: 1);
         await SeedAsync(id, 998);
         await SeedAsync(foreignId, 1001);
 

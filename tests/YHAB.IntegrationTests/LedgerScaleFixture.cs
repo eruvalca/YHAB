@@ -29,10 +29,10 @@ internal sealed record LedgerScaleFixture(Guid Id, AccountData[] Accounts, Categ
             INSERT INTO "BudgetAllocation" ("PlanId", "CategoryId", "Month", "Amount", "Snoozed")
             SELECT {id}, "Id", ({start} + make_interval(months => n))::date, 1, false
             FROM "BudgetCategory" CROSS JOIN generate_series(0, {months - 1}) n WHERE "PlanId" = {id};
-            INSERT INTO "BudgetTransaction" ("PlanId", "Id", "AccountId", "Date", "Payee", "Memo", "Amount", "State", "TransferState", "NeedsApproval", "Flag", "Repeat", "Occurrence", "Sequence")
+            INSERT INTO "BudgetTransaction" ("PlanId", "Id", "AccountId", "Date", "Payee", "Memo", "Amount", "Flag", "Repeat", "Occurrence", "Sequence")
             SELECT {id}, gen_random_uuid(), ({accountData.Select(item => item.Id).ToArray()})[1 + (n % {accounts})::int],
                 {start} + (n % {days})::int, CASE WHEN n % 10 = 0 THEN 'Salary' ELSE 'Market' END,
-                '', CASE WHEN n % 10 = 0 THEN 100 ELSE -1 END, 0, 0, false, '', 0, 0, n
+                '', CASE WHEN n % 10 = 0 THEN 100 ELSE -1 END, '', 0, 0, n
             FROM generate_series(1, {entries}) n;
             INSERT INTO "BudgetSplit" ("PlanId", "Id", "TransactionId", "CategoryId", "Amount", "Memo")
             SELECT "PlanId", gen_random_uuid(), "Id", CASE WHEN "Amount" < 0 THEN ({categoryData.Select(item => item.Id).ToArray()})[1 + ("Sequence" % {categories})::int] ELSE NULL END, "Amount", ''

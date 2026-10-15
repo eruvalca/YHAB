@@ -25,7 +25,7 @@ public sealed class WorkspaceProjectionTests
         {
             await barrier.Started.Task.WaitAsync(token);
             var entry = new TransactionData(Guid.NewGuid(), fixture.Accounts[0].Id, fixture.Month, "Gift", "", 25, null,
-                ClearingState.Cleared, ClearingState.Uncleared, false, "", [new(Guid.NewGuid(), null, 25, "")]);
+                "", [new(Guid.NewGuid(), null, 25, "")]);
             (await database.Store.ExecuteAsync("owner-a", fixture.Id, new SaveTransaction(0, entry), token)).IsT0.ShouldBeTrue();
         }
         finally { barrier.Release.TrySetResult(); }

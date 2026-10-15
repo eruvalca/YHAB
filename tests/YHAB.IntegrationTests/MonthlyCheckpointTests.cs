@@ -37,7 +37,7 @@ public sealed class MonthlyCheckpointTests
             Categories = [category],
             Allocations = [new(category.Id, january, 30), new(category.Id, january.AddMonths(1), 110), new(category.Id, march, 30), new(category.Id, january.AddMonths(4), 80)],
             Transactions = [new(Guid.CreateVersion7(), account.Id, january.AddMonths(1).AddDays(2), "Bill", "", -40, null,
-                ClearingState.Uncleared, ClearingState.Uncleared, false, "", [new(Guid.CreateVersion7(), category.Id, -40, "")])],
+                "", [new(Guid.CreateVersion7(), category.Id, -40, "")])],
         };
         await using var context = await database.Factory.CreateDbContextAsync(token);
         BudgetSnapshotMapping.Apply(context, plan);

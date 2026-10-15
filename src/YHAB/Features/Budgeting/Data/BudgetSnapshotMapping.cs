@@ -133,7 +133,7 @@ internal static class BudgetSnapshotMapping
         => new(item.Id, item.CategoryId, item.Amount, item.Memo);
 
     internal static TransactionData ToData(BudgetTransaction item, IReadOnlyList<SplitData> splits)
-        => new(item.Id, item.AccountId, item.Date, item.Payee, item.Memo, item.Amount, item.TransferAccountId, item.State, item.TransferState, item.NeedsApproval, item.Flag, splits, item.Repeat, item.AnchorDate, item.Occurrence, item.SourceTemplateId, item.ScheduledDate, item.Sequence);
+        => new(item.Id, item.AccountId, item.Date, item.Payee, item.Memo, item.Amount, item.TransferAccountId, item.Flag, splits, item.Repeat, item.AnchorDate, item.Occurrence, item.SourceTemplateId, item.ScheduledDate, item.Sequence);
 
     private static CategoryData ToData(BudgetCategory item)
         => new(item.Id, item.GroupId, item.Name, item.Notes, item.SortOrder, item.Hidden, item.CreditAccountId, item.TargetKind is { } kind ? new TargetData(kind, item.TargetCadence, item.TargetAmount, item.TargetStartMonth, item.TargetDueDate, item.TargetRepeatMonths, item.TargetWeekday) : null);
@@ -191,9 +191,6 @@ internal static class BudgetSnapshotMapping
         Memo = item.Memo,
         Amount = item.Amount,
         TransferAccountId = item.TransferAccountId,
-        State = item.State,
-        TransferState = item.TransferState,
-        NeedsApproval = item.NeedsApproval,
         Flag = item.Flag,
         Repeat = item.Repeat,
         AnchorDate = item.AnchorDate,

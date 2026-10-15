@@ -13,9 +13,6 @@ internal sealed class BudgetTransaction
     public string Memo { get; set; } = string.Empty;
     public decimal Amount { get; set; }
     public Guid? TransferAccountId { get; set; }
-    public ClearingState State { get; set; }
-    public ClearingState TransferState { get; set; }
-    public bool NeedsApproval { get; set; }
     public string Flag { get; set; } = string.Empty;
     public RepeatFrequency Repeat { get; set; }
     public DateOnly? AnchorDate { get; set; }

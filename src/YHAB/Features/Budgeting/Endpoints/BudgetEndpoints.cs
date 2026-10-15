@@ -76,16 +76,12 @@ internal static class BudgetEndpoints
         MapResource<SaveTransaction>(group, "transactions");
         group.MapPost("/{planId:guid}/transactions/delete", MutateAsync<DeleteTransactions>)
             .WithSummary("Delete Transactions in a privately owned plan.");
-        group.MapPatch("/{planId:guid}/transactions/status", MutateAsync<UpdateTransactionStates>)
-            .WithSummary("Update Transaction States in a privately owned plan.");
         group.MapPut("/{planId:guid}/assignments", MutateAsync<AssignMoney>)
             .WithSummary("Assign Money in a privately owned plan.");
         group.MapPost("/{planId:guid}/money-moves", MutateAsync<MoveMoney>)
             .WithSummary("Move Money in a privately owned plan.");
         group.MapPost("/{planId:guid}/auto-assign", MutateAsync<AutoAssign>)
             .WithSummary("Auto Assign in a privately owned plan.");
-        group.MapPost("/{planId:guid}/reconciliations", MutateAsync<ReconcileAccount>)
-            .WithSummary("Reconcile Account in a privately owned plan.");
         group.MapPut("/{planId:guid}/settings", MutateAsync<UpdatePlan>)
             .WithSummary("Update Plan in a privately owned plan.");
         group.MapPost("/{planId:guid}/payees/rename", MutateAsync<RenamePayee>)

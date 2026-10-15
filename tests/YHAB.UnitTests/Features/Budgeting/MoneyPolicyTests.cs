@@ -48,10 +48,6 @@ public sealed class MoneyPolicyTests
     [InlineData("move-destination")]
     [InlineData("move-insufficient")]
     [InlineData("auto-month")]
-    [InlineData("reconcile-account")]
-    [InlineData("reconcile-date")]
-    [InlineData("reconcile-before-opening")]
-    [InlineData("reconcile-cents")]
     public void InvalidMoneyCommandsLeaveAllBalancesAndInputsUnchanged(string scenario)
     {
         var plan = Assigned(Create(), 100);
@@ -69,10 +65,7 @@ public sealed class MoneyPolicyTests
             "move-destination" => new MoveMoney(0, category, Guid.NewGuid(), January, 10),
             "move-insufficient" => new MoveMoney(0, null, category, January, 901),
             "auto-month" => new AutoAssign(0, January.AddDays(1)),
-            "reconcile-account" => new ReconcileAccount(0, Guid.NewGuid(), January, 1000, false),
-            "reconcile-date" => new ReconcileAccount(0, plan.Accounts[0].Id, plan.Today.AddDays(1), 1000, false),
-            "reconcile-before-opening" => new ReconcileAccount(0, plan.Accounts[0].Id, January.AddDays(-1), 1000, false),
-            _ => new ReconcileAccount(0, plan.Accounts[0].Id, January, 1000.001m, true),
+            _ => throw new InvalidOperationException($"Unknown invalid money scenario '{scenario}'."),
         };
         var original = JsonSerializer.Serialize(plan);
         var outcome = PlanCommandHandler.Apply(BudgetTestData.NewIds(), plan, command, plan.Today);
@@ -114,21 +107,5 @@ public sealed class MoneyPolicyTests
         var outcome = MoneyChanges.Move(plan, new(0, first, second, January, 1), plan.Today);
         outcome.IsT1.ShouldBeTrue();
         outcome.AsT1.Message.ShouldContain("exceed");
-    }
-
-    [Fact]
-    public void ReconciliationLocksOnlyEligibleTransferSidesAndLeavesFutureAndRecurringEntries()
-    {
-        var plan = Create();
-        var transfer = Entry(plan, 1, -20) with { TransferAccountId = plan.Accounts[0].Id, TransferState = ClearingState.Cleared, Splits = [] };
-        var future = Entry(plan, 0, -10, date: plan.Today) with { State = ClearingState.Cleared };
-        var recurring = Entry(plan, 0, -10) with { Repeat = RepeatFrequency.Monthly, State = ClearingState.Cleared };
-        var unrelated = Entry(plan, 1, -5) with { State = ClearingState.Cleared };
-        plan = plan with { Transactions = [transfer, future, recurring, unrelated] };
-        var result = MoneyChanges.Reconcile(BudgetTestData.NewIds(), plan, new(0, plan.Accounts[0].Id, January.AddDays(2), 1020, false), plan.Today).AsT0;
-        result.Transactions.Count.ShouldBe(4);
-        result.Transactions[0].TransferState.ShouldBe(ClearingState.Reconciled);
-        result.Transactions[0].State.ShouldBe(ClearingState.Uncleared);
-        result.Transactions.Skip(1).ShouldBe(plan.Transactions.Skip(1));
     }
 }

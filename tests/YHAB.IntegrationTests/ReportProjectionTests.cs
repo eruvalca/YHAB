@@ -80,7 +80,7 @@ public sealed class ReportProjectionTests(ITestOutputHelper output)
         {
             await barrier.ReadStarted.Task.WaitAsync(token);
             var income = new TransactionData(Guid.Empty, plan.Accounts[0].Id, from, "Concurrent income", "", 100, null,
-                ClearingState.Uncleared, ClearingState.Uncleared, false, "", [new(Guid.Empty, null, 100, "")]);
+                "", [new(Guid.Empty, null, 100, "")]);
             (await database.Store.ExecuteAsync("owner-a", plan.Id, new SaveTransaction(0, income), token)).IsT0.ShouldBeTrue();
         }
         finally
@@ -123,12 +123,12 @@ public sealed class ReportProjectionTests(ITestOutputHelper output)
         var entries = plan.Transactions.ToList();
         void Transfer(int id, DateOnly date, decimal amount, Guid? category, int destination)
             => entries.Add(new(HouseholdScenario.Id(id), plan.Accounts[4].Id, date, "Tracking transfer", "", amount, plan.Accounts[destination].Id,
-                ClearingState.Cleared, ClearingState.Uncleared, true, "", destination == 5 ? [] : [new(HouseholdScenario.Id(id + 100), category, amount, "")]));
+                "", destination == 5 ? [] : [new(HouseholdScenario.Id(id + 100), category, amount, "")]));
         Transfer(90001, february.AddDays(13), -25, null, 0);
         Transfer(90002, february.AddDays(14), 10, plan.Categories[2].Id, 0);
         Transfer(90003, february.AddDays(15), -50, null, 5);
         entries.Add(new(HouseholdScenario.Id(90004), plan.Accounts[0].Id, february, "Template excluded", "", -99_999, null,
-            ClearingState.Uncleared, ClearingState.Uncleared, false, "", [new(HouseholdScenario.Id(90104), plan.Categories[0].Id, -99_999, "")], RepeatFrequency.Daily, february));
+            "", [new(HouseholdScenario.Id(90104), plan.Categories[0].Id, -99_999, "")], RepeatFrequency.Daily, february));
         return plan with
         {
             Accounts = [.. plan.Accounts, new(HouseholdScenario.Id(7), "Opened later", AccountKind.Asset, 777, february.AddDays(14), false, ""),

@@ -137,10 +137,10 @@ public sealed class HouseholdBrowserTests(ITestOutputHelper output)
             // normal authenticated endpoints. Retire history tied to the earlier fixture.
             await using var command = connection.CreateCommand();
             command.CommandText = """
-                INSERT INTO "BudgetTransaction" ("PlanId", "Id", "AccountId", "Date", "Payee", "Memo", "Amount", "State", "TransferState", "NeedsApproval", "Flag", "Repeat", "Occurrence", "Sequence")
+                INSERT INTO "BudgetTransaction" ("PlanId", "Id", "AccountId", "Date", "Payee", "Memo", "Amount", "Flag", "Repeat", "Occurrence", "Sequence")
                 SELECT @id, gen_random_uuid(), @account, DATE '2026-01-01' + (n % 90)::int,
                     CASE WHEN n % 10 = 0 THEN 'Salary' ELSE 'Market' END, '', CASE WHEN n % 10 = 0 THEN 100 ELSE -1 END,
-                    0, 0, false, '', 0, 0, n FROM generate_series(@previous + 1, @count) n;
+                    '', 0, 0, n FROM generate_series(@previous + 1, @count) n;
                 INSERT INTO "BudgetSplit" ("PlanId", "Id", "TransactionId", "CategoryId", "Amount", "Memo")
                 SELECT "PlanId", gen_random_uuid(), "Id", CASE WHEN "Amount" < 0 THEN @category ELSE NULL END, "Amount", ''
                     FROM "BudgetTransaction" WHERE "PlanId" = @id AND "Sequence" > @previous;
