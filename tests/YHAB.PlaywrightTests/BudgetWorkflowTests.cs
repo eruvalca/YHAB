@@ -70,7 +70,6 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             await page.WaitForFunctionAsync("document.body.dataset.theme === 'dark'");
             var spending = page.Locator(".spending-row").Filter(new() { HasText = "Groceries" });
             (await spending.Locator("strong").InnerTextAsync()).ShouldBe("$75.00");
-            await ReconcileAsync(page);
             await VerifyPayeeRenameUndoAsync(page);
             errors.ShouldBeEmpty();
         }
@@ -234,41 +233,8 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await Button(page, "Close").ClickAsync();
     }
 
-    private static async Task ReconcileAsync(IPage page)
-    {
-        await OpenPlanNavigationAsync(page);
-        await page.Locator(".account-nav-link").Filter(new() { HasText = "Everyday checking" }).ClickAsync();
-        await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
-        await Button(page, "Uncleared").ClickAsync();
-        await Button(page, "Cleared").WaitForAsync();
-        await Button(page, "Reconcile").ClickAsync();
-        await VerifyEditorFocusAsync(page);
-        (await Input(page, "Bank's posted balance").InputValueAsync()).ShouldBe("925.00");
-        // The numeric keypad has no minus key, so a signed field carries its own
-        // sign toggle. The difference notice is the observable render that proves
-        // each toggle settled before the value is read.
-        var difference = page.Locator(".editor-surface .notice").Filter(new() { HasText = "Difference" });
-        await Button(page, "±").ClickAsync();
-        await difference.WaitForAsync();
-        (await Input(page, "Bank's posted balance").InputValueAsync()).ShouldBe("-925.00");
-        await Button(page, "±").ClickAsync();
-        await difference.WaitForAsync(new() { State = WaitForSelectorState.Detached });
-        (await Input(page, "Bank's posted balance").InputValueAsync()).ShouldBe("925.00");
-        await Button(page, "Finish reconciliation").ClickAsync();
-        await Button(page, "Reconciled").WaitForAsync();
-        var balance = page.Locator(".stat").Filter(new() { HasText = "Cleared balance" });
-        (await balance.Locator("strong").InnerTextAsync()).ShouldBe("$925.00");
-        await page.GetByRole(AriaRole.Button, new() { Name = "Neighborhood market", Exact = true }).ClickAsync();
-        await VerifyEditorFocusAsync(page);
-        (await page.Locator(".editor-surface .notice").InnerTextAsync()).ShouldContain("Mark uncleared / unreconcile");
-        // Playwright's native enabled check does not recognize Fluent's custom
-        // element host; its disabled attribute is the component contract.
-        (await Button(page, "Save transaction").GetAttributeAsync("disabled")).ShouldNotBeNull();
-    }
-
     private static async Task VerifyPayeeRenameUndoAsync(IPage page)
     {
-        await Button(page, "Close").ClickAsync();
         await OpenPlanNavigationAsync(page);
         await page.GetByRole(AriaRole.Link, new() { Name = "Plan settings", Exact = true }).ClickAsync();
         await page.GetByLabel("Existing payee", new() { Exact = true }).SelectOptionAsync("Neighborhood market");
@@ -283,8 +249,6 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await page.Locator(".register-table").GetByRole(AriaRole.Button, new() { Name = "Neighborhood market", Exact = true }).WaitForAsync();
         await Button(page, "Redo").ClickAsync();
         await page.Locator(".register-table").GetByRole(AriaRole.Button, new() { Name = "Community market", Exact = true }).WaitForAsync();
-        await Button(page, "Reconciled").WaitForAsync();
-        (await page.Locator(".stat").Filter(new() { HasText = "Cleared balance" }).Locator("strong").InnerTextAsync()).ShouldBe("$925.00");
         await Button(page, "+ Add transaction").ClickAsync();
         (await Input(page, "Payee").EvaluateAsync<string[]>("input => Array.from(input.list?.options ?? [], option => option.value)"))
             .ShouldBe(["Community market"]);

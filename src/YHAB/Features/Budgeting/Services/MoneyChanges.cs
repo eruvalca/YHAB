@@ -82,58 +82,6 @@ internal static class MoneyChanges
         return plan;
     }
 
-    public static BudgetChangeOutcome Reconcile(CommandIds ids, PlanSnapshot plan, ReconcileAccount command, DateOnly today, decimal? clearedMovement = null)
-    {
-        var account = plan.Accounts.SingleOrDefault(item => item.Id == command.AccountId && !item.Closed);
-        if (account is null || !CatalogChanges.ValidDate(command.Date) || command.Date > today || command.Date < account.OpenedOn
-            || !CatalogChanges.ValidMoney(command.ClearedBalance))
-        {
-            return new InvalidBudgetChange("Choose an open account, valid reconciliation date, and statement balance.");
-        }
-
-        var cleared = clearedMovement ?? AccountLedgerFacts.FromLedger(plan, account.Id, command.Date).ClearedMovement;
-        var difference = command.ClearedBalance - account.OpeningBalance - cleared;
-        if (!CatalogChanges.ValidMoney(difference))
-        {
-            return new InvalidBudgetChange("The reconciliation difference exceeds the supported transaction amount. Check the statement balance and your entries.");
-        }
-
-        if (difference != 0 && !command.CreateAdjustment)
-        {
-            return new InvalidBudgetChange($"Your cleared balance differs by {BudgetFacts.Money(difference)}. Check transactions or explicitly create an adjustment.");
-        }
-
-        var entries = plan.Transactions.Select(item => ReconcileEntry(item, account.Id, command.Date)).ToList();
-        if (difference != 0)
-        {
-            // Adjustments to cash balances affect Ready to Assign, rather than pretending to be spending.
-            entries.Add(new(ids[0], account.Id, command.Date, "Reconciliation adjustment", "Balance correction",
-                difference, null, ClearingState.Reconciled, ClearingState.Uncleared, false, string.Empty, []));
-        }
-
-        return plan with { Transactions = entries };
-    }
-
-    private static TransactionData ReconcileEntry(TransactionData entry, Guid accountId, DateOnly through)
-    {
-        if (entry.Date > through || entry.Repeat != RepeatFrequency.None)
-        {
-            return entry;
-        }
-
-        if (entry.AccountId == accountId && entry.State == ClearingState.Cleared)
-        {
-            entry = entry with { State = ClearingState.Reconciled };
-        }
-
-        if (entry.TransferAccountId == accountId && entry.TransferState == ClearingState.Cleared)
-        {
-            entry = entry with { TransferState = ClearingState.Reconciled };
-        }
-
-        return entry;
-    }
-
     private static bool ValidMonth(DateOnly month) => CatalogChanges.ValidDate(month) && month.Day == 1;
 
     private static bool ValidCategory(PlanSnapshot plan, Guid? categoryId)

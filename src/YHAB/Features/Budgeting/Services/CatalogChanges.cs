@@ -27,11 +27,6 @@ internal static class CatalogChanges
 
         account = account with { Id = account.Id == Guid.Empty ? ids[0] : account.Id, Name = account.Name.Trim() };
         facts ??= AccountLedgerFacts.FromLedger(plan, account.Id, today);
-        if (OpeningChangeAffectsReconciliation(facts, existing, account))
-        {
-            return new InvalidBudgetChange("Unreconcile this account's transactions before changing its opening balance or date.");
-        }
-
         if (facts.FirstTransaction < account.OpenedOn)
         {
             return new InvalidBudgetChange("The opening date must be on or before this account's first transaction.");
@@ -137,10 +132,6 @@ internal static class CatalogChanges
     }
 
     internal static bool ValidName(string? name) => !string.IsNullOrWhiteSpace(name) && name.Trim().Length <= 100;
-
-    private static bool OpeningChangeAffectsReconciliation(AccountLedgerFacts facts, AccountData? existing, AccountData account)
-        => existing is not null && (existing.OpeningBalance != account.OpeningBalance || existing.OpenedOn != account.OpenedOn)
-            && facts.HasReconciled;
 
     internal static bool ValidMoney(decimal amount) => amount is >= -AmountExpression.MaximumAmount and <= AmountExpression.MaximumAmount && decimal.Round(amount, 2) == amount;
 

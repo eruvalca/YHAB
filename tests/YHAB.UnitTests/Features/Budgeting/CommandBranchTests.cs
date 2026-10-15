@@ -67,40 +67,11 @@ public sealed class CommandBranchTests
     }
 
     [Fact]
-    public void UnassignedInflowCanBeSavedButCannotBeClearedFromAnotherAccount()
+    public void UnassignedInflowCanBeSaved()
     {
         var plan = Create();
         var income = Entry(plan, 0, 100, category: -1);
         var saved = TransactionChanges.Save(NewIds(), plan, new(0, income), plan.Today).AsT0;
         JsonSerializer.Serialize(saved.Transactions.Single()).ShouldBe(JsonSerializer.Serialize(income));
-        var original = JsonSerializer.Serialize(saved);
-        TransactionChanges.UpdateStates(saved, new(0, [income.Id], ClearingState.Cleared, false, plan.Accounts[1].Id)).AsT1.Message
-            .ShouldBe("Select transactions and a valid clearing state. Reconciled status is set through Reconcile.");
-        JsonSerializer.Serialize(saved).ShouldBe(original);
-    }
-
-    [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public void ScopedAndGlobalApprovalPreserveUnselectedEntriesAndClearingSides(bool scoped, bool transfer)
-    {
-        var plan = Create();
-        var unrelated = Entry(plan, 1, -20);
-        var selected = Entry(plan, 0, -10) with
-        {
-            TransferAccountId = transfer ? plan.Accounts[1].Id : null,
-            TransferState = ClearingState.Cleared,
-            NeedsApproval = true,
-        };
-        plan = plan with { Transactions = [unrelated, selected] };
-        var original = JsonSerializer.Serialize(plan);
-        var perspective = transfer ? plan.Accounts[1].Id : plan.Accounts[0].Id;
-        var account = scoped ? perspective : (Guid?)null;
-        var result = TransactionChanges.UpdateStates(plan, new(0, [selected.Id], null, true, account)).AsT0;
-        result.Transactions[0].ShouldBe(unrelated);
-        result.Transactions[1].ShouldBe(selected with { NeedsApproval = false });
-        JsonSerializer.Serialize(plan).ShouldBe(original);
     }
 }

@@ -259,7 +259,7 @@ This follow-up supersedes the remaining coverage gaps and measurement limitation
 in the preceding acceptance record. It adds nine command boundary cases and
 measurements for every command type, wide catalogs, competing replicas and browser
 memory. Production logic only unwraps an already-validated account ID before
-comparing it inside the clearing predicate; it removes unreachable nullable
+comparing it; it removes unreachable nullable
 branches without changing the account-selection rule.
 
 The isolated unit coverage run passed **469 tests, zero failures/skips**:
@@ -271,7 +271,7 @@ The isolated unit coverage run passed **469 tests, zero failures/skips**:
 
 `CommandBranchTests` checks accepted opening-date boundaries and next-day rejection
 from both transfer perspectives, unrelated entries, merging with uncategorized
-income, payment-category rejection, and all scoped/global approval combinations.
+income and payment-category rejection.
 It checks exact outcomes and unchanged inputs. These percentages do not establish
 mutation resistance or prove every combination correct.
 
@@ -283,7 +283,7 @@ sequential disposable plans at 10k, 50k and 100k transactions, with 10 accounts,
 synthetic SQL (checking accounts and one split per original entry); measured
 commands use the real service and database. Different transfer/credit/split mixes
 can have different costs. It checks
-exact assignments, funding, reversals, state changes, balances, report ending
+exact assignments, funding, reversals, balances, report ending
 net worth, receipts and recurring occurrence dates. A new overdue daily template
 posts its first 128 occurrences on save, then two batches complete all 365.
 
@@ -305,7 +305,6 @@ At 100k entries, the passing isolated run observed:
 | Clear 50 entries | 175 | 50 | 14 / 20.4 | 65.2 |
 | Edit one entry | 608 | 1 | 14 / 487.9 | 63.0 |
 | Delete 50 entries | 97 | 50 | 14 / 18.4 | 64.5 |
-| Reconcile one account | 644 | 9,995 | 14 / 20.4 | 426.6 |
 | Merge one category | 421 | 1,999 | 16 / 165.3 | 165.7 |
 | Two-year report | 828 | 18,928 | 9 / 47.9 | 220.5 |
 | Create overdue recurring template | 448 | 0 | 14 / 346.7 | 66.6 |
@@ -313,7 +312,7 @@ At 100k entries, the passing isolated run observed:
 | Recurring batch 3 | 201 | 257 | 12 / 106.0 | 70.6 |
 
 Transactions here mean EF entities, not all rows examined by PostgreSQL. Splits
-match those counts except the report's one splitless reconciliation adjustment.
+match those counts.
 Every operation also reads the catalog and all allocations (6,000, or 5,880 after
 the category merge). Reports return just 7,203 serialized bytes at this threshold.
 Recurring batches read prior occurrences of the selected template, so their read
@@ -478,7 +477,7 @@ Evidence: `TestResults/scale-hardening/browser-final60`.
 | Requested validation | Exact regression evidence |
 | --- | --- |
 | Remaining catalog branches | `OpeningDateIgnoresUnrelatedEntriesButChecksBothTransferSides`; `UsedCategoryNeedsSpendingReplacementAndPreservesUnassignedIncome` |
-| Remaining transaction branches | `PaymentCategoryCannotBeUsedAsASpendingSplit`; `UnassignedInflowCanBeSavedButCannotBeClearedFromAnotherAccount`; `ScopedAndGlobalApprovalPreserveUnselectedEntriesAndClearingSides` |
+| Remaining transaction branches | `PaymentCategoryCannotBeUsedAsASpendingSplit`; `UnassignedInflowCanBeSaved` |
 | Selective loading for every command type | `SelectiveAndFullLedgerOperationsRetainExactResultsAtEveryThresholdAsync` |
 | Large catalogs, allocation history and checkpoints | `WideCatalogsAndLongAllocationHistoriesRetainExactBalancesAsync` |
 | Sustained contention, retries, recurrence correctness and server memory | `SustainedReplicasPreserveEveryUserWriteAndRecurringOccurrenceAsync` |
@@ -834,16 +833,12 @@ dotnet format YHAB.slnx --severity warn --verify-no-changes
 
 #### Account validation, checkpoints and recurring discovery
 
-Account edits now read SQL facts for opening-date, reconciliation and closing
-validation instead of materializing account history. Reconciliation uses an
-aggregate cleared balance, then loads only posted entries whose selected account
-side is cleared and will change. Earlier reconciled/uncleared entries, future
-entries and templates stay outside the mutation/history payload. Transfer-side
-clearing states remain independent. These SQL aggregates still examine relevant
+Account edits now read SQL facts for opening-date and closing validation instead
+of materializing account history. These SQL aggregates still examine relevant
 account history in the database; zero EF entities does not mean zero rows scanned.
 
 The extracted `CheckpointPolicy` compares financial fields rather than every
-serialized field. Names, notes, targets, snoozing and clearing preserve saved
+serialized field. Names, notes, targets, snoozing and flags preserve saved
 openings. Amount/date/sequence/split-identity changes invalidate subsequent months;
 account financial changes and category identity changes reset the openings.
 Versioned result caches still refresh after metadata changes, so targets and labels
@@ -852,8 +847,8 @@ update even when their financial carry is reusable.
 | Requirement | Direct evidence |
 | --- | --- |
 | Transfer direction, dates, templates and opening balances | `FactsIncludeBothTransferSidesButExcludeTemplatesFutureAmountsAndOpeningBalances`, `OtherTransferSideCannotLockTheAccountsOpening`, `AccountAggregatesRespectDatesTransferSidesAndOverlappingForeignIdsAsync` |
-| Reconciliation from aggregate history, exact changed records and undo/redo | `ReconciliationCanUseAggregatesWithoutLoadingPreviouslyReconciledHistory`, `ReconciliationReadsOnlyChangedEntriesAndRestoresThemWithoutTouchingOtherSidesAsync` |
-| Metadata preserves financial checkpoints; financial edits rebuild exact totals | `PresentationTargetsClearingAndSnoozingPreserveFinancialOpeningsAndInputs`, `PostedMovementChangesInvalidateBothOldAndNewDates`, `MetadataAndClearingPreserveCheckpointContentsWhileMoneyChangesRebuildAsync` |
+| Posted-entry movement, first-transaction dates and account-save validation | `FactsIncludeBothTransferSidesButExcludeTemplatesFutureAmountsAndOpeningBalances`, `FirstTransactionUsesEveryEntryWhileMovementUsesPostedEntriesOnly` |
+| Metadata preserves financial checkpoints; financial edits rebuild exact totals | `PresentationTargetsFlagsAndSnoozingPreserveFinancialOpeningsAndInputs`, `PostedMovementChangesInvalidateBothOldAndNewDates`, `MetadataPreservesCheckpointContentsWhileMoneyChangesRebuildAsync` |
 | Sparse loading across 10k/50k/100k ledgers and wide catalogs | `SelectiveAndFullLedgerOperationsRetainExactResultsAtEveryThresholdAsync`, `WideCatalogsAndLongAllocationHistoriesRetainExactBalancesAsync` |
 | Template discovery avoids posted-history scans and preserves every scheduled date | `EntryEditsAndRecurringBatchesHaveInspectablePlansAndExactEffectsAsync` |
 
@@ -869,17 +864,15 @@ and [Npgsql internal-provider registration](https://www.npgsql.org/efcore/api/Mi
 
 Fresh isolated measurements after that harness correction passed all three ledger
 thresholds. Both account operations materialized zero transaction/split entities
-in this fixture. Its reconciliation has no remaining cleared candidates; the
-dedicated persistence test separately verifies three changed records, one adjustment,
-and exact undo/redo while preserving unrelated entries.
+in this fixture.
 
-| Entries | Account edit ms / allocated MB | Reconcile ms / allocated MB | Two-year report ms / allocated MB |
-| --- | ---: | ---: | ---: |
-| 10,000 | 101.4 / 1.44 | 45.5 / 2.04 | 76.0 / 2.13 |
-| 50,000 | 39.6 / 1.39 | 39.0 / 2.01 | 82.0 / 2.00 |
-| 100,000 | 44.6 / 1.40 | 43.4 / 2.00 | 140.8 / 2.01 |
+| Entries | Account edit ms / allocated MB | Two-year report ms / allocated MB |
+| --- | ---: | ---: |
+| 10,000 | 101.4 / 1.44 | 76.0 / 2.13 |
+| 50,000 | 39.6 / 1.39 | 82.0 / 2.00 |
+| 100,000 | 44.6 / 1.40 | 140.8 / 2.01 |
 
-Account edits used 11 SQL commands, reconciliation 13, and reports seven. The 100k
+Account edits used 11 SQL commands and reports seven. The 100k
 run also measured assignment undo at 38.5 ms, target funding at 50.5 ms (54 current
 transaction entities), and renaming 90k payees at 1,923.1 ms / 92.13 MB allocated.
 These are Debug samples, not latency guarantees or retained-memory figures. Changing
@@ -1605,9 +1598,9 @@ URLs contain access tokens.
 | UI-01: every Fluent dropdown contained an extra border and clipped text | Global native button styling applied to the dropdown's slotted button: 1 px border and 6.4 / 12 px padding inside a 20 px line box. Exclude slotted buttons while keeping low selector specificity, so native Identity buttons and category links retain their styling. Browser checks assert zero inner border/padding in budget, account, and transaction selectors. |
 | UI-02: workspace status and filter actions were misaligned | Set Fluent's explicit vertical alignment, remove default field margins in filter rows, separate the history toolbar from the heading, and allow pagination to wrap. Desktop geometry and phone overflow checks guard the result. |
 | UI-03: dark styling changed after enhanced navigation | Blazor replaced the body's client-added theme marker while Fluent's dark tokens remained active. Reapply Fluent's saved theme on `enhancedload`; retain System behavior and static SSR navigation. Tests exercise navigation in light, dark, and System mode, plus OS changes. |
-| UI-04: reconciled transactions looked editable and displayed an unchecked cleared state | The server already rejected these edits. The editor now explains how to unreconcile, disables Save and the clearing toggle when either transfer side is reconciled, and displays the actual source clearing state. Four component cases cover both locks and an unlocked transfer. |
+| UI-04: transactions displayed an unchecked clearing state | The cleared-at-the-bank toggle and the register status column were removed; entries are always editable and the server no longer validates a clearing state. |
 | UI-05: an empty category filter showed only column headings | Add an explicit no-matches message. Browser tests select an empty Hidden view and restore All categories. |
-| UI-06: opening an editor from a low register row left it offscreen | Reproduced on a 390 px phone viewport: the transaction editor appeared above the current scroll position. The shared editor surface now focuses its heading after its first interactive render, bringing it into view without interrupting subsequent input. Browser checks cover account, transaction, and reconciliation editors. |
+| UI-06: opening an editor from a low register row left it offscreen | Reproduced on a 390 px phone viewport: the transaction editor appeared above the current scroll position. The shared editor surface now focuses its heading after its first interactive render, bringing it into view without interrupting subsequent input. Browser checks cover account and transaction editors. |
 | LOG-01: repeated antiforgery cache-header warnings | Plan pages and API responses now use `Cache-Control: no-cache, no-store` and `Pragma: no-cache`, matching antiforgery requirements. The subsequent manual run returned no YHAB warning/error telemetry; authenticated browser checks verify the headers on snapshots and tokens. |
 | ENV-02: Aspire's ContainerExec watcher terminates after 60 seconds | Reproduced in Aspire 13.6.0 after healthy startup. Remains open in the dependency; see investigation below. |
 
@@ -1620,11 +1613,9 @@ arithmetic, clicking actions, and inspecting screenshots. The core checkpoint wa
 - Post a cleared $120 card grocery purchase; split an $80 checking purchase
   into $60 groceries and $20 shopping. An unbalanced $79 split disables Save.
 - Transfer $500 checking to savings and pay $200 from checking to the card.
-- Create a $14.99 monthly subscription due today, approve its occurrence,
+- Create a $14.99 monthly subscription due today, verify its occurrence posts,
   verify the next instruction is November 3, and refresh without duplicating it.
 - Move $20 from groceries to shopping to cover cash overspending, undo and redo.
-- Bulk-clear checking entries; a $1 reconciliation mismatch requires explicit
-  adjustment consent. Reconcile the matching $4,455.01 balance.
 - Create a Seasonal group and Holiday meals category; assign $100, hide it,
   retrieve it with Hidden, and move its history to Gifts. Ready to assign is $2,000.
 - Rename the plan, save notes, rename the subscription payee, and filter reports
@@ -1642,8 +1633,7 @@ preserved $5,955.01 of category balances without posting future recurring activi
 Assigning $300 there reduced Ready to assign to $1,700 and appeared as a future
 assignment when returning to October; Undo restored $2,000. A one-off transaction
 dated October 4 displayed the unsupported-future-date message and disabled Save.
-The reconciled split editor displayed its clearing state, lock notice, and disabled
-Save correctly. Mobile dropdown filtering, light/dark navigation, and document
+The split editor displayed its split state correctly. Mobile dropdown filtering, light/dark navigation, and document
 overflow checks passed. The skip link remained outside the viewport when unfocused.
 
 Final active-run YHAB telemetry returned no warnings/errors, and the browser had
@@ -1839,12 +1829,11 @@ test projects. Each run has independent mutable state.
 | Requirement | Exact test method |
 | --- | --- |
 | Six account balances, envelopes, carryover, reserves, reports, ordering at all six checkpoints | `HouseholdProgressionTests.MonthlyLedgerMatchesIndependentTotals` |
-| Reconciliation, transfer-side isolation, locked edit/delete rejection | `HouseholdProgressionTests.ReconciliationLocksOnlyTheSelectedSideAndRejectsUnapprovedAdjustments` |
-| Jan 31 / Feb 28 / Mar 31 recurrence, catch-up, approval, duplicate prevention, report exclusion of templates | `HouseholdProgressionTests.RecurrenceCrossesShortMonthsWithoutDuplicateOccurrences` |
+| Jan 31 / Feb 28 / Mar 31 recurrence, catch-up, duplicate prevention, report exclusion of templates | `HouseholdProgressionTests.RecurrenceCrossesShortMonthsWithoutDuplicateOccurrences` |
 | One-cent split mismatch, future one-off rejection, inclusive report boundaries, refunds and transfer exclusion | `HouseholdProgressionTests.SplitValidationAndReportDateBoundariesRemainExact` |
 | $100 cash / $70 credit overspending, next-month rollover and funding | `HouseholdProgressionTests.CashAndCreditOverspendingRollOverDifferentlyAndCanBeCovered` |
 | Refill carryover, dated savings, hidden/snoozed exclusions and insufficient move denial | `HouseholdProgressionTests.TargetFundingHonorsCarryoverHiddenAndSnoozedCategories` |
-| PostgreSQL round trips, money moves, undo/redo, branching, split edits, merges, reconciliation, owner/version guards | `HouseholdPersistenceTests.GrowingLedgerPreservesMathMutationsAndHistoryAtEveryMonthAsync` |
+| PostgreSQL round trips, money moves, undo/redo, branching, split edits, merges, owner/version guards | `HouseholdPersistenceTests.GrowingLedgerPreservesMathMutationsAndHistoryAtEveryMonthAsync` |
 | Real authenticated HTTP writes, month navigation, register paging/search/date filters, SSR reports and mobile layout | `HouseholdBrowserTests.GrowingHouseholdLedgerMatchesBudgetRegisterAndReportsAsync` |
 
 Persistence tests use disposable PostgreSQL containers with real migrations and

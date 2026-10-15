@@ -21,16 +21,6 @@ internal static class TransactionChanges
         }
 
         var existing = plan.Transactions.SingleOrDefault(item => item.Id == entry.Id);
-        if (existing is not null && (existing.State == ClearingState.Reconciled || existing.TransferState == ClearingState.Reconciled))
-        {
-            return new InvalidBudgetChange("Unreconcile this transaction before editing it.");
-        }
-
-        if (entry.State == ClearingState.Reconciled || entry.TransferState == ClearingState.Reconciled)
-        {
-            return new InvalidBudgetChange("Use Reconcile to lock transactions after verifying your balance.");
-        }
-
         var sameSchedule = existing is { Repeat: not RepeatFrequency.None }
             && existing.Repeat == entry.Repeat && existing.Date == entry.Date;
         var anchor = sameSchedule ? existing!.AnchorDate ?? existing.Date : entry.Date;
@@ -88,7 +78,7 @@ internal static class TransactionChanges
     private static bool ValidFields(TransactionData entry)
         => entry.Splits is not null && entry.Splits.Count <= 100 && entry.Payee is not null
             && entry.Payee.Length <= 200 && entry.Memo is not null && entry.Memo.Length <= 4000 && entry.Flag is not null
-            && _allowedFlags.Contains(entry.Flag) && Enum.IsDefined(entry.State) && Enum.IsDefined(entry.TransferState) && Enum.IsDefined(entry.Repeat);
+            && _allowedFlags.Contains(entry.Flag) && Enum.IsDefined(entry.Repeat);
 
     private static string? ValidateSplits(PlanSnapshot plan, TransactionData entry, AccountData account)
     {
@@ -131,42 +121,7 @@ internal static class TransactionChanges
             return new InvalidBudgetChange("Select transactions from this plan.");
         }
 
-        if (plan.Transactions.Any(item => command.TransactionIds.Contains(item.Id)
-            && (item.State == ClearingState.Reconciled || item.TransferState == ClearingState.Reconciled)))
-        {
-            return new InvalidBudgetChange("Unreconcile selected transactions before deleting them.");
-        }
-
         return plan with { Transactions = plan.Transactions.Where(item => !command.TransactionIds.Contains(item.Id)).ToArray() };
-    }
-
-    public static BudgetChangeOutcome UpdateStates(PlanSnapshot plan, UpdateTransactionStates command)
-    {
-        if (command.TransactionIds is null || command.TransactionIds.Count == 0
-            || command.TransactionIds.Any(id => !plan.Transactions.Any(item => item.Id == id))
-            || (command.AccountId is { } accountId && command.TransactionIds.Any(id => !plan.Transactions.Any(item => item.Id == id
-                && (item.AccountId == accountId || item.TransferAccountId == accountId))))
-            || command.State == ClearingState.Reconciled || (command.State.HasValue && !Enum.IsDefined(command.State.Value)))
-        {
-            return new InvalidBudgetChange("Select transactions and a valid clearing state. Reconciled status is set through Reconcile.");
-        }
-
-        return plan with
-        {
-            Transactions = plan.Transactions.Select(item => command.TransactionIds.Contains(item.Id) ? UpdateState(item, command) : item).ToArray(),
-        };
-    }
-
-    private static TransactionData UpdateState(TransactionData item, UpdateTransactionStates command)
-    {
-        var destination = command.AccountId == item.TransferAccountId && command.AccountId.HasValue;
-        var state = command.State ?? (destination ? item.TransferState : item.State);
-        return item with
-        {
-            State = destination ? item.State : state,
-            TransferState = destination ? state : item.TransferState,
-            NeedsApproval = !command.Approve && item.NeedsApproval,
-        };
     }
 
     public static PlanSnapshot PostDue(CommandIds ids, PlanSnapshot plan, DateOnly today, IReadOnlySet<RecurringOccurrence>? posted = null)
@@ -201,9 +156,6 @@ internal static class TransactionChanges
                         Repeat = RepeatFrequency.None,
                         SourceTemplateId = template.Id,
                         ScheduledDate = date,
-                        State = ClearingState.Uncleared,
-                        TransferState = ClearingState.Uncleared,
-                        NeedsApproval = true,
                         Splits = template.Splits.Select(item => item with { Id = ids[nextId++] }).ToArray(),
                     });
                 }

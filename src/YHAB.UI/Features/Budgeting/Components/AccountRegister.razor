@@ -6,7 +6,6 @@
         <FluentButton OnClick="Add" Disabled="@(Busy || !Plan.Accounts.Any(item => !item.Closed))" Appearance="ButtonAppearance.Primary">+ Add transaction</FluentButton>
         @if (_account is not null)
         {
-            <FluentButton OnClick="Reconcile" Disabled="@(Busy || _account.Closed)" Appearance="ButtonAppearance.Outline">Reconcile</FluentButton>
             <FluentButton OnClick="EditAccountAsync" Appearance="ButtonAppearance.Subtle">Account details</FluentButton>
         }
     </FluentStack>
@@ -15,9 +14,7 @@
 {
     var balance = SelectedBalance!;
     <FluentGrid Spacing="3" Class="summary-grid">
-        <FluentGridItem Xs="12" Md="4"><div class="stat"><span>Cleared balance</span><strong data-money-tone="@MoneyTone(balance.Cleared)">@Money(balance.Cleared)</strong></div></FluentGridItem>
-        <FluentGridItem Xs="6" Md="4"><div class="stat"><span>Uncleared</span><strong data-money-tone="@MoneyTone(balance.Uncleared)">@Money(balance.Uncleared)</strong></div></FluentGridItem>
-        <FluentGridItem Xs="6" Md="4"><div class="stat"><span>Working balance</span><strong data-money-tone="@MoneyTone(balance.Working)">@Money(balance.Working)</strong></div></FluentGridItem>
+        <FluentGridItem Xs="12" Md="4"><div class="stat"><span>Balance</span><strong data-money-tone="@MoneyTone(balance.Working)">@Money(balance.Working)</strong></div></FluentGridItem>
     </FluentGrid>
     @if (IsLoan(_account.Kind))
     {
@@ -27,10 +24,6 @@
 @if (_editing)
 {
     <TransactionEditor @key="_editKey" Plan="Plan" Payees="@(_payees ?? [])" Transaction="_transaction" AccountId="AccountId" OnCommand="OnCommand" OnClose="CloseEditors" Busy="IsBusy" />
-}
-@if (_reconciling && _account is not null)
-{
-    <ReconcileEditor Plan="Plan" Account="_account" Balance="SelectedBalance" OnCommand="OnCommand" OnClose="CloseEditors" Busy="IsBusy" />
 }
 <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Top" HorizontalGap="var(--spacingHorizontalM)" Class="table-toolbar">
     <FluentTextInput Label="Search transactions" @bind-Value="_search" @bind-Value:after="ResetPageAsync" Immediate="true" Placeholder="Payee, category, memo, flag, amount…" Width="min(100%, 22rem)" Margin="0" />
@@ -45,9 +38,6 @@
 {
     <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalS)" Class="selection-toolbar">
         <strong>@_selected.Count selected</strong>
-        <FluentButton OnClick="ApproveAsync" Disabled="IsBusy" Appearance="ButtonAppearance.Subtle">Approve</FluentButton>
-        <FluentButton OnClick="ClearAsync" Disabled="IsBusy" Appearance="ButtonAppearance.Subtle">Mark cleared</FluentButton>
-        <FluentButton OnClick="UnclearAsync" Disabled="IsBusy" Appearance="ButtonAppearance.Subtle">Mark uncleared / unreconcile</FluentButton>
         <FluentButton OnClick="RequestDelete" Disabled="IsBusy" Appearance="ButtonAppearance.Subtle">Delete…</FluentButton>
     </FluentStack>
 }
@@ -60,7 +50,7 @@
 }
 <div class="table-container" tabindex="0" aria-label="Account transaction register">
     <table class="register-table">
-        <thead><tr><th><FluentCheckbox Label="Select page" LabelPosition="LabelPosition.Before" Value="AllVisibleSelected" ValueChanged="SelectVisible" /></th><th scope="col">Date</th><th scope="col">Payee / account</th><th scope="col">Category / memo</th><th scope="col" class="numeric">Outflow</th><th scope="col" class="numeric">Inflow</th><th scope="col">Status</th>@if (_account is not null) { <th scope="col" class="numeric">Balance</th> }</tr></thead>
+        <thead><tr><th><FluentCheckbox Label="Select page" LabelPosition="LabelPosition.Before" Value="AllVisibleSelected" ValueChanged="SelectVisible" /></th><th scope="col">Date</th><th scope="col">Payee / account</th><th scope="col">Category / memo</th><th scope="col" class="numeric">Outflow</th><th scope="col" class="numeric">Inflow</th>@if (_account is not null) { <th scope="col" class="numeric">Balance</th> }</tr></thead>
         <tbody>
             @foreach (var entry in VisibleEntries)
             {
@@ -71,10 +61,9 @@
                     <td><button class="category-link" @onclick="() => Edit(entry)">@PayeeLabel(entry)</button><small>@AccountName(entry.AccountId) @if (entry.Flag.Length > 0) { <span class="flag" data-flag="@entry.Flag">@entry.Flag flag</span> }</small>
                         <FluentButton OnClick="() => Duplicate(entry)" Appearance="ButtonAppearance.Subtle">Duplicate</FluentButton>
                     </td>
-                    <td>@CategoryLabel(entry)<small>@entry.Memo</small>@if (entry.NeedsApproval) { <span class="approval-badge">Needs approval</span> }</td>
+                    <td>@CategoryLabel(entry)<small>@entry.Memo</small></td>
                     <td class="numeric money" data-money-tone="@(amount < 0 ? "negative" : "neutral")">@(amount < 0 ? Money(-amount) : "—")</td>
                     <td class="numeric money" data-money-tone="@(amount > 0 ? "positive" : "neutral")">@(amount > 0 ? Money(amount) : "—")</td>
-                    <td><FluentButton OnClick="() => ToggleClearedAsync(entry)" Disabled="@(IsBusy || entry.Repeat != RepeatFrequency.None || DisplayState(entry) == ClearingState.Reconciled)" Appearance="ButtonAppearance.Subtle">@DisplayState(entry)</FluentButton></td>
                     @if (_account is not null) { <td class="numeric money" data-money-tone="@(entry.Repeat == RepeatFrequency.None ? MoneyTone(_running.GetValueOrDefault(entry.Id)) : "neutral")">@(entry.Repeat == RepeatFrequency.None ? Money(_running.GetValueOrDefault(entry.Id)) : "—")</td> }
                 </tr>
             }

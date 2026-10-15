@@ -62,7 +62,7 @@ public sealed class WorkspaceTests
         var today = new DateOnly(2026, 10, 3);
         var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
         var recurring = new TransactionData(Guid.NewGuid(), account.Id, today, "Salary", "", 2000, null,
-            ClearingState.Uncleared, ClearingState.Uncleared, false, "", [], RepeatFrequency.Monthly);
+            "", [], RepeatFrequency.Monthly);
         var plan = new PlanSnapshot(Guid.NewGuid(), "Delayed plan", "", today, 7, [account], [], [], [], [recurring], false, false, []) { Today = today };
         var posted = plan with
         {
@@ -116,7 +116,7 @@ public sealed class WorkspaceTests
         var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, empty.Today, false, "");
         var plan = empty with { Accounts = [account] };
         var entry = new TransactionData(Guid.NewGuid(), account.Id, plan.Today, "Visible payee", "", -10, null,
-            ClearingState.Uncleared, ClearingState.Uncleared, false, "", []);
+            "", []);
         budgets.ReadViewAsync(plan.Id, Arg.Any<CancellationToken>()).Returns(View(plan), View(plan with { Version = 8 }));
         budgets.ReadRegisterAsync(plan.Id, Arg.Any<RegisterQuery>(), Arg.Any<CancellationToken>())
             .Returns(call => new RegisterPage(call.Arg<RegisterQuery>().Version!.Value, [new(entry, 990)], 1, null));

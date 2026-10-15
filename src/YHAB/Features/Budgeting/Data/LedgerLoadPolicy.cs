@@ -17,11 +17,7 @@ internal static class LedgerLoadPolicy
         }
         return command switch
         {
-            UpdateTransactionStates change when change.TransactionIds is not null => entries.Where(item => change.TransactionIds.Contains(item.Id)),
             DeleteTransactions change when change.TransactionIds is not null => entries.Where(item => change.TransactionIds.Contains(item.Id)),
-            ReconcileAccount change => entries.Where(item => item.Repeat == RepeatFrequency.None && item.Date <= change.Date
-                && ((item.AccountId == change.AccountId && item.State == ClearingState.Cleared)
-                    || (item.TransferAccountId == change.AccountId && item.TransferState == ClearingState.Cleared))),
             RemoveCategory change => entries.Where(item => database.Set<BudgetSplit>().Any(split => split.PlanId == planId && split.TransactionId == item.Id && split.CategoryId == change.CategoryId)),
             SaveTransaction change when change.Transaction?.Splits is not null => ForSave(database, entries, planId, change.Transaction),
             _ => entries,

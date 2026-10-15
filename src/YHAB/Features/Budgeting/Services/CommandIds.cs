@@ -16,7 +16,7 @@ internal sealed record CommandIds(ImmutableArray<Guid> Values)
         var count = command switch
         {
             SaveAccount => 3,
-            SaveGroup or SaveCategory or ReconcileAccount => 1,
+            SaveGroup or SaveCategory => 1,
             SaveTransaction save => 1 + Math.Min(100, save.Transaction?.Splits?.Count ?? 0),
             _ => 0,
         };

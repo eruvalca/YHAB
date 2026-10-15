@@ -113,7 +113,7 @@ public sealed class CancellationComponentTests
         tokens[1].IsCancellationRequested.ShouldBeTrue();
         tokens[2].IsCancellationRequested.ShouldBeFalse();
         var stale = new TransactionData(Guid.NewGuid(), plan.Accounts[0].Id, plan.Today, "Stale payee", "", -10, null,
-            ClearingState.Uncleared, ClearingState.Uncleared, false, "", []);
+            "", []);
         pending.SetResult(new(plan.Version, [new(stale, 990)], 1, null));
         await olderEvent;
 

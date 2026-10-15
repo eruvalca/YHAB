@@ -17,7 +17,6 @@ public sealed class CommandIdentityTests
     [InlineData("category")]
     [InlineData("transaction")]
     [InlineData("recurring")]
-    [InlineData("reconcile")]
     [InlineData("assign")]
     public void SuppliedIdentitiesMakeEveryCreatingCommandReplayExactly(string operation)
     {
@@ -30,7 +29,6 @@ public sealed class CommandIdentityTests
             "category" => new SaveCategory(0, plan.Categories[0] with { Id = Guid.Empty }),
             "transaction" => new SaveTransaction(0, entry),
             "recurring" => new SaveTransaction(0, entry with { Repeat = RepeatFrequency.Daily }),
-            "reconcile" => new ReconcileAccount(0, plan.Accounts[0].Id, plan.Today, 900, true),
             _ => new AssignMoney(0, plan.Categories[0].Id, January, 20),
         };
         var ids = CommandIds.Allocate(plan, command);
@@ -82,7 +80,6 @@ public sealed class CommandIdentityTests
         used.Length.ShouldBe(13029);
         used.Distinct().Count().ShouldBe(used.Length);
         used.ShouldBe(ids.Values);
-        result.Transactions.Count(item => item.NeedsApproval).ShouldBe(128);
         result.Transactions.Single(item => item.Repeat != RepeatFrequency.None).Date.ShouldBe(January.AddDays(128));
         var posting = new PostRecurring(0, plan.Today);
         var postingIds = CommandIds.Allocate(result, posting);

@@ -21,7 +21,7 @@ internal static class BudgetTestData
     }
     public static TransactionData Entry(PlanSnapshot plan, int account, decimal amount, int category = 0, DateOnly? date = null)
         => new(Guid.NewGuid(), plan.Accounts[account].Id, date ?? January.AddDays(1), "Market", "", amount, null,
-            ClearingState.Uncleared, ClearingState.Uncleared, false, "", [new(Guid.NewGuid(), category < 0 ? null : plan.Categories[category].Id, amount, "")]);
+            "", [new(Guid.NewGuid(), category < 0 ? null : plan.Categories[category].Id, amount, "")]);
     public static PlanSnapshot Assigned(PlanSnapshot plan, decimal amount)
         => plan with { Allocations = [new(plan.Categories[0].Id, January, amount)] };
 }

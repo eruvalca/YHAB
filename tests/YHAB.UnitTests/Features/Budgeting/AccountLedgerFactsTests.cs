@@ -16,51 +16,28 @@ public sealed class AccountLedgerFactsTests
         var plan = Create();
         plan = plan with
         {
-            Transactions = [Entry(plan, 0, -10), Entry(plan, 0, -20) with { State = ClearingState.Cleared },
-            Entry(plan, 0, -30) with { State = ClearingState.Reconciled },
-            Entry(plan, 1, -40) with { TransferAccountId = plan.Accounts[0].Id, TransferState = ClearingState.Cleared },
-            Entry(plan, 0, -50) with { TransferAccountId = plan.Accounts[1].Id, State = ClearingState.Cleared, TransferState = ClearingState.Reconciled },
+            Transactions = [Entry(plan, 0, -10), Entry(plan, 0, -20), Entry(plan, 0, -30),
+            Entry(plan, 1, -40) with { TransferAccountId = plan.Accounts[0].Id },
+            Entry(plan, 0, -50) with { TransferAccountId = plan.Accounts[1].Id },
             Entry(plan, 1, -999), Entry(plan, 0, -888, date: January) with { Repeat = RepeatFrequency.Monthly },
-            Entry(plan, 0, 777, date: January.AddMonths(1)) with { State = ClearingState.Cleared }]
+            Entry(plan, 0, 777, date: January.AddMonths(1))]
         };
-        AccountLedgerFacts.FromLedger(plan, plan.Accounts[0].Id, plan.Today).ShouldBe(new(January, true, -70, -60));
-        AccountLedgerFacts.FromLedger(plan, Guid.NewGuid(), plan.Today).ShouldBe(new(null, false, 0, 0));
+        AccountLedgerFacts.FromLedger(plan, plan.Accounts[0].Id, plan.Today).ShouldBe(new(January, -70));
+        AccountLedgerFacts.FromLedger(plan, Guid.NewGuid(), plan.Today).ShouldBe(new(null, 0));
         var before = AccountLedgerFacts.FromLedger(plan, plan.Accounts[0].Id, January);
-        before.ShouldBe(new(January, true, 0, 0));
-        AccountLedgerFacts.FromLedger(plan, plan.Accounts[0].Id, January.AddDays(1)).ShouldBe(new(January, true, -70, -60));
-    }
-
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void OtherTransferSideCannotLockTheAccountsOpening(bool destination)
-    {
-        var plan = Create();
-        var transfer = Entry(plan, destination ? 1 : 0, -25) with
-        {
-            TransferAccountId = plan.Accounts[destination ? 0 : 1].Id,
-            State = destination ? ClearingState.Reconciled : ClearingState.Uncleared,
-            TransferState = destination ? ClearingState.Uncleared : ClearingState.Reconciled,
-        };
-        plan = plan with { Transactions = [transfer] };
-        var facts = AccountLedgerFacts.FromLedger(plan, plan.Accounts[0].Id, plan.Today);
-        facts.ShouldBe(new(transfer.Date, false, destination ? 25 : -25, 0));
-        CatalogChanges.Save(NewIds(), plan with { Transactions = [] }, new(0, plan.Accounts[0] with { OpeningBalance = 900 }), plan.Today, facts)
-            .AsT0.Accounts.Single(item => item.Id == plan.Accounts[0].Id).OpeningBalance.ShouldBe(900);
+        before.ShouldBe(new(January, 0));
+        AccountLedgerFacts.FromLedger(plan, plan.Accounts[0].Id, January.AddDays(1)).ShouldBe(new(January, -70));
     }
 
     [Fact]
-    public void ReconciliationCanUseAggregatesWithoutLoadingPreviouslyReconciledHistory()
+    public void FirstTransactionUsesEveryEntryWhileMovementUsesPostedEntriesOnly()
     {
         var plan = Create();
-        var cleared = Entry(plan, 0, -20) with { State = ClearingState.Cleared };
-        plan = plan with { Transactions = [cleared] };
-        var result = MoneyChanges.Reconcile(NewIds(), plan, new(0, plan.Accounts[0].Id, plan.Today, 945, true), plan.Today, clearedMovement: -50).AsT0;
-        result.Transactions.Single(item => item.Id == cleared.Id).State.ShouldBe(ClearingState.Reconciled);
-        var adjustment = result.Transactions.Single(item => item.Id != cleared.Id);
-        adjustment.Amount.ShouldBe(-5);
-        adjustment.State.ShouldBe(ClearingState.Reconciled);
-        adjustment.Splits.ShouldBeEmpty();
-        plan.Transactions.Single().State.ShouldBe(ClearingState.Cleared);
+        var template = Entry(plan, 0, -25, date: January) with { Repeat = RepeatFrequency.Daily };
+        var future = Entry(plan, 0, -40, date: plan.Today.AddDays(1));
+        plan = plan with { Transactions = [template, future] };
+        var facts = AccountLedgerFacts.FromLedger(plan, plan.Accounts[0].Id, plan.Today);
+        facts.FirstTransaction.ShouldBe(January);
+        facts.WorkingMovement.ShouldBe(0);
     }
 }

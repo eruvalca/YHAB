@@ -15,8 +15,8 @@ internal static class AllocationLoadPolicy
             MoveMoney change => allocations.Where(item => item.Month == change.Month && (item.CategoryId == change.FromCategoryId || item.CategoryId == change.ToCategoryId)).ToListAsync(token),
             AutoAssign change => allocations.Where(item => item.Month == change.Month).ToListAsync(token),
             RemoveCategory change => allocations.Where(item => item.CategoryId == change.CategoryId || item.CategoryId == change.ReplacementCategoryId).ToListAsync(token),
-            SaveGroup or SaveCategory or ReorderGroup or ReorderCategory or UpdatePlan or SaveAccount or SaveTransaction or UpdateTransactionStates
-                or DeleteTransactions or ReconcileAccount or RenamePayee or PostRecurring => Task.FromResult(new List<BudgetAllocation>()),
+            SaveGroup or SaveCategory or ReorderGroup or ReorderCategory or UpdatePlan or SaveAccount or SaveTransaction
+                or DeleteTransactions or RenamePayee or PostRecurring => Task.FromResult(new List<BudgetAllocation>()),
             _ => allocations.ToListAsync(token),
         };
     }

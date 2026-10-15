@@ -42,7 +42,6 @@ public sealed class TransactionChangesTests
         var created = result.Transactions.Single(item => item.Id != template.Id && item.Id != existing.Id);
         created.ScheduledDate.ShouldBe(January.AddDays(2));
         created.Amount.ShouldBe(-25);
-        created.NeedsApproval.ShouldBeTrue();
         result.Transactions.Single(item => item.Id == template.Id).Date.ShouldBe(January.AddDays(3));
         plan.Transactions.ShouldBe([template, existing]);
         known.ShouldBe(originalKnown, ignoreOrder: true);
@@ -77,7 +76,7 @@ public sealed class TransactionChangesTests
     }
 
     [Fact]
-    public void DueRecurrencesArePostedOnceWithApprovalAndAnchorDayPreserved()
+    public void DueRecurrencesArePostedOnceWithAnchorDayPreserved()
     {
         var plan = Create();
         var anchor = January.AddDays(30);
@@ -86,24 +85,10 @@ public sealed class TransactionChangesTests
         var posted = TransactionChanges.PostDue(BudgetTestData.NewIds(), plan, new(2026, 3, 31));
         var occurrences = posted.Transactions.Where(item => item.SourceTemplateId == template.Id).OrderBy(item => item.Date).ToArray();
         occurrences.Select(item => item.Date).ShouldBe([new(2026, 1, 31), new(2026, 2, 28), new(2026, 3, 31)]);
-        occurrences.ShouldAllBe(item => item.NeedsApproval && item.State == ClearingState.Uncleared && item.Amount == -25);
+        occurrences.ShouldAllBe(item => item.Amount == -25);
         posted.Transactions.Single(item => item.Id == template.Id).Date.ShouldBe(new(2026, 4, 30));
         TransactionChanges.PostDue(BudgetTestData.NewIds(), posted, new(2026, 3, 31)).Transactions.Count.ShouldBe(4);
         occurrences.SelectMany(item => item.Splits).Select(item => item.Id).Distinct().Count().ShouldBe(3);
-    }
-
-    [Fact]
-    public void TransferClearingUpdatesOnlyTheSelectedAccountSide()
-    {
-        var plan = Create();
-        var transfer = Entry(plan, 0, -100) with { TransferAccountId = plan.Accounts[1].Id, Splits = [] };
-        plan = plan with { Transactions = [transfer] };
-        var result = TransactionChanges.UpdateStates(plan, new(0, [transfer.Id], ClearingState.Cleared, false, plan.Accounts[1].Id));
-        result.IsT0.ShouldBeTrue();
-        result.AsT0.Transactions.Single().State.ShouldBe(ClearingState.Uncleared);
-        result.AsT0.Transactions.Single().TransferState.ShouldBe(ClearingState.Cleared);
-        BudgetFacts.Balance(result.AsT0, plan.Accounts[1], plan.Today).Cleared.ShouldBe(100);
-        BudgetFacts.Balance(result.AsT0, plan.Accounts[0], plan.Today).Uncleared.ShouldBe(-100);
     }
 
     [Fact]
@@ -187,38 +172,6 @@ public sealed class TransactionChangesTests
     }
 
     [Fact]
-    public void ReconciliationLocksOnlyClearedEntriesAndRequiresExplicitAdjustment()
-    {
-        var plan = Create();
-        var cleared = Entry(plan, 0, -100) with { State = ClearingState.Cleared };
-        var pending = Entry(plan, 0, -50);
-        plan = plan with { Transactions = [cleared, pending] };
-        var rejected = MoneyChanges.Reconcile(BudgetTestData.NewIds(), plan, new(0, plan.Accounts[0].Id, plan.Today, 890, false), plan.Today);
-        rejected.IsT1.ShouldBeTrue();
-        rejected.AsT1.Message.ShouldContain("$10.00", Case.Insensitive);
-        var result = MoneyChanges.Reconcile(BudgetTestData.NewIds(), plan, new(0, plan.Accounts[0].Id, plan.Today, 890, true), plan.Today);
-        result.IsT0.ShouldBeTrue();
-        var updated = result.AsT0;
-        updated.Transactions.Single(item => item.Id == cleared.Id).State.ShouldBe(ClearingState.Reconciled);
-        updated.Transactions.Single(item => item.Id == pending.Id).State.ShouldBe(ClearingState.Uncleared);
-        updated.Transactions.Single(item => string.Equals(item.Payee, "Reconciliation adjustment", StringComparison.Ordinal)).Amount.ShouldBe(-10);
-        BudgetFacts.Balance(updated, plan.Accounts[0], plan.Today).Cleared.ShouldBe(890);
-        TransactionChanges.Delete(updated, new(0, [cleared.Id])).IsT1.ShouldBeTrue();
-        TransactionChanges.Save(BudgetTestData.NewIds(), updated, new(0, cleared), plan.Today).IsT1.ShouldBeTrue();
-    }
-
-    [Fact]
-    public void ReconciliationRejectsAnAdjustmentBeyondTheSupportedAmount()
-    {
-        var plan = Create();
-        plan = plan with { Accounts = [plan.Accounts[0] with { OpeningBalance = -AmountExpression.MaximumAmount }, plan.Accounts[1]] };
-        var result = MoneyChanges.Reconcile(BudgetTestData.NewIds(), plan, new(0, plan.Accounts[0].Id, plan.Today, AmountExpression.MaximumAmount, true), plan.Today);
-        result.IsT1.ShouldBeTrue();
-        result.AsT1.Message.ShouldContain("exceeds the supported transaction amount");
-        plan.Transactions.ShouldBeEmpty();
-    }
-
-    [Fact]
     public void MovingMoneyChangesAssignmentsWithoutChangingCashOrTotalAssigned()
     {
         var plan = Assigned(Create(), 300);
@@ -233,12 +186,13 @@ public sealed class TransactionChangesTests
     }
 
     [Fact]
-    public void ClosingAnAccountRequiresZeroBalanceAndOpeningChangesRespectReconciliation()
+    public void ClosingAnAccountRequiresZeroBalanceAndKeepsEditableOpeningValues()
     {
         var plan = Create();
         CatalogChanges.Save(BudgetTestData.NewIds(), plan, new(0, plan.Accounts[0] with { Closed = true }), plan.Today).IsT1.ShouldBeTrue();
-        plan = plan with { Transactions = [Entry(plan, 0, -50) with { State = ClearingState.Reconciled }] };
-        CatalogChanges.Save(BudgetTestData.NewIds(), plan, new(0, plan.Accounts[0] with { OpeningBalance = 1100 }), plan.Today).IsT1.ShouldBeTrue();
+        var balanced = plan with { Transactions = [Entry(plan, 0, -1000)] };
+        CatalogChanges.Save(BudgetTestData.NewIds(), balanced, new(0, balanced.Accounts[0] with { Closed = true }), plan.Today).IsT0.ShouldBeTrue();
+        CatalogChanges.Save(BudgetTestData.NewIds(), plan, new(0, plan.Accounts[0] with { OpeningBalance = 1100 }), plan.Today).IsT0.ShouldBeTrue();
         CatalogChanges.Save(BudgetTestData.NewIds(), plan, new(0, plan.Accounts[0] with { Name = "New name" }), plan.Today).IsT0.ShouldBeTrue();
     }
 }
