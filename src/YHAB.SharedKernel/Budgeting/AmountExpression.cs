@@ -16,10 +16,14 @@ public static class AmountExpression
             return false;
         }
 
+        if (!TryNormalizeDecimalSeparators(expression, out var normalized))
+        {
+            return false;
+        }
+
         try
         {
-            var parser = new Parser(NormalizeDecimalSeparators(expression)
-                .Replace(",", string.Empty, StringComparison.Ordinal)
+            var parser = new Parser(normalized.Replace(",", string.Empty, StringComparison.Ordinal)
                 .Replace("$", string.Empty, StringComparison.Ordinal));
             var value = parser.Parse();
             if (Math.Abs(value) > MaximumAmount)
@@ -39,9 +43,12 @@ public static class AmountExpression
     /// <summary>
     /// A device keyboard offers the local decimal separator, which can be a comma.
     /// Reading every comma as thousands grouping turned a typed <c>12,50</c> into
-    /// <c>1250.00</c>, so a dotted fraction otherwise stays the only decimal form.
+    /// <c>1250.00</c>, so a final one- or two-digit comma group becomes a fraction.
+    /// A number with that shape but a malformed whole part, such as
+    /// <c>1..234,56</c> or <c>1.2345,67</c>, stays invalid instead of being
+    /// smoothed into a value.
     /// </summary>
-    private static string NormalizeDecimalSeparators(string expression)
+    private static bool TryNormalizeDecimalSeparators(string expression, out string normalized)
     {
         var builder = new StringBuilder(expression.Length);
         var index = 0;
@@ -59,26 +66,38 @@ public static class AmountExpression
                 index++;
             }
 
-            builder.Append(NormalizeNumber(expression.AsSpan(start, index - start)));
+            if (!TryNormalizeNumber(expression.AsSpan(start, index - start), out var number))
+            {
+                normalized = string.Empty;
+                return false;
+            }
+
+            builder.Append(number);
         }
 
-        return builder.ToString();
+        normalized = builder.ToString();
+        return true;
     }
 
     private static bool IsNumberCharacter(char character) => char.IsAsciiDigit(character) || character is ',' or '.';
 
-    private static string NormalizeNumber(ReadOnlySpan<char> number)
+    private static bool TryNormalizeNumber(ReadOnlySpan<char> number, out string normalized)
     {
         var comma = number.LastIndexOf(',');
-        var fraction = number.Length - comma - 1;
-        if (comma < 0 || fraction is < 1 or > 2)
+        var fractionLength = number.Length - comma - 1;
+        if (comma < 0 || fractionLength is < 1 or > 2)
         {
-            return number.ToString();
+            normalized = number.ToString();
+            return true;
         }
 
-        // A one- or two-digit tail after the final comma is a fraction, so any
-        // remaining separators in the whole part were grouping under either
-        // convention ("1,234.56" and "1.234,56" both resolve to 1234.56 here).
+        var fraction = number[(comma + 1)..];
+        if (!IsAllDigits(fraction) || !IsGroupedWhole(number[..comma]))
+        {
+            normalized = string.Empty;
+            return false;
+        }
+
         var whole = new StringBuilder(number.Length);
         foreach (var character in number[..comma])
         {
@@ -88,7 +107,66 @@ public static class AmountExpression
             }
         }
 
-        return string.Concat(whole.Length == 0 ? "0" : whole.ToString(), ".", number[(comma + 1)..].ToString());
+        normalized = string.Concat(whole.Length == 0 ? "0" : whole.ToString(), ".", fraction.ToString());
+        return true;
+    }
+
+    private static bool IsAllDigits(ReadOnlySpan<char> value)
+    {
+        if (value.Length == 0)
+        {
+            return false;
+        }
+
+        foreach (var character in value)
+        {
+            if (!char.IsAsciiDigit(character))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// <summary>A plain integer, or thousands groups of exactly three after one to three leading digits.</summary>
+    private static bool IsGroupedWhole(ReadOnlySpan<char> whole)
+    {
+        if (whole.Length == 0)
+        {
+            return true;
+        }
+
+        if (whole.IndexOf('.') < 0)
+        {
+            return IsAllDigits(whole);
+        }
+
+        var length = 0;
+        var group = 0;
+        foreach (var character in whole)
+        {
+            if (character == '.')
+            {
+                if (group == 0 ? length is < 1 or > 3 : length != 3)
+                {
+                    return false;
+                }
+
+                group++;
+                length = 0;
+                continue;
+            }
+
+            if (!char.IsAsciiDigit(character))
+            {
+                return false;
+            }
+
+            length++;
+        }
+
+        return length == 3;
     }
 
     private sealed class Parser(string text)

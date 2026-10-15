@@ -56,6 +56,11 @@ public sealed class AmountExpressionTests
     [InlineData("1000000000")]
     [InlineData("79228162514264337593543950335*2")]
     [InlineData("1 +")]
+    [InlineData("1..234,56")]
+    [InlineData("1.2.3,45")]
+    [InlineData("1.2345,67")]
+    [InlineData("1,234,56")]
+    [InlineData("1,2.")]
     public void RejectsInvalidOrUnboundedInput(string? expression)
         => AmountExpression.TryEvaluate(expression, out _).ShouldBeFalse();
 
