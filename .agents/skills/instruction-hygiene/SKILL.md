@@ -111,8 +111,10 @@ that turns out to be wrong becomes a **Fix** that carries the corrected value.
 - **Commands** — do the build, format, test, and single-test selections exist as
   scripts or targets, and is the documented invocation still the shortest reliable
   one? Run them, cheapest first, and run every surviving command the environment
-  permits; a command that cannot be run is corrected or removed rather than
-  documented with a caveat.
+  permits. A prerequisite this environment lacks, such as Docker, a browser, or
+  network access, does not make a command wrong: keep a command that repository
+  evidence supports and report the blocked execution instead. Correct or remove a
+  command only when evidence shows it is wrong.
 - **Versions and dependencies** — compare against the manifests, lockfiles, and
   SDK or tool version declarations that own them. Document a constraint that
   changes how code is written, not a patch pin that drifts.
@@ -124,8 +126,8 @@ that turns out to be wrong becomes a **Fix** that carries the corrected value.
   rule, replace the prose with the command that enforces it. Never weaken or
   bypass enforcement to make a file smaller.
 
-Keep only commands that were validated. A wrong command stated with confidence is
-worse than no command.
+Keep a command that repository evidence supports, whether or not this environment
+could run it. A wrong command stated with confidence is worse than no command.
 
 ## 4. Find what is missing
 

@@ -178,7 +178,7 @@ foreach ($message in $completedMessages) {
 }
 
 Assert-Result 'Repeated Stop remembers the reviewed workspace without response text' (
-    (Stop-Turn $session $transcript).Count -eq 0)
+    (Stop-Turn $session).Count -eq 0)
 Start-Turn $session | Out-Null
 Assert-Result 'Duplicate prompt preserves the completed review acknowledgement' (
     (Stop-Turn $session $transcript).Count -eq 0)
