@@ -534,7 +534,11 @@ commit are not reused. Manual dispatch forces full validation and can deploy fro
 
 New commits cancel obsolete PR runs. Main validation runs independently rather
 than queuing behind an older deployment; it is not canceled. Production
-deployment has its own non-canceling concurrency group. Newer application changes
+deployment has its own non-canceling concurrency group with `queue: max`, preserving
+up to 100 pending deployments rather than replacing a newer commit's pending job
+when an older commit finishes validation later. Queue order follows arrival, not
+commit order, so the superseded-input check remains inside the deployment job.
+Newer application changes
 prevent an older main commit from beginning deployment; intervening documentation
 or test-only commits do not strand an otherwise validated application change.
 A successful applicable main run signs into Azure with OIDC
