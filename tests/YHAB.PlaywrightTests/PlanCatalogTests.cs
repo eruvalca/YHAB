@@ -56,24 +56,24 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             var source = plan.Groups.Single(item => string.Equals(item.Name, "Dreams", StringComparison.Ordinal));
             var destination = plan.Groups.First(item => item.Id != source.Id);
             var anchor = plan.Categories.First(item => item.GroupId == destination.Id);
-            var row = page.Locator($"tr[data-category-id='{category.Id}']");
+            var row = page.Locator($"[data-category-id='{category.Id}']");
             if (width >= 1000)
             {
                 foreach (var group in plan.Groups.Where(item => item.Id != source.Id && item.Id != destination.Id))
                 {
                     await page.GetByRole(AriaRole.Button, new() { Name = $"Collapse {group.Name}", Exact = true }).ClickAsync();
                 }
-                await row.Locator(".row-move").DragToAsync(page.Locator($"tr[data-category-id='{anchor.Id}']"));
-                await page.Locator($"tbody[data-group-id='{destination.Id}'] tr[data-category-id='{category.Id}']").WaitForAsync();
-                await page.Locator($"tbody[data-group-id='{source.Id}'] .group-row .row-move").DragToAsync(page.Locator($"tbody[data-group-id='{destination.Id}'] .group-row"));
-                await page.WaitForFunctionAsync("id => document.querySelector('.budget-table tbody[data-group-id]')?.dataset.groupId === id", source.Id.ToString());
+                await PointerDragAsync(page, row.Locator(".row-move"), page.Locator($"[data-category-id='{anchor.Id}']"));
+                await page.Locator($"[data-group-id='{destination.Id}'] [data-category-id='{category.Id}']").WaitForAsync();
+                await page.Locator($"[data-group-id='{source.Id}'] .group-row .row-move").DragToAsync(page.Locator($"[data-group-id='{destination.Id}'] .group-row"));
+                await page.WaitForFunctionAsync("id => document.querySelector('.budget-table [data-group-id]')?.dataset.groupId === id", source.Id.ToString());
             }
             else
             {
                 await row.Locator(".row-move").ClickAsync();
                 await page.GetByRole(AriaRole.Combobox, new() { Name = "Move to group", Exact = true }).ClickAsync();
                 await page.Locator($"fluent-option[text='{destination.Name}']").ClickAsync();
-                await page.Locator($"tbody[data-group-id='{destination.Id}'] tr[data-category-id='{category.Id}']").WaitForAsync();
+                await page.Locator($"[data-group-id='{destination.Id}'] [data-category-id='{category.Id}']").WaitForAsync();
             }
             await row.Locator(".category-link").ClickAsync();
             await page.Locator(".category-details h3").Filter(new() { HasText = "Target" }).WaitForAsync();
@@ -121,6 +121,17 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
         await Input(page, "Category name").FillAsync("Adventure fund");
         await Input(page, "Category name").PressAsync("Enter");
         await page.GetByRole(AriaRole.Button, new() { Name = "Adventure fund", Exact = true }).WaitForAsync();
+    }
+
+    // SortableJS uses pointer events, so the drag needs intermediate moves rather than an HTML drag-and-drop event.
+    private static async Task PointerDragAsync(IPage page, ILocator handle, ILocator target)
+    {
+        var from = (await handle.BoundingBoxAsync()).ShouldNotBeNull();
+        await page.Mouse.MoveAsync(from.X + from.Width / 2, from.Y + from.Height / 2);
+        await page.Mouse.DownAsync();
+        var to = (await target.BoundingBoxAsync()).ShouldNotBeNull();
+        await page.Mouse.MoveAsync(to.X + to.Width / 2, to.Y + to.Height / 2, new() { Steps = 12 });
+        await page.Mouse.UpAsync();
     }
 
     private static async Task VerifyDensityAsync(IPage page, int width)

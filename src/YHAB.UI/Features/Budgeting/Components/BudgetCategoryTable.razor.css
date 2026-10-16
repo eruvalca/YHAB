@@ -2,12 +2,14 @@
 .category-catalog ::deep .table-toolbar { margin-block: var(--spacingVerticalS); }
 .category-catalog ::deep .table-toolbar label { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .budget-table-container { margin-block: 0; }
-.budget-table { min-width: 35rem; table-layout: fixed; }
-.budget-table th:first-child { width: 49%; }
-.budget-table ::deep th, .budget-table ::deep td { padding: var(--spacingVerticalXS) var(--spacingHorizontalS); vertical-align: middle; }
-.budget-table ::deep td:nth-child(2) { width: 17%; }
+/* A div grid keeps the table's aligned columns while each group's rows remain a sortable list. */
+/* Contain visually hidden labels in the horizontal scroller so they cannot widen the page. */
+.budget-table { position: relative; min-width: 35rem; }
+.budget-table ::deep .budget-grid { display: grid; grid-template-columns: minmax(0, 49fr) repeat(3, minmax(0, 17fr)); align-items: center; border-bottom: 1px solid var(--colorNeutralStroke2); }
+.budget-table ::deep .budget-grid > * { box-sizing: border-box; min-width: 0; padding: var(--spacingVerticalXS) var(--spacingHorizontalS); }
+.budget-table ::deep .budget-header { font-weight: var(--fontWeightSemibold); }
 .budget-table ::deep .group-row { background: var(--colorNeutralBackground3); font-weight: var(--fontWeightSemibold); }
-.budget-table ::deep .group-row th, .budget-table ::deep .group-row td { padding-block: var(--spacingVerticalXS); }
+.budget-table ::deep .row-panel, .budget-table ::deep .category-move-row { padding: var(--spacingVerticalXS) var(--spacingHorizontalS); border-bottom: 1px solid var(--colorNeutralStroke2); }
 .budget-table ::deep .category-row { cursor: pointer; }
 .budget-table ::deep .category-row:hover { background: var(--colorSubtleBackgroundHover); }
 .budget-table ::deep .category-row[data-selected="true"] { background: var(--colorBrandBackground2); box-shadow: inset 3px 0 var(--colorBrandStroke1); }
@@ -22,10 +24,20 @@
 .budget-table ::deep .amount-input label { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .budget-table ::deep .amount-input fluent-text-input::part(control) { text-align: right; font-variant-numeric: tabular-nums; }
 .budget-table ::deep .available-pill { padding: var(--spacingVerticalXXS) var(--spacingHorizontalS); }
-.budget-table ::deep td small { display: block; font-size: var(--fontSizeBase100); }
-.budget-table ::deep .empty-group td { padding-inline-start: var(--spacingHorizontalXXL); color: var(--colorNeutralForeground3); }
-.budget-table ::deep .drop-end td { padding: var(--spacingVerticalS); border: 1px dashed var(--colorBrandStroke1); color: var(--colorBrandForeground1); }
-.budget-table-container[data-dragging="true"] ::deep tr:hover { outline: 2px solid var(--colorBrandStroke1); outline-offset: -2px; }
+.budget-table ::deep .numeric small { display: block; font-size: var(--fontSizeBase100); }
+.budget-table ::deep .empty-group { padding-inline-start: var(--spacingHorizontalXXL); color: var(--colorNeutralForeground3); }
+.budget-table ::deep .drop-end { padding: var(--spacingVerticalS); border: 1px dashed var(--colorBrandStroke1); color: var(--colorBrandForeground1); }
+.budget-table-container[data-dragging="true"] ::deep .group-row:hover { outline: 2px solid var(--colorBrandStroke1); outline-offset: -2px; }
+/* Replace the Fluent sortable list's card styling with table rows; selectors outrank the library's global rules. */
+.budget-table ::deep .fluent-sortable-list.category-list { --fluent-sortable-list-item-height: auto; --fluent-sortable-list-item-drop-color: var(--colorBrandBackground2); --fluent-sortable-list-item-drop-border-color: var(--colorBrandStroke1); min-height: 0; padding: 0; border: 0; border-radius: 0; }
+.budget-table ::deep .fluent-sortable-list.category-list:not(:has(.sortable-item)) { min-height: 2.5rem; margin: var(--spacingVerticalXS) var(--spacingHorizontalS) 0; border: 1px dashed var(--colorNeutralStroke1); }
+.budget-table ::deep .category-list .sortable-item { display: block; margin: 0; padding: 0; border: 0; border-radius: 0; background: var(--colorNeutralBackground1); user-select: auto; }
+.budget-table ::deep .category-list .sortable-item:focus { border: 0; background: var(--colorNeutralBackground1); outline: none; }
+.budget-table ::deep .category-list .sortable-item:focus-visible { outline: 2px solid var(--colorStrokeFocus2); outline-offset: -2px; }
+.budget-table ::deep .category-list .sortable-item[aria-grabbed="true"] { border: 0; background: var(--colorBrandBackground2); box-shadow: inset 3px 0 var(--colorBrandStroke1); }
+.budget-table ::deep .category-list .sortable-drag { background: var(--colorNeutralBackground1); box-shadow: var(--shadow16); }
+.budget-table ::deep .category-list .row-move.sortable-grab { position: static; display: inline-flex; align-items: center; justify-content: center; width: auto; height: auto; padding: 0; border-radius: 0; background: transparent; touch-action: none; }
 @media (max-width: 600px) {
     .budget-table ::deep .row-move, .budget-table ::deep .group-toggle, .budget-table ::deep .group-add { min-height: 2rem; }
+    .budget-table ::deep .category-list .row-move.sortable-grab { min-width: 2rem; }
 }

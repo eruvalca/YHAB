@@ -95,23 +95,68 @@ public sealed class BudgetCatalogTests
     }
 
     [Fact]
-    public async Task DragAndKeyboardMovesUseRevisionAndDestinationAsync()
+    public async Task CategoryDropBetweenGroupsShowsNewOrderUntilTheSaveSettlesAsync()
     {
         await using var context = CreateContext();
         var plan = Plan();
         var commands = new List<PlanCommand>();
-        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, commands.Add));
-        await component.Find(".category-row .row-move").DragStartAsync(new());
-        await component.Find($"tbody[data-group-id='{plan.Groups[1].Id}'] .group-row").DropAsync(new());
+        IRenderedComponent<BudgetBoard>? component = null;
+        string[][] pending = [];
+        component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, async command =>
+        {
+            commands.Add(command);
+            // The table renders the dropped order once the save yields, before the plan is refreshed.
+            await Task.Yield();
+            pending = [CategoryNames(component!, plan.Groups[0].Id), CategoryNames(component!, plan.Groups[1].Id)];
+        }));
+        var savings = List(component, plan.Groups[1].Id);
+        await component.InvokeAsync(() => savings.OnAddJSAsync(0, 0, ListId(plan.Groups[0].Id), ListId(plan.Groups[1].Id), plan.Categories[0].Id));
         var moved = commands.Single().ShouldBeOfType<ReorderCategory>();
         moved.CategoryId.ShouldBe(plan.Categories[0].Id);
         moved.GroupId.ShouldBe(plan.Groups[1].Id);
         moved.BeforeCategoryId.ShouldBeNull();
         moved.Version.ShouldBe(7);
+        pending.ShouldBe([["Utilities"], ["Groceries"]]);
+        CategoryNames(component, plan.Groups[0].Id).ShouldBe(["Groceries", "Utilities"]);
+        component.FindAll($"[data-group-id='{plan.Groups[1].Id}'] .category-row").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task CategoryDropWithinFilteredGroupKeepsHiddenNeighborsInPlaceAsync()
+    {
+        await using var context = CreateContext();
+        var plan = Plan();
+        var group = plan.Groups[0].Id;
+        plan = plan with { Categories = [.. plan.Categories, new(Guid.NewGuid(), group, "Archive", "", 2, true, null, null)] };
+        var commands = new List<PlanCommand>();
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, commands.Add));
+        var list = List(component, group);
+        await component.InvokeAsync(() => list.OnUpdateJSAsync(0, 0, ListId(group), ListId(group)));
+        commands.ShouldBeEmpty();
+        await component.InvokeAsync(() => list.OnUpdateJSAsync(0, 1, ListId(group), ListId(group)));
+        var moved = commands.Single().ShouldBeOfType<ReorderCategory>();
+        moved.CategoryId.ShouldBe(plan.Categories[0].Id);
+        moved.GroupId.ShouldBe(group);
+        moved.BeforeCategoryId.ShouldBe(plan.Categories[2].Id);
+        await component.InvokeAsync(() => list.OnUpdateJSAsync(1, 0, ListId(group), ListId(group)));
+        commands[^1].ShouldBeOfType<ReorderCategory>().BeforeCategoryId.ShouldBe(plan.Categories[0].Id);
+    }
+
+    [Fact]
+    public async Task MoveControlsAndGroupDragUseRevisionAndDestinationAsync()
+    {
+        await using var context = CreateContext();
+        var plan = Plan();
+        var commands = new List<PlanCommand>();
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, commands.Add));
+        component.FindAll(".category-row .row-move.sortable-grab").Count.ShouldBe(2);
         await component.Find(".category-row .row-move").ClickAsync();
         await component.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Move down", StringComparison.Ordinal)).ClickAsync();
-        commands[^1].ShouldBeOfType<ReorderCategory>().BeforeCategoryId.ShouldBeNull();
-        await component.Find($"tbody[data-group-id='{plan.Groups[1].Id}'] .group-row .row-move").DragStartAsync(new());
+        var moved = commands.Single().ShouldBeOfType<ReorderCategory>();
+        moved.CategoryId.ShouldBe(plan.Categories[0].Id);
+        moved.BeforeCategoryId.ShouldBeNull();
+        moved.Version.ShouldBe(7);
+        await component.Find($"[data-group-id='{plan.Groups[1].Id}'] .group-row .row-move").DragStartAsync(new());
         await component.Find(".group-row").DropAsync(new());
         var group = commands[^1].ShouldBeOfType<ReorderGroup>();
         group.GroupId.ShouldBe(plan.Groups[1].Id);
@@ -134,11 +179,19 @@ public sealed class BudgetCatalogTests
         await component.Find(".inline-name-form").KeyDownAsync(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "Escape" });
         component.FindAll(".inline-name-form").ShouldBeEmpty();
         component.Render(p => p.Add(item => item.Busy, true));
-        await component.Find(".category-row .row-move").DragStartAsync(new());
-        await component.FindAll(".group-row")[1].DropAsync(new());
+        component.FindAll(".category-row .row-move.sortable-grab").ShouldBeEmpty();
+        var list = List(component, plan.Groups[0].Id);
+        await component.InvokeAsync(() => list.OnUpdateJSAsync(0, 1, ListId(plan.Groups[0].Id), ListId(plan.Groups[0].Id)));
         commands.ShouldBeEmpty();
     }
 
+    private static string ListId(Guid group) => $"category-list-{group:N}";
+
+    private static FluentSortableList<Guid> List(IRenderedComponent<BudgetBoard> component, Guid group) =>
+        component.FindComponents<FluentSortableList<Guid>>().Single(item => string.Equals(item.Instance.Id, ListId(group), StringComparison.Ordinal)).Instance;
+
+    private static string[] CategoryNames(IRenderedComponent<BudgetBoard> component, Guid group) =>
+        component.FindAll($"[data-group-id='{group}'] .category-row .category-link").Select(item => item.TextContent.Trim()).ToArray();
     private static BunitContext CreateContext()
     {
         var context = new BunitContext();
