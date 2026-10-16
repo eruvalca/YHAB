@@ -10,6 +10,72 @@ SDK updates also update the compiler, built-in analyzers, and Razor parser used 
 the code-behind validator. Run the solution build and Razor policy checks after
 an SDK update.
 
+## Local validation and feedback
+
+Run the shared entry point from any directory using PowerShell 7 (`pwsh`):
+
+```powershell
+pwsh ./scripts/Invoke-Validation.ps1 -Scope Quick
+pwsh ./scripts/Invoke-Validation.ps1 -Scope Fast
+& ./scripts/Invoke-Validation.ps1 -Scope Infrastructure -Suite Integration,Aspire
+pwsh ./scripts/Invoke-Validation.ps1 -Scope Full -Configuration Release
+```
+
+For the array-valued `-Suite` example, invoke the script directly with `&` from
+PowerShell; when launching `pwsh -File` from another shell, select one suite per
+invocation instead. Omit `-Suite` for the default `Integration` suite.
+
+| Scope | Checks |
+| --- | --- |
+| `Quick` | `git diff --cached --check` only: staged whitespace/conflict-marker checks, including partially staged files and unborn branches. No formatting, builds, index edits, or application startup. |
+| `Fast` (default) | Quick, working-tree `git diff --check`, solution format verification, solution build, then unit and component tests with `--no-build`. |
+| `Infrastructure` | Fast plus explicitly selected `Integration`, `Aspire`, and/or `Browser` test suites. |
+| `Full` | Whitespace checks, format verification, solution build, then all five test projects via native MTP `dotnet test --solution ... --no-build`. |
+
+Commands always run from the repository root and stop at the first failure with
+a nonzero exit code. `-Configuration` defaults to `Debug`; the build and tests use
+the same configuration. Fast does not start Aspire, Docker, or browsers.
+Infrastructure and Full are deliberate opt-ins; install their prerequisites from
+the [test guide](../tests/README.md) first. These checks inspect the working tree,
+not an isolated commit snapshot, and do not cover untracked-file whitespace.
+Quick is not a test gate and does not prove the staged snapshot builds.
+
+Install Git and PowerShell 7 on `PATH`, plus the SDK selected by `global.json`
+for Fast. On Windows, use Git for Windows (its `sh` runs Git hooks), not Windows
+PowerShell 5.1; ensure GUI Git clients inherit a `PATH` containing `pwsh` and
+`dotnet`. Stop any development Aspire instance before formatting/full builds on
+Windows to avoid locked outputs. The scripts never stop or delete developer
+resources automatically. Format verification does not replace the required
+[formatter fix-and-review pass](#formatting).
+
+Git hooks are **off by default**. Enable explicitly per checkout:
+
+```powershell
+pwsh ./scripts/Install-GitHooks.ps1
+git config --local --get core.hooksPath
+# Disable (does not delete hook files or change global settings):
+pwsh ./scripts/Install-GitHooks.ps1 -Uninstall
+```
+
+The installer sets only local `core.hooksPath=.githooks`, makes hook files
+executable on Unix, and does not stage files. Pre-commit runs Quick; pre-push runs
+Fast once, regardless of pushed ref count. Existing effective hooks-path settings
+(including global ones) and custom default `.git/hooks` files are protected:
+installation refuses to replace them without `-Force`. Hooks are not chained.
+Before forcing, record `git config --show-origin --get-all core.hooksPath` and
+review existing hooks. Uninstall removes only a local `.githooks` value, exposing
+inherited settings again; restore any overwritten **local** value manually with
+`git config --local core.hooksPath '<previous-value>'`. If worktree-specific Git
+configuration overrides the local value, resolve it explicitly rather than
+assuming installation enabled the hooks. Hooks remain advisory and can be bypassed
+by Git's normal options; CI remains authoritative.
+
+VS Code's **Tasks: Run Task** exposes **Test: Unit**, **Test: Components**, and
+**Validate: Fast**. The project tasks build their selected project normally; Fast
+builds once before its no-build tests. None is a watcher or launches an external
+application. Agent completion uses the same entry point
+[manually](agent-hooks.md#manual-agent-validation).
+
 ## Nullable reference types
 
 `Directory.Build.props` enables nullable reference type annotations and analysis

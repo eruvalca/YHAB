@@ -1,0 +1,90 @@
+name: Isolated test layer
+
+on:
+  workflow_call:
+    inputs:
+      project:
+        required: true
+        type: string
+      performance:
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  ASPIRE_VERSION: 13.6.0
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: ./.github/actions/setup-dotnet
+      - name: Create and trust test HTTPS certificate
+        if: inputs.project != 'YHAB.IntegrationTests'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends libnss3-tools
+          # Trust the same user's certificate in both OpenSSL and Chromium.
+          dotnet dev-certs https --export-path "$RUNNER_TEMP/yhab-test-https.crt" --format PEM
+          sudo cp "$RUNNER_TEMP/yhab-test-https.crt" /usr/local/share/ca-certificates/yhab-test-https.crt
+          sudo update-ca-certificates
+          openssl verify -CAfile /etc/ssl/certs/ca-certificates.crt "$RUNNER_TEMP/yhab-test-https.crt"
+          nssdb="$HOME/.local/share/pki/nssdb"
+          if [[ -d "$HOME/.pki/nssdb" ]]; then nssdb="$HOME/.pki/nssdb"; fi
+          mkdir -p "$nssdb"
+          if [[ ! -f "$nssdb/cert9.db" ]]; then
+            certutil -N -d "sql:$nssdb" --empty-password
+          fi
+          certutil -A -d "sql:$nssdb" -n yhab-test-https -t 'P,,' -i "$RUNNER_TEMP/yhab-test-https.crt"
+          certutil -V -d "sql:$nssdb" -n yhab-test-https -u V
+      - name: Build test project
+        shell: pwsh
+        env:
+          PROJECT: ${{ inputs.project }}
+        run: |
+          dotnet build "tests/$env:PROJECT/$env:PROJECT.csproj" --configuration Release
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Install test browser
+        if: inputs.project == 'YHAB.PlaywrightTests'
+        shell: pwsh
+        run: ./tests/YHAB.PlaywrightTests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+      - name: Test isolated layer
+        shell: pwsh
+        env:
+          PROJECT: ${{ inputs.project }}
+          PERFORMANCE: ${{ inputs.performance }}
+        run: |
+          $arguments = @('test', '--project', "tests/$env:PROJECT/$env:PROJECT.csproj",
+            '--configuration', 'Release', '--no-build', '--max-parallel-test-modules', '1',
+            '--output', 'Detailed', '--report-trx', '--results-directory', "$env:RUNNER_TEMP/yhab-test-results")
+          if ($env:PROJECT -eq 'YHAB.PlaywrightTests') {
+            if ($env:PERFORMANCE -eq 'true') { $arguments += @('--filter-trait', 'Category=Performance') }
+            else { $arguments += @('--filter-not-trait', 'Category=Performance') }
+          }
+          dotnet @arguments
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Retain test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-results-${{ inputs.project }}-${{ inputs.performance }}
+          path: ${{ runner.temp }}/yhab-test-results/*.trx
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Retain browser failure diagnostics
+        if: failure() && inputs.project == 'YHAB.PlaywrightTests'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-diagnostics-${{ inputs.performance }}
+          path: |
+            tests/YHAB.PlaywrightTests/bin/Release/net10.0/TestResults/**/trace.zip
+            tests/YHAB.PlaywrightTests/bin/Release/net10.0/TestResults/**/*.png
+          retention-days: 7
+          if-no-files-found: warn

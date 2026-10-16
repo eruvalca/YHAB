@@ -15,7 +15,12 @@ the CLI and editor find `global.json` and `YHAB.slnx`.
 `YHAB.Testing` is a shared support library, not a test project. It configures
 isolated AppHost builders for the Aspire and Playwright projects.
 
-The deployment workflow runs all five layers before deploying from `main`.
+The deployment workflow runs all five functional layers for application changes
+before deploying from `main`, with infrastructure/browser projects on separate
+runners. The always-reported `validate` job gates deployment and should be the
+required branch-protection check. Explicit documentation/agent-tooling-only changes
+use lightweight checks and do not deploy; unknown paths fail closed to full validation.
+Main application changes are revalidated even after a successful PR run.
 On its Ubuntu runner, it exports the test user's public HTTPS development
 certificate, adds it to the system CA store and Chromium's NSS database, and
 verifies both before testing. Only the public certificate is imported, using
@@ -38,6 +43,36 @@ failure. These diagnostics come from disposable test accounts and may include
 their cookies and form data; keep them within the repository's artifact access
 controls. Do not upload development/production browser profiles or Aspire
 deployment/dashboard state. Local reports remain opt-in.
+
+### Functional versus extended browser validation
+
+Every application PR/main run retains all unit/component tests, the entire
+PostgreSQL suite (including sustained competing-write/recurring-worker checks),
+Aspire startup/deployment checks, and functional Chromium tests. Money conservation,
+receipts, concurrency, history rollback, migrations, owner isolation, API guards,
+SSR-to-server-to-WASM handoff, PWA behavior, desktop/mobile workflows, large-register
+page bounds and wide-catalog totals remain merge-blocking.
+
+Only three browser cases carry `Category=Performance`: `ProcessLoadTests`,
+`InspectorRetentionTests`, and
+`HouseholdBrowserTests.ExtendedHouseholdEditingPreservesMoneyAndMemoryBoundsAsync`.
+The ordinary household case still checks its three-month financial walkthrough,
+10k/50k/100k registers and wide catalog, but omits the 120-cycle editing measurement.
+The extended case repeats that correctness fixture and adds the original editing
+and memory assertions; no measurement deadline or assertion is relaxed.
+The workflow runs these three cases weekly and optionally on manual dispatch
+(`performance: true`), with failures included in that run's validation gate.
+Unfiltered local solution runs still execute every test.
+
+```powershell
+# Native MTP/xUnit filters, after a matching Release build:
+dotnet test --project tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj --configuration Release --no-build --filter-not-trait Category=Performance
+dotnet test --project tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj --configuration Release --no-build --filter-trait Category=Performance
+```
+
+Test-module concurrency remains bounded on each runner; do not speed up the suite
+by overlapping resource-heavy stacks or measurement cases on the same machine.
+NuGet caching avoids repeated package downloads, not test execution.
 
 `ServiceDefaultsExtensionsTests` checks opt-in production readiness/liveness and
 their default absence outside Development. `DeploymentMigrationsTests` uses Azure
@@ -494,9 +529,9 @@ Run only architecture checks with the repository's native MTP/xUnit syntax:
 dotnet test --project tests/YHAB.UnitTests/YHAB.UnitTests.csproj --configuration Debug --filter-class "YHAB.UnitTests.Architecture.*"
 ```
 
-The normal unit suite includes them automatically. CI additionally runs this
-focused Debug check, exports its TRX report, then keeps the existing Release
-build and all-layer test run. Debug preserves dependencies that compilation
+The normal unit suite includes them automatically. For application changes, CI
+additionally runs this focused Debug check and exports its TRX report, then keeps
+the Release build and functional test layers. Debug preserves dependencies that compilation
 optimizations can remove. Compiled architecture violations fail tests and CI;
 project-reference violations fail standalone builds with `YHABARCH001`.
 

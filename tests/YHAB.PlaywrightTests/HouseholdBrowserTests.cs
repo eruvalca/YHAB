@@ -20,7 +20,13 @@ namespace YHAB.PlaywrightTests;
 public sealed class HouseholdBrowserTests(ITestOutputHelper output)
 {
     [Fact]
-    public async Task GrowingHouseholdLedgerMatchesBudgetRegisterAndReportsAsync()
+    public Task GrowingHouseholdLedgerMatchesBudgetRegisterAndReportsAsync() => RunHouseholdAsync(extended: false);
+
+    [Fact]
+    [Trait("Category", "Performance")]
+    public Task ExtendedHouseholdEditingPreservesMoneyAndMemoryBoundsAsync() => RunHouseholdAsync(extended: true);
+
+    private async Task RunHouseholdAsync(bool extended)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         var cycles = int.Parse(Environment.GetEnvironmentVariable("YHAB_BROWSER_CYCLES") ?? "120", CultureInfo.InvariantCulture);
@@ -113,7 +119,10 @@ public sealed class HouseholdBrowserTests(ITestOutputHelper output)
             await page.SetViewportSizeAsync(390, 844);
             var connection = (await app.GetConnectionStringAsync("yhabdb", timeout.Token)).ShouldNotBeNull();
             await VerifyLargeRegistersAsync(page, context, browser, api.Path, connection, timeout.Token);
-            await BrowserEditingSession.RunAsync(page, context, browser, api.Path, "Groceries", cycles, output.WriteLine, timeout.Token);
+            if (extended)
+            {
+                await BrowserEditingSession.RunAsync(page, context, browser, api.Path, "Groceries", cycles, output.WriteLine, timeout.Token);
+            }
             await VerifyWideCatalogAsync(page, context, browser, connection, timeout.Token);
             errors.ShouldBeEmpty();
         }

@@ -5,13 +5,20 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      performance:
+        description: Also run extended browser load and memory diagnostics
+        type: boolean
+        default: false
+  schedule:
+    - cron: '23 3 * * 1'
 
 permissions:
   contents: read
 
 concurrency:
-  group: yhab-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  group: yhab-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   DOTNET_NOLOGO: true
@@ -19,79 +26,138 @@ env:
   ASPIRE_VERSION: 13.6.0
 
 jobs:
-  validate:
+  changes:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 5
+    outputs:
+      application: ${{ steps.scope.outputs.application }}
+      deploy: ${{ steps.scope.outputs.deploy }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
         with:
-          global-json-file: global.json
-      - name: Install Aspire
-        shell: bash
+          fetch-depth: 0
+      - name: Select validation scope
+        id: scope
+        shell: pwsh
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
-          dotnet tool install Aspire.Cli --version "$ASPIRE_VERSION" --tool-path "$RUNNER_TEMP/aspire"
-          echo "$RUNNER_TEMP/aspire" >> "$GITHUB_PATH"
-      - name: Create and trust test HTTPS certificate
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends libnss3-tools
-          # Aspire's HTTPS readiness probes use the runner's OpenSSL trust store.
-          # Export only the public certificate from the same user that runs tests.
-          dotnet dev-certs https --export-path "$RUNNER_TEMP/yhab-test-https.crt" --format PEM
-          sudo cp "$RUNNER_TEMP/yhab-test-https.crt" /usr/local/share/ca-certificates/yhab-test-https.crt
-          sudo update-ca-certificates
-          openssl verify -CAfile /etc/ssl/certs/ca-certificates.crt "$RUNNER_TEMP/yhab-test-https.crt"
-          # Chromium's service-worker fetches also require NSS trust. Context-level
-          # IgnoreHTTPSErrors does not cover them. M146+ uses this new default path,
-          # unless a legacy database already exists for the same runner user.
-          nssdb="$HOME/.local/share/pki/nssdb"
-          if [[ -d "$HOME/.pki/nssdb" ]]; then nssdb="$HOME/.pki/nssdb"; fi
-          mkdir -p "$nssdb"
-          if [[ ! -f "$nssdb/cert9.db" ]]; then
-            certutil -N -d "sql:$nssdb" --empty-password
-          fi
-          certutil -A -d "sql:$nssdb" -n yhab-test-https -t 'P,,' -i "$RUNNER_TEMP/yhab-test-https.crt"
-          certutil -V -d "sql:$nssdb" -n yhab-test-https -u V
+          $paths = @()
+          $full = $env:EVENT -in @('workflow_dispatch', 'schedule')
+          if (!$full) {
+            $base = $env:BASE
+            if (!$base -or $base -match '^0+$') { $full = $true }
+            else {
+              if ($env:EVENT -eq 'pull_request') {
+                $base = git merge-base $base HEAD
+                if ($LASTEXITCODE) { throw 'Cannot determine PR merge base.' }
+              }
+              $diff = git diff --name-only --no-renames -z $base HEAD
+              if ($LASTEXITCODE) { throw 'Cannot determine changed paths.' }
+              $paths = @(($diff -join "`n").Split([char]0, [StringSplitOptions]::RemoveEmptyEntries))
+            }
+          }
+          $scope = ./scripts/Get-ValidationScope.ps1 -Paths $paths -Full:$full
+          "application=$($scope.application.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          "deploy=$($scope.deploy.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+
+  fast:
+    needs: changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: ./.github/actions/setup-dotnet
       - name: Check formatting
         run: dotnet format YHAB.slnx --severity warn --verify-no-changes
+      - name: Check workflow selection and documentation hooks
+        shell: pwsh
+        run: |
+          ./scripts/Test-ValidationScope.ps1
+          ./scripts/Test-DocumentationReviewHook.ps1
       - name: Check project-reference policy
+        if: needs.changes.outputs.application == 'true'
         shell: pwsh
         run: ./scripts/Test-ArchitectureProjectReferences.ps1
       - name: Check architecture before optimization
+        if: needs.changes.outputs.application == 'true'
         run: dotnet test --project tests/YHAB.UnitTests/YHAB.UnitTests.csproj --configuration Debug --filter-class "YHAB.UnitTests.Architecture.*" --report-trx --report-trx-filename architecture-debug.trx --results-directory "${{ runner.temp }}/yhab-test-results"
       - name: Build
+        if: needs.changes.outputs.application == 'true'
         run: dotnet build YHAB.slnx --configuration Release
-      - name: Install test browser
+      - name: Test unit and component layers
+        if: needs.changes.outputs.application == 'true'
         shell: pwsh
-        run: ./tests/YHAB.PlaywrightTests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
-      - name: Test all layers with isolated resources
-        run: dotnet test --solution YHAB.slnx --configuration Release --no-build --max-parallel-test-modules 1 --output Detailed --report-trx --results-directory "${{ runner.temp }}/yhab-test-results"
+        run: |
+          foreach ($project in @('YHAB.UnitTests', 'YHAB.ComponentTests')) {
+            dotnet test --project "tests/$project/$project.csproj" --configuration Release --no-build --report-trx --results-directory "$env:RUNNER_TEMP/yhab-test-results"
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          }
       - name: Retain test results
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: test-results
+          name: test-results-fast
           path: ${{ runner.temp }}/yhab-test-results/*.trx
           retention-days: 7
           if-no-files-found: warn
-      - name: Retain browser failure diagnostics
-        if: failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: browser-diagnostics
-          path: |
-            tests/YHAB.PlaywrightTests/bin/Release/net10.0/TestResults/**/trace.zip
-            tests/YHAB.PlaywrightTests/bin/Release/net10.0/TestResults/**/*.png
-          retention-days: 7
-          if-no-files-found: warn
+
+  tests:
+    needs: changes
+    if: needs.changes.outputs.application == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [YHAB.IntegrationTests, YHAB.AspireIntegrationTests, YHAB.PlaywrightTests]
+    uses: ./.github/workflows/test-layer.yml
+    with:
+      project: ${{ matrix.project }}
+
+  diagnostics:
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.performance)
+    uses: ./.github/workflows/test-layer.yml
+    with:
+      project: YHAB.PlaywrightTests
+      performance: true
+
+  publish:
+    needs: changes
+    if: needs.changes.outputs.application == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: ./.github/actions/setup-dotnet
       - name: Validate deployment artifacts and migration bundle
         run: aspire publish --environment Production --output-path "$RUNNER_TEMP/yhab-preview" --non-interactive
 
+  validate:
+    needs: [changes, fast, tests, publish, diagnostics]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require every applicable check to succeed
+        shell: pwsh
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          PERFORMANCE: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.performance) }}
+        run: |
+          $jobs = $env:NEEDS | ConvertFrom-Json
+          $required = @('changes', 'fast')
+          if ($jobs.changes.outputs.application -eq 'true') { $required += @('tests', 'publish') }
+          if ($env:PERFORMANCE -eq 'true') { $required += 'diagnostics' }
+          foreach ($name in $required) {
+            if ($jobs.$name.result -ne 'success') { throw "$name did not succeed: $($jobs.$name.result)" }
+          }
+
   deploy:
-    needs: validate
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [changes, validate]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && needs.changes.outputs.deploy == 'true'
+    concurrency:
+      group: yhab-production
+      cancel-in-progress: false
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     environment: production
@@ -107,22 +173,22 @@ jobs:
       Azure__AllowResourceGroupCreation: false
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - name: Verify this is still the latest main commit
-        shell: bash
+      - name: Reject superseded application changes
+        shell: pwsh
         run: |
-          current_main=$(git ls-remote origin refs/heads/main | cut -f1)
-          if [[ "$current_main" != "$GITHUB_SHA" ]]; then
-            echo "This commit has been superseded on main. Deploy the newer workflow run."
-            exit 1
-          fi
-      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
-        with:
-          global-json-file: global.json
-      - name: Install Aspire
-        shell: bash
-        run: |
-          dotnet tool install Aspire.Cli --version "$ASPIRE_VERSION" --tool-path "$RUNNER_TEMP/aspire"
-          echo "$RUNNER_TEMP/aspire" >> "$GITHUB_PATH"
+          git fetch --no-tags origin main
+          if ($LASTEXITCODE) { throw 'Cannot fetch current main.' }
+          $currentMain = git rev-parse FETCH_HEAD
+          if ($LASTEXITCODE) { throw 'Cannot resolve current main.' }
+          if ($currentMain -ne $env:GITHUB_SHA) {
+            $diff = git diff --name-only --no-renames -z $env:GITHUB_SHA $currentMain
+            if ($LASTEXITCODE) { throw 'Cannot compare deployment inputs.' }
+            $paths = @(($diff -join "`n").Split([char]0, [StringSplitOptions]::RemoveEmptyEntries))
+            $scope = ./scripts/Get-ValidationScope.ps1 -Paths $paths
+            if ($scope.deploy) { throw 'Application changes superseded this commit. Deploy the newer workflow run.' }
+            Write-Host 'Only non-deployment files changed on main; deploying the validated application commit.'
+          }
+      - uses: ./.github/actions/setup-dotnet
       - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}

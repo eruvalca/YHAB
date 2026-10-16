@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+command -v pwsh >/dev/null 2>&1 || {
+    echo "YHAB pre-push requires PowerShell 7 (pwsh) on PATH." >&2
+    exit 1
+}
+root=$(git rev-parse --show-toplevel)
+exec pwsh -NoProfile -NonInteractive -File "$root/scripts/Invoke-Validation.ps1" -Scope Fast

@@ -95,6 +95,35 @@ This is assistance, not a guarantee of documentation accuracy or a Git commit ga
 The finishing hook can run after an authorized commit; pre-commit review remains an
 agent responsibility, and the hook does not authorize another commit.
 
+## Manual agent validation
+
+The documentation-review hooks above remain unchanged. There is deliberately no
+automatic validation `agentStop` handler: solution formatting/build/test work can
+outlast command-hook deadlines, and documentation-review continuations must not
+start repeated builds. Consequently there is no environment-variable opt-in
+completion hook in this change; automatic completion validation remains a gap.
+
+For an implementation task, explicitly ask the agent to run the shared gate
+before its final response:
+
+```powershell
+pwsh ./scripts/Invoke-Validation.ps1 -Scope Fast
+```
+
+Use `-Scope Infrastructure -Suite Integration` (or `Aspire`/`Browser`) for affected
+infrastructure, or `-Scope Full` when all prerequisites are available. The shared
+entry point returns a nonzero exit code on failure; agents must report that failure
+or blocker, not claim validation passed. This is a manual task command, not a hook
+protocol response, and does not create a continuation or rerun loop.
+
+No installation, environment flag, or new hook manifest is needed for manual
+usage. To stop using it, stop requesting the command; the documentation hook's
+installation/disable behavior is independent. See
+[local validation](README.md#local-validation-and-feedback) for scope definitions,
+Git-hook opt-in/disable commands, editor tasks, and Windows prerequisites. Neither
+manual validation nor Git-hook installation changes the documentation-review
+acknowledgement requirement.
+
 ## Instruction sources and scope
 
 Verified against the installed GitHub Copilot CLI with
