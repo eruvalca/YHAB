@@ -514,13 +514,38 @@ scope; the workflow's resource permissions remain scoped to the dedicated group.
 
 ### Deployment sequence
 
-[Validate and deploy](.github/workflows/deploy.yml) runs formatting, project-reference
-policy regression checks, Debug architecture tests, a Release build,
-all five test projects using isolated resources, and `aspire publish` on pull requests
-and pushes to `main`. A successful main run signs into Azure with OIDC and runs
-`aspire deploy --environment Production --non-interactive`. Manual dispatch is also
-available on `main`. Runs are serialized without canceling an active deployment;
-a superseded commit cannot begin another deployment.
+[Validate and deploy](.github/workflows/deploy.yml) always reports the `validate`
+gate. Require that check in branch protection. Formatting and tooling checks run
+on every PR and push to `main`; application changes additionally run Debug
+architecture checks, a Release build, unit/component tests, all database and Aspire
+integration tests, functional browser tests, and `aspire publish`. Heavy test
+projects run on separate runners, not concurrently on one constrained runner.
+Extended browser load/editing/memory diagnostics run weekly and through the
+manual dispatch `performance` option; scheduled runs never deploy.
+
+Change selection deliberately recognizes only the explicit documentation and
+agent-tooling allowlist in `scripts/Get-ValidationScope.ps1`. Everything else,
+including unknown paths and documentation that might be a build/test input, gets
+full functional validation. Test-only changes do not deploy. Ordinary documentation
+and known agent tooling receive formatting/tooling checks without a deployment.
+Application-changing main commits are fully revalidated; PR results from a different
+commit are not reused. Manual dispatch forces full validation and can deploy from
+`main`, even without file changes.
+
+New commits cancel obsolete PR runs. Main validation runs independently rather
+than queuing behind an older deployment; it is not canceled. Production
+deployment has its own non-canceling concurrency group with `queue: max`, preserving
+up to 100 pending deployments rather than replacing a newer commit's pending job
+when an older commit finishes validation later. Queue order follows arrival, not
+commit order, so the superseded-input check remains inside the deployment job.
+Newer application changes
+prevent an older main commit from beginning deployment; intervening documentation
+or test-only commits do not strand an otherwise validated application change.
+A successful applicable main run signs into Azure with OIDC
+and runs `aspire deploy --environment Production --non-interactive`, preserving
+migration-before-web ordering. SDK setup caches downloaded NuGet packages using
+SDK, central build/dependency manifests and project files as inputs; it does not
+reuse compiled test results, credentials or Aspire runtime/deployment state.
 
 The workflow's JavaScript actions use SHA-pinned releases targeting Node.js 24,
 including artifact upload and Azure login. This runtime is supplied by the GitHub
@@ -752,3 +777,13 @@ disposable and never use the development database volumes. See
 [tests/README.md](tests/README.md) for commands, prerequisites, layer selection, and
 [build/README.md](build/README.md) for formatting scope, analyzer rules, and Razor
 code-behind validation. Formatting does not replace checks for other file types.
+
+For opt-in local feedback, VS Code's **Tasks: Run Task** exposes focused headless
+tests and validation. `pwsh ./scripts/Invoke-Validation.ps1 -Scope Fast` verifies
+formatting, builds, and runs unit/component tests. Install local Git hooks explicitly
+with `pwsh ./scripts/Install-GitHooks.ps1`: pre-commit checks staged whitespace and
+pre-push runs Fast validation. Agent completion checks are separately opt-in with
+`YHAB_AGENT_VALIDATE=1` set before starting a trusted Copilot session.
+See [local validation](build/README.md#local-validation-and-opt-in-git-hooks) and
+[agent validation](build/agent-hooks.md#opt-in-agent-validation) for prerequisites,
+scope options and disable instructions. Local checks complement, not replace, CI.

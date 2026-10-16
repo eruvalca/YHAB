@@ -1,0 +1,20 @@
+name: Set up YHAB .NET
+description: Install the pinned SDK, cache NuGet packages, and install Aspire.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+      with:
+        global-json-file: global.json
+        cache: true
+        cache-dependency-path: |
+          global.json
+          Directory.*.props
+          Directory.*.targets
+          **/*.csproj
+          NuGet.config
+    - name: Install Aspire
+      shell: bash
+      run: |
+        dotnet tool install Aspire.Cli --version "$ASPIRE_VERSION" --tool-path "$RUNNER_TEMP/aspire"
+        echo "$RUNNER_TEMP/aspire" >> "$GITHUB_PATH"

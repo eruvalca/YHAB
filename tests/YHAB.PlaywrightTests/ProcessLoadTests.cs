@@ -16,6 +16,7 @@ namespace YHAB.PlaywrightTests;
 
 [SuppressMessage("Maintainability", "CA1515:Consider making public types internal", Justification = "xUnit requires public test classes for discovery.")]
 [Collection<BrowserAppHostDefinition>]
+[Trait("Category", "Performance")]
 public sealed class ProcessLoadTests(ITestOutputHelper output)
 {
     [Fact]

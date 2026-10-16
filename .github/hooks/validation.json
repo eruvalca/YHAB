@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "hooks": {
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "bash": "pwsh -NoProfile -NonInteractive -File \"$(git rev-parse --show-toplevel)/scripts/Invoke-AgentValidationHook.ps1\"",
+        "powershell": "pwsh -NoProfile -NonInteractive -Command \"& (Join-Path (git rev-parse --show-toplevel) 'scripts/Invoke-AgentValidationHook.ps1')\"",
+        "timeoutSec": 15
+      }
+    ],
+    "agentStop": [
+      {
+        "type": "command",
+        "bash": "pwsh -NoProfile -NonInteractive -File \"$(git rev-parse --show-toplevel)/scripts/Invoke-AgentValidationHook.ps1\"",
+        "powershell": "pwsh -NoProfile -NonInteractive -Command \"& (Join-Path (git rev-parse --show-toplevel) 'scripts/Invoke-AgentValidationHook.ps1')\"",
+        "timeoutSec": 660
+      }
+    ]
+  }
+}

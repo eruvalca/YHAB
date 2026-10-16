@@ -1,0 +1,32 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Validate: Fast",
+      "type": "process",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-NonInteractive", "-File", "${workspaceFolder}/scripts/Invoke-Validation.ps1", "-Scope", "Fast"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": "$msCompile",
+      "group": "test"
+    },
+    {
+      "label": "Test: Unit",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["test", "--project", "tests/YHAB.UnitTests/YHAB.UnitTests.csproj"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": "$msCompile",
+      "group": "test"
+    },
+    {
+      "label": "Test: Components",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["test", "--project", "tests/YHAB.ComponentTests/YHAB.ComponentTests.csproj"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": "$msCompile",
+      "group": "test"
+    }
+  ]
+}

@@ -95,6 +95,89 @@ This is assistance, not a guarantee of documentation accuracy or a Git commit ga
 The finishing hook can run after an authorized commit; pre-commit review remains an
 agent responsibility, and the hook does not authorize another commit.
 
+## Opt-in agent validation
+
+The independent [validation manifest](../.github/hooks/validation.json) invokes
+[`Invoke-AgentValidationHook.ps1`](../scripts/Invoke-AgentValidationHook.ps1).
+The documentation-review manifest and script above are unchanged. Validation is
+**off by default**: without the exact environment value `YHAB_AGENT_VALIDATE=1`,
+the handler immediately returns `{}` without inspecting the event or workspace,
+writing state, or launching validation.
+
+To enable it, set the environment variable **before starting a new trusted
+Copilot session**. Repository hook changes require restarting the session:
+
+```powershell
+$env:YHAB_AGENT_VALIDATE = '1'
+copilot
+# After exiting Copilot, disable for future sessions:
+Remove-Item Env:YHAB_AGENT_VALIDATE -ErrorAction SilentlyContinue
+```
+
+In Bash, launch with `YHAB_AGENT_VALIDATE=1 copilot`; omit the prefix to disable
+it. Do not set the variable globally unless automatic validation is intended for
+all inherited agent sessions. Removing only `.github/hooks/validation.json`
+disables this integration without disabling documentation review or Git hooks.
+
+`userPromptSubmitted` records a per-session workspace fingerprint and emits no
+instructions. At `agentStop`, changed work invokes
+`pwsh ./scripts/Invoke-Validation.ps1 -Scope Fast` from the repository root.
+Unchanged work, pre-existing dirty files alone, and `stop_hook_active` continuations
+do not launch it. Missing prompt baselines warn and require manual validation or a
+new session, rather than treating pre-existing files as new task changes.
+
+Fingerprints cover `HEAD`, staged state, changed working-tree content and file
+modes, and nonignored untracked files. Ignored outputs and local environment files
+do not invalidate them; run Fast manually after changing ignored inputs. Symbolic
+links are hashed by target text without following them. The handler stores hashes,
+results, and a local log path in ignored `artifacts/agent-hooks/validation/`;
+prompts, transcripts, diffs, and source contents are not stored in state. Fast's
+stdout/stderr go to an ignored per-session `.log`, never to the JSON protocol
+stream. Diagnostics can contain local details: keep logs private and do not upload
+credentials or local profiles.
+
+A failed Fast command returns Copilot's `decision: "block"` with its exit code
+and log path, requesting a truthful failure report or authorized task-related fixes.
+It blocks once per attempted fingerprint; repeated unchanged failures warn on
+stderr without running or blocking again. Failed/interrupted checkpoints are
+**not passes**. The attempt is recorded before launch, and a per-session file lock
+prevents concurrent duplicate runs. A workspace change during validation fails the
+check instead of accepting a stale result. Further ordinary Stop events can
+validate new edits, but the re-entrancy guard always wins: after edits during a
+blocked continuation, run Fast manually before claiming success.
+
+The handler bounds Fast to 600 seconds, terminates its own process tree on timeout,
+and requests a 660-second Stop-hook deadline (prompt hooks retain 15 seconds).
+If the host imposes a shorter deadline or interrupts the hook, its recorded
+attempt prevents an unchanged retry; inspect the interruption and run Fast manually.
+Hook/runtime errors are reported on stderr, with a one-pass block when session
+state is available; absence of a JSON block is not evidence of a successful run.
+This is opt-in local feedback, not an unbypassable gate or a substitute for CI.
+It never stages, commits, edits source, changes Git configuration, or stops
+developer resources, and it does not authorize unrelated fixes.
+
+Use the [local validation entry point](README.md#local-validation-and-opt-in-git-hooks)
+manually when hooks are disabled, for affected Infrastructure suites, for Full,
+or to rerun a failed/interrupted checkpoint. Git-hook installation and Windows
+prerequisites are documented there; in particular, install Git and PowerShell 7
+on `PATH` and stop development Aspire before full builds on Windows.
+When no handler is running, its ignored state/log directory can be deleted to
+clear cached attempts; restart the session afterward to establish a new baseline.
+Documentation-review acknowledgements remain independent and required.
+
+Validate the protocol and opt-in behavior without dotnet, Docker, or new tooling:
+
+```powershell
+pwsh ./scripts/Test-AgentValidationHook.ps1
+```
+
+The isolated Git fixtures under ignored `artifacts/` substitute only the shared
+Fast command. They check opt-in/off, unchanged and dirty baselines, staged and
+untracked changes, repeated successful/failed fingerprints, failure propagation,
+re-entrancy, concurrent edits/handlers, private state/log separation, and manifest
+launching from subdirectories with spaces. They do not prove that a running
+Copilot host has loaded/trusted the manifest or permits its requested deadline.
+
 ## Instruction sources and scope
 
 Verified against the installed GitHub Copilot CLI with
