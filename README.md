@@ -532,7 +532,8 @@ Application-changing main commits are fully revalidated; PR results from a diffe
 commit are not reused. Manual dispatch forces full validation and can deploy from
 `main`, even without file changes.
 
-New commits cancel obsolete PR runs. Main validation is not canceled, and production
+New commits cancel obsolete PR runs. Main validation runs independently rather
+than queuing behind an older deployment; it is not canceled. Production
 deployment has its own non-canceling concurrency group. Newer application changes
 prevent an older main commit from beginning deployment; intervening documentation
 or test-only commits do not strand an otherwise validated application change.
@@ -777,7 +778,8 @@ For opt-in local feedback, VS Code's **Tasks: Run Task** exposes focused headles
 tests and validation. `pwsh ./scripts/Invoke-Validation.ps1 -Scope Fast` verifies
 formatting, builds, and runs unit/component tests. Install local Git hooks explicitly
 with `pwsh ./scripts/Install-GitHooks.ps1`: pre-commit checks staged whitespace and
-pre-push runs Fast validation.
-See [local validation](build/README.md#local-validation-and-feedback) and
-[agent validation](build/agent-hooks.md#manual-agent-validation) for prerequisites,
+pre-push runs Fast validation. Agent completion checks are separately opt-in with
+`YHAB_AGENT_VALIDATE=1` set before starting a trusted Copilot session.
+See [local validation](build/README.md#local-validation-and-opt-in-git-hooks) and
+[agent validation](build/agent-hooks.md#opt-in-agent-validation) for prerequisites,
 scope options and disable instructions. Local checks complement, not replace, CI.

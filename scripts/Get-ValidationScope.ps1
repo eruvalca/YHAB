@@ -10,10 +10,10 @@ $ErrorActionPreference = 'Stop'
 $application = [bool] $Full
 $deploy = [bool] $Full
 foreach ($path in $Paths) {
-    if ($path -cmatch '^(README\.md|build/(README|agent-hooks)\.md|tests/README\.md|\.github/copilot-instructions\.md|\.github/instructions/[^/]+\.instructions\.md)$') {
+    if ($path -cmatch '^(README\.md|build/(README|agent-hooks)\.md|tests/README\.md|\.github/copilot-instructions\.md|\.github/instructions/[^/]+\.instructions\.md)\z') {
         continue
     }
-    if ($path -cmatch '^(\.github/hooks/[^/]+\.json|\.githooks/(pre-commit|pre-push)|\.vscode/tasks\.json|scripts/(Invoke-DocumentationReviewHook|Test-DocumentationReviewHook|Invoke-Validation|Install-GitHooks|Invoke-AgentValidationHook|Test-LocalValidation)\.ps1)$') {
+    if ($path -cmatch '^(\.github/hooks/[^/]+\.json|\.githooks/(pre-commit|pre-push)|\.vscode/tasks\.json|scripts/(Invoke-DocumentationReviewHook|Test-DocumentationReviewHook|Invoke-Validation|Install-GitHooks|Invoke-AgentValidationHook|Test-AgentValidationHook)\.ps1)\z') {
         continue
     }
     $application = $true

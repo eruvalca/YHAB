@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: yhab-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  group: yhab-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -76,6 +76,7 @@ jobs:
         run: |
           ./scripts/Test-ValidationScope.ps1
           ./scripts/Test-DocumentationReviewHook.ps1
+          ./scripts/Test-AgentValidationHook.ps1
       - name: Check project-reference policy
         if: needs.changes.outputs.application == 'true'
         shell: pwsh

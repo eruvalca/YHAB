@@ -10,7 +10,7 @@ SDK updates also update the compiler, built-in analyzers, and Razor parser used 
 the code-behind validator. Run the solution build and Razor policy checks after
 an SDK update.
 
-## Local validation and feedback
+## Local validation and opt-in Git hooks
 
 Run the shared entry point from any directory using PowerShell 7 (`pwsh`):
 
@@ -29,8 +29,8 @@ invocation instead. Omit `-Suite` for the default `Integration` suite.
 | --- | --- |
 | `Quick` | `git diff --cached --check` only: staged whitespace/conflict-marker checks, including partially staged files and unborn branches. No formatting, builds, index edits, or application startup. |
 | `Fast` (default) | Quick, working-tree `git diff --check`, solution format verification, solution build, then unit and component tests with `--no-build`. |
-| `Infrastructure` | Fast plus explicitly selected `Integration`, `Aspire`, and/or `Browser` test suites. |
-| `Full` | Whitespace checks, format verification, solution build, then all five test projects via native MTP `dotnet test --solution ... --no-build`. |
+| `Infrastructure` | Fast plus explicitly selected `Integration`, `Aspire`, and/or `Browser` test suites. Browser excludes `Category=Performance`, matching PR functional-browser validation. |
+| `Full` | Whitespace checks, format verification, solution build, then all five test projects via native MTP `dotnet test --solution ... --no-build --max-parallel-test-modules 1`, including browser performance cases with sequential test modules. |
 
 Commands always run from the repository root and stop at the first failure with
 a nonzero exit code. `-Configuration` defaults to `Debug`; the build and tests use
@@ -41,9 +41,12 @@ not an isolated commit snapshot, and do not cover untracked-file whitespace.
 Quick is not a test gate and does not prove the staged snapshot builds.
 
 Install Git and PowerShell 7 on `PATH`, plus the SDK selected by `global.json`
-for Fast. On Windows, use Git for Windows (its `sh` runs Git hooks), not Windows
-PowerShell 5.1; ensure GUI Git clients inherit a `PATH` containing `pwsh` and
-`dotnet`. Stop any development Aspire instance before formatting/full builds on
+and the repository-pinned Aspire CLI for Fast. Even its headless solution build
+requires `aspire` on `PATH` to build the AppHost; no running Aspire application is
+needed. Follow the [root setup guide](../README.md) for the pinned tooling.
+On Windows, use Git for Windows (its `sh` runs Git hooks), not Windows
+PowerShell 5.1; ensure GUI Git clients inherit a `PATH` containing `pwsh`,
+`dotnet`, and `aspire`. Stop any development Aspire instance before formatting/full builds on
 Windows to avoid locked outputs. The scripts never stop or delete developer
 resources automatically. Format verification does not replace the required
 [formatter fix-and-review pass](#formatting).
@@ -73,8 +76,8 @@ by Git's normal options; CI remains authoritative.
 VS Code's **Tasks: Run Task** exposes **Test: Unit**, **Test: Components**, and
 **Validate: Fast**. The project tasks build their selected project normally; Fast
 builds once before its no-build tests. None is a watcher or launches an external
-application. Agent completion uses the same entry point
-[manually](agent-hooks.md#manual-agent-validation).
+application. Agent completion can use the same entry point through the separate
+[opt-in validation hook](agent-hooks.md#opt-in-agent-validation).
 
 ## Nullable reference types
 

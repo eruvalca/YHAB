@@ -35,7 +35,7 @@ try {
             Invoke-CheckedCommand 'dotnet' @('build', 'YHAB.slnx', '--configuration', $Configuration)
 
             if ($Scope -eq 'Full') {
-                Invoke-CheckedCommand 'dotnet' @('test', '--solution', 'YHAB.slnx', '--configuration', $Configuration, '--no-build')
+                Invoke-CheckedCommand 'dotnet' @('test', '--solution', 'YHAB.slnx', '--configuration', $Configuration, '--no-build', '--max-parallel-test-modules', '1')
             }
             else {
                 $projects = @('YHAB.UnitTests', 'YHAB.ComponentTests')
@@ -48,7 +48,11 @@ try {
                     $projects += $Suite | Select-Object -Unique | ForEach-Object { $suiteProjects[$_] }
                 }
                 foreach ($project in $projects) {
-                    Invoke-CheckedCommand 'dotnet' @('test', '--project', "tests/$project/$project.csproj", '--configuration', $Configuration, '--no-build')
+                    $testArguments = @('test', '--project', "tests/$project/$project.csproj", '--configuration', $Configuration, '--no-build')
+                    if ($project -eq 'YHAB.PlaywrightTests') {
+                        $testArguments += @('--filter-not-trait', 'Category=Performance')
+                    }
+                    Invoke-CheckedCommand 'dotnet' $testArguments
                 }
             }
         }
