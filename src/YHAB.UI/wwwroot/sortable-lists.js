@@ -41,32 +41,61 @@ function stop(list) {
 }
 
 // Fluent moves a keyboard cross-list item into the destination before its add completes, then puts it
-// back in the source while awaiting the remove. Remember a real arrow-key move so the add can restore
-// focus after the destination renders instead of relying on Fluent's fixed 50 ms focus timer.
+// back in the source while awaiting the remove. Remember the moved category and an interaction token so
+// completion focuses that category wherever it actually landed, and never overrides a newer interaction.
 // The add callback runs after Fluent's GetItemJS round trip, so a time window cannot identify the
-// initiating key press; keep the flag until the add consumes it or another interaction starts.
-let keyboardMove = false;
-document.addEventListener('keydown', event => {
-    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-        const item = document.activeElement;
-        keyboardMove = item instanceof Element && item.classList.contains('sortable-item') && item.getAttribute('aria-grabbed') === 'true';
-    }
-    else if (event.key === 'Tab' || event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
-        keyboardMove = false;
-    }
-}, true);
-document.addEventListener('pointerdown', () => { keyboardMove = false; }, true);
+// initiating key press; keep the token until the add consumes it.
+let keyboardMove = null;
+let interaction = 0;
 
-async function focusAfterAdd(toListId, index, fromListId, oldIndex) {
+function releaseInteraction() {
+    interaction++;
+    keyboardMove = null;
+}
+
+document.addEventListener('keydown', event => {
+    interaction++;
+    const item = document.activeElement;
+    if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight')
+        && item instanceof Element && item.classList.contains('sortable-item') && item.getAttribute('aria-grabbed') === 'true') {
+        const row = item.querySelector('[data-category-id]');
+        keyboardMove = { itemId: row?.getAttribute('data-category-id') ?? null, generation: interaction };
+        return;
+    }
+    keyboardMove = null;
+}, true);
+document.addEventListener('pointerdown', releaseInteraction, true);
+document.addEventListener('enhancednavigationstart', releaseInteraction, true);
+window.addEventListener('popstate', releaseInteraction, true);
+window.addEventListener('hashchange', releaseInteraction, true);
+
+function wrapperFor(listId, itemId) {
+    const rows = document.getElementById(listId)?.querySelectorAll('[data-category-id]') ?? [];
+    for (const row of rows) {
+        if (row.getAttribute('data-category-id') === itemId) return row.closest('.sortable-item');
+    }
+    return null;
+}
+
+// A rejected save resolves the add normally and rolls the order back, so the category can be in the
+// source list again; locate it by id instead of trusting the destination index. Fluent focuses that
+// index 50 ms after the add returns, so restore afterwards and abandon the work when focus or state moved on.
+async function restoreKeyboardFocus(move, toListId, fromListId) {
+    if (!move.itemId) return;
+    await new Promise(resolve => setTimeout(resolve, 60));
     const deadline = performance.now() + 1000;
     do {
-        const item = document.getElementById(toListId)?.children[index];
+        if (move.generation !== interaction) return;
+        const item = wrapperFor(toListId, move.itemId) ?? wrapperFor(fromListId, move.itemId);
         if (item) {
             item.focus();
             if (document.activeElement === item) {
+                for (const grabbed of document.querySelectorAll('.sortable-item[aria-grabbed="true"]')) {
+                    if (grabbed !== item) grabbed.setAttribute('aria-grabbed', 'false');
+                }
                 item.setAttribute('aria-grabbed', 'true');
-                document.getElementById(fromListId)?.children[oldIndex]?.setAttribute('aria-grabbed', 'false');
                 await new Promise(requestAnimationFrame);
+                if (move.generation !== interaction) return;
                 if (item.isConnected && document.activeElement === item) return;
             }
         }
@@ -85,11 +114,11 @@ function callbacks(reference) {
         invokeMethodAsync: (name, ...args) => {
             if (name === 'OnRemoveJSAsync') return Promise.resolve();
             if (name !== 'OnAddJSAsync') return reference.invokeMethodAsync(name, ...args);
-            const keyboard = keyboardMove;
-            keyboardMove = false;
+            const move = keyboardMove;
+            keyboardMove = null;
             setTimeout(() => {
                 reference.invokeMethodAsync(name, ...args).then(
-                    () => { if (keyboard) void focusAfterAdd(args[3], args[1], args[2], args[0]); },
+                    () => { if (move) void restoreKeyboardFocus(move, args[3], args[2]); },
                     () => { /* Blazor reports a failed add through the renderer. */ });
             });
             return Promise.resolve();

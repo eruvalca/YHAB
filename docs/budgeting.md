@@ -58,10 +58,11 @@ never releases its browser instance or callback reference, so
 when the list leaves the page. The same script drops Fluent's source-side removal
 callback, because the table applies a cross-group move from the destination's
 add alone. It also starts that add only after Fluent restores the source DOM,
-since the keyboard path would otherwise render while the row is detached, and
-restores keyboard focus to the moved row after the destination renders instead
-of relying on Fluent's fixed focus timer, which can fire before a server render
-arrives. The
+since the keyboard path would otherwise render while the row is detached. It
+also restores keyboard focus to the moved category's actual row, including its
+source row after a rejected save, once rendering settles, and abandons that
+restoration when a newer interaction starts; this replaces Fluent's fixed focus
+timer, which can fire before a server render arrives. The
 category grid keeps table semantics through ARIA roles; the script gives Fluent's
 item wrappers the role named by `data-item-role`. Keep the script until the
 library handles these cases itself.

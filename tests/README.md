@@ -600,9 +600,11 @@ viewport, with category rows between 36 and 64 pixels tall. At phone width it
 checks the collapsed plan navigation and document overflow. A phone-sized touch
 context on the WebAssembly renderer also moves categories by keyboard and by
 Chromium touch input. It checks drag feedback, the optimistic order while a save
-is held, and restoration after a rejected save. A server-renderer case with
-delayed circuit messages moves a category into an empty group by keyboard and
-verifies focus is restored for the next keyboard move. `BudgetCatalogTests`
+is held, and restoration after a rejected save. A rejected keyboard move checks
+that focus returns to the moved category's source row rather than whatever row
+occupies the destination index. A server-renderer case with delayed circuit
+messages moves a category into an empty group by keyboard and verifies focus is
+restored for the next keyboard move. `BudgetCatalogTests`
 covers component commands, cancellation, collapse, selection, preservation of
 existing category metadata, and open rename drafts across successful and
 rejected reorders. `CatalogOrderingTests` covers destination
