@@ -42,15 +42,23 @@ Drag a category's move handle, with a mouse or by touch, to reorder it within
 its group or drop it into another expanded group. The row follows the pointer,
 the other rows make room, and the new order appears immediately while it saves;
 a failed save restores the saved order. Focus a category row and press Enter or
-Space, then the arrow keys, to move it within its group from the keyboard. Drag
+Space, then Up or Down to move it within its group, or Left or Right to move it
+to the top of the neighboring expanded group. Drag
 group handles onto a group header to reorder whole groups; an end drop area
 appears below the table. Clicking a handle opens **Move up / Move down** and, for
 categories, a group selector; these are the touch alternative for moving groups.
 Group move controls also hide or show the group; use the **Hidden** view to find
 it again. SortableJS, which Fluent UI's sortable list uses, is served from
-`YHAB.UI/wwwroot/lib/sortablejs` rather than a CDN. Fluent's sortable list never
-releases its browser instance, so `YHAB.UI/wwwroot/sortable-lists.js` stops each
-list when it leaves the page; keep it until the library disposes lists itself.
+`YHAB.UI/wwwroot/lib/sortablejs` rather than a CDN. Fluent UI 5.0.1's sortable list
+never releases its browser instance or callback reference, so
+`YHAB.UI/wwwroot/sortable-lists.js` stops each list and disposes its reference
+when the list leaves the page. The same script drops Fluent's source-side removal
+callback, because the table applies a cross-group move from the destination's
+add alone. It also starts that add only after Fluent restores the source DOM,
+since the keyboard path would otherwise render while the row is detached. The
+category grid keeps table semantics through ARIA roles; the script gives Fluent's
+item wrappers the role named by `data-item-role`. Keep the script until the
+library handles these cases itself.
 Each move saves atomically as one revision and one undoable change, including
 normalizing tied display orders. Moving does not change assignments or history.
 

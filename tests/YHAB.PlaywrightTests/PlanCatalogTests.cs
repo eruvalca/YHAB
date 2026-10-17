@@ -106,6 +106,151 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
         }
     }
 
+    [Fact]
+    public async Task SortableCategoriesMoveByKeyboardAndTouchAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(4));
+        await using var builder = await TestAppHost.CreateAsync(timeout.Token);
+        await using var app = await builder.BuildAsync(timeout.Token);
+        await app.StartAsync(timeout.Token);
+        await app.ResourceNotifications.WaitForResourceHealthyAsync("yhab", timeout.Token);
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync();
+        await using var context = await browser.NewContextAsync(new()
+        {
+            BaseURL = app.GetEndpoint("yhab", "https").ToString(),
+            IgnoreHTTPSErrors = true,
+            ViewportSize = new() { Width = 390, Height = 960 },
+            HasTouch = true,
+            IsMobile = true,
+        });
+        await context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = true });
+        var page = await context.NewPageAsync();
+        var errors = new ConcurrentQueue<string>();
+        page.PageError += (_, error) => errors.Enqueue(error);
+        try
+        {
+            await BudgetWorkflowTests.RegisterAndLoginAsync(page);
+            await page.GotoAsync("/plans");
+            await page.GetByLabel("Plan name", new() { Exact = true }).FillAsync("Sortable planning");
+            await page.GetByRole(AriaRole.Button, new() { Name = "Create your plan" }).ClickAsync();
+            await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+            var path = new Uri(page.Url).AbsolutePath;
+            // The cached WebAssembly renderer sends commands over HTTP, so the reorder request can be held.
+            await page.WaitForFunctionAsync("() => Object.keys(localStorage).some(key => key.startsWith('blazor-resource-hash:'))", null, new() { Timeout = 60000 });
+            await page.ReloadAsync();
+            await page.Locator(".workspace[data-renderer='WebAssembly'][data-interactive='true']").WaitForAsync();
+            var plan = await ReadAsync(page, path);
+            var groups = plan.Groups.Where(item => !item.Hidden).OrderBy(item => item.SortOrder).ThenBy(item => item.Id).ToArray();
+            int Count(Guid group) => plan.Categories.Count(item => item.GroupId == group && !item.Hidden);
+            var pair = groups.Zip(groups.Skip(1)).First(item => Count(item.First.Id) >= 3 && Count(item.Second.Id) >= 2);
+            var (source, destination) = (pair.First.Id, pair.Second.Id);
+
+            // Fluent applies a keyboard cross-list move to the destination first; the source must not then remove a stale index.
+            for (var move = 0; move < 2; move++)
+            {
+                var last = (await DomOrderAsync(page, source))[^1];
+                var item = page.Locator($"#category-list-{source:N} > .sortable-item").Filter(new() { Has = page.Locator($"[data-category-id='{last}']") });
+                await item.FocusAsync();
+                await item.PressAsync("Enter");
+                await SavedAsync(page, () => item.PressAsync("ArrowRight"));
+                plan = await ReadAsync(page, path);
+                plan.Categories.Single(category => string.Equals(category.Id.ToString(), last, StringComparison.Ordinal)).GroupId.ShouldBe(destination);
+                (await DomOrderAsync(page, destination)).ShouldBe(PlanOrder(plan, destination));
+                (await DomOrderAsync(page, source)).ShouldBe(PlanOrder(plan, source));
+            }
+
+            var cdp = await context.NewCDPSessionAsync(page);
+            var before = await DomOrderAsync(page, destination);
+            await SavedAsync(page, () => TouchDragAsync(page, cdp, Row(page, before[0]).Locator(".row-move"), Row(page, before[1]), async () =>
+            {
+                (await page.Locator(".category-list .sortable-drag").CountAsync()).ShouldBeGreaterThan(0);
+                (await page.Locator(".category-list .sortable-ghost").CountAsync()).ShouldBe(1);
+            }));
+            plan = await ReadAsync(page, path);
+            var within = await DomOrderAsync(page, destination);
+            within.ShouldBe(PlanOrder(plan, destination));
+            within.ShouldNotBe(before);
+
+            var moving = (await DomOrderAsync(page, source))[0];
+            await SavedAsync(page, () => TouchDragAsync(page, cdp, Row(page, moving).Locator(".row-move"), Row(page, within[0]), () => Task.CompletedTask));
+            plan = await ReadAsync(page, path);
+            plan.Categories.Single(category => string.Equals(category.Id.ToString(), moving, StringComparison.Ordinal)).GroupId.ShouldBe(destination);
+            (await DomOrderAsync(page, destination)).ShouldBe(PlanOrder(plan, destination));
+            (await DomOrderAsync(page, source)).ShouldBe(PlanOrder(plan, source));
+
+            var held = new TaskCompletionSource<IRoute>(TaskCreationOptions.RunContinuationsAsynchronously);
+            await page.RouteAsync("**/categories/reorder", route => { held.TrySetResult(route); return Task.CompletedTask; });
+            var confirmed = PlanOrder(plan, destination);
+            await TouchDragAsync(page, cdp, Row(page, confirmed[0]).Locator(".row-move"), Row(page, confirmed[1]), () => Task.CompletedTask);
+            var request = await held.Task.WaitAsync(TimeSpan.FromSeconds(30), timeout.Token);
+            (await DomOrderAsync(page, destination)).ShouldNotBe(confirmed);
+            await request.FulfillAsync(new()
+            {
+                Status = 400,
+                ContentType = "application/problem+json",
+                Body = """{"title":"Rejected","detail":"Reorder rejected for this test."}""",
+            });
+            await page.GetByText("Reorder rejected for this test.").WaitForAsync();
+            await page.UnrouteAsync("**/categories/reorder");
+            await page.WaitForFunctionAsync("([id, order]) => [...document.querySelectorAll(`#category-list-${id} [data-category-id]`)].map(row => row.dataset.categoryId).join() === order",
+                new object[] { destination.ToString("N"), string.Join(',', confirmed) });
+            (await ReadAsync(page, path)).Version.ShouldBe(plan.Version);
+            (await page.Locator("#blazor-error-ui").IsVisibleAsync()).ShouldBeFalse();
+            errors.ShouldBeEmpty();
+        }
+        finally
+        {
+            await BrowserArtifacts.CaptureAsync(page, context, Path.Combine(AppContext.BaseDirectory, "TestResults", "plan-sortable-touch"), output.WriteLine);
+        }
+    }
+
+    private static ILocator Row(IPage page, string id) => page.Locator($".category-list [data-category-id='{id}']");
+
+    private static Task<string[]> DomOrderAsync(IPage page, Guid group)
+        => page.Locator($"#category-list-{group:N} [data-category-id]").EvaluateAllAsync<string[]>("rows => rows.map(row => row.dataset.categoryId)");
+
+    private static string[] PlanOrder(PlanSnapshot plan, Guid group) => plan.Categories.Where(item => item.GroupId == group && !item.Hidden)
+        .OrderBy(item => item.SortOrder).ThenBy(item => item.Id).Select(item => item.Id.ToString()).ToArray();
+
+    // Waits for the reorder command to commit and the workspace to leave its busy state before reading the result.
+    private static async Task SavedAsync(IPage page, Func<Task> action)
+    {
+        var response = await page.RunAndWaitForResponseAsync(action,
+            item => item.Url.EndsWith("/categories/reorder", StringComparison.Ordinal) && string.Equals(item.Request.Method, "POST", StringComparison.Ordinal));
+        response.Status.ShouldBe(200, await response.TextAsync());
+        await page.WaitForFunctionAsync("() => document.querySelector('.category-list .row-move') && !document.querySelector('.category-list .row-move:not(.sortable-grab)')");
+    }
+
+    // Playwright's touchscreen only taps, so the drag is dispatched through the Chromium protocol as real touch input.
+    private static async Task TouchDragAsync(IPage page, ICDPSession cdp, ILocator handle, ILocator target, Func<Task> whileDragging)
+    {
+        await handle.ScrollIntoViewIfNeededAsync();
+        var from = (await handle.BoundingBoxAsync()).ShouldNotBeNull();
+        var to = (await target.BoundingBoxAsync()).ShouldNotBeNull();
+        var (x, y) = (from.X + from.Width / 2, from.Y + from.Height / 2);
+        var (endX, endY) = (to.X + to.Width / 2, to.Y + to.Height * 0.75f);
+        await TouchAsync(cdp, "touchStart", x, y);
+        const int Steps = 16;
+        for (var step = 1; step <= Steps; step++)
+        {
+            await TouchAsync(cdp, "touchMove", x + (endX - x) * step / Steps, y + (endY - y) * step / Steps);
+            if (step == Steps / 2)
+            {
+                await whileDragging();
+            }
+        }
+        await TouchAsync(cdp, "touchEnd", endX, endY);
+        await page.Locator(".category-list .sortable-drag").WaitForAsync(new() { State = WaitForSelectorState.Detached });
+    }
+
+    private static async Task TouchAsync(ICDPSession cdp, string type, float x, float y) => await cdp.SendAsync("Input.dispatchTouchEvent", new Dictionary<string, object>(StringComparer.Ordinal)
+    {
+        ["type"] = type,
+        ["touchPoints"] = string.Equals(type, "touchEnd", StringComparison.Ordinal) ? Array.Empty<object>() : new object[] { new Dictionary<string, object>(StringComparer.Ordinal) { ["x"] = x, ["y"] = y } },
+    });
+
     private static async Task CreateAndRenameAsync(IPage page)
     {
         await Button(page, "Category group").ClickAsync();

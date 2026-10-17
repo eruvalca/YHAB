@@ -56,6 +56,22 @@ public sealed class BudgetCatalogTests
     }
 
     [Fact]
+    public async Task CategoryGridKeepsTableSemanticsAroundSortableListsAsync()
+    {
+        await using var context = CreateContext();
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, Plan()).Add(item => item.OnCommand, _ => { }));
+        component.Find(".budget-table").GetAttribute("role").ShouldBe("table");
+        component.FindAll(".budget-header [role='columnheader']").Select(item => item.TextContent).ShouldBe(["Category", "Assigned", "Activity", "Available"]);
+        component.FindAll(".budget-group").ShouldAllBe(item => item.GetAttribute("role") == "rowgroup");
+        component.FindAll(".group-row").ShouldAllBe(item => item.GetAttribute("role") == "row");
+        var list = component.Find(".fluent-sortable-list");
+        list.GetAttribute("role").ShouldBe("none");
+        list.GetAttribute("data-item-role").ShouldBe("row");
+        component.Find(".category-row").GetAttribute("role").ShouldBe("none");
+        component.Find(".category-row").Children.Select(item => item.GetAttribute("role")).ShouldBe(["rowheader", "cell", "cell", "cell"]);
+    }
+
+    [Fact]
     public async Task RowSelectionOpensTargetWhileAssignmentKeepsItsOwnActionAsync()
     {
         await using var context = CreateContext();

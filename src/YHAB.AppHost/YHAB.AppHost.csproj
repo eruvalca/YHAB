@@ -17,6 +17,8 @@
     <PackageReference Include="Aspire.Hosting.EntityFrameworkCore" />
     <PackageReference Include="Aspire.Hosting.PostgreSQL" />
     <PackageReference Include="Azure.ResourceManager.AppContainers" />
+    <!-- Aspire.Hosting 13.6.1 resolves MessagePack 2.5.302 (GHSA-qhrr-8q5h-9q3h); remove once Aspire references a patched version. -->
+    <PackageReference Include="MessagePack" />
   </ItemGroup>
 
 </Project>

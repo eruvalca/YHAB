@@ -10,28 +10,29 @@
         <InlineNameEditor @key="Plan.Version" Label="New group name" Creating="true" OnSave="CreateGroupAsync" OnCancel="CancelCreate" Busy="Busy" />
     }
     <div class="table-container budget-table-container" tabindex="0" role="region" aria-label="@($"Category budget for {Budget.Month.ToString("MMMM yyyy", Culture)}")" data-dragging="@(_dragGroup.HasValue ? "true" : "false")">
-        <div class="budget-table">
-            <div class="budget-grid budget-header" aria-hidden="true"><span>Category</span><span class="numeric">Assigned</span><span class="numeric">Activity</span><span class="numeric">Available</span></div>
+        @* The grid keeps table semantics through ARIA roles; sortable item wrappers receive theirs from sortable-lists.js. *@
+        <div class="budget-table" role="table" aria-label="Categories">
+            <div role="rowgroup"><div class="budget-grid budget-header" role="row"><span role="columnheader">Category</span><span class="numeric" role="columnheader">Assigned</span><span class="numeric" role="columnheader">Activity</span><span class="numeric" role="columnheader">Available</span></div></div>
             @foreach (var group in Groups)
             {
                 var rows = Rows(group.Id);
                 if (!ShowGroup(group, rows.Length)) { continue; }
-                <section @key="group.Id" class="budget-group" data-group-id="@group.Id" aria-label="@group.Name">
-                    <div class="budget-grid group-row" @ondragover:preventDefault="true" @ondrop="() => DropGroupAsync(group.Id)">
-                        <FluentStack VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalXS)">
+                <section @key="group.Id" class="budget-group" data-group-id="@group.Id" role="rowgroup" aria-label="@group.Name">
+                    <div class="budget-grid group-row" role="row" @ondragover:preventDefault="true" @ondrop="() => DropGroupAsync(group.Id)">
+                        <FluentStack VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalXS)" role="rowheader">
                             <button type="button" class="row-move" draggable="@(!Busy ? "true" : "false")" disabled="@Busy" aria-label="@($"Move {group.Name}")" title="Drag to reorder, or click for move controls" @ondragstart="() => DragGroup(group.Id)" @ondragend="ClearDrag" @onclick="() => ToggleGroupMove(group.Id)"><FluentIcon Value="@(new Icons.Regular.Size16.ReOrderDotsVertical())" aria-hidden="true" /></button>
                             <button type="button" class="group-toggle" aria-label="@($"{(_collapsed.Contains(group.Id) ? "Expand" : "Collapse")} {group.Name}")" aria-expanded="@(!_collapsed.Contains(group.Id) ? "true" : "false")" @onclick="() => ToggleGroup(group.Id)">@(_collapsed.Contains(group.Id) ? "▸" : "▾")</button>
                             <InlineNameEditor Label="Group name" Value="@group.Name" OnSave="name => RenameGroupAsync(group, name)" Busy="Busy" />
                             <button type="button" class="group-add" disabled="@Busy" aria-label="@($"Add category to {group.Name}")" @onclick="() => AddToGroup(group.Id)">+</button>
                         </FluentStack>
-                        <span class="numeric"><span class="visually-hidden">Assigned </span>@Money(rows.Sum(item => item.Assigned))</span>
-                        <span class="numeric"><span class="visually-hidden">Activity </span>@Money(rows.Sum(item => item.Activity))</span>
-                        <span class="numeric"><span class="visually-hidden">Available </span>@Money(rows.Sum(item => item.Available))</span>
+                        <span class="numeric" role="cell"><span class="visually-hidden">Assigned </span>@Money(rows.Sum(item => item.Assigned))</span>
+                        <span class="numeric" role="cell"><span class="visually-hidden">Activity </span>@Money(rows.Sum(item => item.Activity))</span>
+                        <span class="numeric" role="cell"><span class="visually-hidden">Available </span>@Money(rows.Sum(item => item.Available))</span>
                     </div>
                     @if (_movingGroup == group.Id)
                     {
-                        <div class="row-panel">
-                            <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalS)">
+                        <div class="row-panel" role="row">
+                            <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalS)" role="cell" aria-colspan="4">
                                 <FluentButton Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle" Disabled="@(Busy || Array.IndexOf(Groups, group) == 0)" OnClick="() => MoveGroupAsync(group, -1)">Move group up</FluentButton>
                                 <FluentButton Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle" Disabled="@(Busy || Array.IndexOf(Groups, group) == Groups.Length - 1)" OnClick="() => MoveGroupAsync(group, 1)">Move group down</FluentButton>
                                 <FluentButton Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle" Disabled="Busy" OnClick="() => HideGroupAsync(group)">@(group.Hidden ? "Show group" : "Hide group")</FluentButton>
@@ -42,7 +43,7 @@
                     @if (!_collapsed.Contains(group.Id))
                     {
                         <FluentSortableList TItem="Guid" Id="@ListId(group.Id)" Items="@(rows.Select(item => item.Category.Id).ToList())" Group="budget-categories" Handle="true" Fallback="true"
-                                            Class="category-list" AriaLabel="@($"{group.Name} categories")"
+                                            Class="category-list" role="none" data-item-role="row"
                                             OnUpdate="args => ReorderAsync(args, null)" OnAdd="args => ReorderAsync(args, args.FromListId)">
                             <ItemTemplate>
                                 @if (_rows.TryGetValue(context, out var row))
@@ -55,18 +56,18 @@
                         </FluentSortableList>
                         @if (_newCategoryGroup == group.Id)
                         {
-                            <div class="row-panel"><InlineNameEditor @key="Plan.Version" Label="New category name" Creating="true" OnSave="CreateCategoryAsync" OnCancel="CancelCreate" Busy="Busy" /></div>
+                            <div class="row-panel" role="row"><div role="cell" aria-colspan="4"><InlineNameEditor @key="Plan.Version" Label="New category name" Creating="true" OnSave="CreateCategoryAsync" OnCancel="CancelCreate" Busy="Busy" /></div></div>
                         }
                         else if (rows.Length == 0)
                         {
-                            <div class="row-panel empty-group"><button type="button" class="category-link" disabled="@Busy" @onclick="() => AddToGroup(group.Id)">Add a category</button><span class="muted"> or drag one here</span></div>
+                            <div class="row-panel empty-group" role="row"><div role="cell" aria-colspan="4"><button type="button" class="category-link" disabled="@Busy" @onclick="() => AddToGroup(group.Id)">Add a category</button><span class="muted"> or drag one here</span></div></div>
                         }
                     }
                 </section>
             }
             @if (_dragGroup.HasValue)
             {
-                <div class="drop-end" @ondragover:preventDefault="true" @ondrop="DropGroupAtEndAsync">Move group to end</div>
+                <div class="drop-end" aria-hidden="true" @ondragover:preventDefault="true" @ondrop="DropGroupAtEndAsync">Move group to end</div>
             }
         </div>
     </div>

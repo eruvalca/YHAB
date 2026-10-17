@@ -1,5 +1,5 @@
-<div class="budget-grid category-row" data-category-id="@Row.Category.Id" data-selected="@(Selected ? "true" : "false")" @onclick="SelectAsync">
-    <FluentStack VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalXS)">
+<div class="budget-grid category-row" role="none" data-category-id="@Row.Category.Id" data-selected="@(Selected ? "true" : "false")" @onclick="SelectAsync">
+    <FluentStack VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalXS)" role="rowheader">
         @* Sortable only starts a drag from a handle with the sortable-grab class, so omitting it while busy disables dragging. *@
         <button type="button" class="@(Busy ? "row-move" : "row-move sortable-grab")" disabled="@Busy"
                 aria-label="@($"Move {Row.Category.Name}")" title="Drag to reorder, or click for move controls"
@@ -13,13 +13,14 @@
             }
         </div>
     </FluentStack>
-    <div class="numeric" @onclick:stopPropagation="true"><AmountInput @key="(Row.Category.Id, Month)" Label="@($"Assign to {Row.Category.Name}")" Value="Row.Assigned" ValueChanged="AssignAsync" InputMode="TextInputMode.Text" Disabled="@(!RendererInfo.IsInteractive)" ReadOnly="Busy" /></div>
-    <div class="numeric money" data-money-tone="@MoneyTone(Row.Activity)"><span class="visually-hidden">Activity </span>@Money(Row.Activity)</div>
-    <div class="numeric"><span class="visually-hidden">Available </span><span class="available-pill" data-tone="@Tone">@Money(Row.Available)</span>@if (Row.Available < 0) { <small>@(Row.CashOverspending > 0 ? "Cash overspent" : "Credit overspent")</small> }</div>
+    <div class="numeric" role="cell" @onclick:stopPropagation="true"><AmountInput @key="(Row.Category.Id, Month)" Label="@($"Assign to {Row.Category.Name}")" Value="Row.Assigned" ValueChanged="AssignAsync" InputMode="TextInputMode.Text" Disabled="@(!RendererInfo.IsInteractive)" ReadOnly="Busy" /></div>
+    <div class="numeric money" role="cell" data-money-tone="@MoneyTone(Row.Activity)"><span class="visually-hidden">Activity </span>@Money(Row.Activity)</div>
+    <div class="numeric" role="cell"><span class="visually-hidden">Available </span><span class="available-pill" data-tone="@Tone">@Money(Row.Available)</span>@if (Row.Available < 0) { <small>@(Row.CashOverspending > 0 ? "Cash overspent" : "Credit overspent")</small> }</div>
 </div>
 @if (Moving)
 {
-    <div class="category-move-row">
+    @* The move controls belong to the category's sortable row, so they span it as one more cell. *@
+    <div class="category-move-row" role="cell" aria-colspan="4">
         <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Bottom" HorizontalGap="var(--spacingHorizontalS)">
             <FluentButton Size="ButtonSize.Small" OnClick="MoveUpAsync" Disabled="@(Busy || Index == 0)" Appearance="ButtonAppearance.Subtle">Move up</FluentButton>
             <FluentButton Size="ButtonSize.Small" OnClick="MoveDownAsync" Disabled="@(Busy || Index == Siblings.Length - 1)" Appearance="ButtonAppearance.Subtle">Move down</FluentButton>

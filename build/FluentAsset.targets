@@ -1,6 +1,6 @@
 <Project>
   <!-- The application serves a generated copy; the installed NuGet package is never edited. -->
-  <Target Name="PatchFluentDefinitionObservers"
+  <Target Name="PatchFluentThemeCache"
           AfterTargets="ResolveCoreStaticWebAssets"
           DependsOnTargets="ResolveProjectReferences"
           Condition="'$(DesignTimeBuild)' != 'true'">
@@ -13,7 +13,7 @@
                           Condition="'%(StaticWebAsset.SourceId)' == 'Microsoft.FluentUI.AspNetCore.Components' and '%(StaticWebAsset.AssetTraitValue)' == 'JSLibraryModule'" />
     </ItemGroup>
     <Error Condition="'@(_YHABFluentOriginal->Count())' != '1'" Text="Expected exactly one Fluent initializer module to apply the pinned lifetime fix." />
-    <Exec Command="&quot;$(_YHABDotNetHost)&quot; &quot;$(_YHABBuildAssembly)&quot; patch-fluent &quot;@(_YHABFluentOriginal)&quot; &quot;$(MSBuildThisFileDirectory)FluentDefinitionObservers.js&quot; &quot;$(_YHABFluentPatched)&quot;" />
+    <Exec Command="&quot;$(_YHABDotNetHost)&quot; &quot;$(_YHABBuildAssembly)&quot; patch-fluent &quot;@(_YHABFluentOriginal)&quot; &quot;$(_YHABFluentPatched)&quot;" />
     <ItemGroup>
       <_YHABFluentCandidate Include="@(_YHABFluentOriginal->'$(_YHABFluentPatched)')">
         <ContentRoot>$(_YHABFluentRoot)</ContentRoot>
