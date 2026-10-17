@@ -1,5 +1,6 @@
 name: queue probe
 
+# Probe: policy-constrained environment plus job-level queue.
 on:
   push:
     branches: [ci-queue-probe]
