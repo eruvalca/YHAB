@@ -1,4 +1,4 @@
-<div class="budget-grid category-row" role="none" data-category-id="@Row.Category.Id" data-selected="@(Selected ? "true" : "false")" @onclick="SelectAsync">
+<div class="budget-grid category-row" role="row" data-category-id="@Row.Category.Id" data-selected="@(Selected ? "true" : "false")" @onclick="SelectAsync">
     <FluentStack VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalXS)" role="rowheader">
         @* Sortable only starts a drag from a handle with the sortable-grab class, so omitting it while busy disables dragging. *@
         <button type="button" class="@(Busy ? "row-move" : "row-move sortable-grab")" disabled="@Busy"
@@ -19,13 +19,14 @@
 </div>
 @if (Moving)
 {
-    @* The move controls belong to the category's sortable row, so they span it as one more cell. *@
-    <div class="category-move-row" role="cell" aria-colspan="4">
-        <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Bottom" HorizontalGap="var(--spacingHorizontalS)">
-            <FluentButton Size="ButtonSize.Small" OnClick="MoveUpAsync" Disabled="@(Busy || Index == 0)" Appearance="ButtonAppearance.Subtle">Move up</FluentButton>
-            <FluentButton Size="ButtonSize.Small" OnClick="MoveDownAsync" Disabled="@(Busy || Index == Siblings.Length - 1)" Appearance="ButtonAppearance.Subtle">Move down</FluentButton>
-            <FluentSelect TOption="GroupData" TValue="Guid" Label="Move to group" Items="Plan.Groups.OrderBy(item => item.SortOrder)" OptionText="item => item.Name" OptionValue="item => item.Id" Value="Row.Category.GroupId" ValueChanged="MoveToGroupAsync" Disabled="Busy" Margin="0" />
-            <FluentButton Size="ButtonSize.Small" OnClick="ToggleMoveAsync" Appearance="ButtonAppearance.Subtle">Done</FluentButton>
-        </FluentStack>
+    <div class="category-move-row" role="row">
+        <div role="cell" aria-colspan="4">
+            <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Bottom" HorizontalGap="var(--spacingHorizontalS)">
+                <FluentButton Size="ButtonSize.Small" OnClick="MoveUpAsync" Disabled="@(Busy || Index == 0)" Appearance="ButtonAppearance.Subtle">Move up</FluentButton>
+                <FluentButton Size="ButtonSize.Small" OnClick="MoveDownAsync" Disabled="@(Busy || Index == Siblings.Length - 1)" Appearance="ButtonAppearance.Subtle">Move down</FluentButton>
+                <FluentSelect TOption="GroupData" TValue="Guid" Label="Move to group" Items="Plan.Groups.OrderBy(item => item.SortOrder)" OptionText="item => item.Name" OptionValue="item => item.Id" Value="Row.Category.GroupId" ValueChanged="MoveToGroupAsync" Disabled="Busy" Margin="0" />
+                <FluentButton Size="ButtonSize.Small" OnClick="ToggleMoveAsync" Appearance="ButtonAppearance.Subtle">Done</FluentButton>
+            </FluentStack>
+        </div>
     </div>
 }

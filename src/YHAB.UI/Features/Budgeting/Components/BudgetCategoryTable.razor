@@ -43,7 +43,7 @@
                     @if (!_collapsed.Contains(group.Id))
                     {
                         <FluentSortableList TItem="Guid" Id="@ListId(group.Id)" Items="@(rows.Select(item => item.Category.Id).ToList())" Group="budget-categories" Handle="true" Fallback="true"
-                                            Class="category-list" role="none" data-item-role="row"
+                                            Class="category-list" role="none" data-item-role="none"
                                             OnUpdate="args => ReorderAsync(args, null)" OnAdd="args => ReorderAsync(args, args.FromListId)">
                             <ItemTemplate>
                                 @if (_rows.TryGetValue(context, out var row))

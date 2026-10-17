@@ -66,9 +66,14 @@ public sealed class BudgetCatalogTests
         component.FindAll(".group-row").ShouldAllBe(item => item.GetAttribute("role") == "row");
         var list = component.Find(".fluent-sortable-list");
         list.GetAttribute("role").ShouldBe("none");
-        list.GetAttribute("data-item-role").ShouldBe("row");
-        component.Find(".category-row").GetAttribute("role").ShouldBe("none");
+        list.GetAttribute("data-item-role").ShouldBe("none");
+        component.Find(".category-row").GetAttribute("role").ShouldBe("row");
         component.Find(".category-row").Children.Select(item => item.GetAttribute("role")).ShouldBe(["rowheader", "cell", "cell", "cell"]);
+        await component.Find(".category-row .row-move").ClickAsync();
+        var moveRow = component.Find(".category-move-row");
+        moveRow.GetAttribute("role").ShouldBe("row");
+        moveRow.Children.Single().GetAttribute("role").ShouldBe("cell");
+        moveRow.Children.Single().GetAttribute("aria-colspan").ShouldBe("4");
     }
 
     [Fact]
