@@ -10,24 +10,31 @@ permissions:
 jobs:
   prepare:
     runs-on: ubuntu-24.04
+    outputs:
+      deploy: ${{ steps.scope.outputs.deploy }}
     steps:
-      - run: echo prepare
+      - id: scope
+        run: echo "deploy=true" >> "$GITHUB_OUTPUT"
 
-  with-queue:
+  needs-output:
     needs: prepare
+    if: needs.prepare.outputs.deploy == 'true'
     runs-on: ubuntu-24.04
     concurrency:
-      group: probe-with-queue
+      group: probe-needs
       cancel-in-progress: false
       queue: max
     steps:
-      - run: echo with-queue
+      - run: echo needs-output
 
-  without-queue:
+  production-env:
     needs: prepare
+    if: needs.prepare.outputs.deploy == 'true' && github.ref == 'refs/heads/ci-queue-probe'
     runs-on: ubuntu-24.04
+    environment: production
     concurrency:
-      group: probe-without-queue
+      group: probe-production
       cancel-in-progress: false
+      queue: max
     steps:
-      - run: echo without-queue
+      - run: echo "environment job ref=$GITHUB_REF"
