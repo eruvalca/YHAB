@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Aspire.Hosting.Testing;
@@ -204,6 +205,190 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
         {
             await BrowserArtifacts.CaptureAsync(page, context, Path.Combine(AppContext.BaseDirectory, "TestResults", "plan-sortable-touch"), output.WriteLine);
         }
+    }
+
+    [Fact]
+    public async Task SortableCategoriesKeepKeyboardFocusWhenServerRenderIsDelayedAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(4));
+        await using var builder = await TestAppHost.CreateAsync(timeout.Token);
+        await using var app = await builder.BuildAsync(timeout.Token);
+        await app.StartAsync(timeout.Token);
+        await app.ResourceNotifications.WaitForResourceHealthyAsync("yhab", timeout.Token);
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync();
+        await using var context = await browser.NewContextAsync(new()
+        {
+            BaseURL = app.GetEndpoint("yhab", "https").ToString(),
+            IgnoreHTTPSErrors = true,
+            ViewportSize = new() { Width = 1440, Height = 960 },
+        });
+        await context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = true });
+        var page = await context.NewPageAsync();
+        var errors = new ConcurrentQueue<string>();
+        page.PageError += (_, error) => errors.Enqueue(error);
+        var allowWebAssembly = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        // Holding the WebAssembly runtime keeps InteractiveAuto on the server circuit.
+        await context.RouteAsync("**/_framework/dotnet.native.*.wasm", async route =>
+        {
+            await allowWebAssembly.Task.WaitAsync(timeout.Token);
+            await route.ContinueAsync();
+        });
+        // Delay the circuit's server-to-client messages so a render cannot beat Fluent's 50 ms focus timer.
+        var slow = new StrongBox<bool>();
+        await page.RouteWebSocketAsync("**/_blazor**", socket =>
+        {
+            var server = socket.ConnectToServer();
+            var outgoing = Task.CompletedTask;
+            socket.OnMessage(frame => SendWebSocketMessage(server, frame));
+            server.OnMessage(frame =>
+            {
+                var message = frame;
+                outgoing = outgoing.ContinueWith(async _ =>
+                {
+                    if (Volatile.Read(ref slow.Value)) { await Task.Delay(TimeSpan.FromMilliseconds(300), timeout.Token); }
+                    SendWebSocketMessage(socket, message);
+                }, TaskScheduler.Default).Unwrap();
+            });
+        });
+        try
+        {
+            await BudgetWorkflowTests.RegisterAndLoginAsync(page);
+            await page.GotoAsync("/plans");
+            await page.GetByLabel("Plan name", new() { Exact = true }).FillAsync("Delayed planning");
+            await page.GetByRole(AriaRole.Button, new() { Name = "Create your plan" }).ClickAsync();
+            await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+            (await page.Locator(".workspace").GetAttributeAsync("data-renderer")).ShouldBe("Server");
+            var path = new Uri(page.Url).AbsolutePath;
+            // Create an empty group after the starter groups; the previous group is then one ArrowRight away.
+            await Button(page, "Category group").ClickAsync();
+            await Input(page, "New group name").FillAsync("Later");
+            await Button(page, "Save").ClickAsync();
+            await page.WaitForFunctionAsync("() => [...document.querySelectorAll('.group-row')].some(row => row.textContent.includes('Later'))");
+            var plan = await ReadAsync(page, path);
+            var groups = plan.Groups.Where(item => !item.Hidden).OrderBy(item => item.SortOrder).ThenBy(item => item.Id).ToArray();
+            var later = groups.Single(item => string.Equals(item.Name, "Later", StringComparison.Ordinal));
+            var source = groups[Array.IndexOf(groups, later) - 1];
+            var moved = plan.Categories.Where(item => item.GroupId == source.Id && !item.Hidden).OrderBy(item => item.SortOrder).ThenBy(item => item.Id).Last();
+            var item = page.Locator($"#category-list-{source.Id:N} > .sortable-item").Filter(new() { Has = page.Locator($"[data-category-id='{moved.Id}']") });
+            await item.ScrollIntoViewIfNeededAsync();
+            await item.FocusAsync();
+            await item.PressAsync("Enter");
+            Volatile.Write(ref slow.Value, true);
+            await item.PressAsync("ArrowRight");
+            await WaitForPlanAsync(page, path, value => value.Categories.Single(category => category.Id == moved.Id).GroupId == later.Id, timeout.Token);
+            await page.WaitForFunctionAsync("id => document.activeElement?.closest('.sortable-item')?.querySelector('[data-category-id]')?.getAttribute('data-category-id') === id",
+                moved.Id.ToString(), new() { Timeout = 15000 });
+            (await page.EvaluateAsync<string?>("() => document.activeElement?.getAttribute('aria-grabbed')")).ShouldBe("true");
+            Volatile.Write(ref slow.Value, false);
+            // The same focused row must still accept a keyboard move after a delayed server render.
+            await page.Keyboard.PressAsync("ArrowLeft");
+            plan = await WaitForPlanAsync(page, path, value => value.Categories.Single(category => category.Id == moved.Id).GroupId == source.Id, timeout.Token);
+            plan.Categories.Single(category => category.Id == moved.Id).GroupId.ShouldBe(source.Id);
+            (await page.Locator("#blazor-error-ui").IsVisibleAsync()).ShouldBeFalse();
+            errors.ShouldBeEmpty();
+        }
+        finally
+        {
+            allowWebAssembly.TrySetResult();
+            await context.UnrouteAllAsync(new() { Behavior = UnrouteBehavior.IgnoreErrors });
+            await BrowserArtifacts.CaptureAsync(page, context, Path.Combine(AppContext.BaseDirectory, "TestResults", "plan-sortable-server-focus"), output.WriteLine);
+        }
+    }
+
+    [Fact]
+    public async Task SortableKeyboardMoveKeepsFocusOnTheCategoryAfterRejectionAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(4));
+        await using var builder = await TestAppHost.CreateAsync(timeout.Token);
+        await using var app = await builder.BuildAsync(timeout.Token);
+        await app.StartAsync(timeout.Token);
+        await app.ResourceNotifications.WaitForResourceHealthyAsync("yhab", timeout.Token);
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync();
+        await using var context = await browser.NewContextAsync(new()
+        {
+            BaseURL = app.GetEndpoint("yhab", "https").ToString(),
+            IgnoreHTTPSErrors = true,
+            ViewportSize = new() { Width = 1440, Height = 960 },
+        });
+        await context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = true });
+        var page = await context.NewPageAsync();
+        var errors = new ConcurrentQueue<string>();
+        page.PageError += (_, error) => errors.Enqueue(error);
+        try
+        {
+            await BudgetWorkflowTests.RegisterAndLoginAsync(page);
+            await page.GotoAsync("/plans");
+            await page.GetByLabel("Plan name", new() { Exact = true }).FillAsync("Keyboard focus planning");
+            await page.GetByRole(AriaRole.Button, new() { Name = "Create your plan" }).ClickAsync();
+            await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+            var path = new Uri(page.Url).AbsolutePath;
+            // The cached WebAssembly renderer issues reorder requests the browser can hold or reject.
+            await page.WaitForFunctionAsync("() => Object.keys(localStorage).some(key => key.startsWith('blazor-resource-hash:'))", null, new() { Timeout = 60000 });
+            await page.ReloadAsync();
+            await page.Locator(".workspace[data-renderer='WebAssembly'][data-interactive='true']").WaitForAsync();
+            var plan = await ReadAsync(page, path);
+            var groups = plan.Groups.Where(item => !item.Hidden).OrderBy(item => item.SortOrder).ThenBy(item => item.Id).ToArray();
+            int Count(Guid group) => plan.Categories.Count(item => item.GroupId == group && !item.Hidden);
+            var pair = groups.Zip(groups.Skip(1)).First(item => Count(item.First.Id) >= 2 && Count(item.Second.Id) >= 1);
+            var (source, destination) = (pair.First.Id, pair.Second.Id);
+
+            // A rejected save resolves the add, so focus must follow the category back to its source row.
+            var rejected = plan.Categories.Where(item => item.GroupId == source && !item.Hidden).OrderBy(item => item.SortOrder).ThenBy(item => item.Id).Last();
+            var rejectedItem = page.Locator($"#category-list-{source:N} > .sortable-item").Filter(new() { Has = page.Locator($"[data-category-id='{rejected.Id}']") });
+            await rejectedItem.ScrollIntoViewIfNeededAsync();
+            await rejectedItem.FocusAsync();
+            await rejectedItem.PressAsync("Enter");
+            var rejection = new TaskCompletionSource<IRoute>(TaskCreationOptions.RunContinuationsAsynchronously);
+            await page.RouteAsync("**/categories/reorder", route => { rejection.TrySetResult(route); return Task.CompletedTask; });
+            await rejectedItem.PressAsync("ArrowRight");
+            var request = await rejection.Task.WaitAsync(TimeSpan.FromSeconds(30), timeout.Token);
+            await page.Locator($"[data-group-id='{destination}'] [data-category-id='{rejected.Id}']").WaitForAsync(new() { Timeout = 30000 });
+            await request.FulfillAsync(new()
+            {
+                Status = 400,
+                ContentType = "application/problem+json",
+                Body = """{"title":"Rejected","detail":"Keyboard reorder rejected for this test."}""",
+            });
+            await page.UnrouteAsync("**/categories/reorder");
+            await page.Locator($"[data-group-id='{source}'] [data-category-id='{rejected.Id}']").WaitForAsync(new() { Timeout = 30000 });
+            await page.WaitForFunctionAsync("id => document.activeElement?.closest('.sortable-item')?.querySelector('[data-category-id]')?.getAttribute('data-category-id') === id",
+                rejected.Id.ToString(), new() { Timeout = 15000 });
+            (await page.EvaluateAsync<string?>("() => document.activeElement?.getAttribute('aria-grabbed')")).ShouldBe("true");
+            (await page.Locator(".sortable-item[aria-grabbed='true']").CountAsync()).ShouldBe(1);
+            // The next arrow key moves that same category, not whatever row now occupies the destination index.
+            await page.Keyboard.PressAsync("ArrowRight");
+            plan = await WaitForPlanAsync(page, path, value => value.Categories.Single(category => category.Id == rejected.Id).GroupId == destination, timeout.Token);
+            plan.Categories.Single(category => category.Id == rejected.Id).GroupId.ShouldBe(destination);
+            (await page.Locator("#blazor-error-ui").IsVisibleAsync()).ShouldBeFalse();
+            errors.ShouldBeEmpty();
+        }
+        finally
+        {
+            await context.UnrouteAllAsync(new() { Behavior = UnrouteBehavior.IgnoreErrors });
+            await BrowserArtifacts.CaptureAsync(page, context, Path.Combine(AppContext.BaseDirectory, "TestResults", "plan-sortable-keyboard-focus"), output.WriteLine);
+        }
+    }
+
+    // The server renderer commits reorders without a browser request, so poll the plan instead of a response.
+    private static async Task<PlanSnapshot> WaitForPlanAsync(IPage page, string path, Func<PlanSnapshot, bool> condition, CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var plan = await ReadAsync(page, path);
+            if (condition(plan)) { return plan; }
+            await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
+        }
+    }
+
+    private static void SendWebSocketMessage(IWebSocketRoute target, IWebSocketFrame frame)
+    {
+        if (frame.Binary is { Length: > 0 } binary) { target.Send(binary); }
+        else if (frame.Text is { } text) { target.Send(text); }
     }
 
     private static ILocator Row(IPage page, string id) => page.Locator($".category-list [data-category-id='{id}']");
