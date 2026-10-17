@@ -16,6 +16,7 @@ public sealed partial class BudgetCategoryTable
     private static readonly string[] _filters = ["All categories", "Underfunded", "Overspent", "Available", "Hidden"];
     private string _filter = "All categories";
     private readonly HashSet<Guid> _collapsed = [];
+    private readonly Dictionary<Guid, InlineNameDraft> _drafts = [];
     private Dictionary<Guid, CategoryMonth> _rows = [];
     // Shows a dropped order while its save is in flight; the confirmed plan replaces it.
     private Dictionary<Guid, Guid[]> _pending = [];
@@ -36,10 +37,18 @@ public sealed partial class BudgetCategoryTable
             _version = Plan.Version;
             CancelCreate();
             ClearDrag();
+            foreach (var id in _drafts.Keys.Where(id => !_rows.ContainsKey(id)).ToArray()) { _drafts.Remove(id); }
         }
     }
 
     private static string ListId(Guid group) => $"{ListPrefix}{group:N}";
+
+    // The sortable wrappers are unkeyed, so a reorder recreates rows; keep the open editor state here.
+    private InlineNameDraft Draft(Guid category)
+    {
+        if (!_drafts.TryGetValue(category, out var draft)) { _drafts[category] = draft = new(); }
+        return draft;
+    }
 
     // Plan order is authoritative because the budget month is recalculated after a plan change arrives.
     private Guid[] Order(Guid group) => _pending.TryGetValue(group, out var pending) ? pending

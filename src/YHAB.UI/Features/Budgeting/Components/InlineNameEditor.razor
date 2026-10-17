@@ -3,7 +3,7 @@
     {
         <form @onsubmit="SaveAsync" @onsubmit:preventDefault="true" @onkeydown="KeyDownAsync" class="inline-name-form">
             <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Bottom" HorizontalGap="var(--spacingHorizontalXS)">
-                <FluentTextInput @ref="_input" Label="@Label" Margin="0" @bind-Value="_name" Immediate="true" MaxLength="100" Disabled="Busy" />
+                <FluentTextInput @ref="_input" Label="@Label" Margin="0" @bind-Value="Name" Immediate="true" MaxLength="100" Disabled="Busy" />
                 @* Blur commits Fluent input changes, so Save must remain available before that change arrives. *@
                 <FluentButton Type="ButtonType.Button" OnClick="SaveAsync" Size="ButtonSize.Small" Appearance="ButtonAppearance.Primary" Disabled="Busy">Save</FluentButton>
                 <FluentButton Type="ButtonType.Button" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle" OnClick="CancelAsync" Disabled="Busy">Cancel</FluentButton>

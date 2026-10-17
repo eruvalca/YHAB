@@ -14,6 +14,7 @@ public sealed partial class BudgetCategoryRow
     [Parameter] public bool Moving { get; set; }
     [Parameter] public bool Busy { get; set; }
     [Parameter] public bool Selected { get; set; }
+    [Parameter] public InlineNameDraft? Draft { get; set; }
     private CategoryData[] Siblings { get; set; } = [];
     protected override void OnParametersSet() => Siblings = Plan.Categories.Where(item => item.GroupId == Row.Category.GroupId).OrderBy(item => item.SortOrder).ThenBy(item => item.Id).ToArray();
     private int Index => Array.FindIndex(Siblings, item => item.Id == Row.Category.Id);

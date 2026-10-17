@@ -143,6 +143,88 @@ public sealed class BudgetCatalogTests
     }
 
     [Fact]
+    public async Task ReorderKeepsOpenCategoryDraftWhenThePlanUpdatesAsync()
+    {
+        await using var context = CreateContext();
+        var plan = Plan();
+        var group = plan.Groups[0].Id;
+        var commands = new List<PlanCommand>();
+        var hold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        IRenderedComponent<BudgetBoard>? component = null;
+        component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, async command =>
+        {
+            commands.Add(command);
+            if (command is ReorderCategory) { await hold.Task; }
+        }));
+        await component.Find("button[aria-label='Rename Groceries']").ClickAsync();
+        await component.Find(".inline-name-form fluent-text-input").ChangeAsync(new() { Value = "Food" });
+        var list = List(component, group);
+        // The reorder renders the destination order while the save is held, which recreates the row.
+#pragma warning disable CA2025 // The task is awaited in finally before the render context can be disposed.
+        var reorder = component.InvokeAsync(() => list.OnUpdateJSAsync(0, 1, ListId(group), ListId(group)));
+#pragma warning restore CA2025
+        try
+        {
+            await component.WaitForAssertionAsync(() => CategoryIds(component, group).ShouldBe([plan.Categories[1].Id.ToString(), plan.Categories[0].Id.ToString()]));
+            component.FindAll(".inline-name-form").Count.ShouldBe(1);
+            component.FindComponents<FluentTextInput>().Single(item => string.Equals(item.Instance.Label, "Category name", StringComparison.Ordinal))
+                .Instance.Value.ShouldBe("Food");
+        }
+        finally
+        {
+            hold.TrySetResult();
+            await reorder;
+        }
+        component.Render(p => p.Add(item => item.Plan, plan with
+        {
+            Version = plan.Version + 1,
+            Categories = [plan.Categories[0] with { SortOrder = 1 }, plan.Categories[1] with { SortOrder = 0 }],
+        }));
+        component.FindAll(".inline-name-form").Count.ShouldBe(1);
+        await component.Find(".inline-name-form").SubmitAsync();
+        var saved = commands[^1].ShouldBeOfType<SaveCategory>();
+        saved.Category.Id.ShouldBe(plan.Categories[0].Id);
+        saved.Category.Name.ShouldBe("Food");
+        saved.Category.SortOrder.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ReorderRejectionKeepsOpenCategoryDraftAsync()
+    {
+        await using var context = CreateContext();
+        var plan = Plan();
+        var group = plan.Groups[0].Id;
+        var commands = new List<PlanCommand>();
+        var hold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        IRenderedComponent<BudgetBoard>? component = null;
+        component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, async command =>
+        {
+            commands.Add(command);
+            if (command is ReorderCategory) { await hold.Task; }
+        }));
+        await component.Find("button[aria-label='Rename Groceries']").ClickAsync();
+        await component.Find(".inline-name-form fluent-text-input").ChangeAsync(new() { Value = "Food" });
+        var list = List(component, group);
+#pragma warning disable CA2025 // The task is awaited in finally before the render context can be disposed.
+        var reorder = component.InvokeAsync(() => list.OnUpdateJSAsync(0, 1, ListId(group), ListId(group)));
+#pragma warning restore CA2025
+        try
+        {
+            await component.WaitForAssertionAsync(() => CategoryIds(component, group).ShouldBe([plan.Categories[1].Id.ToString(), plan.Categories[0].Id.ToString()]));
+        }
+        finally
+        {
+            hold.TrySetResult();
+            await reorder;
+        }
+        // The rejected save restores the saved order without a new plan revision.
+        await component.WaitForAssertionAsync(() => CategoryIds(component, group).ShouldBe([plan.Categories[0].Id.ToString(), plan.Categories[1].Id.ToString()]));
+        component.FindAll(".inline-name-form").Count.ShouldBe(1);
+        await component.Find(".inline-name-form").SubmitAsync();
+        commands[^1].ShouldBeOfType<SaveCategory>().Category.ShouldBe(plan.Categories[0] with { Name = "Food" });
+    }
+
+    [Fact]
     public async Task CategoryDropWithinFilteredGroupKeepsHiddenNeighborsInPlaceAsync()
     {
         await using var context = CreateContext();
@@ -213,6 +295,8 @@ public sealed class BudgetCatalogTests
 
     private static string[] CategoryNames(IRenderedComponent<BudgetBoard> component, Guid group) =>
         component.FindAll($"[data-group-id='{group}'] .category-row .category-link").Select(item => item.TextContent.Trim()).ToArray();
+    private static string[] CategoryIds(IRenderedComponent<BudgetBoard> component, Guid group) =>
+        component.FindAll($"[data-group-id='{group}'] .category-row[data-category-id]").Select(item => item.GetAttribute("data-category-id")!).ToArray();
     private static BunitContext CreateContext()
     {
         var context = new BunitContext();

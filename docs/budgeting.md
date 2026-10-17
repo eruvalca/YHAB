@@ -35,8 +35,11 @@ storage.
 Create groups with **Category group** above the plan table, and add categories
 with the **+** on a group header. New names are entered directly in the table.
 Use **Rename**, double-click a name, or press F2 on a name to edit it inline;
-Enter saves and Escape cancels. Empty groups remain visible so they can receive
-categories. Collapse individual groups or all groups to focus the plan.
+Enter saves and Escape cancels. An open name draft survives a reorder of any
+category because the table keeps it by category id outside the sortable
+subtree, whose unkeyed wrappers recreate rows. Empty groups remain visible so
+they can receive categories. Collapse individual groups or all groups to focus
+the plan.
 
 Drag a category's move handle, with a mouse or by touch, to reorder it within
 its group or drop it into another expanded group. The row follows the pointer,
@@ -55,7 +58,10 @@ never releases its browser instance or callback reference, so
 when the list leaves the page. The same script drops Fluent's source-side removal
 callback, because the table applies a cross-group move from the destination's
 add alone. It also starts that add only after Fluent restores the source DOM,
-since the keyboard path would otherwise render while the row is detached. The
+since the keyboard path would otherwise render while the row is detached, and
+restores keyboard focus to the moved row after the destination renders instead
+of relying on Fluent's fixed focus timer, which can fire before a server render
+arrives. The
 category grid keeps table semantics through ARIA roles; the script gives Fluent's
 item wrappers the role named by `data-item-role`. Keep the script until the
 library handles these cases itself.

@@ -40,6 +40,40 @@ function stop(list) {
     if (--live === 0) observer.disconnect();
 }
 
+// Fluent moves a keyboard cross-list item into the destination before its add completes, then puts it
+// back in the source while awaiting the remove. Remember a real arrow-key move so the add can restore
+// focus after the destination renders instead of relying on Fluent's fixed 50 ms focus timer.
+// The add callback runs after Fluent's GetItemJS round trip, so a time window cannot identify the
+// initiating key press; keep the flag until the add consumes it or another interaction starts.
+let keyboardMove = false;
+document.addEventListener('keydown', event => {
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        const item = document.activeElement;
+        keyboardMove = item instanceof Element && item.classList.contains('sortable-item') && item.getAttribute('aria-grabbed') === 'true';
+    }
+    else if (event.key === 'Tab' || event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
+        keyboardMove = false;
+    }
+}, true);
+document.addEventListener('pointerdown', () => { keyboardMove = false; }, true);
+
+async function focusAfterAdd(toListId, index, fromListId, oldIndex) {
+    const deadline = performance.now() + 1000;
+    do {
+        const item = document.getElementById(toListId)?.children[index];
+        if (item) {
+            item.focus();
+            if (document.activeElement === item) {
+                item.setAttribute('aria-grabbed', 'true');
+                document.getElementById(fromListId)?.children[oldIndex]?.setAttribute('aria-grabbed', 'false');
+                await new Promise(requestAnimationFrame);
+                if (item.isConnected && document.activeElement === item) return;
+            }
+        }
+        await new Promise(requestAnimationFrame);
+    } while (performance.now() < deadline);
+}
+
 // The parent component owns the order and re-renders the source list as soon as the destination accepts
 // a cross-list move. Fluent then applies the source's removal to the already updated item list, so it is
 // not forwarded; Fluent restores the source DOM in its remove handler either way.
@@ -51,7 +85,13 @@ function callbacks(reference) {
         invokeMethodAsync: (name, ...args) => {
             if (name === 'OnRemoveJSAsync') return Promise.resolve();
             if (name !== 'OnAddJSAsync') return reference.invokeMethodAsync(name, ...args);
-            setTimeout(() => reference.invokeMethodAsync(name, ...args));
+            const keyboard = keyboardMove;
+            keyboardMove = false;
+            setTimeout(() => {
+                reference.invokeMethodAsync(name, ...args).then(
+                    () => { if (keyboard) void focusAfterAdd(args[3], args[1], args[2], args[0]); },
+                    () => { /* Blazor reports a failed add through the renderer. */ });
+            });
             return Promise.resolve();
         },
     };

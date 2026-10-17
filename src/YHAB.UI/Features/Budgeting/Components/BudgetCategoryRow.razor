@@ -5,7 +5,7 @@
                 aria-label="@($"Move {Row.Category.Name}")" title="Drag to reorder, or click for move controls"
                 @onclick="ToggleMoveAsync" @onclick:stopPropagation="true"><FluentIcon Value="@(new Icons.Regular.Size16.ReOrderDotsVertical())" aria-hidden="true" /></button>
         <div class="category-name">
-            <InlineNameEditor Label="Category name" Value="@Row.Category.Name" OnSave="RenameAsync" OnSelect="SelectAsync" Busy="Busy" />
+            <InlineNameEditor Label="Category name" Value="@Row.Category.Name" OnSave="RenameAsync" OnSelect="SelectAsync" Busy="Busy" Draft="Draft" />
             @if (Row.Category.Target is not null)
             {
                 <small class="target-caption">@TargetCaption</small>

@@ -50,7 +50,7 @@
                                 {
                                     <BudgetCategoryRow @key="context" Plan="Plan" Row="row" Month="Budget.Month" OnCommand="OnCommand" OnSelect="OnSelect"
                                                        Moving="@(_movingCategory == context)" OnToggleMove="() => ToggleCategoryMove(context)"
-                                                       Busy="Busy" Selected="@(SelectedCategoryId == context)" />
+                                                       Busy="Busy" Selected="@(SelectedCategoryId == context)" Draft="Draft(context)" />
                                 }
                             </ItemTemplate>
                         </FluentSortableList>
