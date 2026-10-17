@@ -1,6 +1,6 @@
 name: queue probe
 
-# Probe: policy-constrained environment plus job-level queue.
+# Probe: job named deploy reading needs.changes.outputs.deploy.
 on:
   push:
     branches: [ci-queue-probe]
@@ -9,8 +9,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: probe-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: probe-${{ github.run_id }}
+  cancel-in-progress: false
 
 jobs:
   changes:
@@ -28,7 +28,7 @@ jobs:
     steps:
       - run: echo validate
 
-  deploy-shaped:
+  deploy:
     needs: [changes, validate]
     if: github.ref == 'refs/heads/ci-queue-probe' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && needs.changes.outputs.deploy == 'true'
     concurrency:
@@ -38,5 +38,10 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     environment: ci-probe
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      Azure__SubscriptionId: ${{ vars.AZURE_SUBSCRIPTION_ID }}
     steps:
       - run: echo "shaped deploy ran for $GITHUB_REF"
