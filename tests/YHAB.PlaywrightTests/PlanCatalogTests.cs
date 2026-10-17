@@ -269,13 +269,14 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
     }
 
     // SortableJS uses pointer events, so the drag needs intermediate moves rather than an HTML drag-and-drop event.
+    // The drop lands in the target's upper quarter so the dragged row is inserted before it, not beside its midpoint.
     private static async Task PointerDragAsync(IPage page, ILocator handle, ILocator target)
     {
         var from = (await handle.BoundingBoxAsync()).ShouldNotBeNull();
         await page.Mouse.MoveAsync(from.X + from.Width / 2, from.Y + from.Height / 2);
         await page.Mouse.DownAsync();
         var to = (await target.BoundingBoxAsync()).ShouldNotBeNull();
-        await page.Mouse.MoveAsync(to.X + to.Width / 2, to.Y + to.Height / 2, new() { Steps = 12 });
+        await page.Mouse.MoveAsync(to.X + to.Width / 2, to.Y + to.Height / 4, new() { Steps = 12 });
         await page.Mouse.UpAsync();
     }
 
