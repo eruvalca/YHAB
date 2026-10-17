@@ -198,7 +198,7 @@ See the [Aspire VS Code extension guide](https://aspire.dev/get-started/aspire-v
 
 ## Fluent UI Blazor and styling
 
-`Microsoft.FluentUI.AspNetCore.Components` **5.0.0** is centrally pinned in
+`Microsoft.FluentUI.AspNetCore.Components` **5.0.1** is centrally pinned in
 `Directory.Packages.props` and referenced by the server, client, and shared UI.
 Both host `Program.cs` files call `AddFluentUIComponents()` so prerendering,
 Interactive Server, and Interactive WebAssembly resolve the same services.
@@ -206,7 +206,7 @@ The shared kernel has no UI dependency. Fluent UI Blazor v5+ is the application'
 layout, styling, and component framework. Use its components and design tokens
 for new UI; do not introduce a parallel CSS framework or default to custom Grid/Flexbox.
 
-`Microsoft.FluentUI.AspNetCore.Components.Icons` **5.0.0** is referenced by the
+`Microsoft.FluentUI.AspNetCore.Components.Icons` **5.0.1** is referenced by the
 shared UI and flows to both hosts. Navigation uses `IconRest`/`IconActive` with
 regular/filled system icons; the counter uses `IconStart`. Use strongly typed
 instances such as `new Icons.Regular.Size20.Home()` (the Razor imports define the
@@ -738,10 +738,10 @@ the [account instructions](.github/instructions/account.instructions.md) for sta
 account rendering, and the
 [repository-wide instructions](.github/copilot-instructions.md) for central package
 versions. Verify version-sensitive APIs against the Fluent UI Blazor MCP server's
-documentation and the released package source. The v5.0.0 package's assembly file
-version is `5.0.0.26268`, also reported by the installed MCP server. Its version
-checker compares this assembly version against the NuGet version and reports a
-false mismatch; `5.0.0.26268` is not the NuGet package version. Some skill examples
+documentation and the released package source. The v5.0.1 package's assembly file
+version is `5.0.1.26287`. The Fluent MCP server's version checker compares the
+assembly version against the NuGet version and reports a false mismatch; the
+four-part file version is not the NuGet package version. Some skill examples
 still use prerelease APIs, so verify component names and parameters against the
 installed package instead of copying them verbatim.
 

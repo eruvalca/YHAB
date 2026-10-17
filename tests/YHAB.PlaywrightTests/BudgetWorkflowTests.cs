@@ -51,7 +51,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             await page.GotoAsync(planUrl);
             await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
             await page.Locator(".hero-amount").Filter(new() { HasText = "$700.00" }).WaitForAsync();
-            var groceries = page.Locator(".budget-table tr").Filter(new() { Has = page.GetByRole(AriaRole.Button, new() { Name = "Groceries", Exact = true }) });
+            var groceries = page.Locator(".budget-table .category-row").Filter(new() { Has = page.GetByRole(AriaRole.Button, new() { Name = "Groceries", Exact = true }) });
             (await groceries.Locator(".available-pill").InnerTextAsync()).ShouldBe("$225.00");
             await page.GetByRole(AriaRole.Heading, new() { Name = "Plan your money", Exact = true }).ClickAsync();
             await page.Keyboard.PressAsync("Control+z");
@@ -352,8 +352,10 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await amount.PressAsync("Backspace");
         await amount.PressAsync("Tab");
         await page.WaitForFunctionAsync("() => [...document.querySelectorAll('fluent-field')].find(field => field.querySelector('label')?.textContent === 'Assign to Groceries')?.querySelector('fluent-text-input')?.shadowRoot?.querySelector('input')?.value === '0.00'");
-        (await page.GetByRole(AriaRole.Button, new() { Name = "Move Utilities", Exact = true })
-            .EvaluateAsync<bool>("button => document.activeElement === button")).ShouldBeTrue();
+        var move = page.GetByRole(AriaRole.Button, new() { Name = "Move Utilities", Exact = true });
+        (await move.EvaluateAsync<bool>("button => document.activeElement === button.closest('.sortable-item')")).ShouldBeTrue();
+        await page.Keyboard.PressAsync("Tab");
+        (await move.EvaluateAsync<bool>("button => document.activeElement === button")).ShouldBeTrue();
         await page.Keyboard.PressAsync("Tab");
         await page.Keyboard.PressAsync("Tab");
         await page.Keyboard.PressAsync("Tab");
@@ -371,7 +373,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
     private static async Task VerifyStickySummaryAsync(IPage page, int width)
     {
         await page.SetViewportSizeAsync(width, 640);
-        var amount = page.Locator(".budget-table tbody fluent-text-input input").Last;
+        var amount = page.Locator(".budget-table .category-row fluent-text-input input").Last;
         await amount.FillAsync("700");
         await amount.PressAsync("Tab");
         await page.Locator(".hero-amount").Filter(new() { HasText = "$0.00" }).WaitForAsync();

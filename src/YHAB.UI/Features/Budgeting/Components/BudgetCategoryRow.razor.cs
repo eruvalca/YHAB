@@ -10,11 +10,10 @@ public sealed partial class BudgetCategoryRow
     [Parameter, EditorRequired] public DateOnly Month { get; set; }
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
     [Parameter, EditorRequired] public EventCallback<CategoryData> OnSelect { get; set; }
-    [Parameter, EditorRequired] public EventCallback<Guid?> OnDrag { get; set; }
-    [Parameter, EditorRequired] public EventCallback<CategoryData> OnDrop { get; set; }
+    [Parameter, EditorRequired] public EventCallback OnToggleMove { get; set; }
+    [Parameter] public bool Moving { get; set; }
     [Parameter] public bool Busy { get; set; }
     [Parameter] public bool Selected { get; set; }
-    private bool _moving;
     private CategoryData[] Siblings { get; set; } = [];
     protected override void OnParametersSet() => Siblings = Plan.Categories.Where(item => item.GroupId == Row.Category.GroupId).OrderBy(item => item.SortOrder).ThenBy(item => item.Id).ToArray();
     private int Index => Array.FindIndex(Siblings, item => item.Id == Row.Category.Id);
@@ -24,10 +23,7 @@ public sealed partial class BudgetCategoryRow
     private Task SelectAsync() => Busy ? Task.CompletedTask : OnSelect.InvokeAsync(Row.Category);
     private Task RenameAsync(string name) => OnCommand.InvokeAsync(new SaveCategory(Plan.Version, Row.Category with { Name = name }));
     private Task AssignAsync(decimal amount) => OnCommand.InvokeAsync(new AssignMoney(Plan.Version, Row.Category.Id, Month, amount));
-    private void ToggleMove() => _moving = !_moving;
-    private Task DragAsync() => OnDrag.InvokeAsync(Row.Category.Id);
-    private Task EndDragAsync() => OnDrag.InvokeAsync(null);
-    private Task DropAsync() => OnDrop.InvokeAsync(Row.Category);
+    private Task ToggleMoveAsync() => OnToggleMove.InvokeAsync();
     private Task MoveUpAsync() => MoveAsync(Row.Category.GroupId, Siblings[Index - 1].Id);
     private Task MoveDownAsync() => MoveAsync(Row.Category.GroupId, Siblings.ElementAtOrDefault(Index + 2)?.Id);
     private Task MoveToGroupAsync(Guid group) => group == Row.Category.GroupId ? Task.CompletedTask : MoveAsync(group, null);

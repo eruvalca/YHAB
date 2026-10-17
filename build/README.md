@@ -100,7 +100,10 @@ When adding or upgrading a package, update its central entry and keep reference
 metadata such as `PrivateAssets`, `IncludeAssets`, and conditions on the consuming
 reference. The xUnit analyzer remains conditional on `IsTestProject`; it does not
 introduce a test framework. All existing package versions and target frameworks
-were preserved during adoption. Transitive pinning is not enabled.
+were preserved during adoption. Transitive pinning is not enabled; to patch a
+vulnerable transitive package, add a direct versionless reference with a comment
+in each affected project, as the AppHost and testing projects do for MessagePack
+until Aspire ships a patched dependency.
 
 SDK declarations, including `Aspire.AppHost.Sdk` and `global.json`, retain their
 own version settings. SDK-provided implicit package references remain under SDK
@@ -111,20 +114,20 @@ only the nearest central package file.
 ## Fluent UI lifetime compatibility
 
 The server imports `build/FluentAsset.targets` to serve a generated copy of the
-pinned Fluent UI 5.0.0 initializer. Its bundled FAST definition observers retain
-detached elements, and its theme-string cache retains old theme objects. The
-patch substitutes weak element subscriptions with finalizer cleanup and a weak
-theme-object cache. Live definition-change notifications are preserved.
+pinned Fluent UI 5.0.1 initializer. Its theme-string cache retains old theme
+objects; the patch substitutes a weak theme-object cache. Fluent 5.0.0 also
+needed a FAST definition-observer replacement, but the FAST bundled with 5.0.1
+holds pending elements through `WeakRef` and a one-shot template subscription,
+so that part was removed.
 
 `YHAB.Build patch-fluent` verifies the original bundle's SHA-256 before applying
-the narrowly scoped replacements. A package upgrade with a different bundle
+the narrowly scoped replacement. A package upgrade with a different bundle
 fails explicitly: reassess the upstream behavior and remove the compatibility
 fix when it is no longer needed. Do not weaken the checksum check or edit the
 installed NuGet package. The generated module lives under the server's
 `IntermediateOutputPath`, is registered for cleaning, and receives new static
-asset fingerprint/integrity metadata. `FluentDefinitionObservers.js` is the
-maintained callback implementation. Browser validation must use the served asset
-and verify collection of removed controls, themes, and extended navigation.
+asset fingerprint/integrity metadata. Browser validation must use the served
+asset and verify collection of removed controls, themes, and extended navigation.
 
 ## PWA build assets
 

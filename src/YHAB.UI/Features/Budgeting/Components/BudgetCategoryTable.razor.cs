@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.FluentUI.AspNetCore.Components;
 using YHAB.SharedKernel.Budgeting;
 
 namespace YHAB.UI.Features.Budgeting.Components;
 
 public sealed partial class BudgetCategoryTable
 {
+    private const string ListPrefix = "category-list-";
     [Parameter, EditorRequired] public PlanSnapshot Plan { get; set; } = default!;
     [Parameter, EditorRequired] public BudgetMonth Budget { get; set; } = default!;
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
@@ -14,9 +16,12 @@ public sealed partial class BudgetCategoryTable
     private static readonly string[] _filters = ["All categories", "Underfunded", "Overspent", "Available", "Hidden"];
     private string _filter = "All categories";
     private readonly HashSet<Guid> _collapsed = [];
-    private Guid? _dragCategory;
+    private Dictionary<Guid, CategoryMonth> _rows = [];
+    // Shows a dropped order while its save is in flight; the confirmed plan replaces it.
+    private Dictionary<Guid, Guid[]> _pending = [];
     private Guid? _dragGroup;
     private Guid? _movingGroup;
+    private Guid? _movingCategory;
     private Guid? _newCategoryGroup;
     private bool _newGroup;
     private long _version = -1;
@@ -25,6 +30,7 @@ public sealed partial class BudgetCategoryTable
     protected override void OnParametersSet()
     {
         Groups = Plan.Groups.OrderBy(item => item.SortOrder).ThenBy(item => item.Id).ToArray();
+        _rows = Budget.Categories.ToDictionary(item => item.Category.Id);
         if (_version != Plan.Version)
         {
             _version = Plan.Version;
@@ -33,16 +39,29 @@ public sealed partial class BudgetCategoryTable
         }
     }
 
-    private CategoryMonth[] Rows(Guid group) => Budget.Categories.Where(item => item.Category.GroupId == group
-        && (string.Equals(_filter, "Hidden", StringComparison.Ordinal) ? item.Category.Hidden || Plan.Groups.Any(value => value.Id == group && value.Hidden) : !item.Category.Hidden && !Plan.Groups.Any(value => value.Id == group && value.Hidden))
-        && (_filter switch { "Underfunded" => item.TargetNeeded > 0, "Overspent" => item.Available < 0, "Available" => item.Available > 0, _ => true }))
-        .OrderBy(item => item.Category.SortOrder).ThenBy(item => item.Category.Id).ToArray();
+    private static string ListId(Guid group) => $"{ListPrefix}{group:N}";
+
+    // Plan order is authoritative because the budget month is recalculated after a plan change arrives.
+    private Guid[] Order(Guid group) => _pending.TryGetValue(group, out var pending) ? pending
+        : Plan.Categories.Where(item => item.GroupId == group && !_pending.Values.Any(ids => ids.Contains(item.Id)))
+            .OrderBy(item => item.SortOrder).ThenBy(item => item.Id).Select(item => item.Id).ToArray();
+
+    private CategoryMonth[] Rows(Guid group)
+    {
+        var hiddenGroup = Plan.Groups.Any(value => value.Id == group && value.Hidden);
+        return Order(group).Select(id => _rows.GetValueOrDefault(id)).OfType<CategoryMonth>()
+            .Where(item => (string.Equals(_filter, "Hidden", StringComparison.Ordinal) ? item.Category.Hidden || hiddenGroup : !item.Category.Hidden && !hiddenGroup)
+                && (_filter switch { "Underfunded" => item.TargetNeeded > 0, "Overspent" => item.Available < 0, "Available" => item.Available > 0, _ => true }))
+            .ToArray();
+    }
+
     private bool ShowGroup(GroupData group, int count) => count > 0 || _newCategoryGroup == group.Id
         || (string.Equals(_filter, "All categories", StringComparison.Ordinal) && !group.Hidden)
         || (string.Equals(_filter, "Hidden", StringComparison.Ordinal) && group.Hidden);
     private void ToggleGroup(Guid id) { if (!_collapsed.Add(id)) { _collapsed.Remove(id); } }
     private void ToggleAll() { if (_collapsed.Count > 0) { _collapsed.Clear(); } else { _collapsed.UnionWith(Plan.Groups.Select(item => item.Id)); } }
     private void ToggleGroupMove(Guid id) => _movingGroup = _movingGroup == id ? null : id;
+    private void ToggleCategoryMove(Guid id) => _movingCategory = _movingCategory == id ? null : id;
     private void AddGroup() { CancelCreate(); _filter = "All categories"; _newGroup = true; }
     private void AddCategory() => AddToGroup(Groups.First(item => !item.Hidden).Id);
     private void AddToGroup(Guid id)
@@ -65,23 +84,65 @@ public sealed partial class BudgetCategoryTable
         var before = direction < 0 ? groups[index - 1].Id : groups.ElementAtOrDefault(index + 2)?.Id;
         return OnCommand.InvokeAsync(new ReorderGroup(Plan.Version, group.Id, before));
     }
-    private void ClearDrag() { _dragCategory = null; _dragGroup = null; }
-    private void DragCategory(Guid? id) { ClearDrag(); if (!Busy) { _dragCategory = id; } }
-    private void DragGroup(Guid id) { ClearDrag(); if (!Busy) { _dragGroup = id; } }
-    private Task DropCategoryAsync(CategoryData before) => DropAsync(before.GroupId, before.Id);
-    private Task DropGroupAsync(Guid group) => DropAsync(group, null);
-    private Task DropGroupAtEndAsync() => DropAsync(null, null);
-    private Task DropAsync(Guid? group, Guid? before)
+
+    private bool TryGroup(string? listId, out Guid group)
     {
-        PlanCommand? command = null;
-        if (!Busy && _dragCategory is { } category && group.HasValue && category != before)
+        var id = Guid.Empty;
+        var found = listId is not null && listId.StartsWith(ListPrefix, StringComparison.Ordinal)
+            && Guid.TryParseExact(listId[ListPrefix.Length..], "N", out id)
+            && Plan.Groups.Any(item => item.Id == id);
+        group = id;
+        return found;
+    }
+
+    // Sortable indexes refer to the rows currently shown, so the destination is translated to the full group order.
+    private async Task ReorderAsync(FluentSortableListEventArgs args, string? fromListId)
+    {
+        if (Busy || !TryGroup(args.ToListId, out var target)) { return; }
+        var source = target;
+        if (fromListId is not null && !TryGroup(fromListId, out source)) { return; }
+        var shown = Rows(source);
+        if (args.OldIndex < 0 || args.OldIndex >= shown.Length) { return; }
+        var category = shown[args.OldIndex].Category.Id;
+        var visible = Rows(target).Select(item => item.Category.Id).Where(id => id != category).ToList();
+        var index = Math.Clamp(args.NewIndex, 0, visible.Count);
+        var current = Order(target);
+        var order = current.Where(id => id != category).ToList();
+        Guid? before = null;
+        if (index < visible.Count)
         {
-            command = new ReorderCategory(Plan.Version, category, group.Value, before);
+            before = visible[index];
         }
-        else if (!Busy && _dragGroup is { } source && source != group)
+        else if (index > 0)
         {
-            command = new ReorderGroup(Plan.Version, source, group);
+            var next = order.IndexOf(visible[index - 1]) + 1;
+            before = next < order.Count ? order[next] : null;
         }
+        order.Insert(before is { } id ? order.IndexOf(id) : order.Count, category);
+        if (source == target && order.SequenceEqual(current)) { return; }
+        var pending = new Dictionary<Guid, Guid[]> { [target] = [.. order] };
+        if (source != target)
+        {
+            pending[source] = Order(source).Where(id => id != category).ToArray();
+        }
+        _pending = pending;
+        try
+        {
+            await OnCommand.InvokeAsync(new ReorderCategory(Plan.Version, category, target, before));
+        }
+        finally
+        {
+            _pending = [];
+        }
+    }
+
+    private void ClearDrag() => _dragGroup = null;
+    private void DragGroup(Guid id) { ClearDrag(); if (!Busy) { _dragGroup = id; } }
+    private Task DropGroupAsync(Guid group) => DropAsync(group);
+    private Task DropGroupAtEndAsync() => DropAsync(null);
+    private Task DropAsync(Guid? before)
+    {
+        var command = !Busy && _dragGroup is { } source && source != before ? new ReorderGroup(Plan.Version, source, before) : null;
         ClearDrag();
         return command is null ? Task.CompletedTask : OnCommand.InvokeAsync(command);
     }

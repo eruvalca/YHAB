@@ -24,6 +24,8 @@
         <Routes />
     </CascadingValue>
     <ReconnectModal />
+    @* Self-host SortableJS so FluentSortableList does not inject it from a CDN. *@
+    <script src="@Assets["_content/YHAB.UI/lib/sortablejs/Sortable.min.js"]"></script>
     <script src="@Assets["_framework/blazor.web.js"]"></script>
     <script src="@Assets["Features/Account/Components/PasskeySubmit.razor.js"]" type="module"></script>
 </body>

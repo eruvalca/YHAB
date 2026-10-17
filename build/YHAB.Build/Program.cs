@@ -11,9 +11,9 @@ ConsoleCancelEventHandler cancel = (_, args) =>
 Console.CancelKeyPress += cancel;
 try
 {
-    if (args is ["patch-fluent", var source, var observers, var destination])
+    if (args is ["patch-fluent", var source, var destination])
     {
-        return await PatchFluentModule.RunAsync(source, observers, destination, cancellation.Token);
+        return await PatchFluentModule.RunAsync(source, destination, cancellation.Token);
     }
 
     if (args.Length != 5)

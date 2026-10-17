@@ -231,7 +231,7 @@ public sealed class HouseholdBrowserTests(ITestOutputHelper output)
         }
 
         (await page.Locator(".hero-amount").InnerTextAsync()).ShouldBe(BudgetFacts.Money(13400 + 4050 * months));
-        var groceries = page.Locator(".budget-table tr").Filter(new() { Has = page.GetByRole(AriaRole.Button, new() { Name = "Groceries", Exact = true }) });
+        var groceries = page.Locator(".budget-table .category-row").Filter(new() { Has = page.GetByRole(AriaRole.Button, new() { Name = "Groceries", Exact = true }) });
         (await groceries.Locator(".available-pill").InnerTextAsync()).ShouldBe(BudgetFacts.Money(40 * months));
     }
 
