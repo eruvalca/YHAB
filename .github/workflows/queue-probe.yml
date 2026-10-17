@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  prepare:
+  changes:
     runs-on: ubuntu-24.04
     outputs:
       deploy: ${{ steps.scope.outputs.deploy }}
@@ -16,25 +16,21 @@ jobs:
       - id: scope
         run: echo "deploy=true" >> "$GITHUB_OUTPUT"
 
-  needs-output:
-    needs: prepare
-    if: needs.prepare.outputs.deploy == 'true'
+  validate:
+    needs: [changes]
+    if: always()
     runs-on: ubuntu-24.04
-    concurrency:
-      group: probe-needs
-      cancel-in-progress: false
-      queue: max
     steps:
-      - run: echo needs-output
+      - run: echo validate
 
-  production-env:
-    needs: prepare
-    if: needs.prepare.outputs.deploy == 'true' && github.ref == 'refs/heads/ci-queue-probe'
-    runs-on: ubuntu-24.04
-    environment: production
+  deploy-shaped:
+    needs: [changes, validate]
+    if: github.ref == 'refs/heads/ci-queue-probe' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && needs.changes.outputs.deploy == 'true'
     concurrency:
-      group: probe-production
+      group: probe-shaped
       cancel-in-progress: false
       queue: max
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
-      - run: echo "environment job ref=$GITHUB_REF"
+      - run: echo "shaped deploy ran for $GITHUB_REF"
