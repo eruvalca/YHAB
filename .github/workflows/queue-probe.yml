@@ -7,6 +7,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: probe-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   changes:
     runs-on: ubuntu-24.04
@@ -32,5 +36,6 @@ jobs:
       queue: max
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    environment: ci-probe
     steps:
       - run: echo "shaped deploy ran for $GITHUB_REF"
