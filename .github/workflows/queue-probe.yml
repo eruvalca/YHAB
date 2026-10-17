@@ -1,0 +1,33 @@
+name: queue probe
+
+on:
+  push:
+    branches: [ci-queue-probe]
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo prepare
+
+  with-queue:
+    needs: prepare
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: probe-with-queue
+      cancel-in-progress: false
+      queue: max
+    steps:
+      - run: echo with-queue
+
+  without-queue:
+    needs: prepare
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: probe-without-queue
+      cancel-in-progress: false
+    steps:
+      - run: echo without-queue
