@@ -219,7 +219,7 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
     {
         var response = await page.RunAndWaitForResponseAsync(action,
             item => item.Url.EndsWith("/categories/reorder", StringComparison.Ordinal) && string.Equals(item.Request.Method, "POST", StringComparison.Ordinal));
-        response.Status.ShouldBe(200, await response.TextAsync());
+        response.Status.ShouldBe(200, response.Ok ? null : await response.TextAsync());
         await page.WaitForFunctionAsync("() => document.querySelector('.category-list .row-move') && !document.querySelector('.category-list .row-move:not(.sortable-grab)')");
     }
 
@@ -241,8 +241,17 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
                 await whileDragging();
             }
         }
+        await GhostBesideAsync(page, target, after: true);
         await TouchAsync(cdp, "touchEnd", endX, endY);
         await page.Locator(".category-list .sortable-drag").WaitForAsync(new() { State = WaitForSelectorState.Detached });
+    }
+
+    // Fallback drags apply the pointer position on a SortableJS timer, so release only once the placeholder row has reached the target.
+    private static async Task GhostBesideAsync(IPage page, ILocator target, bool after)
+    {
+        var id = (await target.GetAttributeAsync("data-category-id")).ShouldNotBeNull();
+        await page.WaitForFunctionAsync("([id, after]) => { const ghost = document.querySelector('.category-list .sortable-ghost'); return !!(after ? ghost?.previousElementSibling : ghost?.nextElementSibling)?.querySelector(`[data-category-id='${id}']`); }",
+            new object[] { id, after }, new() { Timeout = 10000 });
     }
 
     private static async Task TouchAsync(ICDPSession cdp, string type, float x, float y) => await cdp.SendAsync("Input.dispatchTouchEvent", new Dictionary<string, object>(StringComparer.Ordinal)
@@ -269,7 +278,7 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
     }
 
     // SortableJS uses pointer events, so the drag needs intermediate moves rather than an HTML drag-and-drop event.
-    // The drop lands in the target's upper quarter so the dragged row is inserted before it, not beside its midpoint.
+    // The drop lands in the target's upper quarter and waits for the placeholder so the row is inserted before it.
     private static async Task PointerDragAsync(IPage page, ILocator handle, ILocator target)
     {
         var from = (await handle.BoundingBoxAsync()).ShouldNotBeNull();
@@ -277,6 +286,7 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
         await page.Mouse.DownAsync();
         var to = (await target.BoundingBoxAsync()).ShouldNotBeNull();
         await page.Mouse.MoveAsync(to.X + to.Width / 2, to.Y + to.Height / 4, new() { Steps = 12 });
+        await GhostBesideAsync(page, target, after: false);
         await page.Mouse.UpAsync();
     }
 
