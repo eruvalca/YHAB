@@ -36,6 +36,11 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
+      - name: Report workflow context
+        shell: bash
+        run: |
+          echo "ref=$GITHUB_REF event=$GITHUB_EVENT_NAME base=${{ github.event.before }}"
+          echo "ref=$GITHUB_REF event=$GITHUB_EVENT_NAME" >> "$GITHUB_STEP_SUMMARY"
       - name: Select validation scope
         id: scope
         shell: pwsh
