@@ -4,14 +4,6 @@ on:
   pull_request:
   push:
     branches: [main]
-  workflow_dispatch:
-    inputs:
-      performance:
-        description: Also run extended browser load and memory diagnostics
-        type: boolean
-        default: false
-  schedule:
-    - cron: '23 3 * * 1'
 
 permissions:
   contents: read
@@ -64,20 +56,71 @@ jobs:
           if-no-files-found: warn
 
   tests:
+    name: Test ${{ matrix.project }}
     strategy:
       fail-fast: false
       matrix:
         project: [YHAB.IntegrationTests, YHAB.AspireIntegrationTests, YHAB.PlaywrightTests]
-    uses: ./.github/workflows/test-layer.yml
-    with:
-      project: ${{ matrix.project }}
-
-  diagnostics:
-    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.performance)
-    uses: ./.github/workflows/test-layer.yml
-    with:
-      project: YHAB.PlaywrightTests
-      performance: true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: ./.github/actions/setup-dotnet
+      - name: Create and trust test HTTPS certificate
+        if: matrix.project != 'YHAB.IntegrationTests'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends libnss3-tools
+          # Trust the same user's certificate in both OpenSSL and Chromium.
+          dotnet dev-certs https --export-path "$RUNNER_TEMP/yhab-test-https.crt" --format PEM
+          sudo cp "$RUNNER_TEMP/yhab-test-https.crt" /usr/local/share/ca-certificates/yhab-test-https.crt
+          sudo update-ca-certificates
+          openssl verify -CAfile /etc/ssl/certs/ca-certificates.crt "$RUNNER_TEMP/yhab-test-https.crt"
+          nssdb="$HOME/.local/share/pki/nssdb"
+          if [[ -d "$HOME/.pki/nssdb" ]]; then nssdb="$HOME/.pki/nssdb"; fi
+          mkdir -p "$nssdb"
+          if [[ ! -f "$nssdb/cert9.db" ]]; then
+            certutil -N -d "sql:$nssdb" --empty-password
+          fi
+          certutil -A -d "sql:$nssdb" -n yhab-test-https -t 'P,,' -i "$RUNNER_TEMP/yhab-test-https.crt"
+          certutil -V -d "sql:$nssdb" -n yhab-test-https -u V
+      - name: Build test project
+        shell: pwsh
+        env:
+          PROJECT: ${{ matrix.project }}
+        run: |
+          dotnet build "tests/$env:PROJECT/$env:PROJECT.csproj" --configuration Release
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Install test browser
+        if: matrix.project == 'YHAB.PlaywrightTests'
+        shell: pwsh
+        run: ./tests/YHAB.PlaywrightTests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
+      - name: Run tests
+        shell: pwsh
+        env:
+          PROJECT: ${{ matrix.project }}
+        run: |
+          dotnet test --project "tests/$env:PROJECT/$env:PROJECT.csproj" --configuration Release --no-build --max-parallel-test-modules 1 --output Detailed --report-trx --results-directory "$env:RUNNER_TEMP/yhab-test-results"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Retain test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-results-${{ matrix.project }}
+          path: ${{ runner.temp }}/yhab-test-results/*.trx
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Retain browser failure diagnostics
+        if: failure() && matrix.project == 'YHAB.PlaywrightTests'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-diagnostics
+          path: |
+            tests/YHAB.PlaywrightTests/bin/Release/net10.0/TestResults/**/trace.zip
+            tests/YHAB.PlaywrightTests/bin/Release/net10.0/TestResults/**/*.png
+          retention-days: 7
+          if-no-files-found: warn
 
   publish:
     runs-on: ubuntu-24.04
@@ -90,9 +133,8 @@ jobs:
 
   deploy:
     needs: [fast, tests, publish]
-    # always() keeps this job from being skipped when a job in its dependency chain is skipped.
-    # Deployment is the only decision: every successful run on main deploys.
-    if: always() && needs.fast.result == 'success' && needs.tests.result == 'success' && needs.publish.result == 'success' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && github.event_name != 'schedule'
+    # Every successful main push deploys; pull requests never deploy.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     environment: production

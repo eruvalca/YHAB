@@ -71,16 +71,21 @@ try {
     if ($Force -and $null -ne $existing -and $existing -ne '.githooks') {
         Write-Host "Replacing effective core.hooksPath '$existing' with a local override; record its scope/value for restoration."
     }
-    $worktreeHooks = & git -C $repoRoot config --worktree --get core.hooksPath
-    if ($LASTEXITCODE -notin @(0, 1)) {
-        throw 'Could not read worktree core.hooksPath.'
-    }
     $worktreeConfig = & git -C $repoRoot config --get extensions.worktreeConfig
     if ($LASTEXITCODE -notin @(0, 1)) {
         throw 'Could not read extensions.worktreeConfig.'
     }
-    if ($worktreeConfig -eq 'true' -and $null -ne $worktreeHooks -and $worktreeHooks -ne '.githooks') {
-        throw "Worktree core.hooksPath '$worktreeHooks' overrides local configuration; resolve it explicitly first."
+    # --worktree fails in linked worktrees unless the extension is enabled; without it
+    # there can be no worktree-specific override to check.
+    $worktreeHooks = $null
+    if ($worktreeConfig -eq 'true') {
+        $worktreeHooks = & git -C $repoRoot config --worktree --get core.hooksPath
+        if ($LASTEXITCODE -notin @(0, 1)) {
+            throw 'Could not read worktree core.hooksPath.'
+        }
+        if ($null -ne $worktreeHooks -and $worktreeHooks -ne '.githooks') {
+            throw "Worktree core.hooksPath '$worktreeHooks' overrides local configuration; resolve it explicitly first."
+        }
     }
     Invoke-CheckedGit @('config', '--local', '--replace-all', 'core.hooksPath', '.githooks')
     Write-Host 'Enabled local YHAB hooks: pre-commit Quick; pre-push Fast.'

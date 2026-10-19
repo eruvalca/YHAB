@@ -29,7 +29,7 @@ invocation instead. Omit `-Suite` for the default `Integration` suite.
 | --- | --- |
 | `Quick` | `git diff --cached --check` only: staged whitespace/conflict-marker checks, including partially staged files and unborn branches. No formatting, builds, index edits, or application startup. |
 | `Fast` (default) | Quick, working-tree `git diff --check`, solution format verification, solution build, then unit and component tests with `--no-build`. |
-| `Infrastructure` | Fast plus explicitly selected `Integration`, `Aspire`, and/or `Browser` test suites. Browser excludes `Category=Performance`, matching PR functional-browser validation. |
+| `Infrastructure` | Fast plus explicitly selected `Integration`, `Aspire`, and/or `Browser` test suites. Browser excludes `Category=Performance`; use `Full` to include those cases. |
 | `Full` | Whitespace checks, format verification, solution build, then all five test projects via native MTP `dotnet test --solution ... --no-build --max-parallel-test-modules 1`, including browser performance cases with sequential test modules. |
 
 Commands always run from the repository root and stop at the first failure with
@@ -61,8 +61,10 @@ pwsh ./scripts/Install-GitHooks.ps1 -Uninstall
 ```
 
 The installer sets only local `core.hooksPath=.githooks`, makes hook files
-executable on Unix, and does not stage files. Pre-commit runs Quick; pre-push runs
-Fast once, regardless of pushed ref count. Existing effective hooks-path settings
+executable on Unix, and does not stage files. In a linked worktree, that local
+value belongs to the repository's shared Git config, so the hooks apply to every
+worktree unless a worktree-specific `core.hooksPath` overrides it. Pre-commit runs
+Quick; pre-push runs Fast once, regardless of pushed ref count. Existing effective hooks-path settings
 (including global ones) and custom default `.git/hooks` files are protected:
 installation refuses to replace them without `-Force`. Hooks are not chained.
 Before forcing, record `git config --show-origin --get-all core.hooksPath` and
