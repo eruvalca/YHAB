@@ -1,0 +1,23 @@
+name: Trust YHAB test HTTPS certificate
+description: Install the .NET development HTTPS certificate in the system and Chromium NSS stores.
+runs:
+  using: composite
+  steps:
+    - name: Create and trust test HTTPS certificate
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install --yes --no-install-recommends libnss3-tools
+        # Trust the same user's certificate in both OpenSSL and Chromium.
+        dotnet dev-certs https --export-path "$RUNNER_TEMP/yhab-test-https.crt" --format PEM
+        sudo cp "$RUNNER_TEMP/yhab-test-https.crt" /usr/local/share/ca-certificates/yhab-test-https.crt
+        sudo update-ca-certificates
+        openssl verify -CAfile /etc/ssl/certs/ca-certificates.crt "$RUNNER_TEMP/yhab-test-https.crt"
+        nssdb="$HOME/.local/share/pki/nssdb"
+        if [[ -d "$HOME/.pki/nssdb" ]]; then nssdb="$HOME/.pki/nssdb"; fi
+        mkdir -p "$nssdb"
+        if [[ ! -f "$nssdb/cert9.db" ]]; then
+          certutil -N -d "sql:$nssdb" --empty-password
+        fi
+        certutil -A -d "sql:$nssdb" -n yhab-test-https -t 'P,,' -i "$RUNNER_TEMP/yhab-test-https.crt"
+        certutil -V -d "sql:$nssdb" -n yhab-test-https -u V
