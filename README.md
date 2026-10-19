@@ -514,42 +514,30 @@ scope; the workflow's resource permissions remain scoped to the dedicated group.
 
 ### Deployment sequence
 
-[Validate and deploy](.github/workflows/deploy.yml) always reports the `validate`
-gate. Require that check in branch protection. Formatting and tooling checks run
-on every PR and push to `main`; application changes additionally run Debug
-architecture checks, a Release build, unit/component tests, all database and Aspire
-integration tests, functional browser tests, and `aspire publish`. Heavy test
-projects run on separate runners, not concurrently on one constrained runner.
-Extended browser load/editing/memory diagnostics run weekly and through the
-manual dispatch `performance` option; scheduled runs never deploy.
-
-Change selection deliberately recognizes only the explicit documentation and
-agent-tooling allowlist in `scripts/Get-ValidationScope.ps1`. Everything else,
-including unknown paths and documentation that might be a build/test input, gets
-full functional validation. Test-only changes do not deploy. Ordinary documentation
-and known agent tooling receive formatting/tooling checks without a deployment.
-Application-changing main commits are fully revalidated; PR results from a different
-commit are not reused. Manual dispatch forces full validation and can deploy from
-`main`, even without file changes.
+[Validate and deploy](.github/workflows/deploy.yml) checks formatting and tooling
+on every PR and push to `main`, then runs Debug architecture checks, a Release
+build, unit/component tests, all database and Aspire integration tests, functional
+browser tests, and `aspire publish`. Heavy test projects run on separate runners,
+not concurrently on one constrained runner. Every successful run on `main` deploys
+to production: there is no change-scope selection, so a merge or direct push
+deploys even when it only changes documentation or tests. Pull requests run the
+same validation without deploying. Extended browser load/editing/memory
+diagnostics run weekly and through the manual dispatch `performance` option;
+scheduled runs never deploy.
 
 New commits cancel obsolete PR runs. Main validation runs independently rather
-than queuing behind an older deployment; it is not canceled. Each deployment run
-keeps its own superseded-input check, so an older commit that finishes validation
-after a newer application change does not deploy over it. The deployment job does
-not use a job-level concurrency group: a group that stays occupied after a stuck
-deployment would block every later deployment.
-The deployment job uses `always()` and checks its needed results explicitly:
-`validate` runs past the skipped `diagnostics` job, and a job without `always()`
-is skipped when any job in its dependency chain was skipped. It still requires
-`main`, a push or manual dispatch, and a deployment-bearing change set.
-Newer application changes
-prevent an older main commit from beginning deployment; intervening documentation
-or test-only commits do not strand an otherwise validated application change.
-A successful applicable main run signs into Azure with OIDC
-and runs `aspire deploy --environment Production --non-interactive`, preserving
-migration-before-web ordering. SDK setup caches downloaded NuGet packages using
-SDK, central build/dependency manifests and project files as inputs; it does not
-reuse compiled test results, credentials or Aspire runtime/deployment state.
+than queuing behind an older deployment; it is not canceled. The deploy job uses
+`always()` and explicitly requires the `fast`, `tests`, and `publish` results to
+be `success`, because a job without `always()` is skipped when a job in its
+dependency chain was skipped. It deliberately has no job-level concurrency group:
+a group left occupied by a stuck deployment blocks every later deployment.
+A successful main run signs into Azure with OIDC and runs
+`aspire deploy --environment Production --non-interactive`, preserving
+migration-before-web ordering. `scripts/Get-ValidationScope.ps1` remains the
+classifier for local agent and validation hooks; CI no longer uses it to gate
+deployment. SDK setup caches downloaded NuGet packages using SDK, central
+build/dependency manifests and project files as inputs; it does not reuse compiled
+test results, credentials or Aspire runtime/deployment state.
 
 The workflow's JavaScript actions use SHA-pinned releases targeting Node.js 24,
 including artifact upload and Azure login. This runtime is supplied by the GitHub

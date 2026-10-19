@@ -15,12 +15,11 @@ the CLI and editor find `global.json` and `YHAB.slnx`.
 `YHAB.Testing` is a shared support library, not a test project. It configures
 isolated AppHost builders for the Aspire and Playwright projects.
 
-The deployment workflow runs all five functional layers for application changes
-before deploying from `main`, with infrastructure/browser projects on separate
-runners. The always-reported `validate` job gates deployment and should be the
-required branch-protection check. Explicit documentation/agent-tooling-only changes
-use lightweight checks and do not deploy; unknown paths fail closed to full validation.
-Main application changes are revalidated even after a successful PR run.
+The deployment workflow runs all five functional layers on every PR and `main`
+push, with infrastructure/browser projects on separate runners. Every successful
+run on `main` deploys to production; pull requests do not deploy. CI no longer
+selects a change scope, so documentation-only merges deploy too, and
+`scripts/Get-ValidationScope.ps1` remains for local hooks.
 On its Ubuntu runner, it exports the test user's public HTTPS development
 certificate, adds it to the system CA store and Chromium's NSS database, and
 verifies both before testing. Only the public certificate is imported, using

@@ -26,44 +26,7 @@ env:
   ASPIRE_VERSION: 13.6.0
 
 jobs:
-  changes:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    outputs:
-      application: ${{ steps.scope.outputs.application }}
-      deploy: ${{ steps.scope.outputs.deploy }}
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-        with:
-          fetch-depth: 0
-      - name: Select validation scope
-        id: scope
-        shell: pwsh
-        env:
-          EVENT: ${{ github.event_name }}
-          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: |
-          $paths = @()
-          $full = $env:EVENT -in @('workflow_dispatch', 'schedule')
-          if (!$full) {
-            $base = $env:BASE
-            if (!$base -or $base -match '^0+$') { $full = $true }
-            else {
-              if ($env:EVENT -eq 'pull_request') {
-                $base = git merge-base $base HEAD
-                if ($LASTEXITCODE) { throw 'Cannot determine PR merge base.' }
-              }
-              $diff = git diff --name-only --no-renames -z $base HEAD
-              if ($LASTEXITCODE) { throw 'Cannot determine changed paths.' }
-              $paths = @(($diff -join "`n").Split([char]0, [StringSplitOptions]::RemoveEmptyEntries))
-            }
-          }
-          $scope = ./scripts/Get-ValidationScope.ps1 -Paths $paths -Full:$full
-          "application=$($scope.application.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
-          "deploy=$($scope.deploy.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
-
   fast:
-    needs: changes
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -78,17 +41,13 @@ jobs:
           ./scripts/Test-DocumentationReviewHook.ps1
           ./scripts/Test-AgentValidationHook.ps1
       - name: Check project-reference policy
-        if: needs.changes.outputs.application == 'true'
         shell: pwsh
         run: ./scripts/Test-ArchitectureProjectReferences.ps1
       - name: Check architecture before optimization
-        if: needs.changes.outputs.application == 'true'
         run: dotnet test --project tests/YHAB.UnitTests/YHAB.UnitTests.csproj --configuration Debug --filter-class "YHAB.UnitTests.Architecture.*" --report-trx --report-trx-filename architecture-debug.trx --results-directory "${{ runner.temp }}/yhab-test-results"
       - name: Build
-        if: needs.changes.outputs.application == 'true'
         run: dotnet build YHAB.slnx --configuration Release
       - name: Test unit and component layers
-        if: needs.changes.outputs.application == 'true'
         shell: pwsh
         run: |
           foreach ($project in @('YHAB.UnitTests', 'YHAB.ComponentTests')) {
@@ -105,8 +64,6 @@ jobs:
           if-no-files-found: warn
 
   tests:
-    needs: changes
-    if: needs.changes.outputs.application == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -123,8 +80,6 @@ jobs:
       performance: true
 
   publish:
-    needs: changes
-    if: needs.changes.outputs.application == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -133,31 +88,11 @@ jobs:
       - name: Validate deployment artifacts and migration bundle
         run: aspire publish --environment Production --output-path "$RUNNER_TEMP/yhab-preview" --non-interactive
 
-  validate:
-    needs: [changes, fast, tests, publish, diagnostics]
-    if: always()
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - name: Require every applicable check to succeed
-        shell: pwsh
-        env:
-          NEEDS: ${{ toJSON(needs) }}
-          PERFORMANCE: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.performance) }}
-        run: |
-          $jobs = $env:NEEDS | ConvertFrom-Json
-          $required = @('changes', 'fast')
-          if ($jobs.changes.outputs.application -eq 'true') { $required += @('tests', 'publish') }
-          if ($env:PERFORMANCE -eq 'true') { $required += 'diagnostics' }
-          foreach ($name in $required) {
-            if ($jobs.$name.result -ne 'success') { throw "$name did not succeed: $($jobs.$name.result)" }
-          }
-
   deploy:
-    needs: [changes, validate]
-    # always() is required: validate runs with always() even when diagnostics is skipped, and a job
-    # without always() is skipped when any job in its dependency chain was skipped.
-    if: always() && needs.changes.result == 'success' && needs.validate.result == 'success' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && github.event_name != 'schedule' && needs.changes.outputs.deploy == 'true'
+    needs: [fast, tests, publish]
+    # always() keeps this job from being skipped when a job in its dependency chain is skipped.
+    # Deployment is the only decision: every successful run on main deploys.
+    if: always() && needs.fast.result == 'success' && needs.tests.result == 'success' && needs.publish.result == 'success' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     environment: production
@@ -173,21 +108,6 @@ jobs:
       Azure__AllowResourceGroupCreation: false
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - name: Reject superseded application changes
-        shell: pwsh
-        run: |
-          git fetch --no-tags origin main
-          if ($LASTEXITCODE) { throw 'Cannot fetch current main.' }
-          $currentMain = git rev-parse FETCH_HEAD
-          if ($LASTEXITCODE) { throw 'Cannot resolve current main.' }
-          if ($currentMain -ne $env:GITHUB_SHA) {
-            $diff = git diff --name-only --no-renames -z $env:GITHUB_SHA $currentMain
-            if ($LASTEXITCODE) { throw 'Cannot compare deployment inputs.' }
-            $paths = @(($diff -join "`n").Split([char]0, [StringSplitOptions]::RemoveEmptyEntries))
-            $scope = ./scripts/Get-ValidationScope.ps1 -Paths $paths
-            if ($scope.deploy) { throw 'Application changes superseded this commit. Deploy the newer workflow run.' }
-            Write-Host 'Only non-deployment files changed on main; deploying the validated application commit.'
-          }
       - uses: ./.github/actions/setup-dotnet
       - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
