@@ -515,22 +515,19 @@ scope; the workflow's resource permissions remain scoped to the dedicated group.
 ### Deployment sequence
 
 [Validate and deploy](.github/workflows/deploy.yml) checks formatting and tooling
-on every PR and push to `main`, then runs Debug architecture checks, a Release
-build, unit/component tests, all database and Aspire integration tests, functional
-browser tests, and `aspire publish`. Heavy test projects run on separate runners,
-not concurrently on one constrained runner. Every successful run on `main` deploys
-to production: there is no change-scope selection, so a merge or direct push
-deploys even when it only changes documentation or tests. Pull requests run the
-same validation without deploying. Extended browser load/editing/memory
-diagnostics run weekly and through the manual dispatch `performance` option;
-scheduled runs never deploy.
+on every PR and push to `main`, then runs Debug architecture checks, builds
+Release, runs unit/component tests, all database, Aspire, and browser tests
+(including the extended performance cases), and `aspire publish`. Heavy test projects run on separate runners, not
+concurrently on one constrained runner. Every successful run on `main` deploys to
+production: there is no change-scope selection, so a merge or direct push deploys
+even when it only changes documentation or tests. Pull requests run the same
+validation without deploying.
 
 New commits cancel obsolete PR runs. Main validation runs independently rather
-than queuing behind an older deployment; it is not canceled. The deploy job uses
-`always()` and explicitly requires the `fast`, `tests`, and `publish` results to
-be `success`, because a job without `always()` is skipped when a job in its
-dependency chain was skipped. It deliberately has no job-level concurrency group:
-a group left occupied by a stuck deployment blocks every later deployment.
+than queuing behind an older deployment; it is not canceled. The deploy job
+requires the `fast`, `tests`, and `publish` jobs to succeed and runs only for a
+push to `main`. It deliberately has no job-level concurrency group: a group left
+occupied by a stuck deployment blocks every later deployment.
 A successful main run signs into Azure with OIDC and runs
 `aspire deploy --environment Production --non-interactive`, preserving
 migration-before-web ordering. `scripts/Get-ValidationScope.ps1` remains the
