@@ -155,7 +155,7 @@ jobs:
 
   deploy:
     needs: [changes, validate]
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && needs.changes.outputs.deploy == 'true'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && github.event_name != 'schedule'
     concurrency:
       group: yhab-production
       cancel-in-progress: false
@@ -174,8 +174,22 @@ jobs:
       Azure__CredentialSource: AzureCli
       Azure__AllowResourceGroupCreation: false
     steps:
+      # The scope gate is a step because a job-level condition that reads needs outputs skipped
+      # this job on every main push even when the changes job reported deploy=true.
+      - name: Select deployment scope
+        id: scope
+        shell: bash
+        env:
+          DEPLOY: ${{ needs.changes.outputs.deploy }}
+        run: |
+          echo "deploy=$DEPLOY" >> "$GITHUB_OUTPUT"
+          if [ "$DEPLOY" != "true" ]; then
+            echo "No deployment inputs changed; this run does not deploy." >> "$GITHUB_STEP_SUMMARY"
+          fi
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        if: steps.scope.outputs.deploy == 'true'
       - name: Reject superseded application changes
+        if: steps.scope.outputs.deploy == 'true'
         shell: pwsh
         run: |
           git fetch --no-tags origin main
@@ -191,14 +205,18 @@ jobs:
             Write-Host 'Only non-deployment files changed on main; deploying the validated application commit.'
           }
       - uses: ./.github/actions/setup-dotnet
+        if: steps.scope.outputs.deploy == 'true'
       - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        if: steps.scope.outputs.deploy == 'true'
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       - name: Deploy infrastructure, apply migrations, then deploy web
+        if: steps.scope.outputs.deploy == 'true'
         run: aspire deploy --environment Production --non-interactive
       - name: Verify deployed application
+        if: steps.scope.outputs.deploy == 'true'
         shell: bash
         run: |
           host=$(az containerapp show --resource-group "$Azure__ResourceGroup" --name yhab --query properties.configuration.ingress.fqdn --output tsv)

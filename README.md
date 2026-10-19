@@ -538,6 +538,11 @@ deployment has its own non-canceling concurrency group with `queue: max`, preser
 up to 100 pending deployments rather than replacing a newer commit's pending job
 when an older commit finishes validation later. Queue order follows arrival, not
 commit order, so the superseded-input check remains inside the deployment job.
+The job starts for every main push or manual dispatch and decides in its first
+step whether the validated scope requires a deployment; a job-level condition
+that read the changes job's outputs skipped the job even when those outputs
+required a deployment, so the scope decision stays a step. A run whose scope does
+not require deployment finishes green without signing in or deploying.
 Newer application changes
 prevent an older main commit from beginning deployment; intervening documentation
 or test-only commits do not strand an otherwise validated application change.
