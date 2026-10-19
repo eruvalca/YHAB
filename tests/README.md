@@ -15,9 +15,11 @@ the CLI and editor find `global.json` and `YHAB.slnx`.
 `YHAB.Testing` is a shared support library, not a test project. It configures
 isolated AppHost builders for the Aspire and Playwright projects.
 
-The deployment workflow runs all five functional layers, including the extended
-browser performance cases, on every PR and `main` push, with
-infrastructure/browser projects on separate runners. Every successful run on
+The deployment workflow runs all five functional layers on every PR and `main`
+push, with infrastructure/browser projects on separate runners. The extended
+browser performance cases run in the separate
+[Performance validation](../.github/workflows/performance.yml) workflow weekly
+and on demand. Every successful run on
 `main` deploys to production; pull requests do not deploy. CI no longer
 selects a change scope, so documentation-only merges deploy too, and
 `scripts/Get-ValidationScope.ps1` remains for local hooks.
@@ -48,7 +50,7 @@ deployment/dashboard state. Local reports remain opt-in.
 
 Every application PR/main run retains all unit/component tests, the entire
 PostgreSQL suite (including sustained competing-write/recurring-worker checks),
-Aspire startup/deployment checks, and the full Chromium suite including the
+Aspire startup/deployment checks, and the full Chromium suite except the three
 extended performance cases. Money conservation,
 receipts, concurrency, history rollback, migrations, owner isolation, API guards,
 SSR-to-server-to-WASM handoff, PWA behavior, desktop/mobile workflows, large-register
@@ -61,9 +63,11 @@ The ordinary household case still checks its three-month financial walkthrough,
 10k/50k/100k registers and wide catalog, but omits the 120-cycle editing measurement.
 The extended case repeats that correctness fixture and adds the original editing
 and memory assertions; no measurement deadline or assertion is relaxed.
-The workflow runs these three cases on every PR and `main` push along with the
-rest of the Playwright suite. Unfiltered local solution runs still execute every
-test.
+The deployment workflow excludes these three cases from every PR and `main`
+push while running the rest of the Playwright suite. The separate
+[Performance validation](../.github/workflows/performance.yml) workflow runs only
+these cases weekly and on manual dispatch. Unfiltered local solution runs still
+execute every test.
 
 ```powershell
 # Native MTP/xUnit filters, after a matching Release build:

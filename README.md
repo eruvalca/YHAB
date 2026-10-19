@@ -516,8 +516,11 @@ scope; the workflow's resource permissions remain scoped to the dedicated group.
 
 [Validate and deploy](.github/workflows/deploy.yml) checks formatting and tooling
 on every PR and push to `main`, then runs Debug architecture checks, builds
-Release, runs unit/component tests, all database, Aspire, and browser tests
-(including the extended performance cases), and `aspire publish`. Heavy test projects run on separate runners, not
+Release, runs unit/component tests, all database, Aspire, and browser tests, and
+`aspire publish`. The extended browser performance cases are excluded there and
+run in the separate
+[Performance validation](.github/workflows/performance.yml) workflow weekly and
+on manual dispatch. Heavy test projects run on separate runners, not
 concurrently on one constrained runner. Every successful run on `main` deploys to
 production: there is no change-scope selection, so a merge or direct push deploys
 even when it only changes documentation or tests. Pull requests run the same
