@@ -158,10 +158,6 @@ jobs:
     # always() is required: validate runs with always() even when diagnostics is skipped, and a job
     # without always() is skipped when any job in its dependency chain was skipped.
     if: always() && needs.changes.result == 'success' && needs.validate.result == 'success' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && github.event_name != 'schedule' && needs.changes.outputs.deploy == 'true'
-    concurrency:
-      group: yhab-production
-      cancel-in-progress: false
-      queue: max
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     environment: production

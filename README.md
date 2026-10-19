@@ -533,11 +533,11 @@ commit are not reused. Manual dispatch forces full validation and can deploy fro
 `main`, even without file changes.
 
 New commits cancel obsolete PR runs. Main validation runs independently rather
-than queuing behind an older deployment; it is not canceled. Production
-deployment has its own non-canceling concurrency group with `queue: max`, preserving
-up to 100 pending deployments rather than replacing a newer commit's pending job
-when an older commit finishes validation later. Queue order follows arrival, not
-commit order, so the superseded-input check remains inside the deployment job.
+than queuing behind an older deployment; it is not canceled. Each deployment run
+keeps its own superseded-input check, so an older commit that finishes validation
+after a newer application change does not deploy over it. The deployment job does
+not use a job-level concurrency group: a group that stays occupied after a stuck
+deployment would block every later deployment.
 The deployment job uses `always()` and checks its needed results explicitly:
 `validate` runs past the skipped `diagnostics` job, and a job without `always()`
 is skipped when any job in its dependency chain was skipped. It still requires
