@@ -158,6 +158,14 @@ jobs:
             if ($jobs.$name.result -ne 'success') { throw "$name did not succeed: $($jobs.$name.result)" }
           }
 
+  environment-probe:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: production
+    steps:
+      - run: echo "environment reached"
+
   deploy:
     needs: [changes, validate]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && github.event_name != 'schedule'
