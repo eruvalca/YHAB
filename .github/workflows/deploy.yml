@@ -36,11 +36,6 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
-      - name: Report workflow context
-        shell: bash
-        run: |
-          echo "ref=$GITHUB_REF event=$GITHUB_EVENT_NAME base=${{ github.event.before }}"
-          echo "ref=$GITHUB_REF event=$GITHUB_EVENT_NAME" >> "$GITHUB_STEP_SUMMARY"
       - name: Select validation scope
         id: scope
         shell: pwsh
@@ -158,40 +153,11 @@ jobs:
             if ($jobs.$name.result -ne 'success') { throw "$name did not succeed: $($jobs.$name.result)" }
           }
 
-  environment-probe:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    environment: production
-    steps:
-      - run: echo "environment reached"
-
-  concurrency-probe:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    concurrency:
-      group: yhab-production
-      cancel-in-progress: false
-      queue: max
-    steps:
-      - run: echo "concurrency reached"
-
-  concurrency-environment-probe:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    environment: production
-    concurrency:
-      group: yhab-production
-      cancel-in-progress: false
-      queue: max
-    steps:
-      - run: echo "concurrency and environment reached"
-
   deploy:
     needs: [changes, validate]
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && github.event_name != 'schedule'
+    # always() is required: validate runs with always() even when diagnostics is skipped, and a job
+    # without always() is skipped when any job in its dependency chain was skipped.
+    if: always() && needs.changes.result == 'success' && needs.validate.result == 'success' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && github.event_name != 'schedule' && needs.changes.outputs.deploy == 'true'
     concurrency:
       group: yhab-production
       cancel-in-progress: false
@@ -210,4 +176,36 @@ jobs:
       Azure__CredentialSource: AzureCli
       Azure__AllowResourceGroupCreation: false
     steps:
-      - run: echo "deploy job reached"
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Reject superseded application changes
+        shell: pwsh
+        run: |
+          git fetch --no-tags origin main
+          if ($LASTEXITCODE) { throw 'Cannot fetch current main.' }
+          $currentMain = git rev-parse FETCH_HEAD
+          if ($LASTEXITCODE) { throw 'Cannot resolve current main.' }
+          if ($currentMain -ne $env:GITHUB_SHA) {
+            $diff = git diff --name-only --no-renames -z $env:GITHUB_SHA $currentMain
+            if ($LASTEXITCODE) { throw 'Cannot compare deployment inputs.' }
+            $paths = @(($diff -join "`n").Split([char]0, [StringSplitOptions]::RemoveEmptyEntries))
+            $scope = ./scripts/Get-ValidationScope.ps1 -Paths $paths
+            if ($scope.deploy) { throw 'Application changes superseded this commit. Deploy the newer workflow run.' }
+            Write-Host 'Only non-deployment files changed on main; deploying the validated application commit.'
+          }
+      - uses: ./.github/actions/setup-dotnet
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Deploy infrastructure, apply migrations, then deploy web
+        run: aspire deploy --environment Production --non-interactive
+      - name: Verify deployed application
+        shell: bash
+        run: |
+          host=$(az containerapp show --resource-group "$Azure__ResourceGroup" --name yhab --query properties.configuration.ingress.fqdn --output tsv)
+          test -n "$host"
+          for path in /alive /health /Account/Login; do
+            curl --fail --silent --show-error --retry 12 --retry-all-errors --retry-delay 5 --max-time 15 "https://$host$path" --output /dev/null
+          done
+          echo "Application: https://$host" >> "$GITHUB_STEP_SUMMARY"
