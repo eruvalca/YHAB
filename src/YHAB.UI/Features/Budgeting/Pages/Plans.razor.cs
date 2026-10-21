@@ -6,7 +6,8 @@ namespace YHAB.UI.Features.Budgeting.Pages;
 
 public sealed partial class Plans(IBudgetClient budgets, NavigationManager navigation)
 {
-    private IReadOnlyList<PlanSummary> _plans = [];
+    private IReadOnlyList<PlanSummary> _ownedPlans = [];
+    private IReadOnlyList<PlanSummary> _sharedPlans = [];
     private string? _error;
     [SupplyParameterFromForm(FormName = "CreatePlan")] private PlanInput Input { get; set; } = default!;
 
@@ -19,7 +20,8 @@ public sealed partial class Plans(IBudgetClient budgets, NavigationManager navig
         {
             var plans = await budgets.ListAsync(token);
             token.ThrowIfCancellationRequested();
-            _plans = plans;
+            _ownedPlans = plans.Where(item => item.IsOwner).ToArray();
+            _sharedPlans = plans.Where(item => !item.IsOwner).ToArray();
         }
         catch (BudgetRequestException exception)
         {

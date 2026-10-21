@@ -36,5 +36,5 @@
     {
         <a class="back-link" href="@($"/plans/{Plan.Id}/accounts")">Manage accounts →</a>
     }
-    <div class="plan-private"><FluentIcon Value="@(new Icons.Regular.Size16.LockClosed())" aria-hidden="true" /> Private to you</div>
+    <div class="plan-private"><FluentIcon Value="@(new Icons.Regular.Size16.LockClosed())" aria-hidden="true" />@AccessLabel</div>
 </nav>

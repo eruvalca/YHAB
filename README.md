@@ -1,13 +1,14 @@
 # YHAB
 
 A manual envelope-budgeting application built with .NET 10 Blazor, Fluent UI,
-Aspire, PostgreSQL, and ASP.NET Core Identity. Each user has private USD plans,
+Aspire, PostgreSQL, and ASP.NET Core Identity. Each user has private USD plans
+that can be shared with other YHAB accounts, plus
 manual accounts and transactions, monthly assignments, targets, credit-card
 payment reserves, recurring entries, undo/redo, and reports.
 
 See the [budgeting guide](docs/budgeting.md) for workflows, calculation rules,
 render boundaries, and the authenticated API. Bank connections, transaction
-imports, photos, shared plans, and one-off scheduled entries are intentionally
+imports, photos, and one-off scheduled entries are intentionally
 outside the application.
 
 ## Installable web app

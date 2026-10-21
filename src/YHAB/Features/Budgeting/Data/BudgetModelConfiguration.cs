@@ -16,6 +16,13 @@ internal static class BudgetModelConfiguration
         plan.HasIndex(item => item.OwnerId);
         plan.HasOne<ApplicationUser>().WithMany().HasForeignKey(item => item.OwnerId).OnDelete(DeleteBehavior.Cascade);
 
+        var member = builder.Entity<BudgetPlanMember>();
+        member.ToTable("BudgetPlanMembers");
+        member.HasKey(item => new { item.PlanId, item.UserId });
+        member.HasOne<BudgetPlan>().WithMany(item => item.Members).HasForeignKey(item => item.PlanId).OnDelete(DeleteBehavior.Cascade);
+        member.HasOne<ApplicationUser>().WithMany().HasForeignKey(item => item.UserId).OnDelete(DeleteBehavior.Cascade);
+        member.HasIndex(item => item.UserId);
+
         var account = builder.Entity<BudgetAccount>();
         account.HasKey(item => new { item.PlanId, item.Id });
         account.HasOne<BudgetPlan>().WithMany().HasForeignKey(item => item.PlanId);

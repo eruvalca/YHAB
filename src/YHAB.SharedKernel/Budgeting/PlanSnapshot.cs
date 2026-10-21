@@ -4,4 +4,6 @@ namespace YHAB.SharedKernel.Budgeting;
 public sealed record PlanSnapshot(Guid Id, string Name, string Notes, DateOnly CreatedOn, long Version, IReadOnlyList<AccountData> Accounts, IReadOnlyList<GroupData> Groups, IReadOnlyList<CategoryData> Categories, IReadOnlyList<AllocationData> Allocations, IReadOnlyList<TransactionData> Transactions, bool CanUndo, bool CanRedo, IReadOnlyList<ChangeData> Changes)
 {
     public DateOnly Today { get; init; }
+    public bool IsOwner { get; init; } = true;
+    public string? OwnerName { get; init; }
 }

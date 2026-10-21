@@ -38,6 +38,7 @@ builder.Services.AddSingleton<BudgetClock>();
 builder.Services.AddScoped<BudgetStore>();
 builder.Services.AddSingleton<BudgetMonthCache>();
 builder.Services.AddScoped<BudgetQueries>();
+builder.Services.AddScoped<PlanSharingService>();
 builder.Services.AddScoped<RecurringProcessor>();
 builder.Services.AddHostedService<RecurringWorker>();
 builder.Services.AddScoped<IBudgetClient, ServerBudgetClient>();

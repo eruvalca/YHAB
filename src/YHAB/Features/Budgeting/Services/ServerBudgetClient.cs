@@ -4,7 +4,7 @@ using YHAB.SharedKernel.Budgeting;
 
 namespace YHAB.Features.Budgeting.Services;
 
-internal sealed class ServerBudgetClient(BudgetStore store, BudgetQueries queries, AuthenticationStateProvider authentication) : IBudgetClient
+internal sealed class ServerBudgetClient(BudgetStore store, BudgetQueries queries, PlanSharingService sharing, AuthenticationStateProvider authentication) : IBudgetClient
 {
     public async Task<IReadOnlyList<PlanSummary>> ListAsync(CancellationToken cancellationToken)
         => await store.ListAsync(await OwnerAsync(cancellationToken), cancellationToken);
@@ -46,6 +46,18 @@ internal sealed class ServerBudgetClient(BudgetStore store, BudgetQueries querie
 
     public async Task<IReadOnlyList<string>> ReadPayeesAsync(Guid planId, CancellationToken cancellationToken)
         => await queries.PayeesAsync(await OwnerAsync(cancellationToken), planId, cancellationToken);
+
+    public async Task<PlanShareSummary> ReadSharingAsync(Guid planId, CancellationToken cancellationToken)
+        => await sharing.ReadAsync(await OwnerAsync(cancellationToken), planId, cancellationToken);
+
+    public async Task<PlanShareSummary> ShareAsync(Guid planId, string email, CancellationToken cancellationToken)
+        => await sharing.ShareAsync(await OwnerAsync(cancellationToken), planId, email, cancellationToken);
+
+    public async Task<PlanShareSummary> UnshareAsync(Guid planId, string memberId, CancellationToken cancellationToken)
+        => await sharing.UnshareAsync(await OwnerAsync(cancellationToken), planId, memberId, cancellationToken);
+
+    public async Task LeaveAsync(Guid planId, CancellationToken cancellationToken)
+        => await sharing.LeaveAsync(await OwnerAsync(cancellationToken), planId, cancellationToken);
 
     private async Task<string> OwnerAsync(CancellationToken cancellationToken)
     {

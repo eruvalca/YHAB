@@ -505,6 +505,21 @@ namespace YHAB.Migrations
                     b.ToTable("BudgetPlans", (string)null);
                 });
 
+            modelBuilder.Entity("YHAB.Features.Budgeting.Data.BudgetPlanMember", b =>
+                {
+                    b.Property<Guid>("PlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("text");
+
+                    b.HasKey("PlanId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("BudgetPlanMembers", (string)null);
+                });
+
             modelBuilder.Entity("YHAB.Features.Budgeting.Data.BudgetReceipt", b =>
                 {
                     b.Property<Guid>("PlanId")
@@ -820,6 +835,21 @@ namespace YHAB.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("YHAB.Features.Budgeting.Data.BudgetPlanMember", b =>
+                {
+                    b.HasOne("YHAB.Features.Budgeting.Data.BudgetPlan", null)
+                        .WithMany("Members")
+                        .HasForeignKey("PlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("YHAB.Data.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("YHAB.Features.Budgeting.Data.BudgetReceipt", b =>
                 {
                     b.HasOne("YHAB.Features.Budgeting.Data.BudgetPlan", null)
@@ -861,6 +891,11 @@ namespace YHAB.Migrations
                         .WithMany()
                         .HasForeignKey("PlanId", "TransferAccountId")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("YHAB.Features.Budgeting.Data.BudgetPlan", b =>
+                {
+                    b.Navigation("Members");
                 });
 #pragma warning restore 612, 618
         }

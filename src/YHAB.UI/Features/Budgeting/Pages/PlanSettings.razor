@@ -31,6 +31,63 @@
                 </FluentStack>
             </EditForm>
         </section>
-        <p class="muted">Private plan · US dollars · US dates · Manual accounts</p>
+        <section class="surface">
+            <h2>Share this plan</h2>
+            @if (_sharing is { } sharing)
+            {
+                @if (sharing.IsOwner)
+                {
+                    <p>Everyone you add can open and edit this plan. They see it on their plans page the next time they sign in.</p>
+                    <EditForm Model="Share" method="post" FormName="SharePlan" OnValidSubmit="ShareAsync" Enhance>
+                        <DataAnnotationsValidator /><ValidationSummary />
+                        <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalL)">
+                            <div class="form-field"><label for="share-email">Email address</label><InputText id="share-email" @bind-Value="Share.Email" placeholder="name@example.com" maxlength="256" /></div>
+                            <button type="submit" class="primary-action">Add person</button>
+                        </FluentStack>
+                    </EditForm>
+                }
+                else
+                {
+                    <p>This plan is shared with you by @sharing.OwnerName. Everyone with access can open and edit it.</p>
+                }
+                @if (sharing.Collaborators.Count == 0)
+                {
+                    <p class="muted">No one else has access yet.</p>
+                }
+                else
+                {
+                    <h3>People with access</h3>
+                    <ul class="share-list">
+                        @foreach (var person in sharing.Collaborators)
+                        {
+                            <li @key="person.UserId">@person.Name</li>
+                        }
+                    </ul>
+                }
+                @if (sharing.IsOwner && sharing.Collaborators.Count > 0)
+                {
+                    <EditForm Model="Remove" method="post" FormName="RemoveShare" OnValidSubmit="RemoveAsync" Enhance>
+                        <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalM)">
+                            <div class="form-field">
+                                <label for="remove-person">Stop sharing with</label>
+                                <InputSelect id="remove-person" @bind-Value="Remove.MemberId"><option value="">Choose a person</option>@foreach (var person in sharing.Collaborators) { <option value="@person.UserId">@person.Name</option> }</InputSelect>
+                            </div>
+                            <button type="submit" class="secondary-action">Remove access</button>
+                        </FluentStack>
+                    </EditForm>
+                }
+                @if (!sharing.IsOwner)
+                {
+                    <EditForm Model="Leave" method="post" FormName="LeavePlan" OnValidSubmit="LeaveAsync" Enhance>
+                        <DataAnnotationsValidator /><ValidationSummary />
+                        <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalM)">
+                            <div class="checkbox-field"><label for="leave-confirm">I understand I will lose access to this plan.</label><InputCheckbox id="leave-confirm" @bind-Value="Leave.Confirmed" /></div>
+                            <button type="submit" class="secondary-action">Leave this plan</button>
+                        </FluentStack>
+                    </EditForm>
+                }
+            }
+        </section>
+        <p class="muted">USD · US dates · manual accounts</p>
     </PlanFrame>
 }

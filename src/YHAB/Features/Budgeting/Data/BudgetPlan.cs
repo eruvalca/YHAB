@@ -12,4 +12,5 @@ internal sealed class BudgetPlan
     public long Version { get; set; }
     public long NextSequence { get; set; }
     public int HistoryCursor { get; set; }
+    public ICollection<BudgetPlanMember> Members { get; } = [];
 }

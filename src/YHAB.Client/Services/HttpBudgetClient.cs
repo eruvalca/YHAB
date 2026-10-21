@@ -42,6 +42,30 @@ internal sealed class HttpBudgetClient(HttpClient http) : IBudgetClient
     public Task<IReadOnlyList<string>> ReadPayeesAsync(Guid planId, CancellationToken cancellationToken)
         => ReadAsync<IReadOnlyList<string>>($"api/plans/{planId}/payees", cancellationToken);
 
+    public Task<PlanShareSummary> ReadSharingAsync(Guid planId, CancellationToken cancellationToken)
+        => ReadAsync<PlanShareSummary>($"api/plans/{planId}/sharing", cancellationToken);
+
+    public async Task<PlanShareSummary> ShareAsync(Guid planId, string email, CancellationToken cancellationToken)
+    {
+        using var response = await SendAsync(HttpMethod.Post, $"api/plans/{planId}/sharing", JsonContent.Create(new SharePlanRequest(email)), cancellationToken);
+        return await ReadSummaryAsync(response, cancellationToken);
+    }
+
+    public async Task<PlanShareSummary> UnshareAsync(Guid planId, string memberId, CancellationToken cancellationToken)
+    {
+        using var response = await SendAsync(HttpMethod.Delete, $"api/plans/{planId}/sharing/{Uri.EscapeDataString(memberId)}", null, cancellationToken);
+        return await ReadSummaryAsync(response, cancellationToken);
+    }
+
+    public async Task LeaveAsync(Guid planId, CancellationToken cancellationToken)
+    {
+        using var response = await SendAsync(HttpMethod.Post, $"api/plans/{planId}/leave", null, cancellationToken);
+    }
+
+    private static async Task<PlanShareSummary> ReadSummaryAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+        => await response.Content.ReadFromJsonAsync<PlanShareSummary>(cancellationToken)
+            ?? throw new HttpRequestException("The server returned an empty response.");
+
     public async Task ExecuteAsync(Guid planId, PlanCommand command, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(command);
@@ -84,7 +108,7 @@ internal sealed class HttpBudgetClient(HttpClient http) : IBudgetClient
             ?? throw new HttpRequestException("The server returned an empty response.");
     }
 
-    private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string route, HttpContent content, CancellationToken cancellationToken)
+    private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string route, HttpContent? content, CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(method, route) { Content = content };
         cancellationToken.ThrowIfCancellationRequested();

@@ -2,8 +2,8 @@
 
 YHAB follows the envelope workflow: add the money you have, assign it to
 categories, record spending, and adjust your plan. Plans belong to the signed-in
-Identity user. There are no bank connections, imports, shared plans, or photo
-storage.
+Identity user and can be shared with other YHAB accounts. There are no bank
+connections, imports, or photo storage.
 
 ## Everyday workflow
 
@@ -31,6 +31,17 @@ storage.
 6. Review spending, income/expense, and net worth in **Reflect**. Reports include
    the selected date range and exclude recurring templates and duplicate
    within-budget transfers.
+
+## Sharing a plan
+
+A plan starts private to its owner. On **Plan settings**, the owner adds another
+YHAB account by its email address; no email is sent. The shared account sees the
+plan under **Shared with you** on its plans page and can open and edit everything
+the owner can. The owner can stop sharing at any time, and a shared account can
+leave the plan. Removing access takes effect on the next request, and a removed
+account no longer appears in its plans list or API responses. Only the owner can
+add or remove accounts; sharing does not change the plan revision, balances, or
+history.
 
 Create groups with **Category group** above the plan table, and add categories
 with the **+** on a group header. New names are entered directly in the table.
@@ -77,8 +88,8 @@ moving its history to another category. Account
 details support notes and closing zero-balance accounts. Loan accounts record
 rates and minimum payments; interest and payments are entered manually.
 
-Plan settings rename the plan, store notes, and rename payees throughout posted
-and recurring entries. The register supports search, date filters, sorting,
+Plan settings rename the plan, store notes, rename payees throughout posted
+and recurring entries, and manage who can open the plan. The register supports search, date filters, sorting,
 flags, duplication, and bulk deletion. It displays 50 rows per
 page. Horizontal table scrolling preserves the surrounding mobile layout.
 Filtering, sorting and cursor paging run in PostgreSQL. The browser receives the
@@ -210,7 +221,7 @@ stable split IDs so a different database row order cannot change cent allocation
 
 Plan selection, settings, reports, the shell, and Identity forms default to
 static SSR with enhanced navigation. The budget/register workspace uses
-InteractiveAuto. Each renderer loads an owner-scoped catalog: once for static
+InteractiveAuto. Each renderer loads a viewer-scoped catalog: once for static
 prerendering and again when interactivity starts. The complete ledger is not
 serialized into persistent prerender state, which would grow beyond SignalR's
 startup message limit. Server rendering calls the application service directly;
@@ -223,7 +234,8 @@ Fluent providers live inside the interactive workspace. Native static forms
 retain named POST form mapping and antiforgery.
 
 Each operation creates and disposes an `ApplicationDbContext` through
-`IDbContextFactory`. Every plan lookup includes the owner ID. Composite foreign
+`IDbContextFactory`. Every plan lookup is scoped to the owner and the accounts the
+plan is shared with. Composite foreign
 keys prevent ledger references crossing plans. Decimal columns use precision
 18/scale 2. A plan revision is an EF concurrency token, claimed before ledger
 writes. Ledger changes, monotonic sequence allocation, sparse history patches,
@@ -414,6 +426,9 @@ plan, and 409 stale revision. Responses are not cacheable.
 | Register page | GET `/api/plans/{planId}/register?query={encodedJson}` |
 | Report summaries | GET `/api/plans/{planId}/reports?from={date}&through={date}` |
 | Distinct payees | GET `/api/plans/{planId}/payees` |
+| Sharing state | GET `/api/plans/{planId}/sharing` |
+| Share / stop sharing | POST `/api/plans/{planId}/sharing` / DELETE `/api/plans/{planId}/sharing/{userId}` |
+| Leave a shared plan | POST `/api/plans/{planId}/leave` |
 | Create account/group/category/transaction | POST `/api/plans/{planId}/{collection}` |
 | Move group / category | POST `/api/plans/{planId}/groups/reorder` / `categories/reorder` |
 | Update an item | PUT `/api/plans/{planId}/{collection}/{resourceId}` |
@@ -461,6 +476,7 @@ isolated AppHosts. Browser tests exercise both desktop and phone widths.
 | Transfers and account closing | `CreditBalanceTransferMovesFundedPaymentMoneyToTheNewCard`, `ClosingAnAccountRequiresZeroBalanceAndKeepsEditableOpeningValues` |
 | Category history and payee management | `MergingAUsedCategoryPreservesAssignmentsSpendingAndAccountBalance`, `MergingAssignedCategoryPersistsHistoryAndSupportsUndoRedoAsync`, `PayeeRenameChangesMatchingPostedAndRecurringEntriesOnly`, `TransactionEditorsUsePayeeProjectionAndRefreshSuggestionsAsync` |
 | Private plans, SQL integrity, durable history, and concurrent edits | `OwnerIsolationHistoryAndConcurrentWritesPersistAcrossContextsAsync`, `DatabaseRejectsCrossPlanReferencesAndAccountDeletionRemovesOwnedLedgerAsync` |
+| In-app plan sharing, editing, and access removal | `SharingGrantsEditingAndReadAccessUntilTheOwnerRemovesItAsync`, `SharingRejectsUnknownAddressesAndTheOwnerAsync`, `ASharedMemberCanLeaveButAnOwnerCannotAsync`, `PlansPageSeparatesOwnedAndSharedPlansAsync`, `OwnerSeesShareFormAndCanRemoveACollaboratorAsync`, `SharedMemberSeesOwnerAndLeaveConfirmationWithoutRemoveControlsAsync` |
 | Manual browser workflow, calculator entry, keyboard undo/redo, reports, and API guards | `ManualPlanPurchaseUndoAndReportsAgreeAsync` at 1440px and 390px, including the phone amount keypad, editor tap size, sticky editor chrome, and the signed-balance sign control |
 | Themes, mobile navigation, and SSR document continuity | `FluentNavigationPreservesDocumentAndThemeChoice` at 1280px and 390px |
 | Actual startup, migrations, and database readiness | `AppHostCompletesMigrationsAndServesHealthyApplication` |
