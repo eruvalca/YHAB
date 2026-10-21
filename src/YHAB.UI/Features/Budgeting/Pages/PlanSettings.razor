@@ -31,6 +31,67 @@
                 </FluentStack>
             </EditForm>
         </section>
-        <p class="muted">Private plan · US dollars · US dates · Manual accounts</p>
+        <section class="surface">
+            <h2>Share this plan</h2>
+            @if (_sharing is { } sharing)
+            {
+                @if (sharing.IsOwner)
+                {
+                    <p>Create a one-time code and give it to the person you want to add. Codes expire after seven days and stop working once used. Everyone with access can open and edit this plan.</p>
+                    <EditForm Model="ShareCodeForm" id="create-share-code-form" method="post" FormName="CreateShareCode" OnValidSubmit="CreateShareCodeAsync" Enhance>
+                        <input type="hidden" name="ShareCodeForm.Action" value="@ShareCodeForm.Action" />
+                        <button type="submit" class="primary-action">Create share code</button>
+                    </EditForm>
+                    @if (_shareCode is { } shareCode)
+                    {
+                        <div class="notice" data-kind="success" role="status">
+                            <p>Give this code to the person you want to add. It can be used once and expires on @shareCode.ExpiresOn.LocalDateTime.ToString("D").</p>
+                            <p class="share-code">@shareCode.Code</p>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <p>This plan is shared with you by @sharing.OwnerName. Everyone with access can open and edit it.</p>
+                }
+                @if (sharing.Collaborators.Count == 0)
+                {
+                    <p class="muted">No one else has access yet.</p>
+                }
+                else
+                {
+                    <h3>People with access</h3>
+                    <ul class="share-list">
+                        @foreach (var person in sharing.Collaborators)
+                        {
+                            <li @key="person.UserId">@person.Name</li>
+                        }
+                    </ul>
+                }
+                @if (sharing.IsOwner && sharing.Collaborators.Count > 0)
+                {
+                    <EditForm Model="Remove" id="remove-share-form" method="post" FormName="RemoveShare" OnValidSubmit="RemoveAsync" Enhance>
+                        <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalM)">
+                            <div class="form-field">
+                                <label for="remove-person">Stop sharing with</label>
+                                <InputSelect id="remove-person" @bind-Value="Remove.MemberId"><option value="">Choose a person</option>@foreach (var person in sharing.Collaborators) { <option value="@person.UserId">@person.Name</option> }</InputSelect>
+                            </div>
+                            <button type="submit" class="secondary-action">Remove access</button>
+                        </FluentStack>
+                    </EditForm>
+                }
+                @if (!sharing.IsOwner)
+                {
+                    <EditForm Model="Leave" id="leave-plan-form" method="post" FormName="LeavePlan" OnValidSubmit="LeaveAsync" Enhance>
+                        <DataAnnotationsValidator /><ValidationSummary />
+                        <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalM)">
+                            <div class="checkbox-field"><label for="leave-confirm">I understand I will lose access to this plan.</label><InputCheckbox id="leave-confirm" @bind-Value="Leave.Confirmed" /></div>
+                            <button type="submit" class="secondary-action">Leave this plan</button>
+                        </FluentStack>
+                    </EditForm>
+                }
+            }
+        </section>
+        <p class="muted">USD · US dates · manual accounts</p>
     </PlanFrame>
 }

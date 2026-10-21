@@ -28,7 +28,7 @@ internal static class BudgetCheckpoints
         database.Add(new BudgetCheckpointInvalidation { PlanId = planId, Version = version, FirstInvalidMonth = firstInvalidMonth });
     }
 
-    public static async Task SaveAsync(IDbContextFactory<ApplicationDbContext> factory, string owner, Guid id, long version,
+    public static async Task SaveAsync(IDbContextFactory<ApplicationDbContext> factory, string viewer, Guid id, long version,
         IReadOnlyList<BudgetMonthState> states, CancellationToken token)
     {
         await using var strategyContext = await factory.CreateDbContextAsync(token);
@@ -39,7 +39,8 @@ internal static class BudgetCheckpoints
             // Serialize publication with financial invalidation without changing
             // the plan revision. A stale calculation can still publish openings
             // preceding every financial change made since its snapshot.
-            var claimed = await database.Set<BudgetPlan>().Where(item => item.Id == id && item.OwnerId == owner && item.Version >= version)
+            var claimed = await database.Set<BudgetPlan>().Where(item => item.Id == id && item.Version >= version
+                    && (item.OwnerId == viewer || item.Members.Any(member => member.UserId == viewer)))
                 .ExecuteUpdateAsync(update => update.SetProperty(item => item.Version, item => item.Version), token);
             if (claimed == 0) { return; }
             var firstInvalidMonth = await database.Set<BudgetCheckpointInvalidation>().Where(item => item.PlanId == id && item.Version > version)

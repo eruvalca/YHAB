@@ -15,6 +15,7 @@ internal sealed class BudgetDatabase(PostgreSqlContainer container, ServiceProvi
     public IDbContextFactory<ApplicationDbContext> Factory => provider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
     public BudgetStore Store => provider.GetRequiredService<BudgetStore>();
     public BudgetQueries Queries => provider.GetRequiredService<BudgetQueries>();
+    public PlanSharingService Sharing => provider.GetRequiredService<PlanSharingService>();
     public RecurringProcessor Recurring => provider.GetRequiredService<RecurringProcessor>();
     // Separate service graphs model replicas sharing only the disposable database.
     public ServiceProvider CreatePeerServices(ILoggerProvider logger)
@@ -54,6 +55,7 @@ internal sealed class BudgetDatabase(PostgreSqlContainer container, ServiceProvi
         services.AddTransient<BudgetStore>();
         services.AddSingleton<BudgetMonthCache>();
         services.AddTransient<BudgetQueries>();
+        services.AddTransient<PlanSharingService>();
         services.AddTransient<RecurringProcessor>();
         // Measurement interceptors own mutable per-fixture state. Keep EF's
         // singleton services in this disposable graph instead of its global cache.

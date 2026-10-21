@@ -39,10 +39,10 @@ internal static class BudgetEndpoints
             }
         });
         group.MapGet("/", async (HttpContext context, BudgetStore store, CancellationToken cancellationToken)
-            => TypedResults.Ok(await store.ListAsync(Owner(context), cancellationToken))).WithSummary("List your private plans.");
+            => TypedResults.Ok(await store.ListAsync(Owner(context), cancellationToken))).WithSummary("List plans you own or can edit.");
         group.MapGet("/token", (HttpContext context, IAntiforgery antiforgery)
             => TypedResults.Ok(new RequestToken(antiforgery.GetAndStoreTokens(context).RequestToken!))).WithSummary("Get a token for authenticated plan changes.");
-        group.MapGet("/{planId:guid}", ReadAsync).WithSummary("Read a privately owned plan.");
+        group.MapGet("/{planId:guid}", ReadAsync).WithSummary("Read a plan you can open.");
         group.MapGet("/{planId:guid}/view", async (Guid planId, HttpContext context, BudgetQueries queries, CancellationToken token)
             => TypedResults.Ok(await queries.ViewAsync(Owner(context), planId, token)));
         group.MapGet("/{planId:guid}/workspace", async (Guid planId, DateOnly? month, HttpContext context, BudgetQueries queries, CancellationToken token)
@@ -63,11 +63,28 @@ internal static class BudgetEndpoints
             => TypedResults.Ok(await queries.ReportsAsync(Owner(context), planId, from, through, token)));
         group.MapGet("/{planId:guid}/payees", async (Guid planId, HttpContext context, BudgetQueries queries, CancellationToken token)
             => TypedResults.Ok(await queries.PayeesAsync(Owner(context), planId, token)));
+        group.MapGet("/{planId:guid}/sharing", async (Guid planId, HttpContext context, [FromServices] PlanSharingService sharing, CancellationToken token)
+            => TypedResults.Ok(await sharing.ReadAsync(Owner(context), planId, token)))
+            .WithSummary("Read who can open a plan.");
+        group.MapPost("/{planId:guid}/sharing/codes", async (Guid planId, HttpContext context, [FromServices] PlanSharingService sharing, CancellationToken token)
+            => TypedResults.Ok(await sharing.CreateShareCodeAsync(Owner(context), planId, token)))
+            .WithSummary("Create a one-time code for sharing a plan.");
+        group.MapPost("/join", async ([FromBody] JoinPlanRequest request, HttpContext context, [FromServices] PlanSharingService sharing, CancellationToken token)
+            => TypedResults.Ok(await sharing.JoinAsync(Owner(context), request.Code, token)))
+            .WithSummary("Join a plan with a one-time share code.");
+        group.MapDelete("/{planId:guid}/sharing/{memberId}", async (Guid planId, string memberId, HttpContext context, [FromServices] PlanSharingService sharing, CancellationToken token)
+            => TypedResults.Ok(await sharing.UnshareAsync(Owner(context), planId, memberId, token)))
+            .WithSummary("Stop sharing a plan with an account.");
+        group.MapPost("/{planId:guid}/leave", async (Guid planId, HttpContext context, [FromServices] PlanSharingService sharing, CancellationToken token) =>
+        {
+            await sharing.LeaveAsync(Owner(context), planId, token);
+            return TypedResults.NoContent();
+        }).WithSummary("Leave a plan shared with you.");
         group.MapPost("/", async (CreatePlanRequest request, HttpContext context, BudgetStore store, CancellationToken cancellationToken) =>
         {
             var id = await store.CreateAsync(Owner(context), request, cancellationToken);
             return TypedResults.Created($"/api/plans/{id}", id);
-        }).WithSummary("Create a private USD plan.");
+        }).WithSummary("Create a USD plan.");
         MapResource<SaveAccount>(group, "accounts");
         MapResource<SaveGroup>(group, "groups");
         MapResource<SaveCategory>(group, "categories");
@@ -75,25 +92,25 @@ internal static class BudgetEndpoints
         group.MapPost("/{planId:guid}/categories/reorder", MutateAsync<ReorderCategory>);
         MapResource<SaveTransaction>(group, "transactions");
         group.MapPost("/{planId:guid}/transactions/delete", MutateAsync<DeleteTransactions>)
-            .WithSummary("Delete Transactions in a privately owned plan.");
+            .WithSummary("Delete Transactions in a plan you can edit.");
         group.MapPut("/{planId:guid}/assignments", MutateAsync<AssignMoney>)
-            .WithSummary("Assign Money in a privately owned plan.");
+            .WithSummary("Assign Money in a plan you can edit.");
         group.MapPost("/{planId:guid}/money-moves", MutateAsync<MoveMoney>)
-            .WithSummary("Move Money in a privately owned plan.");
+            .WithSummary("Move Money in a plan you can edit.");
         group.MapPost("/{planId:guid}/auto-assign", MutateAsync<AutoAssign>)
-            .WithSummary("Auto Assign in a privately owned plan.");
+            .WithSummary("Auto Assign in a plan you can edit.");
         group.MapPut("/{planId:guid}/settings", MutateAsync<UpdatePlan>)
-            .WithSummary("Update Plan in a privately owned plan.");
+            .WithSummary("Update Plan in a plan you can edit.");
         group.MapPost("/{planId:guid}/payees/rename", MutateAsync<RenamePayee>)
-            .WithSummary("Rename Payee in a privately owned plan.");
+            .WithSummary("Rename Payee in a plan you can edit.");
         group.MapPost("/{planId:guid}/categories/merge", MutateAsync<RemoveCategory>)
-            .WithSummary("Remove Category in a privately owned plan.");
+            .WithSummary("Remove Category in a plan you can edit.");
         group.MapPost("/{planId:guid}/undo", MutateAsync<UndoChange>)
-            .WithSummary("Undo Change in a privately owned plan.");
+            .WithSummary("Undo Change in a plan you can edit.");
         group.MapPost("/{planId:guid}/redo", MutateAsync<RedoChange>)
-            .WithSummary("Redo Change in a privately owned plan.");
+            .WithSummary("Redo Change in a plan you can edit.");
         group.MapPost("/{planId:guid}/recurring/post-due", MutateAsync<PostRecurring>)
-            .WithSummary("Post Recurring in a privately owned plan.");
+            .WithSummary("Post Recurring in a plan you can edit.");
     }
 
     private static void MapResource<TCommand>(RouteGroupBuilder group, string collection) where TCommand : PlanCommand

@@ -4,12 +4,17 @@ using YHAB.SharedKernel.Budgeting;
 
 namespace YHAB.UI.Features.Budgeting.Pages;
 
-public sealed partial class PlanSettings(IBudgetClient budgets)
+public sealed partial class PlanSettings(IBudgetClient budgets, NavigationManager navigation)
 {
     [Parameter] public Guid PlanId { get; set; }
     [SupplyParameterFromForm(FormName = "PlanSettings")] private SettingsInput Settings { get; set; } = default!;
     [SupplyParameterFromForm(FormName = "RenamePayee")] private PayeeInput Payee { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "CreateShareCode")] private ShareCodeInput ShareCodeForm { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "RemoveShare")] private RemoveInput Remove { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "LeavePlan")] private LeaveInput Leave { get; set; } = default!;
     private PlanSnapshot? _plan;
+    private PlanShareSummary? _sharing;
+    private PlanShareCode? _shareCode;
     private IReadOnlyList<AccountBalance> _balances = [];
     private IReadOnlyList<string> _payees = [];
     private string? _message;
@@ -23,11 +28,65 @@ public sealed partial class PlanSettings(IBudgetClient budgets)
             await LoadAsync(token);
             Settings ??= new() { Name = _plan!.Name, Notes = _plan.Notes, Version = _plan.Version };
             Payee ??= new() { Version = _plan!.Version };
+            ShareCodeForm ??= new();
+            Remove ??= new();
+            Leave ??= new();
         }
         catch (BudgetRequestException exception) { _message = exception.Message; _failed = true; }
     }
     private Task SaveAsync() => ExecuteAsync(new UpdatePlan(Settings.Version, Settings.Name, Settings.Notes), "Plan settings saved.");
     private Task RenameAsync() => ExecuteAsync(new RenamePayee(Payee.Version, Payee.OldName, Payee.NewName), "Payee renamed.");
+    private async Task CreateShareCodeAsync()
+    {
+        using var operation = CreateOperation();
+        var token = operation.Token;
+        try
+        {
+            _shareCode = await budgets.CreateShareCodeAsync(PlanId, token);
+            token.ThrowIfCancellationRequested();
+            _message = "Share code created. Give it to the person you want to add.";
+            _failed = false;
+        }
+        catch (BudgetRequestException exception) { _message = exception.Message; _failed = true; }
+    }
+    private async Task RemoveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Remove.MemberId))
+        {
+            _message = "Choose a person to remove.";
+            _failed = true;
+            return;
+        }
+        using var operation = CreateOperation();
+        var token = operation.Token;
+        try
+        {
+            _sharing = await budgets.UnshareAsync(PlanId, Remove.MemberId, token);
+            token.ThrowIfCancellationRequested();
+            Remove = new();
+            _message = "That account can no longer open this plan.";
+            _failed = false;
+        }
+        catch (BudgetRequestException exception) { _message = exception.Message; _failed = true; }
+    }
+    private async Task LeaveAsync()
+    {
+        if (!Leave.Confirmed)
+        {
+            _message = "Confirm that you want to leave this plan.";
+            _failed = true;
+            return;
+        }
+        using var operation = CreateOperation();
+        var token = operation.Token;
+        try
+        {
+            await budgets.LeaveAsync(PlanId, token);
+            token.ThrowIfCancellationRequested();
+            navigation.NavigateTo("/plans");
+        }
+        catch (BudgetRequestException exception) { _message = exception.Message; _failed = true; }
+    }
     private async Task ExecuteAsync(PlanCommand command, string message)
     {
         using var operation = CreateOperation();
@@ -54,9 +113,12 @@ public sealed partial class PlanSettings(IBudgetClient budgets)
         cancellationToken.ThrowIfCancellationRequested();
         var payees = await budgets.ReadPayeesAsync(PlanId, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
+        var sharing = await budgets.ReadSharingAsync(PlanId, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
         _plan = view.Catalog;
         _balances = view.Balances;
         _payees = payees;
+        _sharing = sharing;
     }
     private sealed class SettingsInput
     {
@@ -69,5 +131,18 @@ public sealed partial class PlanSettings(IBudgetClient budgets)
         public long Version { get; set; }
         [Required, StringLength(200)] public string OldName { get; set; } = "";
         [Required, StringLength(200)] public string NewName { get; set; } = "";
+    }
+    private sealed class ShareCodeInput
+    {
+        public string Action { get; set; } = "create";
+    }
+    private sealed class RemoveInput
+    {
+        [Required] public string MemberId { get; set; } = "";
+    }
+    private sealed class LeaveInput
+    {
+        [Range(typeof(bool), "true", "true", ErrorMessage = "Confirm that you want to leave this plan.")]
+        public bool Confirmed { get; set; }
     }
 }

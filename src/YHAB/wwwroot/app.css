@@ -244,9 +244,12 @@ body { background: var(--colorNeutralBackground2); color: var(--colorNeutralFore
 .plan-card:hover { border-color: var(--colorBrandStroke1); background: var(--colorBrandBackground2); }
 .plan-card h3 { margin-top: var(--spacingVerticalXXL); font-size: var(--fontSizeBase500); }
 .plan-card p { color: var(--colorNeutralForeground3); }
+.plan-card .plan-card-shared { color: var(--colorBrandForeground1); font-size: var(--fontSizeBase200); font-weight: var(--fontWeightSemibold); }
 .plan-card-action { display: block; margin-top: var(--spacingVerticalXXXL); color: var(--colorBrandForeground1); font-weight: var(--fontWeightSemibold); }
 .primary-action { display: inline-block; padding: var(--spacingVerticalM) var(--spacingHorizontalXL); text-decoration: none; background: var(--colorBrandBackground); color: var(--colorNeutralForegroundOnBrand); border: 1px solid var(--colorBrandBackground); border-radius: var(--borderRadiusMedium); font-weight: var(--fontWeightSemibold); }
 .primary-action:hover { background: var(--colorBrandBackgroundHover); color: var(--colorNeutralForegroundOnBrand); }
+.secondary-action { display: inline-block; padding: var(--spacingVerticalS) var(--spacingHorizontalL); background: transparent; color: var(--colorBrandForeground1); border: 1px solid var(--colorNeutralStroke2); border-radius: var(--borderRadiusMedium); font-weight: var(--fontWeightSemibold); }
+.secondary-action:hover { background: var(--colorSubtleBackgroundHover); }
 .empty-state { padding: clamp(2rem, 6vw, 4rem); text-align: center; border: 1px dashed var(--colorNeutralStroke1); border-radius: var(--borderRadiusXLarge); margin-block: var(--spacingVerticalL); color: var(--colorNeutralForeground3); }
 .empty-state h2, .empty-state h3 { color: var(--colorNeutralForeground1); }
 .stat { height: 100%; padding: var(--spacingVerticalL) var(--spacingHorizontalL); border: 1px solid var(--colorNeutralStroke2); border-radius: var(--borderRadiusLarge); background: var(--colorNeutralBackground1); }

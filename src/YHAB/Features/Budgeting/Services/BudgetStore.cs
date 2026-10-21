@@ -13,12 +13,25 @@ internal sealed class BudgetStore(IDbContextFactory<ApplicationDbContext> contex
 {
     private static readonly JsonSerializerOptions _snapshotJson = new(JsonSerializerDefaults.Web);
 
-    public async Task<IReadOnlyList<PlanSummary>> ListAsync(string ownerId, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<PlanSummary>> ListAsync(string userId, CancellationToken cancellationToken)
     {
         await using var database = await contextFactory.CreateDbContextAsync(cancellationToken);
-        return await database.Set<BudgetPlan>().AsNoTracking().Where(item => item.OwnerId == ownerId)
-            .OrderBy(item => item.Name).Select(item => new PlanSummary(item.Id, item.Name, item.Notes, item.Version))
+        var plans = await database.Set<BudgetPlan>().AsNoTracking().WhereAccessibleBy(userId)
+            .OrderBy(item => item.Name)
+            .Select(item => new { item.Id, item.Name, item.Notes, item.Version, item.OwnerId })
             .ToListAsync(cancellationToken);
+        var ownerIds = plans.Where(item => !string.Equals(item.OwnerId, userId, StringComparison.Ordinal))
+            .Select(item => item.OwnerId).Distinct(StringComparer.Ordinal).ToArray();
+        var owners = ownerIds.Length == 0
+            ? []
+            : await database.Set<ApplicationUser>().Where(item => ownerIds.Contains(item.Id))
+                .Select(item => new { item.Id, item.UserName }).ToListAsync(cancellationToken);
+        var names = owners.ToDictionary(item => item.Id, item => item.UserName, StringComparer.Ordinal);
+        return plans.Select(item => new PlanSummary(item.Id, item.Name, item.Notes, item.Version)
+        {
+            IsOwner = string.Equals(item.OwnerId, userId, StringComparison.Ordinal),
+            SharedBy = string.Equals(item.OwnerId, userId, StringComparison.Ordinal) ? null : names.GetValueOrDefault(item.OwnerId) ?? "another account",
+        }).ToArray();
     }
 
     public async Task<Guid> CreateAsync(string ownerId, CreatePlanRequest request, CancellationToken cancellationToken)
@@ -40,7 +53,7 @@ internal sealed class BudgetStore(IDbContextFactory<ApplicationDbContext> contex
         return plan.Id;
     }
 
-    public async Task<PlanSnapshot?> ReadAsync(string ownerId, Guid planId, CancellationToken cancellationToken)
+    public async Task<PlanSnapshot?> ReadAsync(string userId, Guid planId, CancellationToken cancellationToken)
     {
         await using var strategyContext = await contextFactory.CreateDbContextAsync(cancellationToken);
         var strategy = strategyContext.Database.CreateExecutionStrategy();
@@ -50,29 +63,30 @@ internal sealed class BudgetStore(IDbContextFactory<ApplicationDbContext> contex
             database.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
             // The ledger is loaded with several queries. Keep them on one committed revision.
             await using var transaction = await database.Database.BeginTransactionAsync(IsolationLevel.RepeatableRead, cancellationToken);
-            var plan = await database.Set<BudgetPlan>().SingleOrDefaultAsync(item => item.Id == planId && item.OwnerId == ownerId, cancellationToken);
-            if (plan is null)
+            var plan = await database.Set<BudgetPlan>().SingleOrDefaultAsync(item => item.Id == planId, cancellationToken);
+            if (plan is null || !await PlanAccess.CanAccessAsync(database, plan, userId, cancellationToken))
             {
                 return null;
             }
 
             var snapshot = await BudgetSnapshotMapping.LoadAsync(database, plan, cancellationToken);
+            snapshot = await PlanAccess.DescribeViewerAsync(database, plan, snapshot, userId, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return snapshot with { Today = clock.Today };
         }, cancellationToken);
     }
 
-    public async Task<BudgetChangeOutcome> ExecuteAsync(string ownerId, Guid planId, PlanCommand command, CancellationToken cancellationToken)
-        => (await ExecuteCoreAsync(ownerId, planId, command, background: false, cancellationToken)).Outcome;
+    public async Task<BudgetChangeOutcome> ExecuteAsync(string userId, Guid planId, PlanCommand command, CancellationToken cancellationToken)
+        => (await ExecuteCoreAsync(userId, planId, command, background: false, cancellationToken)).Outcome;
 
-    public async Task<bool> PostRecurringAsync(string ownerId, Guid planId, DateOnly through, CancellationToken cancellationToken)
+    public async Task<bool> PostRecurringAsync(string userId, Guid planId, DateOnly through, CancellationToken cancellationToken)
     {
-        var result = await ExecuteCoreAsync(ownerId, planId, new PostRecurring(0, through), background: true, cancellationToken);
+        var result = await ExecuteCoreAsync(userId, planId, new PostRecurring(0, through), background: true, cancellationToken);
         return result.Outcome.Match(_ => result.Committed,
             invalid => throw new InvalidOperationException(invalid.Message), _ => false, _ => false);
     }
 
-    private async Task<Execution> ExecuteCoreAsync(string ownerId, Guid planId, PlanCommand command, bool background, CancellationToken cancellationToken)
+    private async Task<Execution> ExecuteCoreAsync(string userId, Guid planId, PlanCommand command, bool background, CancellationToken cancellationToken)
     {
         await using var strategyContext = await contextFactory.CreateDbContextAsync(cancellationToken);
         var strategy = strategyContext.Database.CreateExecutionStrategy();
@@ -84,10 +98,10 @@ internal sealed class BudgetStore(IDbContextFactory<ApplicationDbContext> contex
             // the latest revision after waiting; user commands still require their
             // supplied revision and cannot silently overwrite an intervening write.
             var plans = background ? database.Set<BudgetPlan>().FromSql($"""
-                SELECT * FROM "BudgetPlans" WHERE "Id" = {planId} AND "OwnerId" = {ownerId} FOR UPDATE
-                """) : database.Set<BudgetPlan>().Where(item => item.Id == planId && item.OwnerId == ownerId);
+                SELECT * FROM "BudgetPlans" WHERE "Id" = {planId} FOR UPDATE
+                """) : database.Set<BudgetPlan>().Where(item => item.Id == planId);
             var plan = await plans.SingleOrDefaultAsync(cancellationToken);
-            if (plan is null)
+            if (plan is null || !await PlanAccess.CanAccessAsync(database, plan, userId, cancellationToken))
             {
                 return new Execution(new PlanNotFound(), false);
             }
@@ -110,7 +124,7 @@ internal sealed class BudgetStore(IDbContextFactory<ApplicationDbContext> contex
                 ? await BudgetHistoryReader.ReadAsync(database, plan, command is UndoChange, cancellationToken)
                 : new BudgetHistoryReader.Input(await BudgetSnapshotMapping.LoadAsync(database, plan, cancellationToken, command: command), null);
             var before = input.Current with { Today = clock.Today };
-            var outcome = await PrepareAsync(database, ownerId, plan, before, command, input.Patch, cancellationToken);
+            var outcome = await PrepareAsync(database, userId, plan, before, command, input.Patch, cancellationToken);
             return await outcome.Match(
                 async prepared =>
                 {
@@ -156,7 +170,7 @@ internal sealed class BudgetStore(IDbContextFactory<ApplicationDbContext> contex
 
     private sealed record Execution(BudgetChangeOutcome Outcome, bool Committed);
 
-    private async Task<BudgetPreparationOutcome> PrepareAsync(ApplicationDbContext database, string owner, BudgetPlan plan,
+    private async Task<BudgetPreparationOutcome> PrepareAsync(ApplicationDbContext database, string userId, BudgetPlan plan,
         PlanSnapshot before, PlanCommand command, BudgetMutation? history, CancellationToken token)
     {
         if (command is RenamePayee rename) { return await PayeePersistence.PrepareAsync(database, before, rename, token); }
@@ -180,7 +194,7 @@ internal sealed class BudgetStore(IDbContextFactory<ApplicationDbContext> contex
                     return new PreparedBudgetChange(before, patch);
                 });
         }
-        return PrepareLedger(plan, before, command, await ApplyAsync(database, owner, plan, before, command, token));
+        return PrepareLedger(plan, before, command, await ApplyAsync(database, userId, plan, before, command, token));
     }
 
     private static BudgetPreparationOutcome PrepareLedger(BudgetPlan plan, PlanSnapshot before, PlanCommand command, BudgetChangeOutcome outcome)
@@ -193,7 +207,7 @@ internal sealed class BudgetStore(IDbContextFactory<ApplicationDbContext> contex
             return (BudgetPreparationOutcome)new PreparedBudgetChange(after, LedgerPatch.Between(before, after));
         }, invalid => invalid, missing => missing, conflict => conflict);
 
-    private async Task<BudgetChangeOutcome> ApplyAsync(ApplicationDbContext database, string owner, BudgetPlan plan,
+    private async Task<BudgetChangeOutcome> ApplyAsync(ApplicationDbContext database, string userId, BudgetPlan plan,
         PlanSnapshot before, PlanCommand command, CancellationToken token)
     {
         DateOnly? month = command switch { MoveMoney move => move.Month, AutoAssign auto => auto.Month, _ => null };
@@ -202,7 +216,7 @@ internal sealed class BudgetStore(IDbContextFactory<ApplicationDbContext> contex
         {
             try
             {
-                projection = await queries.MonthAsync(owner, plan.Id, date, plan.Version, token);
+                projection = await queries.MonthAsync(userId, plan.Id, date, plan.Version, token);
             }
             catch (BudgetRequestException exception) when (exception.Status == 409) { return new PlanVersionConflict(); }
             catch (BudgetRequestException exception) when (exception.Status == 404) { return new PlanNotFound(); }
