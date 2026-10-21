@@ -3,7 +3,7 @@
     "failWarns": true,
     "parallelMode": "all",
     "parallelAlgorithm": "conservative",
-    "maxParallelThreads": "1x",
+    "maxParallelThreads": 2,
     "preEnumerateTheories": true
   }
 }

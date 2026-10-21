@@ -759,7 +759,10 @@ Each project's `testconfig.json` uses xUnit's MTP configuration section:
 - `parallelAlgorithm: "conservative"` starts another test when an execution slot
   becomes available, bounding the number of active tests.
 - `maxParallelThreads: "1x"` sets that limit to the logical processor count,
-  adapting to the developer machine or build agent.
+  adapting to the developer machine or build agent. `YHAB.IntegrationTests`
+  instead uses a fixed `2`: every test starts its own PostgreSQL container, and
+  processor-count concurrency exhausted the Docker daemon on constrained
+  machines. Keep that bound unless the container lifecycle changes.
 - `preEnumerateTheories: true` discovers each theory data row separately.
 
 MTP automatically copies and renames the file to

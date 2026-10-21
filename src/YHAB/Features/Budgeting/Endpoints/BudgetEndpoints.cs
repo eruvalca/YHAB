@@ -63,16 +63,16 @@ internal static class BudgetEndpoints
             => TypedResults.Ok(await queries.ReportsAsync(Owner(context), planId, from, through, token)));
         group.MapGet("/{planId:guid}/payees", async (Guid planId, HttpContext context, BudgetQueries queries, CancellationToken token)
             => TypedResults.Ok(await queries.PayeesAsync(Owner(context), planId, token)));
-        group.MapGet("/{planId:guid}/sharing", async (Guid planId, HttpContext context, PlanSharingService sharing, CancellationToken token)
+        group.MapGet("/{planId:guid}/sharing", async (Guid planId, HttpContext context, [FromServices] PlanSharingService sharing, CancellationToken token)
             => TypedResults.Ok(await sharing.ReadAsync(Owner(context), planId, token)))
             .WithSummary("Read who can open a plan.");
-        group.MapPost("/{planId:guid}/sharing", async (Guid planId, [FromBody] SharePlanRequest request, HttpContext context, PlanSharingService sharing, CancellationToken token)
+        group.MapPost("/{planId:guid}/sharing", async (Guid planId, [FromBody] SharePlanRequest request, HttpContext context, [FromServices] PlanSharingService sharing, CancellationToken token)
             => TypedResults.Ok(await sharing.ShareAsync(Owner(context), planId, request.Email, token)))
             .WithSummary("Share a plan with another YHAB account.");
-        group.MapDelete("/{planId:guid}/sharing/{memberId}", async (Guid planId, string memberId, HttpContext context, PlanSharingService sharing, CancellationToken token)
+        group.MapDelete("/{planId:guid}/sharing/{memberId}", async (Guid planId, string memberId, HttpContext context, [FromServices] PlanSharingService sharing, CancellationToken token)
             => TypedResults.Ok(await sharing.UnshareAsync(Owner(context), planId, memberId, token)))
             .WithSummary("Stop sharing a plan with an account.");
-        group.MapPost("/{planId:guid}/leave", async (Guid planId, HttpContext context, PlanSharingService sharing, CancellationToken token) =>
+        group.MapPost("/{planId:guid}/leave", async (Guid planId, HttpContext context, [FromServices] PlanSharingService sharing, CancellationToken token) =>
         {
             await sharing.LeaveAsync(Owner(context), planId, token);
             return TypedResults.NoContent();
