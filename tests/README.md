@@ -386,7 +386,7 @@ on October 14, 2026:
 | Microsoft.Testing.Extensions.TrxReport | 2.5.1 |
 | Microsoft.Testing.Extensions.CodeCoverage | 18.12.0 |
 | xunit.analyzers | 2.2.0 |
-| Aspire.Hosting.Testing (matches AppHost) | 13.6.1 |
+| Aspire.Hosting.Testing (matches AppHost) | 13.6.2 |
 | Testcontainers.PostgreSql | 4.16.0 |
 | Microsoft.Playwright | 1.63.0 |
 | C# Dev Kit (stable baseline) | 3.40.210 |
@@ -582,7 +582,7 @@ these containers. This project does not verify AppHost wiring or browser behavio
 Use **Aspire integration tests** when the subject is the assembled application:
 resource references, connection injection, migrations before web startup, readiness,
 service discovery and HTTP contracts across process boundaries. These use
-`Aspire.Hosting.Testing` 13.6.1, matching the AppHost rather than independently
+`Aspire.Hosting.Testing` 13.6.2, matching the AppHost rather than independently
 upgrading its testing package. The initial test waits for the real web health
 check and migration completion, then checks health, liveness, Home and Login.
 Aspire starts actual processes, so test DI does not replace services in the web

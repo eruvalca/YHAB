@@ -1602,7 +1602,7 @@ URLs contain access tokens.
 | UI-05: an empty category filter showed only column headings | Add an explicit no-matches message. Browser tests select an empty Hidden view and restore All categories. |
 | UI-06: opening an editor from a low register row left it offscreen | Reproduced on a 390 px phone viewport: the transaction editor appeared above the current scroll position. The shared editor surface now focuses its heading after its first interactive render, bringing it into view without interrupting subsequent input. Browser checks cover account and transaction editors. |
 | LOG-01: repeated antiforgery cache-header warnings | Plan pages and API responses now use `Cache-Control: no-cache, no-store` and `Pragma: no-cache`, matching antiforgery requirements. The subsequent manual run returned no YHAB warning/error telemetry; authenticated browser checks verify the headers on snapshots and tokens. |
-| ENV-02: Aspire's ContainerExec watcher terminates after 60 seconds | Reproduced in Aspire 13.6.0 after healthy startup. Remains open in the dependency; see investigation below. |
+| ENV-02: Aspire's ContainerExec watcher terminates after 60 seconds | Reproduced in Aspire 13.6.0 after healthy startup. Fixed in Aspire 13.6.1, which retries ContainerExec watch connections after timeouts; see the investigation below. |
 
 Manual checks used actual rendered controls, including opening dropdowns, typing
 arithmetic, clicking actions, and inspecting screenshots. The core checkpoint was:
@@ -1703,15 +1703,18 @@ debug noise. The installed 13.6.0 package's checksum-verified
 awaits the watch response inside a finite API timeout. The observed stack ends in
 that watch setup while awaiting stream data. This is consistent with an idle
 ContainerExec watch not completing setup before the 60-second startup budget;
-that explanation is an inference, not a verified upstream fix. PostgreSQL and
+that explanation was an inference at the time. PostgreSQL and
 YHAB remain Running/Healthy and migrations Finished throughout the reproduction.
 ContainerExec monitoring is degraded even though the application works.
 
-The official package query still listed 13.6.0 as the newest stable release.
-No logging suppression, reflection patch, dummy container execution, package
-downgrade, or timeout inflation was added. The warning remains visible and needs
-an upstream Aspire correction. Recheck the exact version before applying a future
-patch and validate resource-command monitoring as well as web readiness.
+**Resolved in Aspire 13.6.1.** Aspire's
+[ContainerExec watch fix](https://github.com/microsoft/aspire/pull/20664)
+retries watch connection attempts after timeouts and recreates connections after
+periodic restarts, addressing the 13.6.0 regression. No logging suppression,
+reflection patch, dummy container execution, package downgrade, or timeout
+inflation was added; the earlier 13.6.0 observation is retained as history.
+Validate resource-command monitoring as well as web readiness when adopting
+future patches.
 
 Browser console connection errors during intentional AppHost shutdown were
 separated from active-run errors by endpoint and timestamp.

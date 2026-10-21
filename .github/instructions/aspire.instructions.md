@@ -31,7 +31,7 @@ running tests. Detailed setup and runtime procedures remain in the
   resource instances and requires explicit destructive intent for one AppHost.
   In 13.6, named volumes are preserved unless `--volumes` is also requested;
   never add either cleanup flag to routine validation.
-- Keep the Aspire CLI 13.6.0 workflow pin, the compatible Aspire 13.6.1 package
+- Keep the Aspire CLI 13.6.2 workflow pin, the compatible Aspire 13.6.2 package
   set including the explicitly selected `Aspire.Hosting.EntityFrameworkCore`
   preview, and the managed EF tool pinned at 10.0.12 in `AppHost.cs` aligned with
   the documented setup in `README.md`.
