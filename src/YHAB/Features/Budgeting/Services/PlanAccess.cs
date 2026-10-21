@@ -7,9 +7,12 @@ namespace YHAB.Features.Budgeting.Services;
 
 internal static class PlanAccess
 {
-    // Plans stay visible to their owner and to every account the owner shares them with.
-    public static IQueryable<BudgetPlan> WhereAccessibleBy(this IQueryable<BudgetPlan> plans, string userId)
-        => plans.Where(item => item.OwnerId == userId || item.Members.Any(member => member.UserId == userId));
+    extension(IQueryable<BudgetPlan> plans)
+    {
+        // Plans stay visible to their owner and to every account the owner shares them with.
+        public IQueryable<BudgetPlan> WhereAccessibleBy(string userId)
+            => plans.Where(item => item.OwnerId == userId || item.Members.Any(member => member.UserId == userId));
+    }
 
     public static async Task<bool> CanAccessAsync(ApplicationDbContext database, BudgetPlan plan, string userId, CancellationToken cancellationToken)
         => string.Equals(plan.OwnerId, userId, StringComparison.Ordinal)
