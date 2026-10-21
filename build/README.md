@@ -104,8 +104,8 @@ reference. The xUnit analyzer remains conditional on `IsTestProject`; it does no
 introduce a test framework. All existing package versions and target frameworks
 were preserved during adoption. Transitive pinning is not enabled; to patch a
 vulnerable transitive package, add a direct versionless reference with a comment
-in each affected project, as the AppHost and testing projects do for MessagePack
-until Aspire ships a patched dependency.
+in each affected project, then remove that reference once the owning package
+references a patched version.
 
 SDK declarations, including `Aspire.AppHost.Sdk` and `global.json`, retain their
 own version settings. SDK-provided implicit package references remain under SDK

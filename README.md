@@ -56,8 +56,8 @@ automated checks and the remaining device-level installation checks.
 ## Local prerequisites
 
 - .NET SDK **10.0.401** (selected by `global.json`).
-- Aspire CLI **13.6.0** on `PATH` (the version the deployment workflow pins), with
-  the AppHost SDK on **13.6.1**. Follow the
+- Aspire CLI **13.6.2** on `PATH` (the version the deployment workflow pins), with
+  the AppHost SDK on **13.6.2**. Follow the
   [Aspire installation guide](https://aspire.dev/get-started/install/).
 - Docker Desktop running Linux containers, or another Aspire-supported container runtime.
 - A trusted .NET development HTTPS certificate: `dotnet dev-certs https --trust`.
@@ -349,13 +349,13 @@ An **Exited**, **Failed**, or **Unhealthy** application/database resource, or we
 startup blocked by failed migrations, does require investigation through its logs.
 
 The PostgreSQL image version is the built-in default of
-`Aspire.Hosting.PostgreSQL` 13.6.1. Container lifetime remains Aspire's default
+`Aspire.Hosting.PostgreSQL` 13.6.2. Container lifetime remains Aspire's default
 session lifetime. Data uses an Aspire-managed named volume rather than a repository
 file. This is a fresh PostgreSQL schema; the original SQLite scaffold is removed.
 
 Aspire supplies `ConnectionStrings:yhabdb` to both the application and migration
 tool. The application uses Npgsql EF Core 10.0.3, EF Core 10.0.13, and Aspire's
-Azure Npgsql EF integration 13.6.1 (password authentication locally, managed identity
+Azure Npgsql EF integration 13.6.2 (password authentication locally, managed identity
 in Azure). Its non-pooled `IDbContextFactory<ApplicationDbContext>`
 supports a context per Blazor operation; Identity can still resolve the scoped
 context. Dispose factory-created contexts with `await using`.
@@ -417,7 +417,7 @@ recovery codes; this command does not bypass the second factor.
 
 ## EF migrations
 
-`Aspire.Hosting.EntityFrameworkCore` **13.6.1-preview.1.26506.6** manages
+`Aspire.Hosting.EntityFrameworkCore` **13.6.2-preview.1.26519.11** manages
 `yhab-migrations` and its **dotnet-ef 10.0.12** tool. It does not alter the machine's
 global EF tool. On every start, migrations wait for PostgreSQL and the database;
 the web application starts only after migration success. Failure blocks web startup.
