@@ -1,5 +1,7 @@
+using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Shouldly;
 using Xunit;
 using YHAB.Data;
@@ -146,6 +148,29 @@ public sealed class PlanSharingTests
         (await database.Store.ListAsync("owner-b", timeout.Token)).ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task ConcurrentRedemptionAfterTheReceiptLookupDoesNotReportTheCodeAsInvalidAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(3));
+        using var barrier = new JoinBarrier();
+        await using var database = await BudgetDatabase.CreateAsync(timeout.Token, interceptor: barrier);
+        var id = await database.Store.CreateAsync("owner-a", new("Racing plan"), timeout.Token);
+        var code = await database.Sharing.CreateShareCodeAsync("owner-a", id, timeout.Token);
+        barrier.Arm();
+
+        var first = database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token);
+        var second = database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token);
+        await barrier.BothEntered.Task.WaitAsync(TimeSpan.FromSeconds(10), timeout.Token);
+        // Let one request commit while the other is paused after its receipt lookup.
+        barrier.Release();
+        await Task.WhenAny(first, second);
+        barrier.Release();
+
+        (await Task.WhenAll(first, second)).ShouldBe([id, id]);
+        (await database.Sharing.ReadAsync("owner-a", id, timeout.Token)).Collaborators.ShouldBe([new("owner-b", "b@example.test")]);
+    }
+
     private static async Task<BudgetRequestException?> CaptureAsync(Func<Task> action)
     {
         try
@@ -171,6 +196,33 @@ public sealed class PlanSharingTests
         private DateTimeOffset _now = new(2026, 10, 2, 12, 0, 0, TimeSpan.Zero);
         public override DateTimeOffset GetUtcNow() => _now;
         public void Advance(TimeSpan duration) => _now = _now.Add(duration);
+    }
+
+    // Holds both invitation lookups until the test releases them, forcing one join to
+    // commit after the other has already missed the code in its receipt lookup.
+    private sealed class JoinBarrier : DbCommandInterceptor, IDisposable
+    {
+        private readonly SemaphoreSlim _gate = new(0);
+        private int _arrivals;
+        public TaskCompletionSource BothEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public bool Armed { get; set; }
+        public void Arm() => Armed = true;
+        public void Release() => _gate.Release();
+        public void Dispose() => _gate.Dispose();
+
+        public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command,
+            CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            if (Armed && command.CommandText.Contains("\"BudgetPlanShareCodes\"", StringComparison.Ordinal))
+            {
+                if (Interlocked.Increment(ref _arrivals) == 2)
+                {
+                    BothEntered.TrySetResult();
+                }
+                await _gate.WaitAsync(cancellationToken);
+            }
+            return result;
+        }
     }
 }
 

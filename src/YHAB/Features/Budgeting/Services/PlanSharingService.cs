@@ -73,8 +73,13 @@ internal sealed class PlanSharingService(IDbContextFactory<ApplicationDbContext>
                     : throw InvalidCode();
             }
             var invitation = await database.Set<BudgetPlanShareCode>().AsNoTracking()
-                .SingleOrDefaultAsync(item => item.CodeHash == hash && item.ExpiresOn > now, cancellationToken)
-                ?? throw InvalidCode();
+                .SingleOrDefaultAsync(item => item.CodeHash == hash && item.ExpiresOn > now, cancellationToken);
+            if (invitation is null)
+            {
+                // The same account may have committed its redemption between our receipt
+                // lookup and this invitation lookup.
+                return await ReceiptPlanAsync(database, hash, userId, cancellationToken);
+            }
             var plan = await database.Set<BudgetPlan>().AsNoTracking()
                 .SingleOrDefaultAsync(item => item.Id == invitation.PlanId, cancellationToken)
                 ?? throw InvalidCode();
@@ -89,11 +94,7 @@ internal sealed class PlanSharingService(IDbContextFactory<ApplicationDbContext>
             if (consumed == 0)
             {
                 // A concurrent redemption by this account may have committed first.
-                var concurrent = await database.Set<BudgetPlanShareCodeRedemption>().AsNoTracking()
-                    .SingleOrDefaultAsync(item => item.CodeHash == hash && item.UserId == userId, cancellationToken);
-                return concurrent is not null && await IsMemberAsync(database, concurrent.PlanId, userId, cancellationToken)
-                    ? concurrent.PlanId
-                    : throw InvalidCode();
+                return await ReceiptPlanAsync(database, hash, userId, cancellationToken);
             }
             // Membership is idempotent, so a later code for the same plan remains usable.
             await database.Database.ExecuteSqlAsync(
@@ -152,6 +153,17 @@ internal sealed class PlanSharingService(IDbContextFactory<ApplicationDbContext>
 
     private static Task<bool> IsMemberAsync(ApplicationDbContext database, Guid planId, string userId, CancellationToken cancellationToken)
         => database.Set<BudgetPlanMember>().AnyAsync(item => item.PlanId == planId && item.UserId == userId, cancellationToken);
+
+    private static async Task<Guid> ReceiptPlanAsync(ApplicationDbContext database, string codeHash, string userId, CancellationToken cancellationToken)
+    {
+        var receipt = await database.Set<BudgetPlanShareCodeRedemption>().AsNoTracking()
+            .SingleOrDefaultAsync(item => item.CodeHash == codeHash && item.UserId == userId, cancellationToken);
+        if (receipt is null || !await IsMemberAsync(database, receipt.PlanId, userId, cancellationToken))
+        {
+            throw InvalidCode();
+        }
+        return receipt.PlanId;
+    }
 
     private static string CreateCode() => Convert.ToHexString(RandomNumberGenerator.GetBytes(10));
 
