@@ -23,6 +23,14 @@ internal static class BudgetModelConfiguration
         member.HasOne<ApplicationUser>().WithMany().HasForeignKey(item => item.UserId).OnDelete(DeleteBehavior.Cascade);
         member.HasIndex(item => item.UserId);
 
+        var code = builder.Entity<BudgetPlanShareCode>();
+        code.ToTable("BudgetPlanShareCodes");
+        code.HasKey(item => item.Id);
+        code.Property(item => item.CodeHash).HasMaxLength(64);
+        code.HasIndex(item => item.CodeHash).IsUnique();
+        code.HasIndex(item => item.ExpiresOn);
+        code.HasOne<BudgetPlan>().WithMany().HasForeignKey(item => item.PlanId).OnDelete(DeleteBehavior.Cascade);
+
         var account = builder.Entity<BudgetAccount>();
         account.HasKey(item => new { item.PlanId, item.Id });
         account.HasOne<BudgetPlan>().WithMany().HasForeignKey(item => item.PlanId);

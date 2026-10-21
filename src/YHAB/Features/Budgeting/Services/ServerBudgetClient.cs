@@ -50,8 +50,11 @@ internal sealed class ServerBudgetClient(BudgetStore store, BudgetQueries querie
     public async Task<PlanShareSummary> ReadSharingAsync(Guid planId, CancellationToken cancellationToken)
         => await sharing.ReadAsync(await OwnerAsync(cancellationToken), planId, cancellationToken);
 
-    public async Task<PlanShareSummary> ShareAsync(Guid planId, string email, CancellationToken cancellationToken)
-        => await sharing.ShareAsync(await OwnerAsync(cancellationToken), planId, email, cancellationToken);
+    public async Task<PlanShareCode> CreateShareCodeAsync(Guid planId, CancellationToken cancellationToken)
+        => await sharing.CreateShareCodeAsync(await OwnerAsync(cancellationToken), planId, cancellationToken);
+
+    public async Task<Guid> JoinAsync(string code, CancellationToken cancellationToken)
+        => await sharing.JoinAsync(await OwnerAsync(cancellationToken), code, cancellationToken);
 
     public async Task<PlanShareSummary> UnshareAsync(Guid planId, string memberId, CancellationToken cancellationToken)
         => await sharing.UnshareAsync(await OwnerAsync(cancellationToken), planId, memberId, cancellationToken);

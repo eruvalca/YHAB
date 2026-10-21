@@ -66,9 +66,12 @@ internal static class BudgetEndpoints
         group.MapGet("/{planId:guid}/sharing", async (Guid planId, HttpContext context, [FromServices] PlanSharingService sharing, CancellationToken token)
             => TypedResults.Ok(await sharing.ReadAsync(Owner(context), planId, token)))
             .WithSummary("Read who can open a plan.");
-        group.MapPost("/{planId:guid}/sharing", async (Guid planId, [FromBody] SharePlanRequest request, HttpContext context, [FromServices] PlanSharingService sharing, CancellationToken token)
-            => TypedResults.Ok(await sharing.ShareAsync(Owner(context), planId, request.Email, token)))
-            .WithSummary("Share a plan with another YHAB account.");
+        group.MapPost("/{planId:guid}/sharing/codes", async (Guid planId, HttpContext context, [FromServices] PlanSharingService sharing, CancellationToken token)
+            => TypedResults.Ok(await sharing.CreateShareCodeAsync(Owner(context), planId, token)))
+            .WithSummary("Create a one-time code for sharing a plan.");
+        group.MapPost("/join", async ([FromBody] JoinPlanRequest request, HttpContext context, [FromServices] PlanSharingService sharing, CancellationToken token)
+            => TypedResults.Ok(await sharing.JoinAsync(Owner(context), request.Code, token)))
+            .WithSummary("Join a plan with a one-time share code.");
         group.MapDelete("/{planId:guid}/sharing/{memberId}", async (Guid planId, string memberId, HttpContext context, [FromServices] PlanSharingService sharing, CancellationToken token)
             => TypedResults.Ok(await sharing.UnshareAsync(Owner(context), planId, memberId, token)))
             .WithSummary("Stop sharing a plan with an account.");

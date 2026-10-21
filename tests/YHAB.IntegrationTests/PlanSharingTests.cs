@@ -1,6 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
+using Microsoft.EntityFrameworkCore;
 using Shouldly;
 using Xunit;
+using YHAB.Data;
 using YHAB.SharedKernel.Budgeting;
 
 namespace YHAB.IntegrationTests;
@@ -9,14 +11,21 @@ namespace YHAB.IntegrationTests;
 public sealed class PlanSharingTests
 {
     [Fact]
-    public async Task SharingGrantsEditingAndReadAccessUntilTheOwnerRemovesItAsync()
+    public async Task ShareCodeGrantsEditingAndReadAccessUntilTheOwnerRemovesItAsync()
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         timeout.CancelAfter(TimeSpan.FromMinutes(3));
-        await using var database = await BudgetDatabase.CreateAsync(timeout.Token);
+        var time = new MutableTime();
+        await using var database = await BudgetDatabase.CreateAsync(timeout.Token, time);
         var id = await database.Store.CreateAsync("owner-a", new("Shared plan"), timeout.Token);
 
-        var shared = await database.Sharing.ShareAsync("owner-a", id, "  b@example.test ", timeout.Token);
+        var code = await database.Sharing.CreateShareCodeAsync("owner-a", id, timeout.Token);
+        code.PlanId.ShouldBe(id);
+        code.Code.ShouldNotBeNullOrWhiteSpace();
+        code.ExpiresOn.ShouldBe(time.GetUtcNow().AddDays(7));
+
+        (await database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token)).ShouldBe(id);
+        var shared = await database.Sharing.ReadAsync("owner-a", id, timeout.Token);
         shared.IsOwner.ShouldBeTrue();
         shared.OwnerName.ShouldBe("a@example.test");
         shared.Collaborators.ShouldBe([new("owner-b", "b@example.test")]);
@@ -40,7 +49,7 @@ public sealed class PlanSharingTests
         renamed.Notes.ShouldBe("Shared note");
 
         (await database.Sharing.ReadAsync("owner-b", id, timeout.Token)).IsOwner.ShouldBeFalse();
-        var forbidden = await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.ShareAsync("owner-b", id, "a@example.test", timeout.Token));
+        var forbidden = await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.CreateShareCodeAsync("owner-b", id, timeout.Token));
         forbidden.Status.ShouldBe(404);
 
         var remaining = await database.Sharing.UnshareAsync("owner-a", id, "owner-b", timeout.Token);
@@ -51,21 +60,27 @@ public sealed class PlanSharingTests
     }
 
     [Fact]
-    public async Task SharingRejectsUnknownAddressesAndTheOwnerAsync()
+    public async Task JoinRejectsInvalidExpiredEmptyAndOwnerCodesAsync()
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         timeout.CancelAfter(TimeSpan.FromMinutes(3));
-        await using var database = await BudgetDatabase.CreateAsync(timeout.Token);
+        var time = new MutableTime();
+        await using var database = await BudgetDatabase.CreateAsync(timeout.Token, time);
         var id = await database.Store.CreateAsync("owner-a", new("Solo plan"), timeout.Token);
 
-        var missing = await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.ShareAsync("owner-a", id, "nobody@example.test", timeout.Token));
-        missing.Status.ShouldBe(404);
-        var self = await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.ShareAsync("owner-a", id, "A@EXAMPLE.TEST", timeout.Token));
+        var invalid = await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.JoinAsync("owner-b", "NOT-A-CODE", timeout.Token));
+        invalid.Status.ShouldBe(404);
+        var empty = await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.JoinAsync("owner-b", "   ", timeout.Token));
+        empty.Status.ShouldBe(400);
+
+        var ownerCode = await database.Sharing.CreateShareCodeAsync("owner-a", id, timeout.Token);
+        var self = await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.JoinAsync("owner-a", ownerCode.Code, timeout.Token));
         self.Status.ShouldBe(400);
 
-        await database.Sharing.ShareAsync("owner-a", id, "b@example.test", timeout.Token);
-        var duplicate = await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.ShareAsync("owner-a", id, "b@example.test", timeout.Token));
-        duplicate.Status.ShouldBe(409);
+        var expiredCode = await database.Sharing.CreateShareCodeAsync("owner-a", id, timeout.Token);
+        time.Advance(TimeSpan.FromDays(8));
+        var expired = await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.JoinAsync("owner-b", expiredCode.Code, timeout.Token));
+        expired.Status.ShouldBe(404);
     }
 
     [Fact]
@@ -75,7 +90,8 @@ public sealed class PlanSharingTests
         timeout.CancelAfter(TimeSpan.FromMinutes(3));
         await using var database = await BudgetDatabase.CreateAsync(timeout.Token);
         var id = await database.Store.CreateAsync("owner-a", new("Leaving plan"), timeout.Token);
-        await database.Sharing.ShareAsync("owner-a", id, "b@example.test", timeout.Token);
+        var code = await database.Sharing.CreateShareCodeAsync("owner-a", id, timeout.Token);
+        await database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token);
 
         var owner = await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.LeaveAsync("owner-a", id, timeout.Token));
         owner.Status.ShouldBe(400);
@@ -85,4 +101,74 @@ public sealed class PlanSharingTests
         (await database.Store.ReadAsync("owner-b", id, timeout.Token)).ShouldBeNull();
         await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.ReadAsync("owner-b", id, timeout.Token));
     }
+
+    [Fact]
+    public async Task CodesAreSingleUseAndRepeatedMembershipIsIdempotentAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(3));
+        await using var database = await BudgetDatabase.CreateAsync(timeout.Token);
+        var id = await database.Store.CreateAsync("owner-a", new("One-time plan"), timeout.Token);
+        await AddUserAsync(database, "owner-c", "c@example.test", timeout.Token);
+
+        var code = await database.Sharing.CreateShareCodeAsync("owner-a", id, timeout.Token);
+        (await database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token)).ShouldBe(id);
+        var reused = await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.JoinAsync("owner-c", code.Code, timeout.Token));
+        reused.Status.ShouldBe(404);
+
+        var secondCode = await database.Sharing.CreateShareCodeAsync("owner-a", id, timeout.Token);
+        (await database.Sharing.JoinAsync("owner-b", secondCode.Code, timeout.Token)).ShouldBe(id);
+        (await database.Sharing.ReadAsync("owner-a", id, timeout.Token)).Collaborators.ShouldBe([new("owner-b", "b@example.test")]);
+    }
+
+    [Fact]
+    public async Task ConcurrentRedemptionAndConcurrentRemovalHaveOneWinnerAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(3));
+        await using var database = await BudgetDatabase.CreateAsync(timeout.Token);
+        var id = await database.Store.CreateAsync("owner-a", new("Contended plan"), timeout.Token);
+
+        var code = await database.Sharing.CreateShareCodeAsync("owner-a", id, timeout.Token);
+        var joins = await Task.WhenAll(
+            CaptureAsync(async () => { await database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token); }),
+            CaptureAsync(async () => { await database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token); }));
+        joins.Count(item => item is null).ShouldBe(1);
+        joins.Single(item => item is not null)!.Status.ShouldBe(404);
+
+        var removals = await Task.WhenAll(
+            CaptureAsync(async () => { await database.Sharing.UnshareAsync("owner-a", id, "owner-b", timeout.Token); }),
+            CaptureAsync(async () => { await database.Sharing.LeaveAsync("owner-b", id, timeout.Token); }));
+        removals.Count(item => item is null).ShouldBe(1);
+        removals.Single(item => item is not null)!.Status.ShouldBe(404);
+        (await database.Store.ListAsync("owner-b", timeout.Token)).ShouldBeEmpty();
+    }
+
+    private static async Task<BudgetRequestException?> CaptureAsync(Func<Task> action)
+    {
+        try
+        {
+            await action();
+            return null;
+        }
+        catch (BudgetRequestException exception)
+        {
+            return exception;
+        }
+    }
+
+    private static async Task AddUserAsync(BudgetDatabase database, string id, string email, CancellationToken cancellationToken)
+    {
+        await using var context = await database.Factory.CreateDbContextAsync(cancellationToken);
+        context.Users.Add(new ApplicationUser { Id = id, UserName = email, NormalizedUserName = email.ToUpperInvariant(), Email = email, NormalizedEmail = email.ToUpperInvariant() });
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private sealed class MutableTime : TimeProvider
+    {
+        private DateTimeOffset _now = new(2026, 10, 2, 12, 0, 0, TimeSpan.Zero);
+        public override DateTimeOffset GetUtcNow() => _now;
+        public void Advance(TimeSpan duration) => _now = _now.Add(duration);
+    }
 }
+

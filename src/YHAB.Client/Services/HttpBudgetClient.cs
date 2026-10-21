@@ -45,10 +45,17 @@ internal sealed class HttpBudgetClient(HttpClient http) : IBudgetClient
     public Task<PlanShareSummary> ReadSharingAsync(Guid planId, CancellationToken cancellationToken)
         => ReadAsync<PlanShareSummary>($"api/plans/{planId}/sharing", cancellationToken);
 
-    public async Task<PlanShareSummary> ShareAsync(Guid planId, string email, CancellationToken cancellationToken)
+    public async Task<PlanShareCode> CreateShareCodeAsync(Guid planId, CancellationToken cancellationToken)
     {
-        using var response = await SendAsync(HttpMethod.Post, $"api/plans/{planId}/sharing", JsonContent.Create(new SharePlanRequest(email)), cancellationToken);
-        return await ReadSummaryAsync(response, cancellationToken);
+        using var response = await SendAsync(HttpMethod.Post, $"api/plans/{planId}/sharing/codes", null, cancellationToken);
+        return await response.Content.ReadFromJsonAsync<PlanShareCode>(cancellationToken)
+            ?? throw new HttpRequestException("The server returned an empty response.");
+    }
+
+    public async Task<Guid> JoinAsync(string code, CancellationToken cancellationToken)
+    {
+        using var response = await SendAsync(HttpMethod.Post, "api/plans/join", JsonContent.Create(new JoinPlanRequest(code)), cancellationToken);
+        return await response.Content.ReadFromJsonAsync<Guid>(cancellationToken);
     }
 
     public async Task<PlanShareSummary> UnshareAsync(Guid planId, string memberId, CancellationToken cancellationToken)

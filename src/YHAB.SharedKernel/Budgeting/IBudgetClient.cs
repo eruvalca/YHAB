@@ -13,7 +13,8 @@ public interface IBudgetClient
     Task<ReportView> ReadReportsAsync(Guid planId, DateOnly from, DateOnly through, CancellationToken cancellationToken);
     Task<IReadOnlyList<string>> ReadPayeesAsync(Guid planId, CancellationToken cancellationToken);
     Task<PlanShareSummary> ReadSharingAsync(Guid planId, CancellationToken cancellationToken);
-    Task<PlanShareSummary> ShareAsync(Guid planId, string email, CancellationToken cancellationToken);
+    Task<PlanShareCode> CreateShareCodeAsync(Guid planId, CancellationToken cancellationToken);
+    Task<Guid> JoinAsync(string code, CancellationToken cancellationToken);
     Task<PlanShareSummary> UnshareAsync(Guid planId, string memberId, CancellationToken cancellationToken);
     Task LeaveAsync(Guid planId, CancellationToken cancellationToken);
     Task ExecuteAsync(Guid planId, PlanCommand command, CancellationToken cancellationToken);

@@ -37,14 +37,18 @@
             {
                 @if (sharing.IsOwner)
                 {
-                    <p>Everyone you add can open and edit this plan. They see it on their plans page the next time they sign in.</p>
-                    <EditForm Model="Share" method="post" FormName="SharePlan" OnValidSubmit="ShareAsync" Enhance>
-                        <DataAnnotationsValidator /><ValidationSummary />
-                        <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalL)">
-                            <div class="form-field"><label for="share-email">Email address</label><InputText id="share-email" @bind-Value="Share.Email" placeholder="name@example.com" maxlength="256" /></div>
-                            <button type="submit" class="primary-action">Add person</button>
-                        </FluentStack>
+                    <p>Create a one-time code and give it to the person you want to add. Codes expire after seven days and stop working once used. Everyone with access can open and edit this plan.</p>
+                    <EditForm Model="ShareCodeForm" id="create-share-code-form" method="post" FormName="CreateShareCode" OnValidSubmit="CreateShareCodeAsync" Enhance>
+                        <input type="hidden" name="ShareCodeForm.Action" value="@ShareCodeForm.Action" />
+                        <button type="submit" class="primary-action">Create share code</button>
                     </EditForm>
+                    @if (_shareCode is { } shareCode)
+                    {
+                        <div class="notice" data-kind="success" role="status">
+                            <p>Give this code to the person you want to add. It can be used once and expires on @shareCode.ExpiresOn.LocalDateTime.ToString("D").</p>
+                            <p class="share-code">@shareCode.Code</p>
+                        </div>
+                    }
                 }
                 else
                 {
@@ -66,7 +70,7 @@
                 }
                 @if (sharing.IsOwner && sharing.Collaborators.Count > 0)
                 {
-                    <EditForm Model="Remove" method="post" FormName="RemoveShare" OnValidSubmit="RemoveAsync" Enhance>
+                    <EditForm Model="Remove" id="remove-share-form" method="post" FormName="RemoveShare" OnValidSubmit="RemoveAsync" Enhance>
                         <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalM)">
                             <div class="form-field">
                                 <label for="remove-person">Stop sharing with</label>
@@ -78,7 +82,7 @@
                 }
                 @if (!sharing.IsOwner)
                 {
-                    <EditForm Model="Leave" method="post" FormName="LeavePlan" OnValidSubmit="LeaveAsync" Enhance>
+                    <EditForm Model="Leave" id="leave-plan-form" method="post" FormName="LeavePlan" OnValidSubmit="LeaveAsync" Enhance>
                         <DataAnnotationsValidator /><ValidationSummary />
                         <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalM)">
                             <div class="checkbox-field"><label for="leave-confirm">I understand I will lose access to this plan.</label><InputCheckbox id="leave-confirm" @bind-Value="Leave.Confirmed" /></div>

@@ -34,14 +34,17 @@ connections, imports, or photo storage.
 
 ## Sharing a plan
 
-A plan starts private to its owner. On **Plan settings**, the owner adds another
-YHAB account by its email address; no email is sent. The shared account sees the
-plan under **Shared with you** on its plans page and can open and edit everything
-the owner can. The owner can stop sharing at any time, and a shared account can
-leave the plan. Removing access takes effect on the next request, and a removed
-account no longer appears in its plans list or API responses. Only the owner can
-add or remove accounts; sharing does not change the plan revision, balances, or
-history.
+A plan starts private to its owner. On **Plan settings**, the owner creates a
+one-time share code and gives it to the person they want to add. The recipient
+enters that code under **Join a shared plan** on the plans page. No email is sent.
+Codes expire after seven days and stop working once redeemed, so access does not
+depend on ownership of an unverified email address. Every code is stored as a
+hash, and a code can be redeemed only once. Everyone with access can open and edit
+everything the owner can. The owner can stop sharing at any time, and a shared
+account can leave the plan. Removing access takes effect on the next request, and
+a removed account no longer appears in its plans list or API responses. Only the
+owner can create codes or remove accounts; creating a code does not change the
+plan revision, balances, or history.
 
 Create groups with **Category group** above the plan table, and add categories
 with the **+** on a group header. New names are entered directly in the table.
@@ -427,7 +430,9 @@ plan, and 409 stale revision. Responses are not cacheable.
 | Report summaries | GET `/api/plans/{planId}/reports?from={date}&through={date}` |
 | Distinct payees | GET `/api/plans/{planId}/payees` |
 | Sharing state | GET `/api/plans/{planId}/sharing` |
-| Share / stop sharing | POST `/api/plans/{planId}/sharing` / DELETE `/api/plans/{planId}/sharing/{userId}` |
+| Create a one-time share code | POST `/api/plans/{planId}/sharing/codes` |
+| Join with a share code | POST `/api/plans/join` |
+| Stop sharing | DELETE `/api/plans/{planId}/sharing/{userId}` |
 | Leave a shared plan | POST `/api/plans/{planId}/leave` |
 | Create account/group/category/transaction | POST `/api/plans/{planId}/{collection}` |
 | Move group / category | POST `/api/plans/{planId}/groups/reorder` / `categories/reorder` |
@@ -476,7 +481,7 @@ isolated AppHosts. Browser tests exercise both desktop and phone widths.
 | Transfers and account closing | `CreditBalanceTransferMovesFundedPaymentMoneyToTheNewCard`, `ClosingAnAccountRequiresZeroBalanceAndKeepsEditableOpeningValues` |
 | Category history and payee management | `MergingAUsedCategoryPreservesAssignmentsSpendingAndAccountBalance`, `MergingAssignedCategoryPersistsHistoryAndSupportsUndoRedoAsync`, `PayeeRenameChangesMatchingPostedAndRecurringEntriesOnly`, `TransactionEditorsUsePayeeProjectionAndRefreshSuggestionsAsync` |
 | Private plans, SQL integrity, durable history, and concurrent edits | `OwnerIsolationHistoryAndConcurrentWritesPersistAcrossContextsAsync`, `DatabaseRejectsCrossPlanReferencesAndAccountDeletionRemovesOwnedLedgerAsync` |
-| In-app plan sharing, editing, and access removal | `SharingGrantsEditingAndReadAccessUntilTheOwnerRemovesItAsync`, `SharingRejectsUnknownAddressesAndTheOwnerAsync`, `ASharedMemberCanLeaveButAnOwnerCannotAsync`, `PlansPageSeparatesOwnedAndSharedPlansAsync`, `OwnerSeesShareFormAndCanRemoveACollaboratorAsync`, `SharedMemberSeesOwnerAndLeaveConfirmationWithoutRemoveControlsAsync` |
+| In-app plan sharing, editing, and access removal | `ShareCodeGrantsEditingAndReadAccessUntilTheOwnerRemovesItAsync`, `JoinRejectsInvalidExpiredEmptyAndOwnerCodesAsync`, `ASharedMemberCanLeaveButAnOwnerCannotAsync`, `CodesAreSingleUseAndRepeatedMembershipIsIdempotentAsync`, `ConcurrentRedemptionAndConcurrentRemovalHaveOneWinnerAsync`, `PlansPageSeparatesOwnedAndSharedPlansAndShowsJoinFormAsync`, `OwnerCreatesShareCodeAndRemovesACollaboratorAsync`, `SharedMemberSeesOwnerAndRejectsUnconfirmedLeaveAsync`, `PlansPageJoinsWithACodeAsync`, `JoinServiceErrorIsShownAsync` |
 | Manual browser workflow, calculator entry, keyboard undo/redo, reports, and API guards | `ManualPlanPurchaseUndoAndReportsAgreeAsync` at 1440px and 390px, including the phone amount keypad, editor tap size, sticky editor chrome, and the signed-balance sign control |
 | Themes, mobile navigation, and SSR document continuity | `FluentNavigationPreservesDocumentAndThemeChoice` at 1280px and 390px |
 | Actual startup, migrations, and database readiness | `AppHostCompletesMigrationsAndServesHealthyApplication` |

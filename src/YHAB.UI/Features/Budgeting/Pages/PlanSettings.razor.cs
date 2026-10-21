@@ -9,11 +9,12 @@ public sealed partial class PlanSettings(IBudgetClient budgets, NavigationManage
     [Parameter] public Guid PlanId { get; set; }
     [SupplyParameterFromForm(FormName = "PlanSettings")] private SettingsInput Settings { get; set; } = default!;
     [SupplyParameterFromForm(FormName = "RenamePayee")] private PayeeInput Payee { get; set; } = default!;
-    [SupplyParameterFromForm(FormName = "SharePlan")] private ShareInput Share { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "CreateShareCode")] private ShareCodeInput ShareCodeForm { get; set; } = default!;
     [SupplyParameterFromForm(FormName = "RemoveShare")] private RemoveInput Remove { get; set; } = default!;
     [SupplyParameterFromForm(FormName = "LeavePlan")] private LeaveInput Leave { get; set; } = default!;
     private PlanSnapshot? _plan;
     private PlanShareSummary? _sharing;
+    private PlanShareCode? _shareCode;
     private IReadOnlyList<AccountBalance> _balances = [];
     private IReadOnlyList<string> _payees = [];
     private string? _message;
@@ -27,7 +28,7 @@ public sealed partial class PlanSettings(IBudgetClient budgets, NavigationManage
             await LoadAsync(token);
             Settings ??= new() { Name = _plan!.Name, Notes = _plan.Notes, Version = _plan.Version };
             Payee ??= new() { Version = _plan!.Version };
-            Share ??= new();
+            ShareCodeForm ??= new();
             Remove ??= new();
             Leave ??= new();
         }
@@ -35,16 +36,15 @@ public sealed partial class PlanSettings(IBudgetClient budgets, NavigationManage
     }
     private Task SaveAsync() => ExecuteAsync(new UpdatePlan(Settings.Version, Settings.Name, Settings.Notes), "Plan settings saved.");
     private Task RenameAsync() => ExecuteAsync(new RenamePayee(Payee.Version, Payee.OldName, Payee.NewName), "Payee renamed.");
-    private async Task ShareAsync()
+    private async Task CreateShareCodeAsync()
     {
         using var operation = CreateOperation();
         var token = operation.Token;
         try
         {
-            _sharing = await budgets.ShareAsync(PlanId, Share.Email, token);
+            _shareCode = await budgets.CreateShareCodeAsync(PlanId, token);
             token.ThrowIfCancellationRequested();
-            Share = new();
-            _message = "Plan shared. That account can now open and edit it.";
+            _message = "Share code created. Give it to the person you want to add.";
             _failed = false;
         }
         catch (BudgetRequestException exception) { _message = exception.Message; _failed = true; }
@@ -132,9 +132,9 @@ public sealed partial class PlanSettings(IBudgetClient budgets, NavigationManage
         [Required, StringLength(200)] public string OldName { get; set; } = "";
         [Required, StringLength(200)] public string NewName { get; set; } = "";
     }
-    private sealed class ShareInput
+    private sealed class ShareCodeInput
     {
-        [Required, EmailAddress, StringLength(256)] public string Email { get; set; } = "";
+        public string Action { get; set; } = "create";
     }
     private sealed class RemoveInput
     {

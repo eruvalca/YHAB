@@ -1,1 +1,2 @@
 .share-list { margin: 0 0 var(--spacingVerticalM); padding-left: var(--spacingHorizontalL); }
+.share-code { font-family: var(--fontFamilyMonospace); font-size: var(--fontSizeBase400); letter-spacing: 0.08em; font-weight: var(--fontWeightSemibold); overflow-wrap: anywhere; }

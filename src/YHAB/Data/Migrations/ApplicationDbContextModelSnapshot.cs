@@ -520,6 +520,35 @@ namespace YHAB.Migrations
                     b.ToTable("BudgetPlanMembers", (string)null);
                 });
 
+            modelBuilder.Entity("YHAB.Features.Budgeting.Data.BudgetPlanShareCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("ExpiresOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PlanId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CodeHash")
+                        .IsUnique();
+
+                    b.HasIndex("ExpiresOn");
+
+                    b.HasIndex("PlanId");
+
+                    b.ToTable("BudgetPlanShareCodes", (string)null);
+                });
+
             modelBuilder.Entity("YHAB.Features.Budgeting.Data.BudgetReceipt", b =>
                 {
                     b.Property<Guid>("PlanId")
@@ -846,6 +875,15 @@ namespace YHAB.Migrations
                     b.HasOne("YHAB.Data.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("YHAB.Features.Budgeting.Data.BudgetPlanShareCode", b =>
+                {
+                    b.HasOne("YHAB.Features.Budgeting.Data.BudgetPlan", null)
+                        .WithMany()
+                        .HasForeignKey("PlanId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
