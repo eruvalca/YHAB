@@ -61,6 +61,17 @@ internal sealed class PlanSharingService(IDbContextFactory<ApplicationDbContext>
             await using var database = await factory.CreateDbContextAsync(cancellationToken);
             await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
             var now = timeProvider.GetUtcNow();
+            // A retry after a committed redemption, including one whose acknowledgement was
+            // lost to a transient failure, must return the original result even though the
+            // code row is gone.
+            var redeemed = await database.Set<BudgetPlanShareCodeRedemption>().AsNoTracking()
+                .SingleOrDefaultAsync(item => item.CodeHash == hash && item.UserId == userId, cancellationToken);
+            if (redeemed is not null)
+            {
+                return await IsMemberAsync(database, redeemed.PlanId, userId, cancellationToken)
+                    ? redeemed.PlanId
+                    : throw InvalidCode();
+            }
             var invitation = await database.Set<BudgetPlanShareCode>().AsNoTracking()
                 .SingleOrDefaultAsync(item => item.CodeHash == hash && item.ExpiresOn > now, cancellationToken)
                 ?? throw InvalidCode();
@@ -77,12 +88,25 @@ internal sealed class PlanSharingService(IDbContextFactory<ApplicationDbContext>
                 .ExecuteDeleteAsync(cancellationToken);
             if (consumed == 0)
             {
-                throw InvalidCode();
+                // A concurrent redemption by this account may have committed first.
+                var concurrent = await database.Set<BudgetPlanShareCodeRedemption>().AsNoTracking()
+                    .SingleOrDefaultAsync(item => item.CodeHash == hash && item.UserId == userId, cancellationToken);
+                return concurrent is not null && await IsMemberAsync(database, concurrent.PlanId, userId, cancellationToken)
+                    ? concurrent.PlanId
+                    : throw InvalidCode();
             }
             // Membership is idempotent, so a later code for the same plan remains usable.
             await database.Database.ExecuteSqlAsync(
                 $"INSERT INTO \"BudgetPlanMembers\" (\"PlanId\", \"UserId\") VALUES ({plan.Id}, {userId}) ON CONFLICT DO NOTHING",
                 cancellationToken);
+            database.Add(new BudgetPlanShareCodeRedemption
+            {
+                CodeHash = hash,
+                UserId = userId,
+                PlanId = plan.Id,
+                RedeemedOn = now,
+            });
+            await database.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return plan.Id;
         }, cancellationToken);
@@ -125,6 +149,9 @@ internal sealed class PlanSharingService(IDbContextFactory<ApplicationDbContext>
     }
 
     private static BudgetRequestException InvalidCode() => new(404, "That share code is invalid or expired.");
+
+    private static Task<bool> IsMemberAsync(ApplicationDbContext database, Guid planId, string userId, CancellationToken cancellationToken)
+        => database.Set<BudgetPlanMember>().AnyAsync(item => item.PlanId == planId && item.UserId == userId, cancellationToken);
 
     private static string CreateCode() => Convert.ToHexString(RandomNumberGenerator.GetBytes(10));
 

@@ -549,6 +549,32 @@ namespace YHAB.Migrations
                     b.ToTable("BudgetPlanShareCodes", (string)null);
                 });
 
+            modelBuilder.Entity("YHAB.Features.Budgeting.Data.BudgetPlanShareCodeRedemption", b =>
+                {
+                    b.Property<string>("CodeHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("PlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("RedeemedOn")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("CodeHash", "UserId");
+
+                    b.HasIndex("PlanId");
+
+                    b.HasIndex("RedeemedOn");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("BudgetPlanShareCodeRedemptions", (string)null);
+                });
+
             modelBuilder.Entity("YHAB.Features.Budgeting.Data.BudgetReceipt", b =>
                 {
                     b.Property<Guid>("PlanId")
@@ -884,6 +910,21 @@ namespace YHAB.Migrations
                     b.HasOne("YHAB.Features.Budgeting.Data.BudgetPlan", null)
                         .WithMany()
                         .HasForeignKey("PlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("YHAB.Features.Budgeting.Data.BudgetPlanShareCodeRedemption", b =>
+                {
+                    b.HasOne("YHAB.Features.Budgeting.Data.BudgetPlan", null)
+                        .WithMany()
+                        .HasForeignKey("PlanId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("YHAB.Data.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

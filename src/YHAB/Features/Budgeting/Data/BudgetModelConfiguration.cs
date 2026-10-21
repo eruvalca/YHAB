@@ -31,6 +31,14 @@ internal static class BudgetModelConfiguration
         code.HasIndex(item => item.ExpiresOn);
         code.HasOne<BudgetPlan>().WithMany().HasForeignKey(item => item.PlanId).OnDelete(DeleteBehavior.Cascade);
 
+        var redemption = builder.Entity<BudgetPlanShareCodeRedemption>();
+        redemption.ToTable("BudgetPlanShareCodeRedemptions");
+        redemption.HasKey(item => new { item.CodeHash, item.UserId });
+        redemption.Property(item => item.CodeHash).HasMaxLength(64);
+        redemption.HasIndex(item => item.RedeemedOn);
+        redemption.HasOne<BudgetPlan>().WithMany().HasForeignKey(item => item.PlanId).OnDelete(DeleteBehavior.Cascade);
+        redemption.HasOne<ApplicationUser>().WithMany().HasForeignKey(item => item.UserId).OnDelete(DeleteBehavior.Cascade);
+
         var account = builder.Entity<BudgetAccount>();
         account.HasKey(item => new { item.PlanId, item.Id });
         account.HasOne<BudgetPlan>().WithMany().HasForeignKey(item => item.PlanId);

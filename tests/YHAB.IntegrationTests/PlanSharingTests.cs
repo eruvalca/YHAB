@@ -103,7 +103,7 @@ public sealed class PlanSharingTests
     }
 
     [Fact]
-    public async Task CodesAreSingleUseAndRepeatedMembershipIsIdempotentAsync()
+    public async Task CodesAreSingleUseAndRedemptionRetriesAreIdempotentAsync()
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         timeout.CancelAfter(TimeSpan.FromMinutes(3));
@@ -112,6 +112,8 @@ public sealed class PlanSharingTests
         await AddUserAsync(database, "owner-c", "c@example.test", timeout.Token);
 
         var code = await database.Sharing.CreateShareCodeAsync("owner-a", id, timeout.Token);
+        (await database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token)).ShouldBe(id);
+        // A repeat of the same redemption, as after a lost acknowledgement, still succeeds.
         (await database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token)).ShouldBe(id);
         var reused = await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.JoinAsync("owner-c", code.Code, timeout.Token));
         reused.Status.ShouldBe(404);
@@ -122,7 +124,7 @@ public sealed class PlanSharingTests
     }
 
     [Fact]
-    public async Task ConcurrentRedemptionAndConcurrentRemovalHaveOneWinnerAsync()
+    public async Task ConcurrentRedemptionIsIdempotentAndConcurrentRemovalHasOneWinnerAsync()
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         timeout.CancelAfter(TimeSpan.FromMinutes(3));
@@ -131,10 +133,10 @@ public sealed class PlanSharingTests
 
         var code = await database.Sharing.CreateShareCodeAsync("owner-a", id, timeout.Token);
         var joins = await Task.WhenAll(
-            CaptureAsync(async () => { await database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token); }),
-            CaptureAsync(async () => { await database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token); }));
-        joins.Count(item => item is null).ShouldBe(1);
-        joins.Single(item => item is not null)!.Status.ShouldBe(404);
+            database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token),
+            database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token));
+        joins.ShouldBe([id, id]);
+        (await database.Sharing.ReadAsync("owner-a", id, timeout.Token)).Collaborators.ShouldBe([new("owner-b", "b@example.test")]);
 
         var removals = await Task.WhenAll(
             CaptureAsync(async () => { await database.Sharing.UnshareAsync("owner-a", id, "owner-b", timeout.Token); }),
