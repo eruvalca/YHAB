@@ -2,15 +2,24 @@ name: Validate and deploy
 
 on:
   pull_request:
+    # `labeled` lets an author opt into the full browser suite. Label events
+    # re-run this workflow; the gate ignores a skipped full-suite rerun and
+    # reuses the last completed result for the same commit.
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
   push:
     branches: [main]
+  # The merge queue runs the full browser suite on the combined merge group.
+  merge_group:
 
 permissions:
   contents: read
+  checks: read
 
 concurrency:
-  group: yhab-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # Label events use their own group so they never cancel the in-flight PR run
+  # (whose checks are required to merge).
+  group: yhab-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.action == 'labeled' && github.run_id || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.action != 'labeled' }}
 
 env:
   DOTNET_NOLOGO: true
@@ -60,14 +69,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [YHAB.IntegrationTests, YHAB.AspireIntegrationTests, YHAB.PlaywrightTests]
+        project: [YHAB.IntegrationTests, YHAB.AspireIntegrationTests]
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - uses: ./.github/actions/setup-dotnet
       - name: Create and trust test HTTPS certificate
-        if: matrix.project != 'YHAB.IntegrationTests'
+        if: matrix.project == 'YHAB.AspireIntegrationTests'
         uses: ./.github/actions/trust-test-cert
       - name: Build test project
         shell: pwsh
@@ -76,16 +85,12 @@ jobs:
         run: |
           dotnet build "tests/$env:PROJECT/$env:PROJECT.csproj" --configuration Release
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
-      - name: Install test browser
-        if: matrix.project == 'YHAB.PlaywrightTests'
-        shell: pwsh
-        run: ./tests/YHAB.PlaywrightTests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
       - name: Run tests
         shell: pwsh
         env:
           PROJECT: ${{ matrix.project }}
         run: |
-          dotnet test --project "tests/$env:PROJECT/$env:PROJECT.csproj" --configuration Release --no-build --max-parallel-test-modules 1 --output Detailed --filter-not-trait Category=Performance --report-trx --results-directory "$env:RUNNER_TEMP/yhab-test-results"
+          dotnet test --project "tests/$env:PROJECT/$env:PROJECT.csproj" --configuration Release --no-build --max-parallel-test-modules 1 --output Detailed --report-trx --results-directory "$env:RUNNER_TEMP/yhab-test-results"
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Retain test results
         if: ${{ !cancelled() }}
@@ -95,18 +100,135 @@ jobs:
           path: ${{ runner.temp }}/yhab-test-results/*.trx
           retention-days: 7
           if-no-files-found: warn
-      - name: Retain browser failure diagnostics
-        if: failure() && matrix.project == 'YHAB.PlaywrightTests'
+
+  browser-smoke:
+    name: Browser smoke
+    # Drafts do not need a browser run; marking a PR ready triggers one.
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.draft == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: ./.github/actions/setup-dotnet
+      - name: Create and trust test HTTPS certificate
+        uses: ./.github/actions/trust-test-cert
+      - name: Build test project
+        shell: pwsh
+        run: |
+          dotnet build "tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj" --configuration Release
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - uses: ./.github/actions/install-playwright-browser
+      - name: Run browser smoke cases
+        shell: pwsh
+        run: |
+          dotnet test --project "tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj" --configuration Release --no-build --max-parallel-test-modules 1 --output Detailed --filter-trait Category=BrowserSmoke --report-trx --results-directory "$env:RUNNER_TEMP/yhab-test-results"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Retain test results
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: browser-diagnostics
+          name: test-results-browser-smoke
+          path: ${{ runner.temp }}/yhab-test-results/*.trx
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Retain browser failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-diagnostics-smoke
           path: |
             tests/YHAB.PlaywrightTests/bin/Release/net10.0/TestResults/**/trace.zip
             tests/YHAB.PlaywrightTests/bin/Release/net10.0/TestResults/**/*.png
           retention-days: 7
           if-no-files-found: warn
 
+  browser-full:
+    name: Browser full suite
+    # Pull requests opt in with the `run-full-browser` label. The merge queue and
+    # every main push always run the full suite as the post-merge net.
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'merge_group' ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.draft == false &&
+       contains(github.event.pull_request.labels.*.name, 'run-full-browser'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: ./.github/actions/setup-dotnet
+      - name: Create and trust test HTTPS certificate
+        uses: ./.github/actions/trust-test-cert
+      - name: Build test project
+        shell: pwsh
+        run: |
+          dotnet build "tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj" --configuration Release
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - uses: ./.github/actions/install-playwright-browser
+      - name: Run browser cases
+        shell: pwsh
+        run: |
+          dotnet test --project "tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj" --configuration Release --no-build --max-parallel-test-modules 1 --output Detailed --filter-not-trait Category=Performance --report-trx --results-directory "$env:RUNNER_TEMP/yhab-test-results"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Retain test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-results-browser-full
+          path: ${{ runner.temp }}/yhab-test-results/*.trx
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Retain browser failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: browser-diagnostics-full
+          path: |
+            tests/YHAB.PlaywrightTests/bin/Release/net10.0/TestResults/**/trace.zip
+            tests/YHAB.PlaywrightTests/bin/Release/net10.0/TestResults/**/*.png
+          retention-days: 7
+          if-no-files-found: warn
+
+  browser-gate:
+    name: Browser validation gate
+    needs: [browser-full]
+    # Native merge queue is unavailable for a public repository owned by a user
+    # account. This gate gives the same guarantee: the full suite must have
+    # passed on this exact commit before merging. It also runs on merge_group so
+    # the same required check keeps working if native merge queue is enabled.
+    if: always() && (github.event_name == 'pull_request' || github.event_name == 'merge_group')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Confirm the full browser suite passed for this commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          FULL_RESULT: ${{ needs.browser-full.result }}
+        run: |
+          set -euo pipefail
+          if [ "$FULL_RESULT" = "success" ]; then
+            echo "Full browser suite passed in this run."
+            exit 0
+          fi
+          conclusion=""
+          if [ -n "${HEAD_SHA:-}" ]; then
+            conclusion=$(gh api "repos/${{ github.repository }}/commits/$HEAD_SHA/check-runs?check_name=Browser%20full%20suite&per_page=100" \
+              --jq '[.check_runs[] | select(.name == "Browser full suite" and .conclusion != null and .conclusion != "skipped" and .conclusion != "neutral")] | sort_by(.completed_at // .started_at) | last | .conclusion // ""' 2>/dev/null || true)
+          fi
+          if [ "$conclusion" = "success" ]; then
+            echo "Full browser suite already passed for $HEAD_SHA."
+            exit 0
+          fi
+          echo "::error::The full browser suite has not passed for this commit. Add the 'run-full-browser' label and wait for it to pass before merging."
+          exit 1
+
   publish:
+    name: Validate deployment artifacts
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -116,7 +238,7 @@ jobs:
         run: aspire publish --environment Production --output-path "$RUNNER_TEMP/yhab-preview" --non-interactive
 
   deploy:
-    needs: [fast, tests, publish]
+    needs: [fast, tests, browser-full, publish]
     # Every successful main push deploys; pull requests never deploy.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04

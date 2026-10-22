@@ -16,6 +16,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
     [Theory]
     [InlineData(1440)]
     [InlineData(390)]
+    [Trait("Category", "BrowserSmoke")]
     public async Task ManualPlanPurchaseUndoAndReportsAgreeAsync(int width)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
