@@ -28,8 +28,10 @@ public sealed partial class TransactionEditor
     private DateOnly _date;
     private bool _amountValid = true;
     private bool _split;
+    private bool _saving;
     private RepeatFrequency _repeat;
     private decimal Amount { get; set; }
+    private AmountInput? _amountInput;
     private decimal SignedAmount => string.Equals(_direction, "Outflow", StringComparison.Ordinal) ? -Math.Abs(Amount) : Math.Abs(Amount);
     private bool NeedsCategory
     {
@@ -41,7 +43,7 @@ public sealed partial class TransactionEditor
                 && !(destination is not null && BudgetFacts.IsBudget(source.Kind) && BudgetFacts.IsBudget(destination.Kind));
         }
     }
-    private bool CannotSave => Busy || !_amountValid || _account == Guid.Empty || (_transfer != Guid.Empty && _transfer == _account)
+    private bool CannotSave => Busy || _saving || !_amountValid || _account == Guid.Empty || (_transfer != Guid.Empty && _transfer == _account)
         || (_repeat == RepeatFrequency.None && _date > Plan.Today)
         || (NeedsCategory && _split && (_splits.Count == 0 || _splits.Any(item => !item.Valid) || _splits.Sum(item => item.Amount) != SignedAmount));
 
@@ -85,11 +87,45 @@ public sealed partial class TransactionEditor
     private void StartSplit() { _split = true; if (_splits.Count == 0) { _splits.Add(new() { Category = _category, Amount = SignedAmount }); } }
     private void AddSplit() => _splits.Add(new() { Amount = SignedAmount - _splits.Sum(item => item.Amount) });
     private void RemoveSplit(SplitInput split) => _splits.Remove(split);
-    private Task SaveAsync()
+    private async Task SaveAsync()
     {
-        var splits = BuildSplits();
-        return OnCommand.InvokeAsync(new SaveTransaction(Plan.Version, new(Transaction?.Id ?? Guid.Empty, _account, _date, _payee, _memo, SignedAmount,
-            _transfer == Guid.Empty ? null : _transfer, string.Equals(_flag, "None", StringComparison.Ordinal) ? "" : _flag, splits, _repeat)));
+        if (_saving)
+        {
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var amount = await _amountInput!.CommitAsync();
+            if (amount is null)
+            {
+                return;
+            }
+
+            Amount = amount.Value;
+            if (_split)
+            {
+                foreach (var split in _splits)
+                {
+                    var splitAmount = await split.AmountInput!.CommitAsync();
+                    if (splitAmount is null)
+                    {
+                        return;
+                    }
+
+                    split.Amount = splitAmount.Value;
+                }
+            }
+
+            var splits = BuildSplits();
+            await OnCommand.InvokeAsync(new SaveTransaction(Plan.Version, new(Transaction?.Id ?? Guid.Empty, _account, _date, _payee, _memo, SignedAmount,
+                _transfer == Guid.Empty ? null : _transfer, string.Equals(_flag, "None", StringComparison.Ordinal) ? "" : _flag, splits, _repeat)));
+        }
+        finally
+        {
+            _saving = false;
+        }
     }
     private SplitData[] BuildSplits()
     {
@@ -104,5 +140,6 @@ public sealed partial class TransactionEditor
         public decimal Amount { get; set; }
         public string Memo { get; set; } = "";
         public bool Valid { get; set; } = true;
+        public AmountInput? AmountInput { get; set; }
     }
 }

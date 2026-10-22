@@ -23,6 +23,10 @@ public sealed partial class AccountEditor
     private bool _amountValid = true;
     private bool _interestValid = true;
     private bool _minimumValid = true;
+    private bool _saving;
+    private AmountInput? _balanceInput;
+    private AmountInput? _interestInput;
+    private AmountInput? _minimumInput;
 
     protected override void OnInitialized()
     {
@@ -37,7 +41,52 @@ public sealed partial class AccountEditor
         _minimum = Account?.MinimumPayment ?? 0;
     }
 
-    private Task SaveAsync() => OnCommand.InvokeAsync(new SaveAccount(Plan.Version,
-        new(_id, _name, _kind, _balance, _openedOn, _closed, _notes, _interest, _minimum)));
+    private async Task SaveAsync()
+    {
+        if (_saving)
+        {
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var balance = await _balanceInput!.CommitAsync();
+            if (balance is null)
+            {
+                return;
+            }
+
+            _balance = balance.Value;
+            if (_interestInput is not null)
+            {
+                var interest = await _interestInput.CommitAsync();
+                if (interest is null)
+                {
+                    return;
+                }
+
+                _interest = interest.Value;
+            }
+
+            if (_minimumInput is not null)
+            {
+                var minimum = await _minimumInput.CommitAsync();
+                if (minimum is null)
+                {
+                    return;
+                }
+
+                _minimum = minimum.Value;
+            }
+
+            await OnCommand.InvokeAsync(new SaveAccount(Plan.Version,
+                new(_id, _name, _kind, _balance, _openedOn, _closed, _notes, _interest, _minimum)));
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
     private Task CancelAsync() => OnClose.InvokeAsync();
 }

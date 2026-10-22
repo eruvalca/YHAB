@@ -6,13 +6,13 @@
                       OptionText="AccountLabel" @bind-Value="_kind" Disabled="@(_id != Guid.Empty)" /></FluentGridItem>
         <FluentGridItem Xs="12" Sm="6"><div class="form-field"><label for="account-opening-date">Opening date</label><input id="account-opening-date" type="date" @bind="_openedOn" /></div></FluentGridItem>
         <FluentGridItem Xs="12" Sm="6">
-            <AmountInput Label="Opening balance" Size="TextInputSize.Large" AllowNegative="true" @bind-Value="_balance" ValidChanged="value => _amountValid = value" />
+            <AmountInput @ref="_balanceInput" Label="Opening balance" Size="TextInputSize.Large" AllowNegative="true" CommitOnSave="true" @bind-Value="_balance" ValidChanged="value => _amountValid = value" />
             <p class="field-hint">Use a negative balance for money you owe.</p>
         </FluentGridItem>
         @if (BudgetFacts.IsLoan(_kind))
         {
-            <FluentGridItem Xs="12" Sm="6"><AmountInput Label="Annual interest rate (%)" Size="TextInputSize.Large" @bind-Value="_interest" ValidChanged="value => _interestValid = value" /></FluentGridItem>
-            <FluentGridItem Xs="12" Sm="6"><AmountInput Label="Minimum monthly payment" Size="TextInputSize.Large" @bind-Value="_minimum" ValidChanged="value => _minimumValid = value" /></FluentGridItem>
+            <FluentGridItem Xs="12" Sm="6"><AmountInput @ref="_interestInput" Label="Annual interest rate (%)" Size="TextInputSize.Large" CommitOnSave="true" @bind-Value="_interest" ValidChanged="value => _interestValid = value" /></FluentGridItem>
+            <FluentGridItem Xs="12" Sm="6"><AmountInput @ref="_minimumInput" Label="Minimum monthly payment" Size="TextInputSize.Large" CommitOnSave="true" @bind-Value="_minimum" ValidChanged="value => _minimumValid = value" /></FluentGridItem>
         }
     </FluentGrid>
     <FluentTextArea Margin="0" Size="TextAreaSize.Large" Label="Notes" @bind-Value="_notes" MaxLength="4000" />
@@ -21,7 +21,7 @@
         <FluentCheckbox Margin="0" Label="Account is closed" LabelPosition="LabelPosition.Before" @bind-Value="_closed" />
     }
     <div class="editor-actions">
-        <FluentButton Appearance="ButtonAppearance.Primary" Size="ButtonSize.Large" OnClick="SaveAsync" Disabled="@(!_amountValid || !_interestValid || !_minimumValid || string.IsNullOrWhiteSpace(_name) || Busy)">Save account</FluentButton>
+        <FluentButton Appearance="ButtonAppearance.Primary" Size="ButtonSize.Large" OnClick="SaveAsync" Disabled="@(!_amountValid || !_interestValid || !_minimumValid || string.IsNullOrWhiteSpace(_name) || Busy || _saving)">Save account</FluentButton>
         <FluentButton Size="ButtonSize.Large" OnClick="CancelAsync">Cancel</FluentButton>
     </div>
 </EditorSurface>

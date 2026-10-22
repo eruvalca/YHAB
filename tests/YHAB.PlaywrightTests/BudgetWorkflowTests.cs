@@ -52,12 +52,16 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
             await page.Locator(".hero-amount").Filter(new() { HasText = "$700.00" }).WaitForAsync();
             var groceries = page.Locator(".budget-table .category-row").Filter(new() { Has = page.GetByRole(AriaRole.Button, new() { Name = "Groceries", Exact = true }) });
-            (await groceries.Locator(".available-pill").InnerTextAsync()).ShouldBe("$225.00");
+            (await groceries.Locator(".available-pill").InnerTextAsync()).ShouldBe("$292.23");
             await page.GetByRole(AriaRole.Heading, new() { Name = "Plan your money", Exact = true }).ClickAsync();
+            await page.Keyboard.PressAsync("Control+z");
+            await groceries.Locator(".available-pill").Filter(new() { HasText = "$225.00" }).WaitForAsync();
             await page.Keyboard.PressAsync("Control+z");
             await groceries.Locator(".available-pill").Filter(new() { HasText = "$300.00" }).WaitForAsync();
             await Button(page, "Redo").ClickAsync();
             await groceries.Locator(".available-pill").Filter(new() { HasText = "$225.00" }).WaitForAsync();
+            await Button(page, "Redo").ClickAsync();
+            await groceries.Locator(".available-pill").Filter(new() { HasText = "$292.23" }).WaitForAsync();
             (await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth")).ShouldBeTrue();
             await page.ScreenshotAsync(new() { Path = Path.Combine(AppContext.BaseDirectory, "TestResults", $"budget-{width}-light.png"), FullPage = true });
             await page.Locator("[data-theme-select]").SelectOptionAsync("dark");
@@ -69,7 +73,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             await page.GetByRole(AriaRole.Heading, new() { Name = "Reflect", Exact = true }).WaitForAsync();
             await page.WaitForFunctionAsync("document.body.dataset.theme === 'dark'");
             var spending = page.Locator(".spending-row").Filter(new() { HasText = "Groceries" });
-            (await spending.Locator("strong").InnerTextAsync()).ShouldBe("$75.00");
+            (await spending.Locator("strong").InnerTextAsync()).ShouldBe("$7.77");
             await VerifyPayeeRenameUndoAsync(page);
             errors.ShouldBeEmpty();
         }
@@ -197,7 +201,6 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await VerifyDropdownChromeAsync(page);
         await Input(page, "Account name").FillAsync("Everyday checking");
         await Input(page, "Opening balance").FillAsync("800 + 200");
-        await Input(page, "Opening balance").PressAsync("Tab");
         await Button(page, "Save account").ClickAsync();
         await page.Locator(".hero-amount").Filter(new() { HasText = "$1,000.00" }).WaitForAsync();
         await Input(page, "Assign to Groceries").FillAsync("250 + 50");
@@ -219,11 +222,18 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await VerifyTextUndoOwnershipAsync(page);
         await Input(page, "Payee").FillAsync("Neighborhood market");
         await Input(page, "Amount").FillAsync("50 + 25");
-        await Input(page, "Amount").PressAsync("Tab");
         await page.GetByRole(AriaRole.Combobox, new() { Name = "Category", Exact = true }).ClickAsync();
         await page.Locator("fluent-option[text='Groceries']").ClickAsync();
         await Button(page, "Save transaction").ClickAsync();
-        await page.Locator(".register-table").GetByRole(AriaRole.Button, new() { Name = "Neighborhood market", Exact = true }).WaitForAsync();
+        var transaction = page.Locator(".register-table tbody tr").Filter(new()
+        {
+            Has = page.GetByRole(AriaRole.Button, new() { Name = "Neighborhood market", Exact = true }),
+        });
+        await transaction.WaitForAsync();
+        await transaction.GetByRole(AriaRole.Button, new() { Name = "Neighborhood market", Exact = true }).ClickAsync();
+        await Input(page, "Amount").FillAsync("7.77");
+        await Button(page, "Save transaction").ClickAsync();
+        await transaction.Locator("td.money").Filter(new() { HasText = "$7.77" }).WaitForAsync();
         await Button(page, "+ Add transaction").ClickAsync();
         await VerifyEditorFocusAsync(page);
         // Fluent copies the datalist into its shadow root. Check the list bound to
