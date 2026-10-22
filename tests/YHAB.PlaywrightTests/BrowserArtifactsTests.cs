@@ -12,6 +12,7 @@ public sealed class BrowserArtifactsTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    [Trait("Category", "BrowserSmoke")]
     public async Task ArtifactFailuresPreserveOriginalExceptionAndAttemptBothCaptures(bool blockDirectory)
     {
         using var playwright = await Playwright.CreateAsync();

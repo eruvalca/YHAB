@@ -15,6 +15,7 @@ public sealed class NavigationTests(ITestOutputHelper output)
     [Theory]
     [InlineData(1280)]
     [InlineData(390)]
+    [Trait("Category", "BrowserSmoke")]
     public async Task FluentNavigationPreservesDocumentAndThemeChoice(int width)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);

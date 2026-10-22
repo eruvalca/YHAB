@@ -19,6 +19,7 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
     [Theory]
     [InlineData(1440)]
     [InlineData(390)]
+    [Trait("Category", "BrowserSmoke")]
     public async Task InlineCatalogEditingOrderingAndTargetsPersistAsync(int width)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);

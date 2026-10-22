@@ -519,28 +519,41 @@ scope; the workflow's resource permissions remain scoped to the dedicated group.
 
 [Validate and deploy](.github/workflows/deploy.yml) checks formatting and tooling
 on every PR and push to `main`, then runs Debug architecture checks, builds
-Release, runs unit/component tests, all database, Aspire, and browser tests, and
-`aspire publish`. The extended browser performance cases are excluded there and
-run in the separate
+Release, runs unit/component tests, PostgreSQL and Aspire checks, browser
+validation, and `aspire publish`. Browser validation is tiered: ready pull
+requests run the `Category=BrowserSmoke` cases, applying the `run-full-browser`
+label runs the complete Chromium suite for that commit (re-apply it after a new
+commit), and every `main` push runs the full suite as the post-merge net. The extended browser performance cases are excluded
+there and run in the separate
 [Performance validation](.github/workflows/performance.yml) workflow weekly and
 on manual dispatch. Heavy test projects run on separate runners, not
 concurrently on one constrained runner. Every successful run on `main` deploys to
 production: there is no change-scope selection, so a merge or direct push deploys
-even when it only changes documentation or tests. Pull requests run the same
-validation without deploying.
+even when it only changes documentation or tests. Pull requests validate without
+deploying.
 
 New commits cancel obsolete PR runs. Main validation runs independently rather
 than queuing behind an older deployment; it is not canceled. The deploy job
-requires the `fast`, `tests`, and `publish` jobs to succeed and runs only for a
-push to `main`. It deliberately has no job-level concurrency group: a group left
-occupied by a stuck deployment blocks every later deployment.
+requires the `fast`, `tests`, `browser-full`, and `publish` jobs to succeed and
+runs only for a push to `main`. It deliberately has no job-level concurrency
+group: a group left occupied by a stuck deployment blocks every later deployment.
+The `main` ruleset requires `fast`, `Test YHAB.IntegrationTests`,
+`Test YHAB.AspireIntegrationTests`, `Browser smoke`, `Browser validation gate`,
+and `Validate deployment artifacts`, and blocks force pushes and deletion.
+Native merge queue is unavailable for a public repository owned by a user
+account; `Browser validation gate` enforces the same rule by requiring the full
+Chromium suite to have passed on the pull request's commit. The workflow already
+runs the gate on `merge_group`, so moving the repository to an organization lets
+native merge queue use the same required check without further workflow changes.
 A successful main run signs into Azure with OIDC and runs
 `aspire deploy --environment Production --non-interactive`, preserving
 migration-before-web ordering. `scripts/Get-ValidationScope.ps1` remains the
 classifier for local agent and validation hooks; CI no longer uses it to gate
 deployment. SDK setup caches downloaded NuGet packages using SDK, central
 build/dependency manifests and project files as inputs; it does not reuse compiled
-test results, credentials or Aspire runtime/deployment state.
+test results, credentials or Aspire runtime/deployment state. The browser jobs
+cache the Playwright Chromium download keyed by the central package manifest and
+check for missing operating-system dependencies before installing them.
 
 The workflow's JavaScript actions use SHA-pinned releases targeting Node.js 24,
 including artifact upload and Azure login. This runtime is supplied by the GitHub

@@ -15,9 +15,13 @@ the CLI and editor find `global.json` and `YHAB.slnx`.
 `YHAB.Testing` is a shared support library, not a test project. It configures
 isolated AppHost builders for the Aspire and Playwright projects.
 
-The deployment workflow runs all five functional layers on every PR and `main`
-push, with infrastructure/browser projects on separate runners. The extended
-browser performance cases run in the separate
+The deployment workflow runs formatting, the Release build, unit/component tests,
+PostgreSQL, and Aspire startup/deployment checks on every pull request and
+`main` push. Browser validation is tiered: ready pull requests run the
+`Category=BrowserSmoke` cases on every push, the `run-full-browser` label runs
+the complete Chromium suite for that commit, and every `main` push runs it again
+as the post-merge net. The extended browser performance cases run in the
+separate
 [Performance validation](../.github/workflows/performance.yml) workflow weekly
 and on demand. Every successful run on
 `main` deploys to production; pull requests do not deploy. CI no longer
@@ -46,15 +50,33 @@ their cookies and form data; keep them within the repository's artifact access
 controls. Do not upload development/production browser profiles or Aspire
 deployment/dashboard state. Local reports remain opt-in.
 
-### Functional versus extended browser validation
+### Browser validation tiers
 
 Every application PR/main run retains all unit/component tests, the entire
 PostgreSQL suite (including sustained competing-write/recurring-worker checks),
-Aspire startup/deployment checks, and the full Chromium suite except the three
-extended performance cases. Money conservation,
-receipts, concurrency, history rollback, migrations, owner isolation, API guards,
-SSR-to-server-to-WASM handoff, PWA behavior, desktop/mobile workflows, large-register
-page bounds and wide-catalog totals remain merge-blocking.
+and Aspire startup/deployment checks. Browser coverage is tiered:
+
+- `BrowserSmoke` runs on every non-draft pull-request update: the household
+  money walkthrough, manual plan/purchase/undo/reports, inline catalog editing,
+  navigation and theme handoff, PWA install/offline behavior, and browser
+  artifact capture.
+- The full Chromium suite runs on a pull request when the `run-full-browser`
+  label is applied, and on every `main` push as the post-merge net. The label is
+  a per-commit opt-in: remove and re-apply it after a new commit or after leaving
+  draft status.
+- `Category=Performance` runs weekly in the separate workflow.
+
+The `Browser validation gate` check requires the full suite to have passed on the
+pull request's exact commit before merging. Native GitHub merge queue is
+unavailable for a public repository owned by a personal account; the workflow
+already runs the gate on `merge_group`, so moving the repository to an
+organization lets native merge queue use the same required check without
+workflow changes.
+
+Money conservation, receipts, concurrency, history rollback, migrations, owner
+isolation, API guards, SSR-to-server-to-WASM handoff, PWA behavior,
+desktop/mobile workflows, large-register page bounds and wide-catalog totals
+remain merge-blocking through the smoke tier or the full suite.
 
 Only three browser cases carry `Category=Performance`: `ProcessLoadTests`,
 `InspectorRetentionTests`, and
@@ -63,21 +85,26 @@ The ordinary household case still checks its three-month financial walkthrough,
 10k/50k/100k registers and wide catalog, but omits the 120-cycle editing measurement.
 The extended case repeats that correctness fixture and adds the original editing
 and memory assertions; no measurement deadline or assertion is relaxed.
-The deployment workflow excludes these three cases from every PR and `main`
-push while running the rest of the Playwright suite. The separate
+The deployment workflow excludes these three cases from every browser tier. The separate
 [Performance validation](../.github/workflows/performance.yml) workflow runs only
 these cases weekly and on manual dispatch. Unfiltered local solution runs still
 execute every test.
 
 ```powershell
 # Native MTP/xUnit filters, after a matching Release build:
+dotnet test --project tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj --configuration Release --no-build --filter-trait Category=BrowserSmoke
 dotnet test --project tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj --configuration Release --no-build --filter-not-trait Category=Performance
 dotnet test --project tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj --configuration Release --no-build --filter-trait Category=Performance
 ```
 
 Test-module concurrency remains bounded on each runner; do not speed up the suite
 by overlapping resource-heavy stacks or measurement cases on the same machine.
-NuGet caching avoids repeated package downloads, not test execution.
+NuGet caching avoids repeated package downloads, not test execution. The browser
+jobs restore the Playwright Chromium download from the actions cache, keyed by
+`Directory.Packages.props`, and run `install-deps --dry-run` before installing
+missing operating-system packages. They stay on the host rather than in the
+Playwright container because the tests start PostgreSQL containers and therefore
+need Docker.
 
 `ServiceDefaultsExtensionsTests` checks opt-in production readiness/liveness and
 their default absence outside Development. `DeploymentMigrationsTests` uses Azure

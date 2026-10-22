@@ -20,6 +20,7 @@ namespace YHAB.PlaywrightTests;
 public sealed class HouseholdBrowserTests(ITestOutputHelper output)
 {
     [Fact]
+    [Trait("Category", "BrowserSmoke")]
     public Task GrowingHouseholdLedgerMatchesBudgetRegisterAndReportsAsync() => RunHouseholdAsync(extended: false);
 
     [Fact]

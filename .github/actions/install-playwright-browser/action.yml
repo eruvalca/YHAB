@@ -1,0 +1,32 @@
+name: Install Playwright Chromium
+description: Restore the cached Chromium build and install its operating-system dependencies.
+
+# GitHub-hosted runners start clean, so the download is cached but system
+# packages are not. The tests need Docker for PostgreSQL containers, which rules
+# out running the job inside the Playwright image.
+runs:
+  using: composite
+  steps:
+    - name: Restore Playwright Chromium cache
+      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-chromium-${{ runner.os }}-${{ hashFiles('Directory.Packages.props') }}
+        restore-keys: |
+          playwright-chromium-${{ runner.os }}-
+    - name: Check Chromium OS dependencies
+      id: chromium-dependencies
+      shell: pwsh
+      run: |
+        # The runner image often already provides these; only run apt when the
+        # dry run reports a missing package.
+        pwsh -NoProfile -File ./tests/YHAB.PlaywrightTests/bin/Release/net10.0/playwright.ps1 install-deps --dry-run chromium
+        if ($LASTEXITCODE -eq 0) { 'missing=false' >> $env:GITHUB_OUTPUT } else { 'missing=true' >> $env:GITHUB_OUTPUT }
+        exit 0
+    - name: Install Chromium OS dependencies
+      if: steps.chromium-dependencies.outputs.missing == 'true'
+      shell: pwsh
+      run: ./tests/YHAB.PlaywrightTests/bin/Release/net10.0/playwright.ps1 install-deps chromium
+    - name: Install Chromium
+      shell: pwsh
+      run: ./tests/YHAB.PlaywrightTests/bin/Release/net10.0/playwright.ps1 install chromium

@@ -15,6 +15,7 @@ public sealed class PwaTests(ITestOutputHelper output)
     [Theory]
     [InlineData(1280)]
     [InlineData(390)]
+    [Trait("Category", "BrowserSmoke")]
     public async Task InstallationAndOfflineFallbackPreserveOnlineOnlyDataAsync(int width)
     {
         await RunInBrowserAsync(width, VerifyInstallationAndOfflineAsync, TestContext.Current.CancellationToken);
