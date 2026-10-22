@@ -73,10 +73,16 @@ public sealed class LayoutAndSharingTests(ITestOutputHelper output)
                     navigator.clipboard.writeText = async () => { throw new DOMException('Denied', 'NotAllowedError'); };
                 }
                 """);
-            await page.GetByRole(AriaRole.Button, new() { Name = "Copy code", Exact = true }).ClickAsync();
+            var copy = page.GetByRole(AriaRole.Button, new() { Name = "Copy code", Exact = true });
+            await copy.FocusAsync();
+            await copy.PressAsync("Enter");
             await page.Locator("[data-copy-share-code-status]").Filter(new() { HasText = "Could not copy the code." }).WaitForAsync();
             (await page.Locator(".share-code").InnerTextAsync()).ShouldNotBeNullOrWhiteSpace();
-            (await page.Locator("[data-copy-share-code]").IsEnabledAsync()).ShouldBeTrue();
+            (await copy.EvaluateAsync<bool>("element => document.activeElement === element")).ShouldBeTrue();
+            (await copy.GetAttributeAsync("aria-disabled")).ShouldBeNull();
+            await copy.PressAsync("Enter");
+            await page.Locator("[data-copy-share-code-status]").Filter(new() { HasText = "Could not copy the code." }).WaitForAsync();
+            (await copy.EvaluateAsync<bool>("element => document.activeElement === element")).ShouldBeTrue();
             await VerifyFooterAsync(page);
             (await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth")).ShouldBeTrue();
             await page.ScreenshotAsync(new()
@@ -128,9 +134,29 @@ public sealed class LayoutAndSharingTests(ITestOutputHelper output)
         var code = await page.Locator(".share-code").InnerTextAsync();
         var copy = page.GetByRole(AriaRole.Button, new() { Name = "Copy code", Exact = true });
         (await copy.BoundingBoxAsync()).ShouldNotBeNull().Height.ShouldBeGreaterThanOrEqualTo(44);
+        await copy.EvaluateAsync("""
+            button => {
+                const writeText = navigator.clipboard.writeText.bind(navigator.clipboard);
+                button.dataset.copyAttempts = '0';
+                navigator.clipboard.writeText = async text => {
+                    button.dataset.copyAttempts = String(Number(button.dataset.copyAttempts) + 1);
+                    await new Promise(resolve => document.addEventListener('release-copy', resolve, { once: true }));
+                    navigator.clipboard.writeText = writeText;
+                    await writeText(text);
+                };
+            }
+            """);
         await copy.FocusAsync();
         await copy.PressAsync("Enter");
+        (await copy.GetAttributeAsync("aria-disabled")).ShouldBe("true");
+        (await copy.EvaluateAsync<bool>("element => document.activeElement === element")).ShouldBeTrue();
+        await copy.PressAsync("Enter");
+        await copy.DispatchEventAsync("click");
+        (await copy.GetAttributeAsync("data-copy-attempts")).ShouldBe("1");
+        await page.EvaluateAsync("document.dispatchEvent(new Event('release-copy'))");
         await page.Locator("[data-copy-share-code-status]").Filter(new() { HasText = "Share code copied." }).WaitForAsync();
+        (await copy.EvaluateAsync<bool>("element => document.activeElement === element")).ShouldBeTrue();
+        (await copy.GetAttributeAsync("aria-disabled")).ShouldBeNull();
         (await page.EvaluateAsync<string>("navigator.clipboard.readText()")).ShouldBe(code);
         (await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth")).ShouldBeTrue();
         return code;
