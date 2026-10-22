@@ -83,19 +83,22 @@ public sealed class ErrorTests
     }
 
     [Fact]
-    public async Task RetryTargetsOriginalPathFromExceptionHandlerAsync()
+    public async Task RetryPreservesOriginalPathBaseAndQueryStringAsync()
     {
         await using var context = new BunitContext();
         var http = new DefaultHttpContext();
+        http.Request.PathBase = "/base";
+        http.Request.QueryString = new QueryString("?userId=member&code=token");
         http.Features.Set<IExceptionHandlerPathFeature>(new ExceptionHandlerFeature
         {
-            Path = "/plans/failing-plan",
+            Path = "/Account/ConfirmEmail",
             Error = new InvalidOperationException("boom"),
         });
 
         var component = context.Render<Error>(parameters =>
             parameters.AddCascadingValue<HttpContext>(http));
 
-        component.Find("a.primary-action").GetAttribute("href").ShouldBe("/plans/failing-plan");
+        component.Find("a.primary-action").GetAttribute("href")
+            .ShouldBe("/base/Account/ConfirmEmail?userId=member&code=token");
     }
 }

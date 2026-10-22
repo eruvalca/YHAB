@@ -131,7 +131,7 @@ public sealed class NavigationTests(ITestOutputHelper output)
         (await page.GetByRole(AriaRole.Link, new() { Name = "Return home", Exact = true }).CountAsync()).ShouldBe(1);
         (await page.GetByRole(AriaRole.Link, new() { Name = "Open your plans", Exact = true }).CountAsync()).ShouldBe(1);
 
-        await page.GotoAsync("/Account/Register");
+        await page.GotoAsync("/Account/Register?ReturnUrl=");
         await page.GetByLabel("Email", new() { Exact = true }).FillAsync($"navigation-{Guid.NewGuid():N}@example.test");
         await page.GetByLabel("Password", new() { Exact = true }).FillAsync("Local-test-Only!7926");
         await page.GetByLabel("Confirm Password", new() { Exact = true }).FillAsync("Local-test-Only!7926");

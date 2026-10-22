@@ -76,14 +76,21 @@ public sealed class RegistrationTests
         }
     }
 
-    [Fact]
-    public async Task SuccessfulPasswordRegistrationWithoutReturnUrlLandsOnYourPlansAsync()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task SuccessfulPasswordRegistrationWithoutUsableReturnUrlLandsOnYourPlansAsync(string? destination)
     {
         await using var context = new BunitContext();
         var account = context.ConfigureAccount();
         account.Users.SupportsUserEmail.Returns(true);
         account.Users.CreateAsync(Arg.Any<ApplicationUser>(), "password").Returns(IdentityResult.Success);
         var navigation = context.Services.GetRequiredService<NavigationManager>();
+        if (destination is not null)
+        {
+            navigation.NavigateTo($"Account/Register?ReturnUrl={Uri.EscapeDataString(destination)}");
+        }
         var component = account.Render<Register>(context);
         await component.Find("input[name='Input.Email']").ChangeAsync(new ChangeEventArgs { Value = "member@example.test" });
         await component.Find("input[name='Input.Password']").ChangeAsync(new ChangeEventArgs { Value = "password" });
@@ -175,8 +182,11 @@ public sealed class RegistrationTests
         }
     }
 
-    [Fact]
-    public async Task SuccessfulExternalRegistrationWithoutReturnUrlLandsOnYourPlansAsync()
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task SuccessfulExternalRegistrationWithoutUsableReturnUrlLandsOnYourPlansAsync(string? destination)
     {
         await using var context = new BunitContext();
         var account = context.ConfigureAccount();
@@ -186,6 +196,10 @@ public sealed class RegistrationTests
         account.Users.CreateAsync(Arg.Any<ApplicationUser>()).Returns(IdentityResult.Success);
         account.Users.AddLoginAsync(Arg.Any<ApplicationUser>(), login).Returns(IdentityResult.Success);
         var navigation = context.Services.GetRequiredService<NavigationManager>();
+        if (destination is not null)
+        {
+            navigation.NavigateTo($"Account/ExternalLogin?ReturnUrl={Uri.EscapeDataString(destination)}");
+        }
         var component = account.Render<ExternalLogin>(context);
         await component.Find("input[name='Input.Email']").ChangeAsync(new ChangeEventArgs { Value = "member@example.test" });
 

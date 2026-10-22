@@ -123,7 +123,7 @@ public sealed partial class ExternalLogin
         if (!UserManager.Options.SignIn.RequireConfirmedAccount)
         {
             await SignInManager.SignInAsync(user, isPersistent: false, provider);
-            RedirectManager.RedirectTo(ReturnUrl ?? IdentityRedirectManager.DefaultRegistrationPath);
+            RedirectManager.RedirectTo(IdentityRedirectManager.RegistrationDestination(ReturnUrl));
             return;
         }
 
