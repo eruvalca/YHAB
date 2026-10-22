@@ -6,6 +6,9 @@
 
 .pwa-install summary {
     width: fit-content;
+    min-height: 44px;
+    padding-block: var(--spacingVerticalM);
+    padding-inline: var(--spacingHorizontalS);
     cursor: pointer;
     color: var(--colorBrandForegroundLink);
 }

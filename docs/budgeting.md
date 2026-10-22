@@ -35,7 +35,9 @@ connections, imports, or photo storage.
 ## Sharing a plan
 
 A plan starts private to its owner. On **Plan settings**, the owner creates a
-one-time share code and gives it to the person they want to add. The recipient
+one-time share code and gives it to the person they want to add. Use **Copy code**
+beside the generated code to copy it to the clipboard. If the browser blocks
+clipboard access, select the code and copy it manually. The recipient
 enters that code under **Join a shared plan** on the plans page. No email is sent.
 Codes expire after seven days and stop working once redeemed, so access does not
 depend on ownership of an unverified email address. Every code is stored as a
