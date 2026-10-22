@@ -26,7 +26,7 @@ Commands and results:
 ## Browser validation
 
 - [ ] The `Browser smoke` suite covers this change
-- [ ] The full Chromium suite is required — add the `run-full-browser` label and wait for `Browser validation gate` to pass
+- [ ] The full Chromium suite is required — apply the `run-full-browser` label to this commit and wait for `Browser validation gate` to pass; remove and re-apply it after a new commit
 
 ## Deployment and data
 

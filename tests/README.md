@@ -60,8 +60,10 @@ and Aspire startup/deployment checks. Browser coverage is tiered:
   money walkthrough, manual plan/purchase/undo/reports, inline catalog editing,
   navigation and theme handoff, PWA install/offline behavior, and browser
   artifact capture.
-- The full Chromium suite runs on a pull request after the `run-full-browser`
-  label is applied, and on every `main` push as the post-merge net.
+- The full Chromium suite runs on a pull request when the `run-full-browser`
+  label is applied, and on every `main` push as the post-merge net. The label is
+  a per-commit opt-in: remove and re-apply it after a new commit or after leaving
+  draft status.
 - `Category=Performance` runs weekly in the separate workflow.
 
 The `Browser validation gate` check requires the full suite to have passed on the

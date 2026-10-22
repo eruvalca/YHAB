@@ -16,9 +16,10 @@ permissions:
   checks: read
 
 concurrency:
-  # Label events use their own group so they never cancel the in-flight PR run
-  # (whose checks are required to merge).
-  group: yhab-${{ github.workflow }}-${{ github.event_name }}-${{ github.event.action == 'labeled' && github.run_id || github.ref }}
+  # Ordinary PR updates share the PR-ref group so a new push cancels the stale
+  # run. Main pushes, merge groups, and label events get run-specific groups so
+  # each validation/deployment run stays independent.
+  group: yhab-${{ github.workflow }}-${{ (github.event_name == 'pull_request' && github.event.action != 'labeled') && github.ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.action != 'labeled' }}
 
 env:
@@ -146,14 +147,16 @@ jobs:
 
   browser-full:
     name: Browser full suite
-    # Pull requests opt in with the `run-full-browser` label. The merge queue and
-    # every main push always run the full suite as the post-merge net.
+    # Pull requests opt in when the `run-full-browser` label is applied. The
+    # merge queue and every main push always run the full suite as the post-merge
+    # net. Re-apply the label after a new commit to validate that commit.
     if: |
       github.event_name == 'push' ||
       github.event_name == 'merge_group' ||
       (github.event_name == 'pull_request' &&
-       github.event.pull_request.draft == false &&
-       contains(github.event.pull_request.labels.*.name, 'run-full-browser'))
+       github.event.action == 'labeled' &&
+       github.event.label.name == 'run-full-browser' &&
+       github.event.pull_request.draft == false)
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
@@ -224,7 +227,7 @@ jobs:
             echo "Full browser suite already passed for $HEAD_SHA."
             exit 0
           fi
-          echo "::error::The full browser suite has not passed for this commit. Add the 'run-full-browser' label and wait for it to pass before merging."
+          echo "::error::The full browser suite has not passed for this commit. Apply the 'run-full-browser' label (or remove and re-apply it after a new commit) and wait for it to pass before merging."
           exit 1
 
   publish:

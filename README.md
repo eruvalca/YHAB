@@ -519,9 +519,9 @@ scope; the workflow's resource permissions remain scoped to the dedicated group.
 on every PR and push to `main`, then runs Debug architecture checks, builds
 Release, runs unit/component tests, PostgreSQL and Aspire checks, browser
 validation, and `aspire publish`. Browser validation is tiered: ready pull
-requests run the `Category=BrowserSmoke` cases, the `run-full-browser` label runs
-the complete Chromium suite for that commit, and every `main` push runs the full
-suite as the post-merge net. The extended browser performance cases are excluded
+requests run the `Category=BrowserSmoke` cases, applying the `run-full-browser`
+label runs the complete Chromium suite for that commit (re-apply it after a new
+commit), and every `main` push runs the full suite as the post-merge net. The extended browser performance cases are excluded
 there and run in the separate
 [Performance validation](.github/workflows/performance.yml) workflow weekly and
 on manual dispatch. Heavy test projects run on separate runners, not
