@@ -7,10 +7,10 @@ the CLI and editor find `global.json` and `YHAB.slnx`.
 | Project | Scope |
 | --- | --- |
 | `YHAB.UnitTests` | Budget arithmetic, monthly carryover, cash/credit overspending, payment reserves, targets, recurrence, transaction validation, plus Identity, service defaults, and architecture boundaries. |
-| `YHAB.ComponentTests` | Calculator input events, month-specific assignments, invalid-input feedback, delayed workspace loading and interactive-only recurring posting, account workflows, navigation, error request IDs, and the shared UI's `Counter`, using bUnit. |
+| `YHAB.ComponentTests` | Calculator input events, month-specific assignments, invalid-input feedback, delayed workspace loading and interactive-only recurring posting, account workflows, navigation, framework-leakage copy, error page copy and request IDs, and passkey option gating, using bUnit. |
 | `YHAB.IntegrationTests` | Real PostgreSQL: migrations and legacy data upgrades, Identity, private plan isolation, cross-plan foreign keys, optimistic concurrency, category merges, editable recurring occurrence dates, durable undo/redo, and deletion of owned ledger data. |
 | `YHAB.AspireIntegrationTests` | The real AppHost, database/migration startup dependencies, readiness, resource endpoints, and cross-process HTTP behavior. |
-| `YHAB.PlaywrightTests` | Real Chromium: Fluent controls, desktop/mobile navigation, persistent themes, drawer behavior, document continuity, manual plan/purchase/undo/report workflows, and API authentication/antiforgery/revision guards. |
+| `YHAB.PlaywrightTests` | Real Chromium: Fluent controls, desktop/mobile navigation, persistent themes, drawer behavior, document continuity, framework-leakage routes and auth copy, manual plan/purchase/undo/report workflows, and API authentication/antiforgery/revision guards. |
 
 `YHAB.Testing` is a shared support library, not a test project. It configures
 isolated AppHost builders for the Aspire and Playwright projects.
@@ -88,7 +88,8 @@ the production Bicep and Linux EF bundle. Those checks do not prove an Azure rol
 the deployment workflow separately probes the deployed application's endpoints.
 
 Signup regression checks verify immediate sign-in without generating confirmation
-emails, while retaining unverified email state. The shared browser registration
+emails, while retaining unverified email state and landing on the plans page.
+The shared browser registration
 helper checks authenticated API access immediately after signup, clears cookies,
 and checks a later password login without email confirmation. Recovery component
 tests verify owner-contact guidance with either sender, including after an external
@@ -817,11 +818,12 @@ Tests rendering Fluent components register `AddFluentUIComponents()` in their
 own context. `ConfigureAccount` also registers these services and strictly stubs
 the Fluent navigation module's initialize/dispose calls; the shell navigation
 tests configure the same calls locally and verify native links remain keyboard
-reachable without opting out of enhanced navigation. Counter tests stub the
-page's `FluentProviders` to isolate counter behavior from overlay JS, dispatch
-clicks on the rendered `fluent-button` host and assert the displayed count. They set bUnit's
-`RendererInfo` explicitly and check that the button is disabled in static
-prerendering and enabled in Server and WebAssembly rendering. Navigation text
+reachable without opting out of enhanced navigation. Account page tests render
+the static pages with their Identity substitutes, verify that external-provider
+markup appears only when a provider is configured, and assert the registration
+destination. Passkey component tests verify the option renders hidden; the
+browser module reveals it only when the browser supports passkeys, which bUnit
+cannot execute. Navigation text
 assertions trim library-rendered whitespace while retaining checks for encoded
 identity text, conditional account links, and the logout POST/return URL.
 These JS stubs do not validate the web components or the static mobile drawer;
@@ -847,7 +849,7 @@ versions.
 3. Expand the project, namespace, class, and theories to see individual cases.
 4. Use Test Explorer or editor gutter actions to run or debug tests. Set
    breakpoints in the test and its production code (`IdentityRedirectManager` or
-   `Counter.razor.cs`) to step through both.
+   `Register.razor.cs`) to step through both.
 5. Use **Run Tests with Coverage** to show coverage in the editor.
 
 Keep automatic discovery and build-on-refresh/run enabled (the defaults). Keep

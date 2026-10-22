@@ -95,7 +95,7 @@ dotnet test --project tests/YHAB.UnitTests/YHAB.UnitTests.csproj
 dotnet test --project tests/YHAB.ComponentTests/YHAB.ComponentTests.csproj
 
 # Example focused check.
-dotnet test --project tests/YHAB.ComponentTests/YHAB.ComponentTests.csproj --filter-class "YHAB.ComponentTests.Features.Counter.Pages.CounterTests"
+dotnet test --project tests/YHAB.ComponentTests/YHAB.ComponentTests.csproj --filter-class "YHAB.ComponentTests.Features.Account.RegistrationTests"
 
 # Run all five projects when infrastructure/browser prerequisites are available.
 dotnet test --solution YHAB.slnx

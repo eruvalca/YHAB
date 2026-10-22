@@ -93,7 +93,51 @@ public sealed class NavigationTests(ITestOutputHelper output)
         (await page.Locator("[data-theme-select]").InputValueAsync()).ShouldBe("system");
         await page.EmulateMediaAsync(new() { ColorScheme = ColorScheme.Light });
         await page.WaitForFunctionAsync("document.body.dataset.theme !== 'dark'");
+        await VerifyFrameworkLeakageAsync(page);
         errors.ShouldBeEmpty();
+    }
+
+    private static async Task VerifyFrameworkLeakageAsync(IPage page)
+    {
+        var counter = await page.GotoAsync("/counter");
+        counter.ShouldNotBeNull().Status.ShouldBe(404);
+        await page.GetByRole(AriaRole.Heading, new() { Name = "Not found", Exact = true }).WaitForAsync();
+
+        var auth = await page.GotoAsync("/auth");
+        auth.ShouldNotBeNull().Status.ShouldBe(404);
+        await page.GetByRole(AriaRole.Heading, new() { Name = "Not found", Exact = true }).WaitForAsync();
+
+        await page.GotoAsync("/Account/Login");
+        await page.GetByRole(AriaRole.Heading, new() { Name = "Log in", Exact = true }).WaitForAsync();
+        var loginText = await page.Locator("body").InnerTextAsync();
+        loginText.ShouldNotContain("external authentication services configured");
+        (await page.GetByRole(AriaRole.Heading, new() { Name = "Use another service to log in.", Exact = true }).CountAsync()).ShouldBe(0);
+        var passkey = page.GetByRole(AriaRole.Button, new() { Name = "Log in with a passkey", Exact = true });
+        await passkey.WaitForAsync();
+        (await passkey.GetAttributeAsync("class")).ShouldBe("passkey-login-link");
+
+        await page.GotoAsync("/Account/Register");
+        await page.GetByRole(AriaRole.Heading, new() { Name = "Register", Exact = true }).WaitForAsync();
+        var registerText = await page.Locator("body").InnerTextAsync();
+        registerText.ShouldNotContain("external authentication services configured");
+        (await page.GetByRole(AriaRole.Heading, new() { Name = "Use another service to register.", Exact = true }).CountAsync()).ShouldBe(0);
+
+        await page.GotoAsync("/Error");
+        await page.GetByRole(AriaRole.Heading, new() { Name = "Something went wrong.", Exact = true }).WaitForAsync();
+        var errorText = await page.Locator("body").InnerTextAsync();
+        errorText.ShouldNotContain("ASPNETCORE_ENVIRONMENT");
+        errorText.ShouldNotContain("Development Mode");
+        (await page.GetByRole(AriaRole.Link, new() { Name = "Try again", Exact = true }).CountAsync()).ShouldBe(1);
+        (await page.GetByRole(AriaRole.Link, new() { Name = "Return home", Exact = true }).CountAsync()).ShouldBe(1);
+        (await page.GetByRole(AriaRole.Link, new() { Name = "Open your plans", Exact = true }).CountAsync()).ShouldBe(1);
+
+        await page.GotoAsync("/Account/Register");
+        await page.GetByLabel("Email", new() { Exact = true }).FillAsync($"navigation-{Guid.NewGuid():N}@example.test");
+        await page.GetByLabel("Password", new() { Exact = true }).FillAsync("Local-test-Only!7926");
+        await page.GetByLabel("Confirm Password", new() { Exact = true }).FillAsync("Local-test-Only!7926");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Register", Exact = true }).ClickAsync();
+        await page.GetByRole(AriaRole.Heading, new() { Name = "Make room for what matters.", Exact = true }).WaitForAsync();
+        page.Url.ShouldEndWith("/plans");
     }
 
     private static async Task VerifyCollapsibleNavigationAsync(IPage page, int width, double origin)

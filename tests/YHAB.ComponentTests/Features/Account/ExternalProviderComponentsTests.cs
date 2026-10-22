@@ -2,11 +2,13 @@ using System.Diagnostics.CodeAnalysis;
 using Bunit;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Shouldly;
 using Xunit;
 using YHAB.Features.Account.Components;
+using YHAB.Features.Account.Pages;
 
 namespace YHAB.ComponentTests.Features.Account;
 
@@ -15,16 +17,34 @@ namespace YHAB.ComponentTests.Features.Account;
 public sealed class ExternalProviderComponentsTests
 {
     [Fact]
-    public async Task PickerWithoutProvidersExplainsAbsenceAndCannotSubmitAsync()
+    public async Task PickerWithoutProvidersRendersNothingAndCannotSubmitAsync()
     {
         await using var context = new BunitContext();
         var account = context.ConfigureAccount();
 
-        var component = account.Render<ExternalLoginPicker>(context);
+        var component = context.Render<ExternalLoginPicker>(parameters => parameters
+            .AddCascadingValue<HttpContext>(account.Http)
+            .Add(picker => picker.Heading, "Use another service to log in."));
 
-        component.Markup.ShouldContain("There are no external authentication services configured.");
-        component.FindAll("form, button[name='provider']").ShouldBeEmpty();
+        component.FindAll("section, h3, form, button[name='provider']").ShouldBeEmpty();
+        component.Markup.ShouldNotContain("external authentication services configured.");
         await account.SignIn.Received(1).GetExternalAuthenticationSchemesAsync();
+    }
+
+    [Fact]
+    public async Task LoginAndRegisterOmitExternalProviderCopyWhenNoneConfiguredAsync()
+    {
+        await using var context = new BunitContext();
+        var account = context.ConfigureAccount();
+
+        var login = account.Render<Login>(context);
+        login.Markup.ShouldNotContain("external authentication services configured.");
+        login.FindAll("h3").Any(heading => string.Equals(heading.TextContent, "Use another service to log in.", StringComparison.Ordinal)).ShouldBeFalse();
+
+        var register = account.Render<Register>(context);
+        register.Markup.ShouldNotContain("external authentication services configured.");
+        register.FindAll("h3").Any(heading => string.Equals(heading.TextContent, "Use another service to register.", StringComparison.Ordinal)).ShouldBeFalse();
+        await account.SignIn.Received(2).GetExternalAuthenticationSchemesAsync();
     }
 
     [Fact]
@@ -41,8 +61,11 @@ public sealed class ExternalProviderComponentsTests
         const string ReturnUrl = "/events?category=a&next=%2Fprofile#details";
         context.Services.GetRequiredService<NavigationManager>().NavigateTo($"Account/Login?ReturnUrl={Uri.EscapeDataString(ReturnUrl)}");
 
-        var component = account.Render<ExternalLoginPicker>(context);
+        var component = context.Render<ExternalLoginPicker>(parameters => parameters
+            .AddCascadingValue<HttpContext>(account.Http)
+            .Add(picker => picker.Heading, "Use another service to log in."));
 
+        component.Find("h3").TextContent.ShouldBe("Use another service to log in.");
         component.Find("form").GetAttribute("method").ShouldBe("post");
         component.Find("form").GetAttribute("action").ShouldBe("Account/PerformExternalLogin");
         component.Find("input[name='ReturnUrl']").GetAttribute("value").ShouldBe(ReturnUrl);

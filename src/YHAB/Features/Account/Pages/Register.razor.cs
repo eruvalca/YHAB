@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Identity;
 using YHAB.Data;
 using YHAB.Features.Account.Extensions;
+using YHAB.Features.Account.Services;
 
 namespace YHAB.Features.Account.Pages;
 
@@ -41,7 +42,7 @@ public sealed partial class Register
         if (!UserManager.Options.SignIn.RequireConfirmedAccount)
         {
             await SignInManager.SignInAsync(user, isPersistent: false);
-            RedirectManager.RedirectTo(ReturnUrl);
+            RedirectManager.RedirectTo(ReturnUrl ?? IdentityRedirectManager.DefaultRegistrationPath);
             return;
         }
 

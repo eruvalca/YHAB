@@ -46,6 +46,7 @@ public sealed class PasskeySubmitTests
         bridge.GetAttribute("request-token-name").ShouldBe("X-CSRF");
         bridge.GetAttribute("request-token-value").ShouldBe("request&token");
         component.Markup.ShouldNotContain("cookie-token");
+        component.Find(".passkey-option").HasAttribute("hidden").ShouldBeTrue();
         var button = component.Find("button[type='submit'][name='__passkeySubmit']");
         button.TextContent.ShouldBe("Continue with passkey");
         button.GetAttribute("class").ShouldBe("primary-action");
@@ -69,6 +70,7 @@ public sealed class PasskeySubmitTests
         bridge.HasAttribute("request-token-name").ShouldBeFalse();
         bridge.HasAttribute("request-token-value").ShouldBeFalse();
         bridge.HasAttribute("email-name").ShouldBeFalse();
+        component.Find(".passkey-option").HasAttribute("hidden").ShouldBeTrue();
         component.Find("button").TextContent.ShouldBe("Add passkey");
     }
 }

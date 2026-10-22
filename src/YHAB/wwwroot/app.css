@@ -221,6 +221,21 @@ th, td {
     background: var(--colorBrandBackgroundHover, #115ea3);
 }
 
+/* Passkeys are an alternative to a password, not a competing primary action. */
+.passkey-login-link {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--colorBrandForegroundLink, #0f6cbd);
+    font-weight: var(--fontWeightRegular, 400);
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+}
+
+.passkey-login-link:hover {
+    color: var(--colorBrandForegroundLinkHover, #115ea3);
+}
+
 .account-sections {
     padding: clamp(1rem, 2vw, 1.5rem);
     border: 1px solid var(--colorNeutralStroke2, #e0e0e0);

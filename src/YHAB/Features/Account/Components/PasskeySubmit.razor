@@ -1,11 +1,14 @@
 @using Microsoft.AspNetCore.Antiforgery
 @inject IServiceProvider Services
 
-<button type="submit" name="__passkeySubmit" @attributes="AdditionalAttributes">@ChildContent</button>
-<passkey-submit
-    operation="@Operation"
-    name="@Name"
-    email-name="@EmailName"
-    request-token-name="@_tokens?.HeaderName"
-    request-token-value="@_tokens?.RequestToken">
-</passkey-submit>
+@* Passkeys need JavaScript, so keep the option hidden until the module confirms support. *@
+<div class="passkey-option" hidden>
+    <button type="submit" name="__passkeySubmit" @attributes="AdditionalAttributes">@ChildContent</button>
+    <passkey-submit
+        operation="@Operation"
+        name="@Name"
+        email-name="@EmailName"
+        request-token-name="@_tokens?.HeaderName"
+        request-token-value="@_tokens?.RequestToken">
+    </passkey-submit>
+</div>
