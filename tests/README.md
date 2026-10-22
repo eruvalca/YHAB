@@ -664,6 +664,8 @@ the sign control that replaces the missing keypad minus key, and text-mode field
 that keep the full keyboard. Account, transaction (including splits), move-money,
 and target editors must save a typed amount when Save is clicked before the field
 blurs; browser checks save the account and an edited transaction without Tab.
+Component checks also verify that switching to a transfer between budget accounts
+ignores hidden invalid split drafts and saves without categories.
 Theme checks navigate between
 SSR pages after selecting light, dark, and System preferences, verify the resolved
 color scheme, and emulate OS changes in System mode. A reload alone does not

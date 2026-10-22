@@ -54,6 +54,42 @@ public sealed class AmountEditorCommitTests
     }
 
     [Fact]
+    public async Task TransactionEditorIgnoresHiddenInvalidSplitWhenSavingBudgetTransferAsync()
+    {
+        await using var context = CreateContext();
+        var plan = CreatePlan();
+        var destination = plan.Accounts[0] with { Id = Guid.NewGuid(), Name = "Savings", Kind = AccountKind.Savings };
+        plan = plan with { Accounts = [.. plan.Accounts, destination] };
+        var commands = new List<PlanCommand>();
+        var component = context.Render<TransactionEditor>(parameters => parameters.Add(item => item.Plan, plan)
+            .Add(item => item.Payees, []).Add(item => item.OnCommand, commands.Add)
+            .Add(item => item.OnClose, () => { }));
+
+        await component.FindAll("fluent-text-input")[1].ChangeAsync(new() { Value = "20" });
+        await component.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Split across categories", StringComparison.Ordinal)).ClickAsync();
+        await component.FindAll("fluent-text-input")[2].ChangeAsync(new() { Value = "1 / 0" });
+
+        component.Find("[role='alert']").TextContent.ShouldContain("Enter an amount");
+        SaveButton(component, "Save transaction").HasAttribute("disabled").ShouldBeTrue();
+        commands.ShouldBeEmpty();
+
+        var transfer = component.FindAll("fluent-dropdown")[2];
+        var option = transfer.QuerySelector("fluent-option[text='Savings']").ShouldNotBeNull();
+        await transfer.TriggerEventAsync("ondropdownchange", new DropdownEventArgs { SelectedOptions = option.Id });
+
+        component.FindAll("[role='alert']").ShouldBeEmpty();
+        component.FindAll("fluent-text-input").Count.ShouldBe(2);
+        SaveButton(component, "Save transaction").HasAttribute("disabled").ShouldBeFalse();
+        await SaveButton(component, "Save transaction").ClickAsync();
+
+        var saved = commands.Single().ShouldBeOfType<SaveTransaction>().Transaction;
+        saved.AccountId.ShouldBe(plan.Accounts[0].Id);
+        saved.TransferAccountId.ShouldBe(destination.Id);
+        saved.Amount.ShouldBe(-20m);
+        saved.Splits.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task AccountEditorCommitsOpeningBalanceDraftWhenSavedWithoutBlurAsync()
     {
         await using var context = CreateContext();

@@ -104,7 +104,7 @@ public sealed partial class TransactionEditor
             }
 
             Amount = amount.Value;
-            if (_split)
+            if (NeedsCategory && _split)
             {
                 foreach (var split in _splits)
                 {
