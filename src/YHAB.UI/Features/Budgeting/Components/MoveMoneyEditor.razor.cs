@@ -14,10 +14,35 @@ public sealed partial class MoveMoneyEditor
     private Guid _to;
     private decimal _amount;
     private bool _valid = true;
+    private bool _saving;
+    private AmountInput? _amountInput;
     protected override void OnInitialized()
     {
         _categories = [new(Guid.Empty, Guid.Empty, "Ready to assign", "", 0, false, null, null), .. Plan.Categories];
         _to = Plan.Categories.Count > 0 ? Plan.Categories[0].Id : Guid.Empty;
     }
-    private Task SaveAsync() => OnCommand.InvokeAsync(new MoveMoney(Plan.Version, _from == Guid.Empty ? null : _from, _to == Guid.Empty ? null : _to, Month, _amount));
+    private async Task SaveAsync()
+    {
+        if (_saving)
+        {
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var amount = await _amountInput!.CommitAsync();
+            if (amount is null)
+            {
+                return;
+            }
+
+            _amount = amount.Value;
+            await OnCommand.InvokeAsync(new MoveMoney(Plan.Version, _from == Guid.Empty ? null : _from, _to == Guid.Empty ? null : _to, Month, _amount));
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
 }

@@ -1,5 +1,5 @@
 <div class="amount-field@(AllowNegative ? " amount-field--signed" : "")">
-    <FluentTextInput Id="@Id" Label="@Label" Value="@_text" ValueChanged="EvaluateAsync"
+    <FluentTextInput Id="@Id" Label="@Label" Value="@_text" ValueChanged="EvaluateAsync" Immediate="@CommitOnSave"
                      Placeholder="0.00 or 25 + 10" InputMode="@InputMode" MaxLength="200" Size="@Size"
                      Class="amount-input" aria-invalid="@(_error is null ? "false" : "true")" aria-describedby="@(_error is null ? null : $"{Id}-error")"
                      Margin="0" Width="100%" Disabled="@Disabled" ReadOnly="@ReadOnly" />

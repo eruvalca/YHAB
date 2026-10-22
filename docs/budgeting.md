@@ -20,7 +20,8 @@ connections, imports, or photo storage.
    has no minus key, so fields that accept a negative amount (an opening balance
    and split amounts) also show a sign control. The
    monthly assignment field keeps the full keyboard for signed entry in the dense
-   table.
+   table. Account, transaction, move-money, and target editor amounts are
+   committed by their Save action, even when the field has not blurred.
 4. Add transactions in an account or **All transactions**. Outflows need a
    category; income can go to Ready to assign. Split amounts are signed and must
    total the transaction amount exactly.

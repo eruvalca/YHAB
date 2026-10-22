@@ -22,8 +22,10 @@ public sealed partial class CategoryEditor
     private bool _hidden;
     private bool _hasTarget;
     private bool _valid = true;
+    private bool _saving;
     private bool _snoozed;
     private decimal _amount;
+    private AmountInput? _amountInput;
     private TargetKind _kind;
     private TargetCadence _cadence = TargetCadence.Monthly;
     private DateOnly _due;
@@ -67,11 +69,35 @@ public sealed partial class CategoryEditor
         _weekday = target?.Weekday ?? DayOfWeek.Friday;
     }
     private static string KindLabel(TargetKind kind) => kind switch { TargetKind.Refill => "Refill up to", TargetKind.SetAside => "Set aside another", _ => "Have a balance of" };
-    private Task SaveAsync()
+    private async Task SaveAsync()
     {
-        var due = _cadence is TargetCadence.Custom or TargetCadence.Yearly ? _due : (DateOnly?)null;
-        TargetData? target = _hasTarget ? new(_kind, _cadence, _amount, _start, due, _repeat, _weekday) : null;
-        return OnCommand.InvokeAsync(new SaveCategory(Plan.Version, new(Category?.Id ?? Guid.Empty, _group, _name, _notes, _order, _hidden, Category?.CreditAccountId, target)));
+        if (_saving)
+        {
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            if (_hasTarget)
+            {
+                var amount = await _amountInput!.CommitAsync();
+                if (amount is null)
+                {
+                    return;
+                }
+
+                _amount = amount.Value;
+            }
+
+            var due = _cadence is TargetCadence.Custom or TargetCadence.Yearly ? _due : (DateOnly?)null;
+            TargetData? target = _hasTarget ? new(_kind, _cadence, _amount, _start, due, _repeat, _weekday) : null;
+            await OnCommand.InvokeAsync(new SaveCategory(Plan.Version, new(Category?.Id ?? Guid.Empty, _group, _name, _notes, _order, _hidden, Category?.CreditAccountId, target)));
+        }
+        finally
+        {
+            _saving = false;
+        }
     }
     private Task SnoozeAsync() => OnCommand.InvokeAsync(new AssignMoney(Plan.Version, Category!.Id, Month,
         MonthState?.Assigned ?? 0, !_snoozed));
