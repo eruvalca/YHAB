@@ -22,9 +22,10 @@ connections, imports, or photo storage.
    monthly assignment field keeps the full keyboard for signed entry in the dense
    table. Account, transaction, move-money, and target editor amounts are
    committed by their Save action, even when the field has not blurred.
-4. Add transactions in an account or **All transactions**. Outflows need a
-   category; income can go to Ready to assign. Split amounts are signed and must
-   total the transaction amount exactly.
+4. Add transactions in an account or **All transactions**. The editor starts on
+   Outflow, asks for a spending category, and keeps Ready to assign only for
+   inflows. Split amounts are signed and must total the transaction amount
+   exactly. A transaction needs a non-zero amount.
 5. Transfer between accounts using the transfer selector. One stored transfer
    supplies both sides. Transfers within the budget have no spending category.
    Transfers across the budget and tracking boundary require categories when

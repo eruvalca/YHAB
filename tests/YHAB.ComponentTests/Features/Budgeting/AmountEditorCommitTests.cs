@@ -45,6 +45,9 @@ public sealed class AmountEditorCommitTests
 
         await component.FindAll("fluent-text-input")[1].ChangeAsync(new() { Value = "7.77" });
         await component.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Split across categories", StringComparison.Ordinal)).ClickAsync();
+        var category = component.FindAll("fluent-dropdown")[3];
+        var option = category.QuerySelector("fluent-option[text='Groceries']").ShouldNotBeNull();
+        await category.TriggerEventAsync("ondropdownchange", new DropdownEventArgs { SelectedOptions = option.Id });
         await component.FindAll("fluent-text-input")[2].ChangeAsync(new() { Value = "-7.77" });
         await SaveButton(component, "Save transaction").ClickAsync();
 
@@ -69,7 +72,7 @@ public sealed class AmountEditorCommitTests
         await component.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Split across categories", StringComparison.Ordinal)).ClickAsync();
         await component.FindAll("fluent-text-input")[2].ChangeAsync(new() { Value = "1 / 0" });
 
-        component.Find("[role='alert']").TextContent.ShouldContain("Enter an amount");
+        component.FindAll("[role='alert']").Any(item => item.TextContent.Contains("Enter an amount", StringComparison.Ordinal)).ShouldBeTrue();
         SaveButton(component, "Save transaction").HasAttribute("disabled").ShouldBeTrue();
         commands.ShouldBeEmpty();
 
@@ -152,7 +155,7 @@ public sealed class AmountEditorCommitTests
 
         await component.FindAll("fluent-text-input")[1].ChangeAsync(new() { Value = "1 / 0" });
 
-        component.Find("[role='alert']").TextContent.ShouldContain("Enter an amount");
+        component.FindAll("[role='alert']").Any(item => item.TextContent.Contains("Enter an amount", StringComparison.Ordinal)).ShouldBeTrue();
         SaveButton(component, "Save transaction").HasAttribute("disabled").ShouldBeTrue();
         commands.ShouldBeEmpty();
     }

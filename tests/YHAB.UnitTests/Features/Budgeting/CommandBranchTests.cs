@@ -62,7 +62,29 @@ public sealed class CommandBranchTests
         var original = JsonSerializer.Serialize(plan);
         var entry = Entry(plan, 0, -10, category: 1);
         TransactionChanges.Save(NewIds(), plan, new(0, entry), plan.Today).AsT1.Message
-            .ShouldBe("Choose spending categories for outflows, valid split amounts, and split memos of at most 1,000 characters.");
+            .ShouldBe("Choose a spending category from this plan.");
+        JsonSerializer.Serialize(plan).ShouldBe(original);
+    }
+
+    [Fact]
+    public void UncategorizedOutflowNeedsASpendingCategory()
+    {
+        var plan = Create();
+        var original = JsonSerializer.Serialize(plan);
+        var entry = Entry(plan, 0, -10) with { Splits = [new(Guid.NewGuid(), null, -10, "")] };
+        TransactionChanges.Save(NewIds(), plan, new(0, entry), plan.Today).AsT1.Message
+            .ShouldBe("An outflow needs a spending category. Choose one, or switch the direction to Inflow.");
+        JsonSerializer.Serialize(plan).ShouldBe(original);
+    }
+
+    [Fact]
+    public void ZeroAmountTransactionIsRejected()
+    {
+        var plan = Create();
+        var original = JsonSerializer.Serialize(plan);
+        var entry = Entry(plan, 0, 0);
+        TransactionChanges.Save(NewIds(), plan, new(0, entry), plan.Today).AsT1.Message
+            .ShouldBe("Enter a transaction amount other than zero.");
         JsonSerializer.Serialize(plan).ShouldBe(original);
     }
 
