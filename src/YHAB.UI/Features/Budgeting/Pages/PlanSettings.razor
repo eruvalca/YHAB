@@ -44,9 +44,13 @@
                     </EditForm>
                     @if (_shareCode is { } shareCode)
                     {
-                        <div class="notice" data-kind="success" role="status">
+                        <div class="notice" data-kind="success" role="status" data-share-code>
                             <p>Give this code to the person you want to add. It can be used once and expires on @shareCode.ExpiresOn.LocalDateTime.ToString("D").</p>
-                            <p class="share-code">@shareCode.Code</p>
+                            <FluentStack VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalM)" VerticalGap="var(--spacingVerticalS)" Wrap="true">
+                                <code class="share-code">@shareCode.Code</code>
+                                <button type="button" class="secondary-action" data-copy-share-code>Copy code</button>
+                            </FluentStack>
+                            <p class="field-hint" role="status" aria-live="polite" data-copy-share-code-status></p>
                         </div>
                     }
                 }

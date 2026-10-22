@@ -1,2 +1,4 @@
 .share-list { margin: 0 0 var(--spacingVerticalM); padding-left: var(--spacingHorizontalL); }
-.share-code { font-family: var(--fontFamilyMonospace); font-size: var(--fontSizeBase400); letter-spacing: 0.08em; font-weight: var(--fontWeightSemibold); overflow-wrap: anywhere; }
+.share-code { min-width: 0; font-family: var(--fontFamilyMonospace); font-size: var(--fontSizeBase400); letter-spacing: 0.08em; font-weight: var(--fontWeightSemibold); overflow-wrap: anywhere; user-select: all; }
+[data-copy-share-code] { min-height: 44px; }
+[data-copy-share-code-status]:empty { margin: 0; }

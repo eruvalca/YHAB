@@ -56,32 +56,34 @@
         }
     </FluentGridItem>
     <FluentGridItem Xs="12" Lg="4">
-        <section class="surface">
-            <p class="eyebrow">START SOMETHING GOOD</p>
-            <h2>Create a plan</h2>
-            <EditForm Model="Input" method="post" FormName="CreatePlan" OnValidSubmit="CreateAsync" Enhance>
-                <DataAnnotationsValidator />
-                <ValidationSummary />
-                <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalL)">
-                    <div class="form-field"><label for="plan-name">Plan name</label><InputText id="plan-name" @bind-Value="Input.Name" placeholder="My everyday plan" maxlength="100" /></div>
-                    <div class="checkbox-field"><label for="starter-categories">Start with suggested categories</label><InputCheckbox id="starter-categories" @bind-Value="Input.StarterCategories" /></div>
-                    <button class="primary-action" type="submit">Create your plan →</button>
-                    <p class="field-hint">Plans start private. Create a share code whenever you want to add someone.</p>
-                </FluentStack>
-            </EditForm>
-        </section>
-        <section class="surface">
-            <p class="eyebrow">ALREADY INVITED?</p>
-            <h2>Join a shared plan</h2>
-            <p class="muted">Enter the one-time code the plan owner gave you.</p>
-            <EditForm Model="Join" id="join-plan-form" method="post" FormName="JoinPlan" OnValidSubmit="JoinAsync" Enhance>
-                <DataAnnotationsValidator />
-                <ValidationSummary />
-                <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalL)">
-                    <div class="form-field"><label for="join-code">Share code</label><InputText id="join-code" @bind-Value="Join.Code" placeholder="ABCDE-ABCDE-ABCDE-ABCDE" maxlength="64" /></div>
-                    <button type="submit" class="primary-action">Join plan</button>
-                </FluentStack>
-            </EditForm>
-        </section>
+        <FluentStack Orientation="Orientation.Vertical" HorizontalAlignment="HorizontalAlignment.Stretch" VerticalGap="var(--spacingVerticalXXL)" Width="100%">
+            <section class="surface">
+                <p class="eyebrow">START SOMETHING GOOD</p>
+                <h2>Create a plan</h2>
+                <EditForm Model="Input" method="post" FormName="CreatePlan" OnValidSubmit="CreateAsync" Enhance>
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+                    <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalL)">
+                        <div class="form-field"><label for="plan-name">Plan name</label><InputText id="plan-name" @bind-Value="Input.Name" placeholder="My everyday plan" maxlength="100" /></div>
+                        <div class="checkbox-field"><label for="starter-categories">Start with suggested categories</label><InputCheckbox id="starter-categories" @bind-Value="Input.StarterCategories" /></div>
+                        <button class="primary-action" type="submit">Create your plan →</button>
+                        <p class="field-hint">Plans start private. Create a share code whenever you want to add someone.</p>
+                    </FluentStack>
+                </EditForm>
+            </section>
+            <section class="surface">
+                <p class="eyebrow">ALREADY INVITED?</p>
+                <h2>Join a shared plan</h2>
+                <p class="muted">Enter the one-time code the plan owner gave you.</p>
+                <EditForm Model="Join" id="join-plan-form" method="post" FormName="JoinPlan" OnValidSubmit="JoinAsync" Enhance>
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+                    <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalL)">
+                        <div class="form-field"><label for="join-code">Share code</label><InputText id="join-code" @bind-Value="Join.Code" placeholder="ABCDE-ABCDE-ABCDE-ABCDE" maxlength="64" /></div>
+                        <button type="submit" class="primary-action">Join plan</button>
+                    </FluentStack>
+                </EditForm>
+            </section>
+        </FluentStack>
     </FluentGridItem>
 </FluentGrid>

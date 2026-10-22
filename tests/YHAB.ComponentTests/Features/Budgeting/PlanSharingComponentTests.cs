@@ -63,6 +63,10 @@ public sealed class PlanSharingComponentTests
         await budgets.Received(1).CreateShareCodeAsync(plan.Id, Arg.Any<CancellationToken>());
         component.Markup.ShouldContain("ABCDE-FGHIJ-KLMNO-PQRST");
         component.Markup.ShouldContain("expires on");
+        component.Find(".share-code").TextContent.ShouldBe("ABCDE-FGHIJ-KLMNO-PQRST");
+        component.Find("[data-copy-share-code]").GetAttribute("type").ShouldBe("button");
+        component.Find("[data-copy-share-code]").TextContent.ShouldBe("Copy code");
+        component.Find("[data-copy-share-code-status]").GetAttribute("role").ShouldBe("status");
 
         SetFormValue(component.Instance, "Remove", "MemberId", "owner-b");
         await component.Find("#remove-share-form").SubmitAsync();
