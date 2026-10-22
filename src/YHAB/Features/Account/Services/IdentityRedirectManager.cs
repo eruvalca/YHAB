@@ -8,6 +8,13 @@ internal sealed class IdentityRedirectManager(NavigationManager navigationManage
 {
     public const string StatusCookieName = "Identity.StatusMessage";
 
+    /// <summary>Where a newly registered user lands when no return URL was supplied.</summary>
+    internal const string DefaultRegistrationPath = "plans";
+
+    /// <summary>Resolves a registration destination, treating a missing or blank return URL as absent.</summary>
+    internal static string RegistrationDestination(string? returnUrl) =>
+        string.IsNullOrWhiteSpace(returnUrl) ? DefaultRegistrationPath : returnUrl;
+
     private static readonly CookieBuilder _statusCookieBuilder = new()
     {
         SameSite = SameSiteMode.Strict,

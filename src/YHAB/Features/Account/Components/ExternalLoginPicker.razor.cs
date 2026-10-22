@@ -9,6 +9,10 @@ public sealed partial class ExternalLoginPicker
 {
     private AuthenticationScheme[] _externalLogins = [];
 
+    [Parameter]
+    [EditorRequired]
+    public string Heading { get; set; } = default!;
+
     [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
 

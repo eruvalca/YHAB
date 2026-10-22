@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Bunit;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Shouldly;
 using Xunit;
@@ -48,7 +49,7 @@ public sealed class ErrorTests
             if (string.IsNullOrEmpty(requestId))
             {
                 component.FindAll("code").ShouldBeEmpty();
-                component.Markup.ShouldNotContain("Request ID:");
+                component.Markup.ShouldNotContain("mention request");
             }
             else
             {
@@ -60,5 +61,44 @@ public sealed class ErrorTests
         {
             Activity.Current = previousActivity;
         }
+    }
+
+    [Fact]
+    public async Task ReplacesEnvironmentGuidanceWithBrandedRecoveryActionsAsync()
+    {
+        await using var context = new BunitContext();
+        var component = context.Render<Error>(parameters =>
+            parameters.AddCascadingValue<HttpContext>(new DefaultHttpContext()));
+
+        component.Find("h1").TextContent.ShouldBe("Something went wrong.");
+        component.Find("p.lead").TextContent.ShouldContain("Please try again");
+        var retry = component.Find("a.primary-action");
+        retry.TextContent.ShouldBe("Try again");
+        retry.GetAttribute("href").ShouldBe("/");
+        var actions = component.FindAll("a.secondary-action");
+        actions.Select(action => action.TextContent).ShouldBe(["Return home", "Open your plans"]);
+        actions.Select(action => action.GetAttribute("href")).ShouldBe(["/", "/plans"]);
+        component.Markup.ShouldNotContain("Development");
+        component.Markup.ShouldNotContain("ASPNETCORE_ENVIRONMENT");
+    }
+
+    [Fact]
+    public async Task RetryPreservesOriginalPathBaseAndQueryStringAsync()
+    {
+        await using var context = new BunitContext();
+        var http = new DefaultHttpContext();
+        http.Request.PathBase = "/base";
+        http.Request.QueryString = new QueryString("?userId=member&code=token");
+        http.Features.Set<IExceptionHandlerPathFeature>(new ExceptionHandlerFeature
+        {
+            Path = "/Account/ConfirmEmail",
+            Error = new InvalidOperationException("boom"),
+        });
+
+        var component = context.Render<Error>(parameters =>
+            parameters.AddCascadingValue<HttpContext>(http));
+
+        component.Find("a.primary-action").GetAttribute("href")
+            .ShouldBe("/base/Account/ConfirmEmail?userId=member&code=token");
     }
 }

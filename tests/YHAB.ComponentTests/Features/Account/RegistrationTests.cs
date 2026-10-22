@@ -77,6 +77,33 @@ public sealed class RegistrationTests
     }
 
     [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task SuccessfulPasswordRegistrationWithoutUsableReturnUrlLandsOnYourPlansAsync(string? destination)
+    {
+        await using var context = new BunitContext();
+        var account = context.ConfigureAccount();
+        account.Users.SupportsUserEmail.Returns(true);
+        account.Users.CreateAsync(Arg.Any<ApplicationUser>(), "password").Returns(IdentityResult.Success);
+        var navigation = context.Services.GetRequiredService<NavigationManager>();
+        if (destination is not null)
+        {
+            navigation.NavigateTo($"Account/Register?ReturnUrl={Uri.EscapeDataString(destination)}");
+        }
+        var component = account.Render<Register>(context);
+        await component.Find("input[name='Input.Email']").ChangeAsync(new ChangeEventArgs { Value = "member@example.test" });
+        await component.Find("input[name='Input.Password']").ChangeAsync(new ChangeEventArgs { Value = "password" });
+        await component.Find("input[name='Input.ConfirmPassword']").ChangeAsync(new ChangeEventArgs { Value = "password" });
+
+        await component.Find("form").SubmitAsync();
+
+        await component.WaitForAssertionAsync(() => navigation.Uri.ShouldBe("http://localhost/plans"));
+        await account.SignIn.Received(1).SignInAsync(Arg.Is<ApplicationUser>(user => !user.EmailConfirmed), false, null);
+        await account.Emails.DidNotReceiveWithAnyArgs().SendConfirmationLinkAsync(default!, default!, default!);
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task ExternalRegistrationFailureSkipsEmailAndSignInAndExplainsPartialAccountAsync(bool linkFailed)
@@ -153,6 +180,35 @@ public sealed class RegistrationTests
             await account.Users.DidNotReceiveWithAnyArgs().GenerateEmailConfirmationTokenAsync(default!);
             await account.Emails.DidNotReceiveWithAnyArgs().SendConfirmationLinkAsync(default!, default!, default!);
         }
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task SuccessfulExternalRegistrationWithoutUsableReturnUrlLandsOnYourPlansAsync(string? destination)
+    {
+        await using var context = new BunitContext();
+        var account = context.ConfigureAccount();
+        account.Users.SupportsUserEmail.Returns(true);
+        var login = new ExternalLoginInfo(new ClaimsPrincipal(new ClaimsIdentity()), "Provider", "key", "Provider");
+        account.SignIn.GetExternalLoginInfoAsync().Returns(login);
+        account.Users.CreateAsync(Arg.Any<ApplicationUser>()).Returns(IdentityResult.Success);
+        account.Users.AddLoginAsync(Arg.Any<ApplicationUser>(), login).Returns(IdentityResult.Success);
+        var navigation = context.Services.GetRequiredService<NavigationManager>();
+        if (destination is not null)
+        {
+            navigation.NavigateTo($"Account/ExternalLogin?ReturnUrl={Uri.EscapeDataString(destination)}");
+        }
+        var component = account.Render<ExternalLogin>(context);
+        await component.Find("input[name='Input.Email']").ChangeAsync(new ChangeEventArgs { Value = "member@example.test" });
+
+        await component.Find("form").SubmitAsync();
+
+        await account.Users.Received(1).AddLoginAsync(Arg.Any<ApplicationUser>(), login);
+        await component.WaitForAssertionAsync(() => navigation.Uri.ShouldBe("http://localhost/plans"));
+        await account.SignIn.Received(1).SignInAsync(Arg.Any<ApplicationUser>(), false, "Provider");
+        await account.Emails.DidNotReceiveWithAnyArgs().SendConfirmationLinkAsync(default!, default!, default!);
     }
 
     [Theory]

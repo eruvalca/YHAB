@@ -74,8 +74,9 @@ Use PowerShell 7 for the scripts in this repository. From the solution root,
 run `dotnet build YHAB.slnx`, then `aspire run`. The first build/start may
 restore NuGet packages, download Aspire/EF tooling, and pull container images.
 Migrations create Identity and budgeting tables; no user accounts, financial
-accounts, or local credentials are included. Register and sign in, open **Your
-plans**, and create a plan. Suggested categories are optional. Signup is open and
+accounts, or local credentials are included. Register and sign in; registration
+lands on **Your plans**, where you create a plan. Suggested categories are optional.
+Signup is open and
 signs the user in immediately; no email confirmation or owner approval is required.
 Git initialization is optional and separate.
 
@@ -209,7 +210,8 @@ for new UI; do not introduce a parallel CSS framework or default to custom Grid/
 
 `Microsoft.FluentUI.AspNetCore.Components.Icons` **5.0.1** is referenced by the
 shared UI and flows to both hosts. Navigation uses `IconRest`/`IconActive` with
-regular/filled system icons; the counter uses `IconStart`. Use strongly typed
+regular/filled system icons; actions use `IconStart`, as on the category-group
+button. Use strongly typed
 instances such as `new Icons.Regular.Size20.Home()` (the Razor imports define the
 `Icons` alias) so publishing can retain referenced icons. Keep meaningful visible
 labels; redundant icons are decorative and not extra tab stops. No icon font,
@@ -229,8 +231,8 @@ the selected theme and restores the selector after enhanced navigation, which ca
 replace the body's client-side theme marker. Appearance does not start a .NET renderer.
 Application styles use v5 CSS design tokens.
 
-The shell uses `FluentLayout`, `FluentNav`, and `FluentNavItem`; the home, counter,
-and authenticated pages use Fluent cards and buttons with native content links.
+The shell uses `FluentLayout`, `FluentNav`, and `FluentNavItem`; the home and
+authenticated pages use Fluent cards and buttons with native content links.
 Native anchors preserve accessible link names and navigation before JavaScript
 initializes. Account management
 has Fluent navigation and a card around its content. `FluentGrid`/`FluentGridItem`
@@ -241,12 +243,12 @@ rendering off for static SSR; responsive CSS does not need a .NET event handler.
 Render boundaries are deliberate:
 
 - `Routes`, `MainLayout`, Home, plan selection, reports, plan settings, and Identity
-  pages use static SSR. The budgeting workspace and retained Counter example opt
-  into `InteractiveAuto` for .NET event handling. Workspace and Counter actions
-  are disabled during prerendering until
-  their renderer becomes interactive. Static pages don't start a .NET interactive
+  pages use static SSR. The budgeting workspace opts into `InteractiveAuto` for
+  .NET event handling. Workspace actions are disabled during prerendering until
+  the renderer becomes interactive. Static pages don't start a .NET interactive
   runtime simply to display navigation or cards.
-- The budgeting workspace and `Counter` host `FluentProviders` inside their interactive boundaries. Providers
+- The budgeting workspace hosts `FluentProviders` inside its interactive
+  boundary. Providers
   inherit its renderer and scoped services for dialogs, toasts, tooltips, and key
   handling. Add providers inside other interactive pages/subtrees when needed,
   once per active renderer/service scope. The layout's `Body` never crosses an

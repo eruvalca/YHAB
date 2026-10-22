@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using YHAB.Data;
 using YHAB.Features.Account.Extensions;
 using YHAB.Features.Account.Models;
+using YHAB.Features.Account.Services;
 
 namespace YHAB.Features.Account.Pages;
 
@@ -122,7 +123,7 @@ public sealed partial class ExternalLogin
         if (!UserManager.Options.SignIn.RequireConfirmedAccount)
         {
             await SignInManager.SignInAsync(user, isPersistent: false, provider);
-            RedirectManager.RedirectTo(ReturnUrl);
+            RedirectManager.RedirectTo(IdentityRedirectManager.RegistrationDestination(ReturnUrl));
             return;
         }
 
