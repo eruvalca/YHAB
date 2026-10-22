@@ -51,6 +51,9 @@ public sealed class WorkspaceOperationTests
     {
         WorkspaceOperation.Start(new UndoChange(3)).Saved().Loaded().Message.ShouldBe("Change undone");
         WorkspaceOperation.Start(new UpdatePlan(3, "Plan", "")).Saved().Loaded().Message.ShouldBe("All changes saved");
-        WorkspaceOperation.Rejected().ShouldBe(new WorkspaceOperation());
+        var rejected = WorkspaceOperation.Rejected();
+        rejected.Message.ShouldBe("Change not saved.");
+        rejected.CanEdit.ShouldBeTrue();
+        rejected.CanRetry.ShouldBeFalse();
     }
 }

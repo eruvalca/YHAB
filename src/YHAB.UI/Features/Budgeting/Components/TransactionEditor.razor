@@ -1,7 +1,7 @@
 <EditorSurface Title="@(Transaction is null ? "Add transaction" : "Edit transaction")" OnClose="OnClose">
     <FluentGrid Spacing="3">
         <FluentGridItem Xs="12" Md="6"><FluentTextInput Margin="0" Size="TextInputSize.Large" Label="Payee" @bind-Value="_payee" MaxLength="200" DataList="known-payees" /><datalist id="known-payees">@foreach (var payee in Payees.Where(item => item.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase)) { <option value="@payee"></option> }</datalist></FluentGridItem>
-        <FluentGridItem Xs="12" Sm="6"><FluentSelect Margin="0" Size="ListSize.Large" TOption="string" TValue="string" Label="Money direction" Items="_directions" @bind-Value="_direction" /></FluentGridItem>
+        <FluentGridItem Xs="12" Sm="6"><FluentSelect Margin="0" Size="ListSize.Large" TOption="string" TValue="string" Label="Money direction" Items="_directions" @bind-Value="_direction" @bind-Value:after="DirectionChanged" /></FluentGridItem>
         <FluentGridItem Xs="12" Sm="6"><AmountInput @ref="_amountInput" Label="Amount" Size="TextInputSize.Large" CommitOnSave="true" @bind-Value="Amount" ValidChanged="value => _amountValid = value" /></FluentGridItem>
         <FluentGridItem Xs="12" Md="6"><div class="form-field"><label for="transaction-date">@(_repeat == RepeatFrequency.None ? "Date" : "Next occurrence")</label><input id="transaction-date" type="date" @bind="_date" /></div></FluentGridItem>
         <FluentGridItem Xs="12" Md="6"><FluentSelect Margin="0" Size="ListSize.Large" TOption="AccountData" TValue="Guid" Label="Account" Items="_accounts" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="_account" /></FluentGridItem>
@@ -11,7 +11,15 @@
     {
         @if (!_split)
         {
-            <FluentSelect Margin="0" Size="ListSize.Large" TOption="CategoryData" TValue="Guid" Label="Category" Items="_categories" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="_category" />
+            <FluentSelect @key="BudgetOutflow" Margin="0" Size="ListSize.Large" TOption="CategoryData" TValue="Guid" Label="Category"
+                          Items="CategoryOptions" OptionText="item => item.Name" OptionValue="item => item.Id" Placeholder="@ChooseCategory"
+                          aria-invalid="@(CategoryMissing ? "true" : "false")"
+                          aria-describedby="@(CategoryMissing ? "transaction-category-error" : null)"
+                          @bind-Value="_category" />
+            @if (CategoryMissing)
+            {
+                <p @ref="_categoryError" id="transaction-category-error" tabindex="-1" class="validation-message" role="alert">@CategoryError</p>
+            }
             <FluentButton OnClick="StartSplit" Size="ButtonSize.Large" Appearance="ButtonAppearance.Subtle">Split across categories</FluentButton>
         }
         else
@@ -20,7 +28,17 @@
             @foreach (var split in _splits)
             {
                 <FluentGrid @key="split.Id" Spacing="2">
-                    <FluentGridItem Xs="12" Md="5"><FluentSelect Margin="0" Size="ListSize.Large" TOption="CategoryData" TValue="Guid" Label="Split category" Items="_categories" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="split.Category" /></FluentGridItem>
+                    <FluentGridItem Xs="12" Md="5">
+                        <FluentSelect @key="SplitNeedsCategory(split)" Margin="0" Size="ListSize.Large" TOption="CategoryData" TValue="Guid" Label="Split category"
+                                      Items="SplitCategoryOptions(split)" OptionText="item => item.Name" OptionValue="item => item.Id" Placeholder="@ChooseCategory"
+                                      aria-invalid="@(SplitCategoryMissing(split) ? "true" : "false")"
+                                      aria-describedby="@(SplitCategoryMissing(split) ? $"{split.Id}-category-error" : null)"
+                                      @bind-Value="split.Category" />
+                        @if (SplitCategoryMissing(split))
+                        {
+                            <p id="@($"{split.Id}-category-error")" class="validation-message" role="alert">@BudgetCategoryError</p>
+                        }
+                    </FluentGridItem>
                     <FluentGridItem Xs="6" Md="3"><AmountInput @ref="split.AmountInput" Label="Split amount" Size="TextInputSize.Large" AllowNegative="true" CommitOnSave="true" @bind-Value="split.Amount" ValidChanged="value => split.Valid = value" /></FluentGridItem>
                     <FluentGridItem Xs="6" Md="4">
                         <FluentStack VerticalAlignment="VerticalAlignment.Bottom" HorizontalGap="var(--spacingHorizontalS)">

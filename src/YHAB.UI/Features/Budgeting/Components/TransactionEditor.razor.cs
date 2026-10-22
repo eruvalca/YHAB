@@ -11,12 +11,17 @@ public sealed partial class TransactionEditor
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
     [Parameter, EditorRequired] public EventCallback OnClose { get; set; }
     [Parameter] public bool Busy { get; set; }
+    private const string ChooseCategory = "Choose a category";
+    private const string OutflowCategoryError = "An outflow needs a spending category. Choose one, or switch the direction to Inflow.";
+    private const string BudgetCategoryError = "Money leaving your budget needs a spending category.";
     private static readonly string[] _directions = ["Outflow", "Inflow"];
     private static readonly string[] _flags = ["None", "Red", "Orange", "Yellow", "Green", "Blue", "Purple"];
     private static readonly RepeatFrequency[] _frequencies = Enum.GetValues<RepeatFrequency>();
+    private static readonly CategoryData _readyToAssign = new(Guid.Empty, Guid.Empty, "Inflow: Ready to assign", "", 0, false, null, null);
     private AccountData[] _accounts = [];
     private AccountData[] _destinations = [];
     private CategoryData[] _categories = [];
+    private CategoryData[] _spendingCategories = [];
     private readonly List<SplitInput> _splits = [];
     private Guid _account;
     private Guid _transfer;
@@ -32,7 +37,26 @@ public sealed partial class TransactionEditor
     private RepeatFrequency _repeat;
     private decimal Amount { get; set; }
     private AmountInput? _amountInput;
-    private decimal SignedAmount => string.Equals(_direction, "Outflow", StringComparison.Ordinal) ? -Math.Abs(Amount) : Math.Abs(Amount);
+    private bool _focusCategory;
+    private ElementReference _categoryError;
+    private bool IsOutflow => string.Equals(_direction, "Outflow", StringComparison.Ordinal);
+    private decimal SignedAmount => IsOutflow ? -Math.Abs(Amount) : Math.Abs(Amount);
+    private int DirectionSign => IsOutflow ? -1 : 1;
+    private bool BudgetOutflow => DirectionSign * BudgetDirection < 0;
+    private CategoryData[] CategoryOptions => BudgetOutflow ? _spendingCategories : _categories;
+    private string CategoryError => IsOutflow ? OutflowCategoryError : BudgetCategoryError;
+    private int BudgetDirection
+    {
+        get
+        {
+            var source = _accounts.SingleOrDefault(item => item.Id == _account);
+            return source is not null && BudgetFacts.IsBudget(source.Kind) ? 1 : -1;
+        }
+    }
+    private bool CategoryMissing => NeedsCategory && !_split && BudgetOutflow && _category == Guid.Empty;
+    private bool SplitCategoryMissing(SplitInput split) => SplitNeedsCategory(split) && split.Category == Guid.Empty;
+    private bool SplitNeedsCategory(SplitInput split) => split.Amount * BudgetDirection < 0;
+    private CategoryData[] SplitCategoryOptions(SplitInput split) => SplitNeedsCategory(split) ? _spendingCategories : _categories;
     private bool NeedsCategory
     {
         get
@@ -45,14 +69,16 @@ public sealed partial class TransactionEditor
     }
     private bool CannotSave => Busy || _saving || !_amountValid || _account == Guid.Empty || (_transfer != Guid.Empty && _transfer == _account)
         || (_repeat == RepeatFrequency.None && _date > Plan.Today)
-        || (NeedsCategory && _split && (_splits.Count == 0 || _splits.Any(item => !item.Valid) || _splits.Sum(item => item.Amount) != SignedAmount));
+        || CategoryMissing
+        || (NeedsCategory && _split && (_splits.Count == 0 || _splits.Any(item => !item.Valid || SplitCategoryMissing(item)) || _splits.Sum(item => item.Amount) != SignedAmount));
 
     protected override void OnInitialized()
     {
         _accounts = Plan.Accounts.Where(item => !item.Closed).ToArray();
         _destinations = [new(Guid.Empty, "Not a transfer", AccountKind.Checking, 0, Plan.Today, false, ""), .. _accounts];
-        _categories = [new(Guid.Empty, Guid.Empty, "Inflow: Ready to assign", "", 0, false, null, null),
-            .. Plan.Categories.Where(item => item.CreditAccountId is null).OrderBy(item => item.Hidden).ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase)];
+        _spendingCategories = Plan.Categories.Where(item => item.CreditAccountId is null)
+            .OrderBy(item => item.Hidden).ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase).ToArray();
+        _categories = [_readyToAssign, .. _spendingCategories];
         _account = Transaction?.AccountId ?? AccountId ?? _accounts.FirstOrDefault()?.Id ?? Guid.Empty;
         _transfer = Transaction?.TransferAccountId ?? Guid.Empty;
         InitializeValues();
@@ -84,12 +110,23 @@ public sealed partial class TransactionEditor
         RepeatFrequency.EverySixMonths => "Every six months",
         _ => frequency.ToString(),
     };
+    private void DirectionChanged() => _focusCategory = CategoryMissing;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusCategory)
+        {
+            _focusCategory = false;
+            await _categoryError.FocusAsync();
+        }
+
+        await base.OnAfterRenderAsync(firstRender);
+    }
     private void StartSplit() { _split = true; if (_splits.Count == 0) { _splits.Add(new() { Category = _category, Amount = SignedAmount }); } }
     private void AddSplit() => _splits.Add(new() { Amount = SignedAmount - _splits.Sum(item => item.Amount) });
     private void RemoveSplit(SplitInput split) => _splits.Remove(split);
     private async Task SaveAsync()
     {
-        if (_saving)
+        if (CannotSave)
         {
             return;
         }

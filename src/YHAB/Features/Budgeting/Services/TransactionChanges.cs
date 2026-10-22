@@ -54,6 +54,11 @@ internal static class TransactionChanges
             return "Choose an open account, a valid amount, and a date on or after its opening date. Future entries must repeat.";
         }
 
+        if (entry.Amount == 0)
+        {
+            return "Enter a transaction amount other than zero.";
+        }
+
         var destination = plan.Accounts.SingleOrDefault(item => item.Id == entry.TransferAccountId && !item.Closed);
         if (entry.TransferAccountId.HasValue && (destination is null || destination.Id == account.Id || entry.Date < destination.OpenedOn))
         {
@@ -94,14 +99,28 @@ internal static class TransactionChanges
             return "Each split must have a unique identifier.";
         }
 
-        var direction = BudgetFacts.IsBudget(account.Kind) ? 1 : -1;
+        var budgetSource = BudgetFacts.IsBudget(account.Kind);
+        var budgetDirection = budgetSource ? 1 : -1;
+        var directionAdvice = budgetSource && entry.Splits.Count == 1 && entry.Amount < 0;
         foreach (var split in entry.Splits)
         {
-            if (split.Memo is null || split.Memo.Length > 1000
-                || (split.CategoryId is null && split.Amount * direction < 0)
-                || (split.CategoryId.HasValue && !plan.Categories.Any(item => item.Id == split.CategoryId.Value && item.CreditAccountId is null)))
+            if (split.Memo is null || split.Memo.Length > 1000)
             {
-                return "Choose spending categories for outflows, valid split amounts, and split memos of at most 1,000 characters.";
+                return "Keep split memos to 1,000 characters.";
+            }
+
+            if (split.CategoryId is null)
+            {
+                if (split.Amount * budgetDirection < 0)
+                {
+                    return directionAdvice
+                        ? "An outflow needs a spending category. Choose one, or switch the direction to Inflow."
+                        : "Money leaving your budget needs a spending category.";
+                }
+            }
+            else if (!plan.Categories.Any(item => item.Id == split.CategoryId.Value && item.CreditAccountId is null))
+            {
+                return "Choose a spending category from this plan.";
             }
 
             if (plan.Transactions.Any(item => item.Id != entry.Id && item.Splits.Any(other => other.Id == split.Id)))

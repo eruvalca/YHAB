@@ -62,7 +62,63 @@ public sealed class CommandBranchTests
         var original = JsonSerializer.Serialize(plan);
         var entry = Entry(plan, 0, -10, category: 1);
         TransactionChanges.Save(NewIds(), plan, new(0, entry), plan.Today).AsT1.Message
-            .ShouldBe("Choose spending categories for outflows, valid split amounts, and split memos of at most 1,000 characters.");
+            .ShouldBe("Choose a spending category from this plan.");
+        JsonSerializer.Serialize(plan).ShouldBe(original);
+    }
+
+    [Fact]
+    public void UncategorizedOutflowNeedsASpendingCategory()
+    {
+        var plan = Create();
+        var original = JsonSerializer.Serialize(plan);
+        var entry = Entry(plan, 0, -10) with { Splits = [new(Guid.NewGuid(), null, -10, "")] };
+        TransactionChanges.Save(NewIds(), plan, new(0, entry), plan.Today).AsT1.Message
+            .ShouldBe("An outflow needs a spending category. Choose one, or switch the direction to Inflow.");
+        JsonSerializer.Serialize(plan).ShouldBe(original);
+    }
+
+    [Theory]
+    [InlineData(10, "Money leaving your budget needs a spending category.")]
+    [InlineData(-10, null)]
+    public void TrackingSourceTransferUsesBudgetSideCategoryRequirement(decimal amount, string? message)
+    {
+        var plan = Create();
+        var tracking = plan.Accounts[0] with { Kind = AccountKind.Asset };
+        plan = plan with { Accounts = [tracking, plan.Accounts[1]] };
+        var entry = new TransactionData(Guid.NewGuid(), tracking.Id, plan.Today, "Transfer", "", amount,
+            plan.Accounts[1].Id, "", [new(Guid.NewGuid(), null, amount, "")]);
+        var result = TransactionChanges.Save(NewIds(), plan, new(0, entry), plan.Today);
+        if (message is null)
+        {
+            result.IsT0.ShouldBeTrue();
+            result.AsT0.Transactions.Single().Splits.Single().CategoryId.ShouldBeNull();
+        }
+        else
+        {
+            result.AsT1.Message.ShouldBe(message);
+        }
+    }
+
+    [Fact]
+    public void UncategorizedInflowSplitUsesTheBudgetCategoryMessage()
+    {
+        var plan = Create();
+        var entry = Entry(plan, 0, 10) with
+        {
+            Splits = [new(Guid.NewGuid(), null, -5, ""), new(Guid.NewGuid(), plan.Categories[0].Id, 15, "")],
+        };
+        TransactionChanges.Save(NewIds(), plan, new(0, entry), plan.Today).AsT1.Message
+            .ShouldBe("Money leaving your budget needs a spending category.");
+    }
+
+    [Fact]
+    public void ZeroAmountTransactionIsRejected()
+    {
+        var plan = Create();
+        var original = JsonSerializer.Serialize(plan);
+        var entry = Entry(plan, 0, 0);
+        TransactionChanges.Save(NewIds(), plan, new(0, entry), plan.Today).AsT1.Message
+            .ShouldBe("Enter a transaction amount other than zero.");
         JsonSerializer.Serialize(plan).ShouldBe(original);
     }
 

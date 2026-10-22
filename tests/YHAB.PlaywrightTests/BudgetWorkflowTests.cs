@@ -223,8 +223,26 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await VerifyTextUndoOwnershipAsync(page);
         await Input(page, "Payee").FillAsync("Neighborhood market");
         await Input(page, "Amount").FillAsync("50 + 25");
-        await page.GetByRole(AriaRole.Combobox, new() { Name = "Category", Exact = true }).ClickAsync();
+        var category = page.GetByRole(AriaRole.Combobox, new() { Name = "Category", Exact = true });
+        await category.Filter(new() { HasText = "Choose a category" }).WaitForAsync();
+        (await category.TextContentAsync() ?? "").ShouldContain("Choose a category");
+        (await Button(page, "Save transaction").GetAttributeAsync("disabled")).ShouldNotBeNull();
+        var direction = page.GetByRole(AriaRole.Combobox, new() { Name = "Money direction", Exact = true });
+        await direction.ClickAsync();
+        await page.Locator("fluent-option[text='Inflow']").ClickAsync();
+        await category.Filter(new() { HasText = "Inflow: Ready to assign" }).WaitForAsync();
+        (await category.TextContentAsync() ?? "").ShouldContain("Inflow: Ready to assign");
+        await direction.ClickAsync();
+        await page.Locator("fluent-option[text='Outflow']").ClickAsync();
+        await category.Filter(new() { HasText = "Choose a category" }).WaitForAsync();
+        (await category.TextContentAsync() ?? "").ShouldContain("Choose a category");
+        await page.WaitForFunctionAsync("() => document.activeElement?.id === 'transaction-category-error'");
+        (await page.EvaluateAsync<bool>("() => document.activeElement?.id === 'transaction-category-error'")).ShouldBeTrue();
+        await category.ClickAsync();
+        (await page.Locator("fluent-option[text='Inflow: Ready to assign']").CountAsync()).ShouldBe(0);
         await page.Locator("fluent-option[text='Groceries']").ClickAsync();
+        await page.WaitForFunctionAsync("() => [...document.querySelectorAll('fluent-button')].some(button => button.textContent?.trim() === 'Save transaction' && !button.hasAttribute('disabled'))");
+        (await Button(page, "Save transaction").GetAttributeAsync("disabled")).ShouldBeNull();
         await Button(page, "Save transaction").ClickAsync();
         var transaction = page.Locator(".register-table tbody tr").Filter(new()
         {

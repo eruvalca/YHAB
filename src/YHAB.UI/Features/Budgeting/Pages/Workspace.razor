@@ -27,7 +27,7 @@
                     <FluentButton OnClick="UndoAsync" Disabled="@(IsBusy || !plan.CanUndo)" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle" title="Undo (Ctrl+Z)">Undo</FluentButton>
                     <FluentButton OnClick="RedoAsync" Disabled="@(IsBusy || !plan.CanRedo)" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle" title="Redo (Ctrl+Shift+Z)">Redo</FluentButton>
                     <FluentButton OnClick="RefreshAsync" Disabled="_busy" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle">Refresh</FluentButton>
-                    <span class="workspace-status muted" role="status">@_operation.Message</span>
+                    <span class="workspace-status muted" role="status">@(_error is null ? _operation.Message : "Action needed")</span>
                 </FluentStack>
             </div>
             @if (_accountEditor)

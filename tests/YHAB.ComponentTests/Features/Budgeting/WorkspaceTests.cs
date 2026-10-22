@@ -286,7 +286,7 @@ public sealed class WorkspaceTests
         var component = context.Render<Workspace>(parameters => parameters.Add(item => item.PlanId, plan.Id));
         await Button(component, "Undo").ClickAsync();
         component.Find("[role='alert']").TextContent.ShouldContain("changed in another tab");
-        component.Find(".workspace-status").TextContent.ShouldNotContain("undone");
+        component.Find(".workspace-status").TextContent.ShouldBe("Action needed");
         budgets.ReceivedCalls().Count(call => string.Equals(call.GetMethodInfo().Name, nameof(IBudgetClient.ReadViewAsync), StringComparison.Ordinal)).ShouldBe(1);
     }
 
