@@ -42,7 +42,7 @@ public sealed class AccountTestExtensionsTests
         secondAccount.Emails.ShouldNotBeSameAs(firstAccount.Emails);
 
         firstAccount.Http.Request.Method = HttpMethods.Get;
-        firstAccount.Http.Response.Cookies.Append("test-status", "first only");
+        firstAccount.Http.Response.Cookies.Append("test-status", "first only", new CookieOptions { Secure = true });
         var user = firstAccount.Authenticate();
 
         (await firstAccount.Users.GetUserAsync(firstAccount.Http.User)).ShouldBeSameAs(user);
