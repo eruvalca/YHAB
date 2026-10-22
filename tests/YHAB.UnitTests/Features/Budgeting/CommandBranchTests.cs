@@ -77,6 +77,40 @@ public sealed class CommandBranchTests
         JsonSerializer.Serialize(plan).ShouldBe(original);
     }
 
+    [Theory]
+    [InlineData(10, "Money leaving your budget needs a spending category.")]
+    [InlineData(-10, null)]
+    public void TrackingSourceTransferUsesBudgetSideCategoryRequirement(decimal amount, string? message)
+    {
+        var plan = Create();
+        var tracking = plan.Accounts[0] with { Kind = AccountKind.Asset };
+        plan = plan with { Accounts = [tracking, plan.Accounts[1]] };
+        var entry = new TransactionData(Guid.NewGuid(), tracking.Id, plan.Today, "Transfer", "", amount,
+            plan.Accounts[1].Id, "", [new(Guid.NewGuid(), null, amount, "")]);
+        var result = TransactionChanges.Save(NewIds(), plan, new(0, entry), plan.Today);
+        if (message is null)
+        {
+            result.IsT0.ShouldBeTrue();
+            result.AsT0.Transactions.Single().Splits.Single().CategoryId.ShouldBeNull();
+        }
+        else
+        {
+            result.AsT1.Message.ShouldBe(message);
+        }
+    }
+
+    [Fact]
+    public void UncategorizedInflowSplitUsesTheBudgetCategoryMessage()
+    {
+        var plan = Create();
+        var entry = Entry(plan, 0, 10) with
+        {
+            Splits = [new(Guid.NewGuid(), null, -5, ""), new(Guid.NewGuid(), plan.Categories[0].Id, 15, "")],
+        };
+        TransactionChanges.Save(NewIds(), plan, new(0, entry), plan.Today).AsT1.Message
+            .ShouldBe("Money leaving your budget needs a spending category.");
+    }
+
     [Fact]
     public void ZeroAmountTransactionIsRejected()
     {

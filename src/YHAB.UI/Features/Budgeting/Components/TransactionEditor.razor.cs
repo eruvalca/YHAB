@@ -13,7 +13,7 @@ public sealed partial class TransactionEditor
     [Parameter] public bool Busy { get; set; }
     private const string ChooseCategory = "Choose a category";
     private const string OutflowCategoryError = "An outflow needs a spending category. Choose one, or switch the direction to Inflow.";
-    private const string SplitCategoryError = "An outflow split needs a spending category.";
+    private const string BudgetCategoryError = "Money leaving your budget needs a spending category.";
     private static readonly string[] _directions = ["Outflow", "Inflow"];
     private static readonly string[] _flags = ["None", "Red", "Orange", "Yellow", "Green", "Blue", "Purple"];
     private static readonly RepeatFrequency[] _frequencies = Enum.GetValues<RepeatFrequency>();
@@ -41,7 +41,10 @@ public sealed partial class TransactionEditor
     private ElementReference _categoryError;
     private bool IsOutflow => string.Equals(_direction, "Outflow", StringComparison.Ordinal);
     private decimal SignedAmount => IsOutflow ? -Math.Abs(Amount) : Math.Abs(Amount);
-    private CategoryData[] CategoryOptions => IsOutflow ? _spendingCategories : _categories;
+    private int DirectionSign => IsOutflow ? -1 : 1;
+    private bool BudgetOutflow => DirectionSign * BudgetDirection < 0;
+    private CategoryData[] CategoryOptions => BudgetOutflow ? _spendingCategories : _categories;
+    private string CategoryError => IsOutflow ? OutflowCategoryError : BudgetCategoryError;
     private int BudgetDirection
     {
         get
@@ -50,7 +53,7 @@ public sealed partial class TransactionEditor
             return source is not null && BudgetFacts.IsBudget(source.Kind) ? 1 : -1;
         }
     }
-    private bool CategoryMissing => NeedsCategory && !_split && IsOutflow && _category == Guid.Empty;
+    private bool CategoryMissing => NeedsCategory && !_split && BudgetOutflow && _category == Guid.Empty;
     private bool SplitCategoryMissing(SplitInput split) => SplitNeedsCategory(split) && split.Category == Guid.Empty;
     private bool SplitNeedsCategory(SplitInput split) => split.Amount * BudgetDirection < 0;
     private CategoryData[] SplitCategoryOptions(SplitInput split) => SplitNeedsCategory(split) ? _spendingCategories : _categories;

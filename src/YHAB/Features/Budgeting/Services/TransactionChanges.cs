@@ -99,7 +99,9 @@ internal static class TransactionChanges
             return "Each split must have a unique identifier.";
         }
 
-        var direction = BudgetFacts.IsBudget(account.Kind) ? 1 : -1;
+        var budgetSource = BudgetFacts.IsBudget(account.Kind);
+        var budgetDirection = budgetSource ? 1 : -1;
+        var directionAdvice = budgetSource && entry.Splits.Count == 1 && entry.Amount < 0;
         foreach (var split in entry.Splits)
         {
             if (split.Memo is null || split.Memo.Length > 1000)
@@ -109,9 +111,11 @@ internal static class TransactionChanges
 
             if (split.CategoryId is null)
             {
-                if (split.Amount * direction < 0)
+                if (split.Amount * budgetDirection < 0)
                 {
-                    return "An outflow needs a spending category. Choose one, or switch the direction to Inflow.";
+                    return directionAdvice
+                        ? "An outflow needs a spending category. Choose one, or switch the direction to Inflow."
+                        : "Money leaving your budget needs a spending category.";
                 }
             }
             else if (!plan.Categories.Any(item => item.Id == split.CategoryId.Value && item.CreditAccountId is null))

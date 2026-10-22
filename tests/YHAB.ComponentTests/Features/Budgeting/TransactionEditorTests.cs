@@ -91,13 +91,63 @@ public sealed class TransactionEditorTests
 
         var split = component.FindAll("fluent-dropdown")[3];
         split.QuerySelector("fluent-option[text='Inflow: Ready to assign']").ShouldBeNull();
-        component.FindAll("[role='alert']").Any(item => item.TextContent.Contains("outflow split", StringComparison.Ordinal)).ShouldBeTrue();
+        component.FindAll("[role='alert']").Any(item => item.TextContent.Contains("Money leaving your budget", StringComparison.Ordinal)).ShouldBeTrue();
         SaveButton(component).HasAttribute("disabled").ShouldBeTrue();
 
         var option = split.QuerySelector("fluent-option[text='Groceries']").ShouldNotBeNull();
         await split.TriggerEventAsync("ondropdownchange", new DropdownEventArgs { SelectedOptions = option.Id });
         component.FindAll("[role='alert']").ShouldBeEmpty();
         SaveButton(component).HasAttribute("disabled").ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData("Outflow", false)]
+    [InlineData("Inflow", true)]
+    public async Task TrackingSourceTransferUsesBudgetSideCategoryRequirementAsync(string direction, bool requiresCategory)
+    {
+        await using var context = CreateContext();
+        var plan = CreateTrackingTransferPlan();
+        var commands = new List<PlanCommand>();
+        var component = context.Render<TransactionEditor>(parameters => parameters.Add(item => item.Plan, plan)
+            .Add(item => item.Payees, []).Add(item => item.OnCommand, commands.Add)
+            .Add(item => item.OnClose, () => { }));
+
+        var transfer = component.FindAll("fluent-dropdown")[2];
+        var checking = transfer.QuerySelector("fluent-option[text='Checking']").ShouldNotBeNull();
+        await transfer.TriggerEventAsync("ondropdownchange", new DropdownEventArgs { SelectedOptions = checking.Id });
+        if (!string.Equals(direction, "Outflow", StringComparison.Ordinal))
+        {
+            var directionSelect = component.FindAll("fluent-dropdown")[0];
+            var inflow = directionSelect.QuerySelector("fluent-option[text='Inflow']").ShouldNotBeNull();
+            await directionSelect.TriggerEventAsync("ondropdownchange", new DropdownEventArgs { SelectedOptions = inflow.Id });
+        }
+
+        await component.FindAll("fluent-text-input")[1].ChangeAsync(new() { Value = "10" });
+        var category = component.FindAll("fluent-dropdown")[3];
+        if (requiresCategory)
+        {
+            category.QuerySelector("fluent-option[text='Inflow: Ready to assign']").ShouldBeNull();
+            component.Find("#transaction-category-error").TextContent
+                .ShouldBe("Money leaving your budget needs a spending category.");
+            SaveButton(component).HasAttribute("disabled").ShouldBeTrue();
+            var option = category.QuerySelector("fluent-option[text='Groceries']").ShouldNotBeNull();
+            await category.TriggerEventAsync("ondropdownchange", new DropdownEventArgs { SelectedOptions = option.Id });
+            SaveButton(component).HasAttribute("disabled").ShouldBeFalse();
+            await SaveButton(component).ClickAsync();
+            var saved = commands.Single().ShouldBeOfType<SaveTransaction>().Transaction;
+            saved.Amount.ShouldBe(10m);
+            saved.Splits.Single().CategoryId.ShouldBe(plan.Categories[0].Id);
+        }
+        else
+        {
+            category.QuerySelector("fluent-option[text='Inflow: Ready to assign']").ShouldNotBeNull();
+            component.FindAll("#transaction-category-error").ShouldBeEmpty();
+            SaveButton(component).HasAttribute("disabled").ShouldBeFalse();
+            await SaveButton(component).ClickAsync();
+            var saved = commands.Single().ShouldBeOfType<SaveTransaction>().Transaction;
+            saved.Amount.ShouldBe(-10m);
+            saved.Splits.Single().CategoryId.ShouldBeNull();
+        }
     }
 
     [Fact]
@@ -142,6 +192,17 @@ public sealed class TransactionEditorTests
         var group = new GroupData(Guid.NewGuid(), "Everyday", 0);
         return new PlanSnapshot(Guid.NewGuid(), "Household", "", today, 7,
             [new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 0, today, false, "")], [group],
+            [new CategoryData(Guid.NewGuid(), group.Id, "Groceries", "", 0, false, null, null)], [], [], false, false, [])
+        { Today = today };
+    }
+
+    private static PlanSnapshot CreateTrackingTransferPlan()
+    {
+        var today = new DateOnly(2026, 10, 3);
+        var group = new GroupData(Guid.NewGuid(), "Everyday", 0);
+        return new PlanSnapshot(Guid.NewGuid(), "Household", "", today, 7,
+            [new AccountData(Guid.NewGuid(), "Brokerage", AccountKind.Asset, 0, today, false, ""),
+             new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 0, today, false, "")], [group],
             [new CategoryData(Guid.NewGuid(), group.Id, "Groceries", "", 0, false, null, null)], [], [], false, false, [])
         { Today = today };
     }

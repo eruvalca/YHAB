@@ -666,11 +666,12 @@ and target editors must save a typed amount when Save is clicked before the fiel
 blurs; browser checks save the account and an edited transaction without Tab.
 Component checks also verify that switching to a transfer between budget accounts
 ignores hidden invalid split drafts and saves without categories. Category checks
-verify that outflows exclude Ready to assign, show the **Choose a category**
-placeholder, and block saving until a spending category is chosen; inflows still
-default to Ready to assign, and switching to an invalid outflow moves focus to the
-inline message. Server checks reject uncategorized outflows and zero amounts with
-specific messages.
+verify that money leaving the budget excludes Ready to assign, shows the **Choose
+a category** placeholder, and blocks saving until a spending category is chosen;
+budget inflows still default to Ready to assign, and switching to an invalid
+budget outflow moves focus to the inline message. Tracking-side transfer checks
+cover both directions of the budget category requirement. Server checks reject
+uncategorized budget outflows and zero amounts with specific messages.
 Theme checks navigate between
 SSR pages after selecting light, dark, and System preferences, verify the resolved
 color scheme, and emulate OS changes in System mode. A reload alone does not
