@@ -23,20 +23,11 @@ public sealed partial class AmountInput
     private decimal? _lastValue;
     private bool _evaluating;
     private bool _negateCommit;
-    private bool _signClickConsumed;
-    private bool _wasReadOnly;
+    private bool _pointerGesture;
+    private int _signGesture;
+    private int? _suppressedSignGesture;
 
-    protected override void OnParametersSet()
-    {
-        SynchronizeValue();
-        if (_wasReadOnly && !ReadOnly)
-        {
-            // A suppressed sign click belongs to the save that just finished.
-            _signClickConsumed = false;
-        }
-
-        _wasReadOnly = ReadOnly;
-    }
+    protected override void OnParametersSet() => SynchronizeValue();
 
     private void SynchronizeValue()
     {
@@ -58,8 +49,34 @@ public sealed partial class AmountInput
             return;
         }
 
+        _signGesture++;
+        _pointerGesture = true;
+        _suppressedSignGesture = null;
         _negateCommit = true;
-        _signClickConsumed = false;
+    }
+
+    // A keyboard activation is a new gesture even without pointerdown, so any
+    // suppression left by a click that was dropped while disabled is stale.
+    private void SignFocusIn()
+    {
+        if (_pointerGesture)
+        {
+            return;
+        }
+
+        _signGesture++;
+        _suppressedSignGesture = null;
+        _negateCommit = false;
+    }
+
+    private void EndSignPointer()
+    {
+        _pointerGesture = false;
+        if (Disabled || ReadOnly)
+        {
+            // The release cannot produce a click while the button is disabled.
+            _suppressedSignGesture = null;
+        }
     }
 
     private void FocusIn() => _negateCommit = false;
@@ -72,7 +89,7 @@ public sealed partial class AmountInput
         {
             // Consume before yielding so the button's click cannot toggle twice.
             _negateCommit = false;
-            _signClickConsumed = true;
+            _suppressedSignGesture = _signGesture;
         }
 
         if (CommitOnSave)
@@ -178,9 +195,9 @@ public sealed partial class AmountInput
             return;
         }
 
-        if (_signClickConsumed)
+        if (_suppressedSignGesture == _signGesture)
         {
-            _signClickConsumed = false;
+            _suppressedSignGesture = null;
             return;
         }
 
