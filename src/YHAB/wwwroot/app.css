@@ -281,7 +281,7 @@ body { background: var(--colorNeutralBackground2); color: var(--colorNeutralFore
 [data-money-tone="negative"] { color: var(--colorPaletteRedForeground1); }
 [data-money-tone="attention"] { color: var(--colorPaletteMarigoldForeground2); }
 .nowrap { white-space: nowrap; }
-.available-pill { display: inline-block; padding: var(--spacingVerticalXS) var(--spacingHorizontalM); border-radius: var(--borderRadiusCircular); background: var(--colorNeutralBackground3); font-weight: var(--fontWeightSemibold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.available-pill { display: inline-flex; align-items: center; justify-content: center; padding: var(--spacingVerticalXS) var(--spacingHorizontalM); border-radius: var(--borderRadiusCircular); background: var(--colorNeutralBackground3); font-weight: var(--fontWeightSemibold); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .available-pill[data-tone="positive"] { background: var(--colorPaletteGreenBackground1); color: var(--colorPaletteGreenForeground1); }
 .available-pill[data-tone="attention"] { background: var(--colorPaletteMarigoldBackground1); color: var(--colorPaletteMarigoldForeground2); }
 .available-pill[data-tone="negative"] { background: var(--colorPaletteRedBackground1); color: var(--colorPaletteRedForeground1); }

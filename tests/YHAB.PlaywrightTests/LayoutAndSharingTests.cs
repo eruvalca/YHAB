@@ -115,6 +115,25 @@ public sealed class LayoutAndSharingTests(ITestOutputHelper output)
         var amount = (await page.Locator(".budget-table .category-row fluent-text-input").First.BoundingBoxAsync()).ShouldNotBeNull();
         amount.X.ShouldBeGreaterThanOrEqualTo(bounds.X - 1);
         (amount.X + amount.Width).ShouldBeLessThanOrEqualTo(bounds.X + bounds.Width + 1);
+        amount.Width.ShouldBeLessThanOrEqualTo(161);
+
+        // Span and button pills center their text identically at the touch-target height.
+        foreach (var pill in await page.Locator(".budget-table .category-row .available-pill").AllAsync())
+        {
+            (await pill.EvaluateAsync<bool>("""
+                element => {
+                    const range = document.createRange();
+                    range.selectNodeContents(element);
+                    const text = range.getBoundingClientRect();
+                    const pill = element.getBoundingClientRect();
+                    return Math.abs((text.top + text.height / 2) - (pill.top + pill.height / 2)) <= 1;
+                }
+                """)).ShouldBeTrue();
+        }
+
+        var move = (await page.Locator(".budget-table .category-row .row-move").First.BoundingBoxAsync()).ShouldNotBeNull();
+        var name = (await page.Locator(".budget-table .category-row .rename-name").First.BoundingBoxAsync()).ShouldNotBeNull();
+        (move.Y + move.Height / 2).ShouldBe(name.Y + name.Height / 2, 1);
 
         // Every compact control in the budget workspace reaches the 40px target.
         var targets = new[]
