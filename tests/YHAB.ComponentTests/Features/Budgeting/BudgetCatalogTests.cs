@@ -100,7 +100,6 @@ public sealed class BudgetCatalogTests
         var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, Plan()).Add(item => item.OnCommand, _ => { }));
         var input = component.Find(".category-row .amount-input fluent-text-input");
         input.GetAttribute("inputmode").ShouldBe("decimal");
-        input.GetAttribute("control-size").ShouldBe("large");
         component.Find(".category-row fluent-button.amount-sign").TextContent.Trim().ShouldBe("±");
     }
 

@@ -67,6 +67,7 @@
         line-height: var(--lineHeightBase100);
     }
     /* Touch targets: the budget workspace's compact controls reach 40px. */
+    .budget-table ::deep .amount-input fluent-text-input::part(root) { height: 2.5rem; }
     .budget-table ::deep .row-move,
     .budget-table ::deep .group-toggle,
     .budget-table ::deep .group-add {

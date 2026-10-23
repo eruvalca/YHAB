@@ -40,7 +40,7 @@
             }
             else
             {
-                <BudgetBoard @key="plan.Id" Plan="plan" LoadMonth="LoadMonthAsync" OnCommand="ExecuteAsync" Busy="IsBusy" />
+                <BudgetBoard @key="plan.Id" Plan="plan" LoadMonth="LoadMonthAsync" OnAddAccount="AddAccount" OnCommand="ExecuteAsync" Busy="IsBusy" />
             }
             <details class="history-panel">
                 <summary>Recent changes & keyboard shortcuts</summary>

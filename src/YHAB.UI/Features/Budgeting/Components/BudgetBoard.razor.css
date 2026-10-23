@@ -6,12 +6,18 @@ h1 { margin: 0; font-size: var(--fontSizeBase400); line-height: var(--lineHeight
 .budget-summary ::deep .budget-totals { border-top: 1px solid var(--colorNeutralStroke2); margin-top: var(--spacingVerticalS); padding-top: var(--spacingVerticalXS); font-size: var(--fontSizeBase200); }
 .budget-total > span { color: var(--colorNeutralForeground2); }
 .budget-total strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
-.budget-categories { flex: 1 1 35rem; min-width: 0; }
-.category-details { flex: 0 1 20rem; min-width: 0; width: 100%; position: sticky; top: 8rem; max-height: calc(100dvh - 8rem); overflow-y: auto; }
+.budget-workspace-scope { container: budget-workspace / inline-size; }
+.budget-categories { flex: 1 1 35rem; min-width: 0; order: 1; }
+.category-details { flex: 0 1 20rem; min-width: 0; width: 100%; order: 2; position: sticky; top: 8rem; max-height: calc(100dvh - 8rem); overflow-y: auto; }
 .category-details ::deep .editor-surface { margin-block: var(--spacingVerticalS); padding: var(--spacingVerticalM) var(--spacingHorizontalM); border-radius: var(--borderRadiusMedium); box-shadow: none; }
 .category-details ::deep h2 { font-size: var(--fontSizeBase400); overflow-wrap: anywhere; }
 .month-label { white-space: nowrap; }
 .hero-amount[data-money-tone="positive"] { color: var(--colorPaletteGreenForeground1); }
 .hero-amount[data-money-tone="negative"] { color: var(--colorPaletteRedForeground1); }
-.budget-help { margin-block: var(--spacingVerticalM); font-size: var(--fontSizeBase200); }
+.budget-help { margin-block: var(--spacingVerticalM); padding: var(--spacingVerticalM) var(--spacingHorizontalM); border: 1px solid var(--colorNeutralStroke2); border-radius: var(--borderRadiusMedium); background: var(--colorNeutralBackground1); font-size: var(--fontSizeBase200); }
+.budget-help h2 { margin: 0; font-size: var(--fontSizeBase400); }
+.budget-help p { margin: 0; }
+.summary-actions { display: flex; flex-direction: column; align-items: flex-end; gap: var(--spacingVerticalXXS); }
+.action-hint { margin: 0; font-size: var(--fontSizeBase100); text-align: end; }
 @media (max-width: 1200px) { .category-details { flex-basis: 100%; position: static; max-height: none; overflow-y: visible; } }
+@media (max-width: 600px) { .summary-actions { align-items: flex-start; } .action-hint { text-align: start; } }

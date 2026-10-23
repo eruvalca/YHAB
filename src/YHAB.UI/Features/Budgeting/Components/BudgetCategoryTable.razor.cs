@@ -72,6 +72,12 @@ public sealed partial class BudgetCategoryTable
     private void ToggleGroupMove(Guid id) => _movingGroup = _movingGroup == id ? null : id;
     private void ToggleCategoryMove(Guid id) => _movingCategory = _movingCategory == id ? null : id;
     private void AddGroup() { CancelCreate(); _filter = "All categories"; _newGroup = true; }
+    internal void BeginAddCategory()
+    {
+        var group = Groups.FirstOrDefault(item => !item.Hidden);
+        if (group is null) { AddGroup(); }
+        else { AddToGroup(group.Id); }
+    }
     private void AddCategory() => AddToGroup(Groups.First(item => !item.Hidden).Id);
     private void AddToGroup(Guid id)
     {

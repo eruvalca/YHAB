@@ -73,7 +73,14 @@
     </div>
     @if (Groups.Length == 0)
     {
-        <div class="empty-state"><h2>Make space for your priorities</h2><p>Add a category group, then the things you want your money to do.</p></div>
+        @if (Plan.Accounts.Count == 0)
+        {
+            <div class="empty-state"><h2>Start with an account</h2><p>Add your first account above to give your money a starting point.</p></div>
+        }
+        else
+        {
+            <div class="empty-state"><h2>Make space for your priorities</h2><p>Add a category group, then the things you want your money to do.</p></div>
+        }
     }
     else if (!Groups.Any(group => ShowGroup(group, Rows(group.Id).Length)))
     {

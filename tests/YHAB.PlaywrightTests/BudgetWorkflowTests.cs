@@ -434,7 +434,9 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await page.Locator(".hero-amount").Filter(new() { HasText = "$0.00" }).WaitForAsync();
         var summary = (await page.Locator(".budget-summary").BoundingBoxAsync()).ShouldNotBeNull();
         summary.Y.ShouldBeInRange(0, 16);
-        summary.Height.ShouldBeLessThan(width < 768 ? 250 : 155);
+        // The phone summary now carries three 40px actions; keep enough of the
+        // 640px viewport below it for the table.
+        summary.Height.ShouldBeLessThan(width < 768 ? 300 : 155);
         (await amount.BoundingBoxAsync()).ShouldNotBeNull().Y.ShouldBeGreaterThan(summary.Y + summary.Height);
         await amount.FocusAsync();
         await page.Keyboard.PressAsync("Shift+Tab");
