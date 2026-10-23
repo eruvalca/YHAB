@@ -528,8 +528,9 @@ changes select the Release build, unit/component tests, and PostgreSQL/Aspire
 checks; deployment inputs also select `aspire publish`; documentation-only
 changes skip that work. UI/rendering and Playwright changes select the complete
 Chromium suite, other application changes select `Category=BrowserSmoke`, and
-documentation-only changes select no browser run. Unknown paths conservatively
-select full validation. Applying `run-full-browser` requests an additional full
+documentation-only changes select no browser run. Unknown paths and PR file
+listings that reach GitHub's 3,000-file cap conservatively select full validation.
+Applying `run-full-browser` requests an additional full
 run without rerunning unrelated jobs; while the label remains, new commits also
 request it. This additional run does not replace the required path-selected tier.
 Every `main` push and merge group runs all validation, including the full browser

@@ -62,8 +62,8 @@ and Aspire startup/deployment checks. Browser coverage is tiered:
   jobs; new commits also request it while the label remains. Removing the label
   stops future requested runs.
 - Documentation-only changes require no browser job. Drafts defer browser work
-  until the pull request is ready. Unknown paths conservatively select full
-  validation.
+  until the pull request is ready. Unknown paths and PR file listings that reach
+  GitHub's 3,000-file cap conservatively select full validation.
 - `Category=Performance` runs weekly in the separate workflow.
 
 The `Browser validation gate` check requires the path-selected tier to pass on

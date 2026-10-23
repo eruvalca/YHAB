@@ -52,10 +52,16 @@ jobs:
             $scope = ./scripts/Get-ValidationScope.ps1 -Full
           }
           else {
-            $encodedPaths = @(gh api --paginate "repos/$env:GH_REPO/pulls/$env:PR_NUMBER/files?per_page=100" --jq '.[] | (.filename, (.previous_filename // empty)) | @json')
+            $encodedFiles = @(gh api --paginate "repos/$env:GH_REPO/pulls/$env:PR_NUMBER/files?per_page=100" --jq '.[] | { filename, previous_filename } | @json')
             if ($LASTEXITCODE) { exit $LASTEXITCODE }
-            $paths = @($encodedPaths | ForEach-Object { $_ | ConvertFrom-Json })
-            $scope = ./scripts/Get-ValidationScope.ps1 -Paths $paths
+            if ($encodedFiles.Count -ge 3000) {
+              $scope = ./scripts/Get-ValidationScope.ps1 -Full
+            }
+            else {
+              $files = @($encodedFiles | ForEach-Object { $_ | ConvertFrom-Json })
+              $paths = @($files | ForEach-Object { $_.filename; $_.previous_filename } | Where-Object { $null -ne $_ })
+              $scope = ./scripts/Get-ValidationScope.ps1 -Paths $paths
+            }
             if ($env:IS_DRAFT -eq 'true') {
               $scope.browser = 'none'
             }
