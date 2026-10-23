@@ -176,6 +176,25 @@ public sealed class AmountInputTests
     }
 
     [Fact]
+    public async Task CancelledSignGestureDoesNotNegateTheNextCommitAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var values = new List<decimal>();
+        var component = context.Render<AmountInput>(parameters => parameters.Add(item => item.Label, "Assigned")
+            .Add(item => item.Value, 0m).Add(item => item.AllowNegative, true)
+            .Add(item => item.ValueChanged, values.Add));
+
+        var sign = component.Find("fluent-button.amount-sign");
+        await sign.TriggerEventAsync("onpointerdown", new PointerEventArgs());
+        await sign.TriggerEventAsync("onpointercancel", new PointerEventArgs());
+        await component.Find("fluent-text-input").ChangeAsync(new() { Value = "125" });
+
+        values.ShouldBe([125m]);
+    }
+
+    [Fact]
     public async Task FieldsWithoutNegativeAmountsDoNotOfferASignToggleAsync()
     {
         await using var context = new BunitContext();

@@ -27,7 +27,6 @@ public sealed partial class BudgetBoard
     private CategoryData? _category;
     private CategoryMonth? EditingMonth => _budget.Categories.SingleOrDefault(item => item.Category.Id == _category?.Id);
     private bool HasAccounts => Plan.Accounts.Count > 0;
-    private bool HasTargets => Plan.Categories.Any(item => item.Target is not null);
     private bool HasFundableNeed => _budget.Categories.Any(item =>
         !item.Snoozed && !item.Category.Hidden
         && !Plan.Groups.Any(group => group.Id == item.Category.GroupId && group.Hidden)
@@ -36,12 +35,11 @@ public sealed partial class BudgetBoard
     {
         get
         {
-            if (!HasTargets) { return "Select a category and add a target before funding targets."; }
             if (_budget.ReadyToAssign <= 0) { return "Add money to Ready to assign before funding targets."; }
             return HasFundableNeed ? null : "Every target is funded, hidden, or snoozed. Nothing to fund this month.";
         }
     }
-    private string? MoveMoneyHint => Plan.Categories.Count < 2 ? "Add at least two categories before moving money." : null;
+    private string? MoveMoneyHint => Plan.Categories.Count == 0 ? "Add at least one category before moving money." : null;
 
     protected override async Task OnParametersSetAsync()
     {

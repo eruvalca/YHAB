@@ -79,6 +79,13 @@ public sealed partial class AmountInput
         }
     }
 
+    private void CancelSignPointer()
+    {
+        _pointerGesture = false;
+        _negateCommit = false;
+        _suppressedSignGesture = null;
+    }
+
     private void FocusIn() => _negateCommit = false;
 
     private async Task EvaluateAsync(string? expression)

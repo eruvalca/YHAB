@@ -16,9 +16,9 @@ changing months or reopening the plan does not reset the checklist while the
 account card remains. **How this works** beside the monthly summary opens
 carryover, arithmetic, dragging, and target help inline. **Fund targets** and
 **Move money** appear once the plan has an account; when shown but unavailable
-they state what is missing: Fund targets needs a category target, money in Ready
-to assign, and a visible eligible target, and Move money needs at least two
-categories.
+they state what is missing: Fund targets needs money in Ready to assign and a
+visible target or overspent category, and Move money needs at least one
+category.
 
 1. Create a plan from **Your plans**. Suggested category groups are optional.
 2. Add checking, savings, cash, credit, loan, or tracking accounts. Enter an
@@ -174,9 +174,10 @@ controls remain available in the site footer.
   arrives. Set-aside targets ask for new contributions. Balance targets track
   the amount still available. Dated targets spread remaining contributions across
   the months left; refill targets count spending within their target period.
-- **Fund targets** is available when a category has a target and Ready to assign
-  is positive. It uses only positive Ready to assign and prioritizes overspent
-  categories, then due dates and the displayed group/category order. Hidden and snoozed categories
+- **Fund targets** is available when Ready to assign is positive and a visible
+  category has an unfunded target or an overspent Available balance. It uses
+  only positive Ready to assign and prioritizes overspent categories, then due
+  dates and the displayed group/category order. Hidden and snoozed categories
   are excluded.
 
 Rules were informed by YNAB's

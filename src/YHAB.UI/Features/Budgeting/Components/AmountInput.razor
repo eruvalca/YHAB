@@ -6,7 +6,7 @@
     @if (AllowNegative)
     {
         <FluentButton Class="amount-sign" Appearance="ButtonAppearance.Subtle" Size="ButtonSize.Large" IconOnly="true" OnClick="ToggleSignAsync"
-                      @onpointerdown="PrepareSignToggle" @onpointerup="EndSignPointer" @onpointercancel="EndSignPointer" @onfocusin="SignFocusIn"
+                      @onpointerdown="PrepareSignToggle" @onpointerup="EndSignPointer" @onpointercancel="CancelSignPointer" @onfocusin="SignFocusIn"
                       Disabled="@(Disabled || ReadOnly)" aria-label="@($"Change the sign of {Label}")" title="Change sign">±</FluentButton>
     }
 </div>
