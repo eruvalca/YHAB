@@ -13,7 +13,7 @@
             }
         </div>
     </FluentStack>
-    <div class="numeric" role="cell" @onclick:stopPropagation="true"><AmountInput @key="(Row.Category.Id, Month)" Label="@($"Assign to {Row.Category.Name}")" Value="Row.Assigned" ValueChanged="AssignAsync" InputMode="TextInputMode.Text" Disabled="@(!RendererInfo.IsInteractive)" ReadOnly="Busy" /></div>
+    <div class="numeric" role="cell" @onclick:stopPropagation="true"><span class="visually-hidden">Assigned </span><AmountInput @key="(Row.Category.Id, Month)" Label="@($"Assign to {Row.Category.Name}")" Value="Row.Assigned" ValueChanged="AssignAsync" Size="TextInputSize.Large" InputMode="TextInputMode.Decimal" AllowNegative="true" Disabled="@(!RendererInfo.IsInteractive)" ReadOnly="Busy" /></div>
     <div class="numeric money" role="cell" data-money-tone="@MoneyTone(Row.Activity)"><span class="visually-hidden">Activity </span>@Money(Row.Activity)</div>
     <div class="numeric" role="cell"><span class="visually-hidden">Available </span><span class="available-pill" data-tone="@Tone">@Money(Row.Available)</span>@if (Row.Available < 0) { <small>@(Row.CashOverspending > 0 ? "Cash overspent" : "Credit overspent")</small> }</div>
 </div>

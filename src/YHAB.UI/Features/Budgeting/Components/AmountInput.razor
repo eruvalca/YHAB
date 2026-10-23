@@ -5,7 +5,7 @@
                      Margin="0" Width="100%" Disabled="@Disabled" ReadOnly="@ReadOnly" />
     @if (AllowNegative)
     {
-        <FluentButton Class="amount-sign" Appearance="ButtonAppearance.Subtle" Size="ButtonSize.Large" OnClick="ToggleSignAsync"
+        <FluentButton Class="amount-sign" Appearance="ButtonAppearance.Subtle" Size="ButtonSize.Large" IconOnly="true" OnClick="ToggleSignAsync"
                       Disabled="@(Disabled || ReadOnly)" aria-label="@($"Change the sign of {Label}")" title="Change sign">±</FluentButton>
     }
 </div>

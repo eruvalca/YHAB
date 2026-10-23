@@ -9,3 +9,9 @@
     margin-inline-start: var(--spacingHorizontalS);
     font-size: var(--fontSizeBase200);
 }
+
+@media (max-width: 600px) {
+    /* Fluent small controls are 24px; the budget workspace keeps 40px targets. */
+    .workspace ::deep fluent-button { min-height: 2.5rem; }
+    .workspace ::deep fluent-button[icon-only] { min-width: 2.5rem; }
+}

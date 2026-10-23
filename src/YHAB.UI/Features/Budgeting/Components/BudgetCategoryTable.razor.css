@@ -23,6 +23,9 @@
 .budget-table ::deep .amount-input { margin-block: 0; }
 .budget-table ::deep .amount-input label { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .budget-table ::deep .amount-input fluent-text-input::part(control) { text-align: right; font-variant-numeric: tabular-nums; }
+/* A physical keyboard can type the minus in the dense desktop columns, so the
+   sign toggle only appears where the stacked phone layout has room for it. */
+.budget-table ::deep .amount-sign { display: none; }
 .budget-table ::deep .available-pill { padding: var(--spacingVerticalXXS) var(--spacingHorizontalS); }
 .budget-table ::deep .numeric small { display: block; font-size: var(--fontSizeBase100); }
 .budget-table ::deep .empty-group { padding-inline-start: var(--spacingHorizontalXXL); color: var(--colorNeutralForeground3); }
@@ -38,6 +41,44 @@
 .budget-table ::deep .category-list .sortable-drag { background: var(--colorNeutralBackground1); box-shadow: var(--shadow16); }
 .budget-table ::deep .category-list .row-move.sortable-grab { position: static; display: inline-flex; align-items: center; justify-content: center; width: auto; height: auto; padding: 0; border-radius: 0; background: transparent; touch-action: none; }
 @media (max-width: 600px) {
-    .budget-table ::deep .row-move, .budget-table ::deep .group-toggle, .budget-table ::deep .group-add { min-height: 2rem; }
-    .budget-table ::deep .category-list .row-move.sortable-grab { min-width: 2rem; }
+    /* Stack each row into two lines so the amount field fits without horizontal scrolling. */
+    .budget-table { min-width: 0; }
+    .budget-table ::deep .budget-header { display: none; }
+    .budget-table ::deep .budget-grid {
+        grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+        grid-template-areas:
+            "category available"
+            "assigned activity";
+        row-gap: var(--spacingVerticalXS);
+    }
+    .budget-table ::deep .budget-grid > :nth-child(1) { grid-area: category; }
+    .budget-table ::deep .budget-grid > :nth-child(2) { grid-area: assigned; }
+    .budget-table ::deep .budget-grid > :nth-child(3) { grid-area: activity; }
+    .budget-table ::deep .budget-grid > :nth-child(4) { grid-area: available; }
+    /* Each line carries its own label because the column header is hidden. */
+    .budget-table ::deep .budget-grid .visually-hidden {
+        position: static;
+        display: block;
+        width: auto;
+        height: auto;
+        padding: 0;
+        overflow: visible;
+        clip-path: none;
+        white-space: nowrap;
+        color: var(--colorNeutralForeground3);
+        font-size: var(--fontSizeBase100);
+        line-height: var(--lineHeightBase100);
+    }
+    .budget-table ::deep .amount-sign { display: inline-flex; }
+    /* Touch targets: the budget workspace's compact controls reach 40px. */
+    .budget-table ::deep .row-move,
+    .budget-table ::deep .group-toggle,
+    .budget-table ::deep .group-add {
+        min-width: 2.5rem;
+        min-height: 2.5rem;
+    }
+    .budget-table ::deep .rename-name,
+    .budget-table ::deep .category-link {
+        min-height: 2.5rem;
+    }
 }

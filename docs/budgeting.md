@@ -60,6 +60,13 @@ subtree, whose unkeyed wrappers recreate rows. Empty groups remain visible so
 they can receive categories. Collapse individual groups or all groups to focus
 the plan.
 
+On phones the table stacks instead of scrolling sideways: the category and
+Available share the first line, and Assigned and Activity share the second.
+Each value carries its own label, and the assignment field uses the decimal
+keypad with a **±** toggle beside it. Compact row, group, and shell controls
+keep a 40-pixel touch target; the sign toggle is omitted from the dense desktop
+columns, where a physical keyboard types the minus directly.
+
 Drag a category's move handle, with a mouse or by touch, to reorder it within
 its group or drop it into another expanded group. The row follows the pointer,
 the other rows make room, and the new order appears immediately while it saves;

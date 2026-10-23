@@ -2077,7 +2077,10 @@ atomic and undoable, preserving targets, allocations and transaction history.
 At a 1440 × 960 viewport, the browser check requires at least ten fully visible
 categories with targets, row heights of 36–64 pixels, and the first category
 above 320 pixels. The 390-pixel check covers collapsed plan navigation, absence
-of document overflow, editing and persisted target changes.
+of document overflow, editing and persisted target changes. At 390 and 320
+pixels, the budget table must need no horizontal scrolling, keep the assignment
+field fully inside its bounds, and keep the compact workspace controls at least
+40 pixels tall.
 These measurements use a disposable seeded plan, not the production plan in the
 reference screenshot. Desktop/phone screenshots and target-panel screenshots
 are saved under the Playwright output's `TestResults` directory.
@@ -2085,6 +2088,7 @@ are saved under the Playwright output's `TestResults` directory.
 | Requirement | Evidence |
 | --- | --- |
 | Inline creation, rename, real desktop dragging, phone moves, targets and reload persistence | `PlanCatalogTests.InlineCatalogEditingOrderingAndTargetsPersistAsync` (1440 and 390 pixels). |
+| Phone table geometry, no horizontal overflow, and 40px workspace targets | `LayoutAndSharingTests.InstallFooterPlanCardsAndShareCodeRemainUsableAsync` (390 and 320 pixels). |
 | Assignment refresh preserves an unfinished target | `BudgetCatalogTests.AssignmentRefreshPreservesAnOpenTargetDraftAsync`. |
 | Rename preserves existing category metadata | `BudgetCatalogTests.CreatesGroupAndRenamesCategoryWithoutReplacingTargetAsync`. |
 | Invalid destinations fail; ordering preserves financial data | `CatalogOrderingTests.RejectsMissingForeignAndSelfDestinations` and `CategoryMoveAcrossGroupsPreservesTargetsAndFinancialHistory`. |

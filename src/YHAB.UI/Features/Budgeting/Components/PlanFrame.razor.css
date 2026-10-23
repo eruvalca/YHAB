@@ -10,4 +10,5 @@
 @media (max-width: 999px) {
     .plan-sidebar, .plan-content { flex-basis: 100%; }
     .plan-sidebar { border-bottom: 1px solid var(--colorNeutralStroke2); }
+    .plan-drawer > summary { display: flex; align-items: center; min-height: 2.5rem; }
 }
