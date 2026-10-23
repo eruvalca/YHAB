@@ -454,6 +454,8 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
     private static async Task TouchDragAsync(IPage page, ICDPSession cdp, ILocator handle, ILocator target, Func<Task> whileDragging)
     {
         await handle.ScrollIntoViewIfNeededAsync();
+        // Keep the drag away from the viewport edge so SortableJS auto-scroll does not move the rows mid-gesture.
+        await handle.EvaluateAsync("element => element.scrollIntoView({ block: 'center' })");
         var from = (await handle.BoundingBoxAsync()).ShouldNotBeNull();
         var to = (await target.BoundingBoxAsync()).ShouldNotBeNull();
         var (x, y) = (from.X + from.Width / 2, from.Y + from.Height / 2);
