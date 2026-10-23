@@ -6,6 +6,7 @@ h1 { margin: 0; font-size: var(--fontSizeBase400); line-height: var(--lineHeight
 .budget-summary ::deep .budget-totals { border-top: 1px solid var(--colorNeutralStroke2); margin-top: var(--spacingVerticalS); padding-top: var(--spacingVerticalXS); font-size: var(--fontSizeBase200); }
 .budget-total > span { color: var(--colorNeutralForeground2); }
 .budget-total strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.budget-workspace-scope { container: budget-workspace / inline-size; }
 .budget-categories { flex: 1 1 35rem; min-width: 0; order: 1; }
 .category-details { flex: 0 1 20rem; min-width: 0; width: 100%; order: 2; position: sticky; top: 8rem; max-height: calc(100dvh - 8rem); overflow-y: auto; }
 .category-details ::deep .editor-surface { margin-block: var(--spacingVerticalS); padding: var(--spacingVerticalM) var(--spacingHorizontalM); border-radius: var(--borderRadiusMedium); box-shadow: none; }

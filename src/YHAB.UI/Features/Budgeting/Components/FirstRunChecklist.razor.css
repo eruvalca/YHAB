@@ -52,6 +52,10 @@
     font-variant-numeric: tabular-nums;
 }
 
+@container budget-workspace (max-width: 56rem) {
+    .first-run-panel { flex-basis: 100%; order: 0; }
+}
+
 @media (max-width: 999px) {
     .first-run-panel { flex-basis: 100%; order: 0; }
 }

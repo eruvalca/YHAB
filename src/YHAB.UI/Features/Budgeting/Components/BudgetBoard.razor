@@ -56,21 +56,23 @@
     {
         <MoveMoneyEditor Plan="Plan" Month="_month" OnCommand="OnCommand" OnClose="CloseEditors" Busy="IsBusy" />
     }
-    <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalM)" VerticalGap="var(--spacingVerticalM)" Class="budget-workspace">
-        @if (_category is null)
-        {
-            <FirstRunChecklist Plan="Plan" Budget="_budget" OnAddAccount="AddAccountAsync" OnAddCategory="AddCategoryAsync" OnShowHelp="ShowHelp" Busy="IsBusy" />
-        }
-        <div class="budget-categories">
-            <BudgetCategoryTable @ref="_categoryTable" Plan="Plan" Budget="_budget" OnCommand="OnCommand" OnSelect="EditCategory" Busy="IsBusy" SelectedCategoryId="_category?.Id" />
-        </div>
-        @if (_category is not null)
-        {
-            <aside class="category-details" aria-label="Category details">
-                <CategoryEditor @key="(_category, _month)" Plan="Plan" Category="_category" MonthState="EditingMonth" Month="_month" OnCommand="OnCommand" OnClose="CloseEditors" Busy="IsBusy" />
-            </aside>
-        }
-    </FluentStack>
+    <div class="budget-workspace-scope">
+        <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalM)" VerticalGap="var(--spacingVerticalM)" Class="budget-workspace">
+            @if (_category is null)
+            {
+                <FirstRunChecklist Plan="Plan" Budget="_budget" OnAddAccount="AddAccountAsync" OnAddCategory="AddCategoryAsync" OnShowHelp="ShowHelp" Busy="IsBusy" />
+            }
+            <div class="budget-categories">
+                <BudgetCategoryTable @ref="_categoryTable" Plan="Plan" Budget="_budget" OnCommand="OnCommand" OnSelect="EditCategory" Busy="IsBusy" SelectedCategoryId="_category?.Id" />
+            </div>
+            @if (_category is not null)
+            {
+                <aside class="category-details" aria-label="Category details">
+                    <CategoryEditor @key="(_category, _month)" Plan="Plan" Category="_category" MonthState="EditingMonth" Month="_month" OnCommand="OnCommand" OnClose="CloseEditors" Busy="IsBusy" />
+                </aside>
+            }
+        </FluentStack>
+    </div>
 </div>
 }
 else if (_error is null) { <p role="status">Loading month…</p> }
