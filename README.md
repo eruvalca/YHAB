@@ -305,7 +305,10 @@ onto the shadow control. Set `InputMode` on the Fluent component and let the
 initializer supply the browser behavior. `AmountInput` asks for the decimal keypad
 by default; because that keypad has no minus key, set `AllowNegative` where a field
 accepts a negative amount so it renders a sign control, or keep
-`InputMode="TextInputMode.Text"` where the surrounding layout cannot host one.
+`InputMode="TextInputMode.Text"` where the surrounding layout cannot host one. The
+budget table's monthly assignment field stays positive: moving money out of a
+category is a transfer to Ready to assign or another category, offered by the
+row's Available pill.
 
 Custom CSS is limited to application sizing, accessibility, and static form
 compatibility, using Fluent tokens. Prefer Fluent layout/spacing parameters;

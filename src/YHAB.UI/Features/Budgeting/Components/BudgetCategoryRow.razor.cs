@@ -6,6 +6,7 @@ namespace YHAB.UI.Features.Budgeting.Components;
 public sealed partial class BudgetCategoryRow
 {
     [Parameter, EditorRequired] public PlanSnapshot Plan { get; set; } = default!;
+    [Parameter, EditorRequired] public BudgetMonth Budget { get; set; } = default!;
     [Parameter, EditorRequired] public CategoryMonth Row { get; set; } = default!;
     [Parameter, EditorRequired] public DateOnly Month { get; set; }
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }

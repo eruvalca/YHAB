@@ -90,8 +90,10 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         }
     }
 
-    [Fact]
-    public async Task TappingTheSignWhileEditingSavesTheNegatedDraftAsync()
+    [Theory]
+    [InlineData(390)]
+    [InlineData(320)]
+    public async Task TappingAvailableMovesMoneyOutOfTheCategoryAsync(int width)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         timeout.CancelAfter(TimeSpan.FromMinutes(3));
@@ -105,7 +107,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         {
             BaseURL = app.GetEndpoint("yhab", "https").ToString(),
             IgnoreHTTPSErrors = true,
-            ViewportSize = new() { Width = 390, Height = 960 },
+            ViewportSize = new() { Width = width, Height = 960 },
             HasTouch = true,
         });
         var page = await context.NewPageAsync();
@@ -113,15 +115,47 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         {
             await RegisterAndLoginAsync(page);
             await CreatePlanAsync(page);
+            await AddAccountAsync(page);
             var amount = Input(page, "Assign to Groceries");
             await amount.FillAsync("125");
-            await page.Locator("fluent-button[aria-label='Change the sign of Assign to Groceries']").TapAsync();
-            await page.WaitForFunctionAsync("() => [...document.querySelectorAll('fluent-field')].find(field => field.querySelector('label')?.textContent === 'Assign to Groceries')?.querySelector('fluent-text-input')?.shadowRoot?.querySelector('input')?.value === '-125.00'");
-            (await amount.InputValueAsync()).ShouldBe("-125.00");
+            await amount.PressAsync("Tab");
+            await page.Locator(".hero-amount").Filter(new() { HasText = "$875.00" }).WaitForAsync();
+
+            // A touch tap on the balance opens the move-money flow, so a phone
+            // never needs a minus key to take money back out of a category.
+            await page.Locator("button.available-pill[aria-label='$125.00 available in Groceries. Move money.']").TapAsync();
+            var popover = page.Locator("fluent-popover-b[opened='true']");
+            await using var dialogHandle = await page.WaitForFunctionAsync("""
+                () => {
+                    const hosts = [...document.querySelectorAll('fluent-popover-b')];
+                    const host = hosts.find(item => item.getAttribute('opened') === 'true');
+                    const panel = host?.shadowRoot?.querySelector('[part="dialog"]');
+                    if (!panel) { return null; }
+                    const rect = panel.getBoundingClientRect();
+                    return [rect.x, rect.width];
+                }
+                """);
+            var dialog = (await dialogHandle.JsonValueAsync<double[]>()).ShouldNotBeNull();
+            dialog[0].ShouldBeGreaterThanOrEqualTo(0);
+            (dialog[0] + dialog[1]).ShouldBeLessThanOrEqualTo(width + 1);
+            (await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth")).ShouldBeTrue();
+            var moveAmount = popover.Locator("fluent-field").Filter(new() { Has = page.GetByText("Amount", new() { Exact = true }) }).Locator("input");
+            await moveAmount.ClickAsync();
+            await page.Keyboard.TypeAsync("25");
+            await page.WaitForFunctionAsync("""
+                () => {
+                    const popover = document.querySelector("fluent-popover-b[opened='true']");
+                    const button = popover && [...popover.querySelectorAll('fluent-button')].find(item => item.textContent.trim() === 'Move money');
+                    return !!button && !button.hasAttribute('disabled');
+                }
+                """);
+            await popover.Locator("fluent-button").Filter(new() { HasTextRegex = new Regex("^\\s*Move money\\s*$", RegexOptions.None, TimeSpan.FromSeconds(1)) }).TapAsync();
+            await page.Locator(".hero-amount").Filter(new() { HasText = "$900.00" }).WaitForAsync();
+            (await amount.InputValueAsync()).ShouldBe("100.00");
         }
         finally
         {
-            var artifacts = Path.Combine(AppContext.BaseDirectory, "TestResults", $"budget-touch-sign-{Guid.NewGuid():N}");
+            var artifacts = Path.Combine(AppContext.BaseDirectory, "TestResults", $"budget-touch-move-{width}-{Guid.NewGuid():N}");
             await BrowserArtifacts.CaptureAsync(page, context, artifacts, output.WriteLine);
         }
     }
@@ -231,7 +265,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         after.GetProperty("transactions").GetArrayLength().ShouldBe(before.GetProperty("transactions").GetArrayLength());
     }
 
-    private static async Task AddAccountAndAssignAsync(IPage page)
+    private static async Task AddAccountAsync(IPage page)
     {
         await OpenPlanNavigationAsync(page);
         await Button(page, "Add account").ClickAsync();
@@ -241,6 +275,11 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await Input(page, "Opening balance").FillAsync("800 + 200");
         await Button(page, "Save account").ClickAsync();
         await page.Locator(".hero-amount").Filter(new() { HasText = "$1,000.00" }).WaitForAsync();
+    }
+
+    private static async Task AddAccountAndAssignAsync(IPage page)
+    {
+        await AddAccountAsync(page);
         await Input(page, "Assign to Groceries").FillAsync("250 + 50");
         await Input(page, "Assign to Groceries").PressAsync("Tab");
         await page.Locator(".hero-amount").Filter(new() { HasText = "$700.00" }).WaitForAsync();
@@ -418,10 +457,9 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await amount.PressAsync("Backspace");
         await amount.PressAsync("Tab");
         await page.WaitForFunctionAsync("() => [...document.querySelectorAll('fluent-field')].find(field => field.querySelector('label')?.textContent === 'Assign to Groceries')?.querySelector('fluent-text-input')?.shadowRoot?.querySelector('input')?.value === '0.00'");
-        // The sign toggle stays beside the decimal field at every width.
-        var sign = page.Locator("fluent-button[aria-label='Change the sign of Assign to Groceries']");
-        (await sign.EvaluateAsync<bool>("button => document.activeElement === button")).ShouldBeTrue();
-        await page.Keyboard.PressAsync("Tab");
+        // A zero balance has nothing to move, so the assignment field is the last
+        // focusable control before the next row.
+        (await page.Locator("fluent-button[aria-label='Change the sign of Assign to Groceries']").CountAsync()).ShouldBe(0);
         var move = page.GetByRole(AriaRole.Button, new() { Name = "Move Utilities", Exact = true });
         (await move.EvaluateAsync<bool>("button => document.activeElement === button.closest('.sortable-item')")).ShouldBeTrue();
         await page.Keyboard.PressAsync("Tab");
@@ -438,24 +476,27 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await page.Locator(".hero-amount").Filter(new() { HasText = "$700.00" }).WaitForAsync();
         (await amount.InputValueAsync()).ShouldBe("300.00");
 
-        // Negative assignments remain reachable without a physical minus key at
-        // both phone and desktop widths.
-        await sign.ClickAsync();
-        await page.Locator(".hero-amount").Filter(new() { HasText = "$1,300.00" }).WaitForAsync();
-        (await Input(page, "Assign to Groceries").InputValueAsync()).ShouldBe("-300.00");
-        await sign.ClickAsync();
-        await page.Locator(".hero-amount").Filter(new() { HasText = "$700.00" }).WaitForAsync();
-        (await Input(page, "Assign to Groceries").InputValueAsync()).ShouldBe("300.00");
-
-        // Tapping the sign while the field still has focus must save the negated
-        // draft instead of committing the positive value first.
-        await amount.ClickAsync();
+        // Money leaves a category through its Available pill rather than a
+        // negative assignment, so the Assigned field stays positive-only.
+        await page.Locator("button.available-pill[aria-label='$300.00 available in Groceries. Move money.']").ClickAsync();
+        var popover = page.Locator("fluent-popover-b[opened='true']");
+        (await popover.Locator("h2").InnerTextAsync()).ShouldBe("Move money");
+        var moveAmount = popover.Locator("fluent-field").Filter(new() { Has = page.GetByText("Amount", new() { Exact = true }) }).Locator("input");
+        await moveAmount.ClickAsync();
         await page.Keyboard.TypeAsync("125");
-        await sign.ClickAsync();
-        await page.Locator(".hero-amount").Filter(new() { HasText = "$1,125.00" }).WaitForAsync();
-        (await Input(page, "Assign to Groceries").InputValueAsync()).ShouldBe("-125.00");
-        await amount.ClickAsync();
-        await page.Keyboard.TypeAsync("300");
+        await page.WaitForFunctionAsync("""
+            () => {
+                const popover = document.querySelector("fluent-popover-b[opened='true']");
+                const button = popover && [...popover.querySelectorAll('fluent-button')].find(item => item.textContent.trim() === 'Move money');
+                return !!button && !button.hasAttribute('disabled');
+            }
+            """);
+        await popover.Locator("fluent-button").Filter(new() { HasTextRegex = new Regex("^\\s*Move money\\s*$", RegexOptions.None, TimeSpan.FromSeconds(1)) }).ClickAsync();
+        await page.Locator(".hero-amount").Filter(new() { HasText = "$825.00" }).WaitForAsync();
+        (await Input(page, "Assign to Groceries").InputValueAsync()).ShouldBe("175.00");
+
+        // Restore the assignment the rest of the workflow expects.
+        await amount.FillAsync("300");
         await amount.PressAsync("Tab");
         await page.Locator(".hero-amount").Filter(new() { HasText = "$700.00" }).WaitForAsync();
         await original.DisposeAsync();
