@@ -175,7 +175,10 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             within.ShouldBe(PlanOrder(plan, destination));
             within.ShouldNotBe(before);
 
-            var moving = (await DomOrderAsync(page, source))[0];
+            // The destination is the next group, so its first row is adjacent to
+            // the source group's last row; stacked phone rows make the group's
+            // first row fall outside a viewport-sized synthetic drag.
+            var moving = (await DomOrderAsync(page, source))[^1];
             await SavedAsync(page, () => TouchDragAsync(page, cdp, Row(page, moving).Locator(".row-move"), Row(page, within[0]), () => Task.CompletedTask));
             plan = await ReadAsync(page, path);
             plan.Categories.Single(category => string.Equals(category.Id.ToString(), moving, StringComparison.Ordinal)).GroupId.ShouldBe(destination);
@@ -412,7 +415,10 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
     // Playwright's touchscreen only taps, so the drag is dispatched through the Chromium protocol as real touch input.
     private static async Task TouchDragAsync(IPage page, ICDPSession cdp, ILocator handle, ILocator target, Func<Task> whileDragging)
     {
-        await handle.ScrollIntoViewIfNeededAsync();
+        // Stacked phone rows are taller than one line, so a fixed endpoint can
+        // fall outside the viewport and make the held touch autoscroll. Center
+        // the destination first, then measure both ends afresh.
+        await target.EvaluateAsync("element => { const rect = element.getBoundingClientRect(); window.scrollTo({ top: scrollY + rect.top - (innerHeight - rect.height) / 2, behavior: 'instant' }); }");
         var from = (await handle.BoundingBoxAsync()).ShouldNotBeNull();
         var to = (await target.BoundingBoxAsync()).ShouldNotBeNull();
         var (x, y) = (from.X + from.Width / 2, from.Y + from.Height / 2);
