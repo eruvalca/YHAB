@@ -24,10 +24,21 @@ public sealed partial class AmountInput
     private bool _evaluating;
     private bool _negateCommit;
     private bool _pointerGesture;
+    private bool _pointerReleased;
     private int _signGesture;
     private int? _suppressedSignGesture;
 
-    protected override void OnParametersSet() => SynchronizeValue();
+    protected override void OnParametersSet()
+    {
+        SynchronizeValue();
+        if (_pointerGesture && _pointerReleased && (Disabled || ReadOnly))
+        {
+            // The released gesture cannot deliver its click while disabled.
+            _pointerGesture = false;
+            _pointerReleased = false;
+            _suppressedSignGesture = null;
+        }
+    }
 
     private void SynchronizeValue()
     {
@@ -51,6 +62,7 @@ public sealed partial class AmountInput
 
         _signGesture++;
         _pointerGesture = true;
+        _pointerReleased = false;
         _suppressedSignGesture = null;
         _negateCommit = true;
     }
@@ -71,12 +83,14 @@ public sealed partial class AmountInput
 
     private void EndSignPointer()
     {
+        _pointerReleased = true;
         // Touch-generated focus can arrive after pointerup. Keep the gesture
         // active through that focus and let the click end it.
         if (Disabled || ReadOnly)
         {
             // The release cannot produce a click while the button is disabled.
             _pointerGesture = false;
+            _pointerReleased = false;
             _suppressedSignGesture = null;
         }
     }
@@ -84,6 +98,7 @@ public sealed partial class AmountInput
     private void CancelSignPointer()
     {
         _pointerGesture = false;
+        _pointerReleased = false;
         _negateCommit = false;
         _suppressedSignGesture = null;
     }
@@ -205,6 +220,7 @@ public sealed partial class AmountInput
         }
 
         _pointerGesture = false;
+        _pointerReleased = false;
         if (_suppressedSignGesture == _signGesture)
         {
             _suppressedSignGesture = null;

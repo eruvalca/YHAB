@@ -218,6 +218,37 @@ public sealed class AmountInputTests
     }
 
     [Fact]
+    public async Task DroppedTouchClickDoesNotSuppressTheNextKeyboardSignAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var values = new List<decimal>();
+        var component = context.Render<AmountInput>(parameters => parameters.Add(item => item.Label, "Assigned")
+            .Add(item => item.Value, 0m).Add(item => item.AllowNegative, true)
+            .Add(item => item.ValueChanged, value => { values.Add(value); return completion.Task; }));
+
+        var sign = component.Find("fluent-button.amount-sign");
+        await sign.TriggerEventAsync("onpointerdown", new PointerEventArgs());
+        await sign.TriggerEventAsync("onpointerup", new PointerEventArgs());
+        var change = component.Find("fluent-text-input").ChangeAsync(new() { Value = "125" });
+        await component.WaitForAssertionAsync(() => values.ShouldBe([-125m]));
+
+        // The save disables the button after release, so the gesture's click is dropped.
+        component.Render(parameters => parameters.Add(item => item.ReadOnly, true));
+        completion.SetResult();
+        await change;
+        component.Render(parameters => parameters.Add(item => item.Value, -125m).Add(item => item.ReadOnly, false));
+
+        var button = component.Find("fluent-button.amount-sign");
+        await button.TriggerEventAsync("onfocusin", new FocusEventArgs());
+        await button.ClickAsync();
+
+        values.ShouldBe([-125m, 125m]);
+    }
+
+    [Fact]
     public async Task FieldsWithoutNegativeAmountsDoNotOfferASignToggleAsync()
     {
         await using var context = new BunitContext();
