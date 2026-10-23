@@ -1,0 +1,37 @@
+name: Run full browser validation
+description: Build and run the non-performance Chromium suite with diagnostics.
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/setup-dotnet
+    - name: Create and trust test HTTPS certificate
+      uses: ./.github/actions/trust-test-cert
+    - name: Build test project
+      shell: pwsh
+      run: |
+        dotnet build "tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj" --configuration Release
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }
+    - uses: ./.github/actions/install-playwright-browser
+    - name: Run browser cases
+      shell: pwsh
+      run: |
+        dotnet test --project "tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj" --configuration Release --no-build --max-parallel-test-modules 1 --output Detailed --filter-not-trait Category=Performance --report-trx --results-directory "$env:RUNNER_TEMP/yhab-test-results"
+        if ($LASTEXITCODE) { exit $LASTEXITCODE }
+    - name: Retain test results
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: test-results-browser-full
+        path: ${{ runner.temp }}/yhab-test-results/*.trx
+        retention-days: 7
+        if-no-files-found: warn
+    - name: Retain browser failure diagnostics
+      if: failure()
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: browser-diagnostics-full
+        path: |
+          tests/YHAB.PlaywrightTests/bin/Release/net10.0/TestResults/**/trace.zip
+          tests/YHAB.PlaywrightTests/bin/Release/net10.0/TestResults/**/*.png
+        retention-days: 7
+        if-no-files-found: warn

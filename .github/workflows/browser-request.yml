@@ -1,0 +1,31 @@
+name: Request browser validation
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: yhab-browser-request-${{ github.ref }}-${{ github.event.label.name }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  ASPIRE_VERSION: 13.6.2
+
+jobs:
+  browser-full:
+    name: Browser full suite
+    # This opt-in run is additional evidence; the required validation gate in
+    # the main workflow remains determined by the changed paths.
+    if: |
+      github.event.label.name == 'run-full-browser' &&
+      github.event.pull_request.draft == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: ./.github/actions/run-full-browser

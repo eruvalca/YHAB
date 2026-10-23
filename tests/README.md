@@ -15,18 +15,14 @@ the CLI and editor find `global.json` and `YHAB.slnx`.
 `YHAB.Testing` is a shared support library, not a test project. It configures
 isolated AppHost builders for the Aspire and Playwright projects.
 
-The deployment workflow runs formatting, the Release build, unit/component tests,
-PostgreSQL, and Aspire startup/deployment checks on every pull request and
-`main` push. Browser validation is tiered: ready pull requests run the
-`Category=BrowserSmoke` cases on every push, the `run-full-browser` label runs
-the complete Chromium suite on each commit while it is present, and every `main`
-push runs it again as the post-merge net. The extended browser performance cases run in the
-separate
+The deployment workflow checks formatting and tooling on every pull request and
+`main` push. Pull-request changed paths select application build/tests,
+PostgreSQL/Aspire checks, deployment validation, and browser coverage;
+documentation-only changes skip that expensive work. Every `main` push runs all
+validation and deploys to production; pull requests do not deploy. The extended
+browser performance cases run in the separate
 [Performance validation](../.github/workflows/performance.yml) workflow weekly
-and on demand. Every successful run on
-`main` deploys to production; pull requests do not deploy. CI no longer
-selects a change scope, so documentation-only merges deploy too, and
-`scripts/Get-ValidationScope.ps1` remains for local hooks.
+and on demand. `scripts/Get-ValidationScope.ps1` is shared by CI and local hooks.
 On its Ubuntu runner, it exports the test user's public HTTPS development
 certificate, adds it to the system CA store and Chromium's NSS database, and
 verifies both before testing. Only the public certificate is imported, using
@@ -56,23 +52,27 @@ Every application PR/main run retains all unit/component tests, the entire
 PostgreSQL suite (including sustained competing-write/recurring-worker checks),
 and Aspire startup/deployment checks. Browser coverage is tiered:
 
-- `BrowserSmoke` runs on every non-draft pull-request update: the household
+- `BrowserSmoke` is required for non-browser application changes: the household
   money walkthrough, manual plan/purchase/undo/reports, inline catalog editing,
   navigation and theme handoff, PWA install/offline behavior, and browser
   artifact capture.
-- The full Chromium suite runs on a pull request while the `run-full-browser`
-  label is present, and on every `main` push as the post-merge net. Each new
-  commit on a labeled pull request runs the suite again. Removing the label stops
-  new full-suite runs, but the gate still requires a passing run on the current
-  commit.
+- The full Chromium suite is required for UI/rendering and Playwright changes and
+  runs on every `main` push and merge group. Applying `run-full-browser` requests
+  an additional full run for any ready pull request without rerunning unrelated
+  jobs; new commits also request it while the label remains. Removing the label
+  stops future requested runs.
+- Documentation-only changes require no browser job. Drafts defer browser work
+  until the pull request is ready. Unknown paths and PR file listings that reach
+  GitHub's 3,000-file cap conservatively select full validation.
 - `Category=Performance` runs weekly in the separate workflow.
 
-The `Browser validation gate` check requires the full suite to have passed on the
-pull request's exact commit before merging. Native GitHub merge queue is
-unavailable for a public repository owned by a personal account; the workflow
-already runs the gate on `merge_group`, so moving the repository to an
-organization lets native merge queue use the same required check without
-workflow changes.
+The `Browser validation gate` check requires the path-selected tier to pass on
+the pull request's exact commit. A label-requested full run is additional
+coverage; it neither replaces required smoke coverage nor delays its gate.
+Native GitHub merge queue is unavailable for a public repository owned by a
+personal account; the workflow already runs the gate on `merge_group`, so moving
+the repository to an organization lets native merge queue use the same required
+check without workflow changes.
 
 Money conservation, receipts, concurrency, history rollback, migrations, owner
 isolation, API guards, SSR-to-server-to-WASM handoff, PWA behavior,
