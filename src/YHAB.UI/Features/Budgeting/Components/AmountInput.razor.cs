@@ -71,10 +71,12 @@ public sealed partial class AmountInput
 
     private void EndSignPointer()
     {
-        _pointerGesture = false;
+        // Touch-generated focus can arrive after pointerup. Keep the gesture
+        // active through that focus and let the click end it.
         if (Disabled || ReadOnly)
         {
             // The release cannot produce a click while the button is disabled.
+            _pointerGesture = false;
             _suppressedSignGesture = null;
         }
     }
@@ -202,6 +204,7 @@ public sealed partial class AmountInput
             return;
         }
 
+        _pointerGesture = false;
         if (_suppressedSignGesture == _signGesture)
         {
             _suppressedSignGesture = null;

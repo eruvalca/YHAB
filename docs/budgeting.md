@@ -31,10 +31,10 @@ category.
    keypad's `12,50` is 12.50 while `1,234.56` keeps its grouping.
    On a phone, editor amount fields ask for the numeric keypad. A numeric keypad
    has no minus key, so fields that accept a negative amount (an opening balance
-   and split amounts) also show a sign control. The
-   monthly assignment field keeps the full keyboard for signed entry in the dense
-   table. Account, transaction, move-money, and target editor amounts are
-   committed by their Save action, even when the field has not blurred.
+   and split amounts) also show a sign control. The monthly assignment field uses
+   a decimal keypad with a **±** toggle at every width. Account, transaction,
+   move-money, and target editor amounts are committed by their Save action, even
+   when the field has not blurred.
 4. Add transactions in an account or **All transactions**. The editor starts on
    Outflow and asks for a spending category whenever money leaves the budget;
    Ready to assign remains available for inflows, including transfers that put
