@@ -229,7 +229,7 @@ jobs:
               fail "The full browser suite failed in this run. See $RUN_URL."
               ;;
             cancelled)
-              fail "The full browser suite was cancelled in this run. Re-run it with the 'run-full-browser' label."
+              fail "The full browser suite was cancelled in this run. See $RUN_URL. Re-run it with the 'run-full-browser' label."
               ;;
           esac
           record=""
