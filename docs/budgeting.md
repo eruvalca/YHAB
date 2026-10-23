@@ -9,11 +9,14 @@ connections, imports, or photo storage.
 
 A new plan starts with a first-run path in the board itself: a primary
 **Add your first account** card and a three-step checklist (account, categories,
-assign money). The checklist follows the plan's actual progress, and **Dismiss**
-is remembered per plan in the browser. **How this works** beside the monthly
-summary opens carryover, arithmetic, dragging, and target help inline. Disabled
-actions state what is missing: **Fund targets** needs a category target and money
-in Ready to assign, and **Move money** needs at least two categories.
+assign money). The panel sits beside the category table on wide screens and above
+it on narrow screens. The checklist follows the plan's actual progress, and
+**Dismiss** is remembered per plan in the browser while the account card remains.
+**How this works** beside the monthly summary opens carryover, arithmetic,
+dragging, and target help inline. **Fund targets** and **Move money** appear once
+the plan has an account; when shown but unavailable they state what is missing:
+Fund targets needs a category target and money in Ready to assign, and Move money
+needs at least two categories.
 
 1. Create a plan from **Your plans**. Suggested category groups are optional.
 2. Add checking, savings, cash, credit, loan, or tracking accounts. Enter an

@@ -11,6 +11,7 @@ public sealed partial class FirstRunChecklist(IJSRuntime javascript)
 
     [Parameter, EditorRequired] public PlanSnapshot Plan { get; set; } = default!;
     [Parameter, EditorRequired] public BudgetMonth Budget { get; set; } = default!;
+    [Parameter] public EventCallback OnAddAccount { get; set; }
     [Parameter] public EventCallback OnAddCategory { get; set; }
     [Parameter] public EventCallback OnShowHelp { get; set; }
     [Parameter] public bool Busy { get; set; }
@@ -22,7 +23,8 @@ public sealed partial class FirstRunChecklist(IJSRuntime javascript)
     private bool HasAccounts => Plan.Accounts.Count > 0;
     private bool HasCategories => Plan.Categories.Count > 0;
     private bool HasAssigned => Budget.Assigned > 0;
-    private bool Visible => _ready && !_dismissed && CurrentStep != 0;
+    private bool ChecklistVisible => _ready && !_dismissed && CurrentStep != 0;
+    private bool PanelVisible => !HasAccounts || ChecklistVisible;
     private int CurrentStep
     {
         get
@@ -87,6 +89,7 @@ public sealed partial class FirstRunChecklist(IJSRuntime javascript)
         catch (JSDisconnectedException) { /* The checklist stays hidden for this render. */ }
     }
 
+    private Task AddAccountAsync() => OnAddAccount.InvokeAsync();
     private Task AddCategoryAsync() => OnAddCategory.InvokeAsync();
     private Task ShowHelpAsync() => OnShowHelp.InvokeAsync();
 }
