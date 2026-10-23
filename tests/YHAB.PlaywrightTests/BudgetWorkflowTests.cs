@@ -267,7 +267,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         after.GetProperty("transactions").GetArrayLength().ShouldBe(before.GetProperty("transactions").GetArrayLength());
     }
 
-    private static async Task AddAccountAsync(IPage page)
+    internal static async Task AddAccountAsync(IPage page)
     {
         await OpenPlanNavigationAsync(page);
         await Button(page, "Add account").ClickAsync();
@@ -401,7 +401,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await page.EvaluateAsync("() => window.scrollBy({ top: Math.round(-innerHeight / 2), behavior: 'instant' })");
     }
 
-    private static ILocator Input(IPage page, string label) => page.Locator("fluent-field")
+    internal static ILocator Input(IPage page, string label) => page.Locator("fluent-field")
         .Filter(new() { Has = page.GetByText(label, new() { Exact = true }) }).Locator("input");
 
     private static async Task OpenPlanNavigationAsync(IPage page)
@@ -583,6 +583,6 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
     }
 
     // Fluent v5 declares its button role through ElementInternals, which role locators cannot inspect.
-    private static ILocator Button(IPage page, string label) => page.Locator("fluent-button")
+    internal static ILocator Button(IPage page, string label) => page.Locator("fluent-button")
         .Filter(new() { HasTextRegex = new Regex($"^\\s*{Regex.Escape(label)}\\s*$", RegexOptions.None, TimeSpan.FromSeconds(1)) });
 }
