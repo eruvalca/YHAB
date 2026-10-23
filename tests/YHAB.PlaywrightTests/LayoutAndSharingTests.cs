@@ -106,15 +106,50 @@ public sealed class LayoutAndSharingTests(ITestOutputHelper output)
             return;
         }
 
+        await BudgetWorkflowTests.AddAccountAsync(page);
+        var groceries = page.Locator(".budget-table .category-row").Filter(new() { Has = page.GetByRole(AriaRole.Button, new() { Name = "Groceries", Exact = true }) });
+        await BudgetWorkflowTests.Input(page, "Assign to Groceries").FillAsync("125");
+        await BudgetWorkflowTests.Input(page, "Assign to Groceries").PressAsync("Tab");
+        await groceries.Locator("button.available-pill").Filter(new() { HasText = "$125.00" }).WaitForAsync();
+        await groceries.Locator(".category-link").ClickAsync();
+        await page.Locator(".category-details h3").Filter(new() { HasText = "Target" }).WaitForAsync();
+        await page.Locator(".category-details fluent-checkbox").First.ClickAsync();
+        await BudgetWorkflowTests.Input(page, "Target amount").FillAsync("250");
+        await BudgetWorkflowTests.Input(page, "Target amount").PressAsync("Tab");
+        await BudgetWorkflowTests.Button(page, "Save category").ClickAsync();
+        await groceries.Locator(".target-caption").Filter(new() { HasText = "$125.00 more needed" }).WaitForAsync();
+        await groceries.Locator(".target-progress").WaitForAsync();
+        (await page.Locator(".category-row span.available-pill").CountAsync()).ShouldBeGreaterThan(0);
+        (await page.Locator(".category-row button.available-pill").CountAsync()).ShouldBe(1);
+
         // The stacked phone layout must not need horizontal scrolling, and the
         // assignment field must sit fully inside the table's visible bounds.
         (await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth")).ShouldBeTrue();
         var container = page.Locator(".budget-table-container");
         (await container.EvaluateAsync<bool>("element => element.scrollWidth <= element.clientWidth + 1")).ShouldBeTrue();
         var bounds = (await container.BoundingBoxAsync()).ShouldNotBeNull();
-        var amount = (await page.Locator(".budget-table .category-row fluent-text-input").First.BoundingBoxAsync()).ShouldNotBeNull();
+        var amount = (await groceries.Locator("fluent-text-input").BoundingBoxAsync()).ShouldNotBeNull();
         amount.X.ShouldBeGreaterThanOrEqualTo(bounds.X - 1);
         (amount.X + amount.Width).ShouldBeLessThanOrEqualTo(bounds.X + bounds.Width + 1);
+        amount.Width.ShouldBeLessThanOrEqualTo(161);
+
+        // Span and button pills center their text identically at the touch-target height.
+        foreach (var pill in await page.Locator(".budget-table .category-row .available-pill").AllAsync())
+        {
+            (await pill.EvaluateAsync<bool>("""
+                element => {
+                    const range = document.createRange();
+                    range.selectNodeContents(element);
+                    const text = range.getBoundingClientRect();
+                    const pill = element.getBoundingClientRect();
+                    return Math.abs((text.top + text.height / 2) - (pill.top + pill.height / 2)) <= 1;
+                }
+                """)).ShouldBeTrue();
+        }
+
+        var move = (await groceries.Locator(".row-move").BoundingBoxAsync()).ShouldNotBeNull();
+        var name = (await groceries.Locator(".rename-name").BoundingBoxAsync()).ShouldNotBeNull();
+        (move.Y + move.Height / 2).ShouldBe(name.Y + name.Height / 2, 1);
 
         // Every compact control in the budget workspace reaches the 40px target.
         var targets = new[]

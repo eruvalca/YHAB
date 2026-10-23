@@ -68,7 +68,9 @@
     }
     /* Touch targets: the budget workspace's compact controls reach 40px. */
     .budget-table ::deep .amount-input fluent-text-input::part(root) { height: 2.5rem; }
+    .budget-table ::deep .assigned-cell { justify-self: end; width: min(100%, 10rem); }
     .budget-table ::deep .available-pill { min-height: 2.5rem; }
+    .budget-table ::deep .category-row .row-move { align-self: flex-start; }
     .budget-table ::deep .row-move,
     .budget-table ::deep .group-toggle,
     .budget-table ::deep .group-add {
