@@ -2,7 +2,7 @@ name: Validate and deploy
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
   push:
     branches: [main]
   # The merge queue runs the full browser suite on the combined merge group.
@@ -203,14 +203,27 @@ jobs:
   browser-full:
     name: Browser full suite
     needs: changes
-    # Browser-affecting paths require this suite. The label can additionally
-    # request it for any PR and remains effective on subsequent commits.
     if: |
       github.event_name == 'push' ||
       github.event_name == 'merge_group' ||
       (github.event_name == 'pull_request' &&
        github.event.pull_request.draft == false &&
-       needs.changes.outputs.browser-requested == 'full')
+       needs.changes.outputs.browser == 'full')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: ./.github/actions/run-full-browser
+
+  browser-requested:
+    name: Requested browser full suite
+    needs: changes
+    # Keep label-requested evidence off the required gate's dependency path.
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.draft == false &&
+      needs.changes.outputs.browser-requested == 'full' &&
+      needs.changes.outputs.browser != 'full'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:

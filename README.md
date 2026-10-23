@@ -530,12 +530,12 @@ changes skip that work. UI/rendering and Playwright changes select the complete
 Chromium suite, other application changes select `Category=BrowserSmoke`, and
 documentation-only changes select no browser run. Unknown paths and PR file
 listings that reach GitHub's 3,000-file cap conservatively select full validation.
-Applying `run-full-browser` requests an additional full
-run without rerunning unrelated jobs; while the label remains, new commits also
-request it. This additional run does not replace the required path-selected tier.
-Every `main` push and merge group runs all validation, including the full browser
-suite. The extended browser performance cases are excluded there and run in the
-separate [Performance validation](.github/workflows/performance.yml) workflow
+Applying `run-full-browser` requests an additional full run without rerunning
+unrelated jobs; while the label remains, new commits also request it. This
+additional run neither replaces nor delays the required path-selected tier's
+gate. Every `main` push and merge group runs all validation, including the full
+browser suite. The extended browser performance cases are excluded there and run
+in the separate [Performance validation](.github/workflows/performance.yml) workflow
 weekly and on manual dispatch. Heavy test projects run on separate runners, not
 concurrently on one constrained runner. Every successful run on `main` deploys to
 production, including documentation-only and test-only merges. Pull requests

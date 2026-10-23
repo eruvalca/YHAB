@@ -68,11 +68,11 @@ and Aspire startup/deployment checks. Browser coverage is tiered:
 
 The `Browser validation gate` check requires the path-selected tier to pass on
 the pull request's exact commit. A label-requested full run is additional
-coverage and does not replace required smoke coverage. Native GitHub merge queue
-is unavailable for a public repository owned by a personal account; the workflow
-already runs the gate on `merge_group`, so moving the repository to an
-organization lets native merge queue use the same required check without
-workflow changes.
+coverage; it neither replaces required smoke coverage nor delays its gate.
+Native GitHub merge queue is unavailable for a public repository owned by a
+personal account; the workflow already runs the gate on `merge_group`, so moving
+the repository to an organization lets native merge queue use the same required
+check without workflow changes.
 
 Money conservation, receipts, concurrency, history rollback, migrations, owner
 isolation, API guards, SSR-to-server-to-WASM handoff, PWA behavior,

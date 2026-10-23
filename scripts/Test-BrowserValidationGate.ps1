@@ -2,7 +2,9 @@ $ErrorActionPreference = 'Stop'
 $gate = "$PSScriptRoot/Confirm-BrowserValidation.ps1"
 
 & $gate -Scope none -SmokeResult skipped -FullResult skipped
+& $gate -Scope none -SmokeResult skipped -FullResult failure
 & $gate -Scope smoke -SmokeResult success -FullResult skipped
+& $gate -Scope smoke -SmokeResult success -FullResult failure
 & $gate -Scope full -SmokeResult skipped -FullResult success
 
 $failures = @(
@@ -20,4 +22,4 @@ foreach ($failure in $failures) {
     }
     if (!$failed) { throw "The $($failure.Scope) gate accepted an unsuccessful selected run." }
 }
-Write-Host 'PASS: 6 browser-gate cases.'
+Write-Host 'PASS: 8 browser-gate cases.'
