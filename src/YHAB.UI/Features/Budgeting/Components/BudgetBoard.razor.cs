@@ -28,12 +28,17 @@ public sealed partial class BudgetBoard
     private CategoryMonth? EditingMonth => _budget.Categories.SingleOrDefault(item => item.Category.Id == _category?.Id);
     private bool HasAccounts => Plan.Accounts.Count > 0;
     private bool HasTargets => Plan.Categories.Any(item => item.Target is not null);
+    private bool HasFundableNeed => _budget.Categories.Any(item =>
+        !item.Snoozed && !item.Category.Hidden
+        && !Plan.Groups.Any(group => group.Id == item.Category.GroupId && group.Hidden)
+        && (item.TargetNeeded > 0 || item.Available < 0));
     private string? FundTargetsHint
     {
         get
         {
             if (!HasTargets) { return "Select a category and add a target before funding targets."; }
-            return _budget.ReadyToAssign <= 0 ? "Add money to Ready to assign before funding targets." : null;
+            if (_budget.ReadyToAssign <= 0) { return "Add money to Ready to assign before funding targets."; }
+            return HasFundableNeed ? null : "Every target is funded, hidden, or snoozed. Nothing to fund this month.";
         }
     }
     private string? MoveMoneyHint => Plan.Categories.Count < 2 ? "Add at least two categories before moving money." : null;

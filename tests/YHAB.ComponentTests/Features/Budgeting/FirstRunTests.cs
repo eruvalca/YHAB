@@ -168,6 +168,109 @@ public sealed class FirstRunTests
         });
     }
 
+    [Fact]
+    public async Task FundTargetsIsEnabledWhenATargetNeedsMoneyAsync()
+    {
+        await using var context = CreateContext();
+        var plan = CreatePlan(withAccount: true, withCategory: true);
+        var month = BudgetFacts.Month(plan.Today);
+        var category = plan.Categories[0] with { Target = new(TargetKind.SetAside, TargetCadence.Monthly, 100, month, null) };
+        plan = plan with { Categories = [category] };
+        var row = new CategoryMonth(category, 0, 0, 0, 0, 0, 100, 100, false);
+        var budget = new BudgetMonth(month, 500, 0, 0, 0, 0, 0, 0, [row]);
+
+        var board = RenderBoard(context, plan, budget);
+
+        board.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Fund targets", StringComparison.Ordinal))
+            .HasAttribute("disabled").ShouldBeFalse();
+        board.FindAll("#fund-targets-hint").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task FundTargetsExplainsWhenEveryTargetIsAlreadyFundedAsync()
+    {
+        await using var context = CreateContext();
+        var plan = CreatePlan(withAccount: true, withCategory: true);
+        var month = BudgetFacts.Month(plan.Today);
+        var category = plan.Categories[0] with { Target = new(TargetKind.SetAside, TargetCadence.Monthly, 100, month, null) };
+        plan = plan with { Categories = [category] };
+        var row = new CategoryMonth(category, 100, 0, 100, 0, 0, 0, 100, false);
+        var budget = new BudgetMonth(month, 500, 100, 0, 100, 0, 0, 0, [row]);
+
+        var board = RenderBoard(context, plan, budget);
+
+        board.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Fund targets", StringComparison.Ordinal))
+            .HasAttribute("disabled").ShouldBeTrue();
+        board.Find("#fund-targets-hint").TextContent.ShouldBe("Every target is funded, hidden, or snoozed. Nothing to fund this month.");
+    }
+
+    [Theory]
+    [InlineData("category-hidden")]
+    [InlineData("group-hidden")]
+    [InlineData("snoozed")]
+    public async Task FundTargetsExplainsWhenNoEligibleTargetRemainsAsync(string state)
+    {
+        await using var context = CreateContext();
+        var plan = CreatePlan(withAccount: true, withCategory: true);
+        var month = BudgetFacts.Month(plan.Today);
+        var category = plan.Categories[0] with { Target = new(TargetKind.SetAside, TargetCadence.Monthly, 100, month, null) };
+        var snoozed = string.Equals(state, "snoozed", StringComparison.Ordinal);
+        if (string.Equals(state, "category-hidden", StringComparison.Ordinal)) { category = category with { Hidden = true }; }
+        if (string.Equals(state, "group-hidden", StringComparison.Ordinal)) { plan = plan with { Groups = [plan.Groups[0] with { Hidden = true }] }; }
+        plan = plan with { Categories = [category] };
+        var row = new CategoryMonth(category, 0, 0, 0, 0, 0, 100, 100, snoozed);
+        var budget = new BudgetMonth(month, 500, 0, 0, 0, 0, 0, 0, [row]);
+
+        var board = RenderBoard(context, plan, budget);
+
+        board.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Fund targets", StringComparison.Ordinal))
+            .HasAttribute("disabled").ShouldBeTrue();
+        board.Find("#fund-targets-hint").TextContent.ShouldBe("Every target is funded, hidden, or snoozed. Nothing to fund this month.");
+    }
+
+    [Fact]
+    public async Task AssignmentCompletionSurvivesMonthNavigationAsync()
+    {
+        await using var context = CreateContext();
+        var module = context.JSInterop.SetupModule(ModulePath);
+        module.Setup<bool>("isDismissed", _ => false).SetResult(false);
+        module.Setup<bool>("hasAssigned", _ => false).SetResult(false);
+        var plan = CreatePlan(withAccount: true, withCategory: true);
+        var month = BudgetFacts.Month(plan.Today);
+        plan = plan with { Allocations = [new(plan.Categories[0].Id, month, 300)] };
+
+        var board = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, plan).Add(item => item.OnCommand, _ => { }));
+
+        await board.WaitForAssertionAsync(() => module.Invocations.ShouldContain(item => string.Equals(item.Identifier, "completeAssignment", StringComparison.Ordinal)));
+        board.FindAll(".first-run-panel").ShouldBeEmpty();
+
+        await board.Find("fluent-button[aria-label='Next month']").ClickAsync();
+
+        board.FindAll(".first-run-panel").ShouldBeEmpty();
+        board.FindAll(".first-run-checklist").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task AssignmentCompletionSurvivesReopeningInAnUnassignedMonthAsync()
+    {
+        await using var context = CreateContext();
+        var module = context.JSInterop.SetupModule(ModulePath);
+        module.Setup<bool>("isDismissed", _ => false).SetResult(false);
+        module.Setup<bool>("hasAssigned", _ => true).SetResult(true);
+        var plan = CreatePlan(withAccount: true, withCategory: true);
+
+        var board = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, plan).Add(item => item.OnCommand, _ => { }));
+
+        await board.WaitForAssertionAsync(() => module.Invocations.ShouldContain(item => string.Equals(item.Identifier, "hasAssigned", StringComparison.Ordinal)));
+        board.FindAll(".first-run-panel").ShouldBeEmpty();
+        board.FindAll(".first-run-checklist").ShouldBeEmpty();
+    }
+
+    private static IRenderedComponent<BudgetBoard> RenderBoard(BunitContext context, PlanSnapshot plan, BudgetMonth budget)
+        => context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, plan)
+            .Add(item => item.OnCommand, _ => { })
+            .Add(item => item.LoadMonth, (_, _) => Task.FromResult(budget)));
+
     private static BunitContext CreateContext()
     {
         var context = new BunitContext();

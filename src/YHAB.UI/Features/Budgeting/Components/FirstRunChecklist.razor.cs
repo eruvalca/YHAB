@@ -19,10 +19,11 @@ public sealed partial class FirstRunChecklist(IJSRuntime javascript)
     private IJSObjectReference? _module;
     private bool _ready;
     private bool _dismissed;
+    private bool _assignmentPersisted;
 
     private bool HasAccounts => Plan.Accounts.Count > 0;
     private bool HasCategories => Plan.Categories.Count > 0;
-    private bool HasAssigned => Budget.Assigned > 0;
+    private bool HasAssigned => _assignmentPersisted || Budget.Assigned > 0;
     private bool ChecklistVisible => _ready && !_dismissed && CurrentStep != 0;
     private bool PanelVisible => !HasAccounts || ChecklistVisible;
     private int CurrentStep
@@ -37,24 +38,39 @@ public sealed partial class FirstRunChecklist(IJSRuntime javascript)
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender) { return; }
-        var token = LifetimeToken;
-        try
+        if (firstRender)
         {
-            var module = await javascript.InvokeAsync<IJSObjectReference>("import", token, ModulePath);
-            if (IsDisposed)
+            var token = LifetimeToken;
+            try
             {
-                await module.DisposeAsync();
-                return;
-            }
+                var module = await javascript.InvokeAsync<IJSObjectReference>("import", token, ModulePath);
+                if (IsDisposed)
+                {
+                    await module.DisposeAsync();
+                    return;
+                }
 
-            _module = module;
-            _dismissed = await module.InvokeAsync<bool>("isDismissed", token, Plan.Id);
-            _ready = true;
-            StateHasChanged();
+                _module = module;
+                _dismissed = await module.InvokeAsync<bool>("isDismissed", token, Plan.Id);
+                _assignmentPersisted = await module.InvokeAsync<bool>("hasAssigned", token, Plan.Id);
+                _ready = true;
+                StateHasChanged();
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested) { /* The component was disposed while reading the saved state. */ }
+            catch (JSDisconnectedException) { /* The circuit closed before the saved state could be read. */ }
         }
-        catch (OperationCanceledException) when (token.IsCancellationRequested) { /* The component was disposed while reading the saved state. */ }
-        catch (JSDisconnectedException) { /* The circuit closed before the saved state could be read. */ }
+
+        await PersistAssignmentAsync();
+    }
+
+    private async Task PersistAssignmentAsync()
+    {
+        if (_module is null || _assignmentPersisted || Budget.Assigned <= 0) { return; }
+        _assignmentPersisted = true;
+        var token = LifetimeToken;
+        try { await _module.InvokeVoidAsync("completeAssignment", token, Plan.Id); }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { /* Disposed after completion was observed. */ }
+        catch (JSDisconnectedException) { /* The circuit closed before completion was saved. */ }
     }
 
     protected override async ValueTask DisposeCoreAsync()

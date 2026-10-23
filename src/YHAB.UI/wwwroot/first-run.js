@@ -1,12 +1,9 @@
-const prefix = 'yhab.first-run.dismissed.';
-
-function key(planId) {
-    return prefix + planId;
-}
+const dismissedPrefix = 'yhab.first-run.dismissed.';
+const assignedPrefix = 'yhab.first-run.assigned.';
 
 export function isDismissed(planId) {
     try {
-        return localStorage.getItem(key(planId)) === 'true';
+        return localStorage.getItem(dismissedPrefix + planId) === 'true';
     } catch {
         // Private browsing can block local storage; the checklist still works for this page.
         return false;
@@ -15,8 +12,24 @@ export function isDismissed(planId) {
 
 export function dismiss(planId) {
     try {
-        localStorage.setItem(key(planId), 'true');
+        localStorage.setItem(dismissedPrefix + planId, 'true');
     } catch {
         // The checklist stays dismissed for this render even without persisted storage.
+    }
+}
+
+export function hasAssigned(planId) {
+    try {
+        return localStorage.getItem(assignedPrefix + planId) === 'true';
+    } catch {
+        return false;
+    }
+}
+
+export function completeAssignment(planId) {
+    try {
+        localStorage.setItem(assignedPrefix + planId, 'true');
+    } catch {
+        // In-memory completion still hides the step for this render.
     }
 }
