@@ -22,8 +22,23 @@ public sealed partial class AmountInput
     private string? _error;
     private decimal? _lastValue;
     private bool _evaluating;
+    private bool _negateCommit;
+    private bool _pointerGesture;
+    private bool _pointerReleased;
+    private int _signGesture;
+    private int? _suppressedSignGesture;
 
-    protected override void OnParametersSet() => SynchronizeValue();
+    protected override void OnParametersSet()
+    {
+        SynchronizeValue();
+        if (_pointerGesture && _pointerReleased && (Disabled || ReadOnly))
+        {
+            // The released gesture cannot deliver its click while disabled.
+            _pointerGesture = false;
+            _pointerReleased = false;
+            _suppressedSignGesture = null;
+        }
+    }
 
     private void SynchronizeValue()
     {
@@ -35,9 +50,72 @@ public sealed partial class AmountInput
         }
     }
 
+    // The sign button is pressed while the amount field still has focus. Its
+    // pointerdown runs before the blur that commits the draft, so let that
+    // commit carry the negation instead of racing the now-disabled button.
+    private void PrepareSignToggle()
+    {
+        if (Disabled || ReadOnly || CommitOnSave)
+        {
+            return;
+        }
+
+        _signGesture++;
+        _pointerGesture = true;
+        _pointerReleased = false;
+        _suppressedSignGesture = null;
+        _negateCommit = true;
+    }
+
+    // A keyboard activation is a new gesture even without pointerdown, so any
+    // suppression left by a click that was dropped while disabled is stale.
+    private void SignFocusIn()
+    {
+        if (_pointerGesture)
+        {
+            return;
+        }
+
+        _signGesture++;
+        _suppressedSignGesture = null;
+        _negateCommit = false;
+    }
+
+    private void EndSignPointer()
+    {
+        _pointerReleased = true;
+        // Touch-generated focus can arrive after pointerup. Keep the gesture
+        // active through that focus and let the click end it.
+        if (Disabled || ReadOnly)
+        {
+            // The release cannot produce a click while the button is disabled.
+            _pointerGesture = false;
+            _pointerReleased = false;
+            _suppressedSignGesture = null;
+        }
+    }
+
+    private void CancelSignPointer()
+    {
+        _pointerGesture = false;
+        _pointerReleased = false;
+        _negateCommit = false;
+        _suppressedSignGesture = null;
+    }
+
+    private void FocusIn() => _negateCommit = false;
+
     private async Task EvaluateAsync(string? expression)
     {
         _text = expression ?? string.Empty;
+        var signPending = _negateCommit;
+        if (signPending)
+        {
+            // Consume before yielding so the button's click cannot toggle twice.
+            _negateCommit = false;
+            _suppressedSignGesture = _signGesture;
+        }
+
         if (CommitOnSave)
         {
             if (TryGetAmount(_text, out var draftAmount))
@@ -69,6 +147,11 @@ public sealed partial class AmountInput
             _error = "Enter an amount or expression using + − * / and parentheses.";
             await ValidChanged.InvokeAsync(false);
             return;
+        }
+
+        if (signPending)
+        {
+            amount = -amount;
         }
 
         _error = null;
@@ -136,6 +219,15 @@ public sealed partial class AmountInput
             return;
         }
 
+        _pointerGesture = false;
+        _pointerReleased = false;
+        if (_suppressedSignGesture == _signGesture)
+        {
+            _suppressedSignGesture = null;
+            return;
+        }
+
+        _negateCommit = false;
         // Negate what the field currently shows, falling back to the saved value
         // when the draft is not yet a valid amount. Reusing the evaluation path
         // keeps validation and change notification in one place.

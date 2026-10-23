@@ -55,6 +55,7 @@ public sealed class LayoutAndSharingTests(ITestOutputHelper output)
             await page.GetByLabel("Plan name", new() { Exact = true }).FillAsync("A shared plan");
             await page.GetByRole(AriaRole.Button, new() { Name = "Create your plan" }).ClickAsync();
             await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+            await VerifyBudgetPhoneGeometryAsync(page, width);
             var settingsPath = new Uri(page.Url).AbsolutePath + "/settings";
             await page.GotoAsync(settingsPath);
             await page.GetByRole(AriaRole.Heading, new() { Name = "Plan settings", Exact = true }).WaitForAsync();
@@ -95,6 +96,48 @@ public sealed class LayoutAndSharingTests(ITestOutputHelper output)
         {
             var artifacts = Path.Combine(AppContext.BaseDirectory, "TestResults", $"layout-sharing-{width}-{Guid.NewGuid():N}");
             await BrowserArtifacts.CaptureAsync(page, context, artifacts, output.WriteLine);
+        }
+    }
+
+    private static async Task VerifyBudgetPhoneGeometryAsync(IPage page, int width)
+    {
+        if (width >= 600)
+        {
+            return;
+        }
+
+        // The stacked phone layout must not need horizontal scrolling, and the
+        // assignment field must sit fully inside the table's visible bounds.
+        (await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth")).ShouldBeTrue();
+        var container = page.Locator(".budget-table-container");
+        (await container.EvaluateAsync<bool>("element => element.scrollWidth <= element.clientWidth + 1")).ShouldBeTrue();
+        var bounds = (await container.BoundingBoxAsync()).ShouldNotBeNull();
+        var amount = (await page.Locator(".budget-table .category-row fluent-text-input").First.BoundingBoxAsync()).ShouldNotBeNull();
+        amount.X.ShouldBeGreaterThanOrEqualTo(bounds.X - 1);
+        (amount.X + amount.Width).ShouldBeLessThanOrEqualTo(bounds.X + bounds.Width + 1);
+
+        // Every compact control in the budget workspace reaches the 40px target.
+        var targets = new[]
+        {
+            page.Locator(".workspace-toolbar fluent-button").First,
+            page.Locator(".month-navigation fluent-button").First,
+            page.Locator(".budget-summary fluent-button").First,
+            page.Locator(".budget-table .group-add").First,
+            page.Locator(".budget-table .group-toggle").First,
+            page.Locator(".budget-table .rename-name").First,
+            page.Locator(".budget-table .category-row .row-move").First,
+            page.Locator(".budget-table .category-row fluent-text-input").First,
+            page.Locator(".budget-table .category-row fluent-button.amount-sign").First,
+            page.Locator("[data-theme-select]"),
+        };
+        foreach (var target in targets)
+        {
+            (await target.BoundingBoxAsync()).ShouldNotBeNull().Height.ShouldBeGreaterThanOrEqualTo(40);
+        }
+
+        foreach (var arrow in await page.Locator(".workspace fluent-button[icon-only]").AllAsync())
+        {
+            (await arrow.BoundingBoxAsync()).ShouldNotBeNull().Width.ShouldBeGreaterThanOrEqualTo(40);
         }
     }
 

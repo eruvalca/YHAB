@@ -216,7 +216,10 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             within.ShouldBe(PlanOrder(plan, destination));
             within.ShouldNotBe(before);
 
-            var moving = (await DomOrderAsync(page, source))[0];
+            // The destination is the next group, so its first row is adjacent to
+            // the source group's last row; stacked phone rows make the group's
+            // first row fall outside a viewport-sized synthetic drag.
+            var moving = (await DomOrderAsync(page, source))[^1];
             await SavedAsync(page, () => TouchDragAsync(page, cdp, Row(page, moving).Locator(".row-move"), Row(page, within[0]), () => Task.CompletedTask));
             plan = await ReadAsync(page, path);
             plan.Categories.Single(category => string.Equals(category.Id.ToString(), moving, StringComparison.Ordinal)).GroupId.ShouldBe(destination);

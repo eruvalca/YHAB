@@ -104,6 +104,18 @@
     .site-footer span {
         display: none;
     }
+
+    /* Keep the shell controls at the app's 40px touch-target standard. */
+    .menu-toggle ::deep .fluent-layout-hamburger,
+    .menu-toggle ::deep .fluent-layout-hamburger button,
+    .menu-toggle ::deep fluent-button {
+        min-width: 2.5rem;
+        min-height: 2.5rem;
+    }
+
+    .theme-control select {
+        min-height: 2.5rem;
+    }
 }
 
 .skip-link {

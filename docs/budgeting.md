@@ -16,9 +16,9 @@ changing months or reopening the plan does not reset the checklist while the
 account card remains. **How this works** beside the monthly summary opens
 carryover, arithmetic, dragging, and target help inline. **Fund targets** and
 **Move money** appear once the plan has an account; when shown but unavailable
-they state what is missing: Fund targets needs a category target, money in Ready
-to assign, and a visible eligible target, and Move money needs at least two
-categories.
+they state what is missing: Fund targets needs money in Ready to assign and a
+visible target or overspent category, and Move money needs at least one
+category.
 
 1. Create a plan from **Your plans**. Suggested category groups are optional.
 2. Add checking, savings, cash, credit, loan, or tracking accounts. Enter an
@@ -31,10 +31,10 @@ categories.
    keypad's `12,50` is 12.50 while `1,234.56` keeps its grouping.
    On a phone, editor amount fields ask for the numeric keypad. A numeric keypad
    has no minus key, so fields that accept a negative amount (an opening balance
-   and split amounts) also show a sign control. The
-   monthly assignment field keeps the full keyboard for signed entry in the dense
-   table. Account, transaction, move-money, and target editor amounts are
-   committed by their Save action, even when the field has not blurred.
+   and split amounts) also show a sign control. The monthly assignment field uses
+   a decimal keypad with a **±** toggle at every width. Account, transaction,
+   move-money, and target editor amounts are committed by their Save action, even
+   when the field has not blurred.
 4. Add transactions in an account or **All transactions**. The editor starts on
    Outflow and asks for a spending category whenever money leaves the budget;
    Ready to assign remains available for inflows, including transfers that put
@@ -72,6 +72,14 @@ category because the table keeps it by category id outside the sortable
 subtree, whose unkeyed wrappers recreate rows. Empty groups remain visible so
 they can receive categories. Collapse individual groups or all groups to focus
 the plan.
+
+On phones the table stacks instead of scrolling sideways: the category and
+Available share the first line, and Assigned and Activity share the second.
+Each value carries its own label, and the assignment field uses the decimal
+keypad with a **±** toggle beside it. Compact row, group, and shell controls
+keep a 40-pixel touch target. The **±** toggle stays available at every width,
+so a tablet or landscape phone with a numeric keypad can enter a negative
+assignment without a physical minus key.
 
 Drag a category's move handle, with a mouse or by touch, to reorder it within
 its group or drop it into another expanded group. The row follows the pointer,
@@ -166,9 +174,10 @@ controls remain available in the site footer.
   arrives. Set-aside targets ask for new contributions. Balance targets track
   the amount still available. Dated targets spread remaining contributions across
   the months left; refill targets count spending within their target period.
-- **Fund targets** is available when a category has a target and Ready to assign
-  is positive. It uses only positive Ready to assign and prioritizes overspent
-  categories, then due dates and the displayed group/category order. Hidden and snoozed categories
+- **Fund targets** is available when Ready to assign is positive and a visible
+  category has an unfunded target or an overspent Available balance. It uses
+  only positive Ready to assign and prioritizes overspent categories, then due
+  dates and the displayed group/category order. Hidden and snoozed categories
   are excluded.
 
 Rules were informed by YNAB's

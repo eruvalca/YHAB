@@ -670,7 +670,10 @@ and browsers (especially iOS/Safari) over a stable HTTPS deployment origin.
 
 Browser layout checks verify that Fluent dropdown triggers have no nested native
 border/padding, category links retain their native styling, desktop toolbar
-controls align, and phone pages do not overflow.
+controls align, and phone pages do not overflow. They also assert the stacked
+budget table needs no horizontal scrolling, keeps the assignment field inside its
+bounds at 390px and 320px, and keeps compact workspace controls at a 40px tap
+height.
 Editor dropdown checks include the shadow control's visible border, since its
 minimum width can exceed the host without overflowing the document.
 Phone editor checks run the transaction editor at 390px: the amount field must

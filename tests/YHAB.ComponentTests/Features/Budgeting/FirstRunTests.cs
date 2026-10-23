@@ -120,7 +120,7 @@ public sealed class FirstRunTests
     }
 
     [Fact]
-    public async Task FundTargetsExplainsWhenNoCategoryHasATargetAsync()
+    public async Task FundTargetsExplainsWhenNothingNeedsMoneyAsync()
     {
         await using var context = CreateContext();
         var plan = CreatePlan(withAccount: true, withCategory: true);
@@ -129,7 +129,7 @@ public sealed class FirstRunTests
         var fund = board.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Fund targets", StringComparison.Ordinal));
         fund.HasAttribute("disabled").ShouldBeTrue();
         fund.GetAttribute("aria-describedby").ShouldBe("fund-targets-hint");
-        board.Find("#fund-targets-hint").TextContent.ShouldBe("Select a category and add a target before funding targets.");
+        board.Find("#fund-targets-hint").TextContent.ShouldBe("Every target is funded, hidden, or snoozed. Nothing to fund this month.");
     }
 
     [Fact]
@@ -147,19 +147,18 @@ public sealed class FirstRunTests
     }
 
     [Fact]
-    public async Task MoveMoneyExplainsWhyItNeedsTwoCategoriesAsync()
+    public async Task MoveMoneyNeedsACategoryAsync()
     {
         await using var context = CreateContext();
-        var oneCategory = CreatePlan(withAccount: true, withCategory: true);
-        var board = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, oneCategory).Add(item => item.OnCommand, _ => { }));
+        var noCategory = CreatePlan(withAccount: true);
+        var board = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, noCategory).Add(item => item.OnCommand, _ => { }));
 
         var move = board.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Move money", StringComparison.Ordinal));
         move.HasAttribute("disabled").ShouldBeTrue();
-        board.Find("#move-money-hint").TextContent.ShouldBe("Add at least two categories before moving money.");
+        board.Find("#move-money-hint").TextContent.ShouldBe("Add at least one category before moving money.");
 
-        var second = oneCategory.Categories[0] with { Id = Guid.NewGuid(), Name = "Utilities", SortOrder = 1 };
-        board.Render(parameters => parameters.Add(item => item.Plan, oneCategory with { Version = 8, Categories = [oneCategory.Categories[0], second] })
-            .Add(item => item.OnCommand, _ => { }));
+        var oneCategory = CreatePlan(withAccount: true, withCategory: true);
+        board.Render(parameters => parameters.Add(item => item.Plan, oneCategory).Add(item => item.OnCommand, _ => { }));
 
         await board.WaitForAssertionAsync(() =>
         {
@@ -184,6 +183,25 @@ public sealed class FirstRunTests
         board.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Fund targets", StringComparison.Ordinal))
             .HasAttribute("disabled").ShouldBeFalse();
         board.FindAll("#fund-targets-hint").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task FundTargetsIsEnabledForOverspendingWithoutTargetsAsync()
+    {
+        await using var context = CreateContext();
+        var plan = CreatePlan(withAccount: true, withCategory: true);
+        var month = BudgetFacts.Month(plan.Today);
+        var row = new CategoryMonth(plan.Categories[0], 0, 0, -100, 100, 0, 0, 0, false);
+        var budget = new BudgetMonth(month, 500, 0, 0, -100, 100, 0, 0, [row]);
+        AutoAssign? command = null;
+
+        var board = RenderBoard(context, plan, budget, item => command = item as AutoAssign);
+
+        var fund = board.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Fund targets", StringComparison.Ordinal));
+        fund.HasAttribute("disabled").ShouldBeFalse();
+        board.FindAll("#fund-targets-hint").ShouldBeEmpty();
+        await fund.ClickAsync();
+        command.ShouldNotBeNull();
     }
 
     [Fact]
@@ -294,9 +312,9 @@ public sealed class FirstRunTests
         board.FindAll(".category-details").ShouldBeEmpty();
     }
 
-    private static IRenderedComponent<BudgetBoard> RenderBoard(BunitContext context, PlanSnapshot plan, BudgetMonth budget)
+    private static IRenderedComponent<BudgetBoard> RenderBoard(BunitContext context, PlanSnapshot plan, BudgetMonth budget, Action<PlanCommand>? onCommand = null)
         => context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, plan)
-            .Add(item => item.OnCommand, _ => { })
+            .Add(item => item.OnCommand, onCommand ?? (_ => { }))
             .Add(item => item.LoadMonth, (_, _) => Task.FromResult(budget)));
 
     private static BunitContext CreateContext()

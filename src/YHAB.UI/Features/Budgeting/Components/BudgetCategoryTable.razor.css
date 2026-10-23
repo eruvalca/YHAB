@@ -5,7 +5,7 @@
 /* A div grid keeps the table's aligned columns while each group's rows remain a sortable list. */
 /* Contain visually hidden labels in the horizontal scroller so they cannot widen the page. */
 .budget-table { position: relative; min-width: 35rem; }
-.budget-table ::deep .budget-grid { display: grid; grid-template-columns: minmax(0, 49fr) repeat(3, minmax(0, 17fr)); align-items: center; border-bottom: 1px solid var(--colorNeutralStroke2); }
+.budget-table ::deep .budget-grid { display: grid; grid-template-columns: minmax(0, 42fr) minmax(0, 24fr) repeat(2, minmax(0, 17fr)); align-items: center; border-bottom: 1px solid var(--colorNeutralStroke2); }
 .budget-table ::deep .budget-grid > * { box-sizing: border-box; min-width: 0; padding: var(--spacingVerticalXS) var(--spacingHorizontalS); }
 .budget-table ::deep .budget-header { font-weight: var(--fontWeightSemibold); }
 .budget-table ::deep .group-row { background: var(--colorNeutralBackground3); font-weight: var(--fontWeightSemibold); }
@@ -38,6 +38,44 @@
 .budget-table ::deep .category-list .sortable-drag { background: var(--colorNeutralBackground1); box-shadow: var(--shadow16); }
 .budget-table ::deep .category-list .row-move.sortable-grab { position: static; display: inline-flex; align-items: center; justify-content: center; width: auto; height: auto; padding: 0; border-radius: 0; background: transparent; touch-action: none; }
 @media (max-width: 600px) {
-    .budget-table ::deep .row-move, .budget-table ::deep .group-toggle, .budget-table ::deep .group-add { min-height: 2rem; }
-    .budget-table ::deep .category-list .row-move.sortable-grab { min-width: 2rem; }
+    /* Stack each row into two lines so the amount field fits without horizontal scrolling. */
+    .budget-table { min-width: 0; }
+    .budget-table ::deep .budget-header { display: none; }
+    .budget-table ::deep .budget-grid {
+        grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+        grid-template-areas:
+            "category available"
+            "assigned activity";
+        row-gap: var(--spacingVerticalXS);
+    }
+    .budget-table ::deep .budget-grid > :nth-child(1) { grid-area: category; }
+    .budget-table ::deep .budget-grid > :nth-child(2) { grid-area: assigned; }
+    .budget-table ::deep .budget-grid > :nth-child(3) { grid-area: activity; }
+    .budget-table ::deep .budget-grid > :nth-child(4) { grid-area: available; }
+    /* Each line carries its own label because the column header is hidden. */
+    .budget-table ::deep .budget-grid .visually-hidden {
+        position: static;
+        display: block;
+        width: auto;
+        height: auto;
+        padding: 0;
+        overflow: visible;
+        clip-path: none;
+        white-space: nowrap;
+        color: var(--colorNeutralForeground3);
+        font-size: var(--fontSizeBase100);
+        line-height: var(--lineHeightBase100);
+    }
+    /* Touch targets: the budget workspace's compact controls reach 40px. */
+    .budget-table ::deep .amount-input fluent-text-input::part(root) { height: 2.5rem; }
+    .budget-table ::deep .row-move,
+    .budget-table ::deep .group-toggle,
+    .budget-table ::deep .group-add {
+        min-width: 2.5rem;
+        min-height: 2.5rem;
+    }
+    .budget-table ::deep .rename-name,
+    .budget-table ::deep .category-link {
+        min-height: 2.5rem;
+    }
 }
