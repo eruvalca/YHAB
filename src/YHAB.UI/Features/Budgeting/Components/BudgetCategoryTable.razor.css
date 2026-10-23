@@ -5,7 +5,7 @@
 /* A div grid keeps the table's aligned columns while each group's rows remain a sortable list. */
 /* Contain visually hidden labels in the horizontal scroller so they cannot widen the page. */
 .budget-table { position: relative; min-width: 35rem; }
-.budget-table ::deep .budget-grid { display: grid; grid-template-columns: minmax(0, 49fr) repeat(3, minmax(0, 17fr)); align-items: center; border-bottom: 1px solid var(--colorNeutralStroke2); }
+.budget-table ::deep .budget-grid { display: grid; grid-template-columns: minmax(0, 42fr) minmax(0, 24fr) repeat(2, minmax(0, 17fr)); align-items: center; border-bottom: 1px solid var(--colorNeutralStroke2); }
 .budget-table ::deep .budget-grid > * { box-sizing: border-box; min-width: 0; padding: var(--spacingVerticalXS) var(--spacingHorizontalS); }
 .budget-table ::deep .budget-header { font-weight: var(--fontWeightSemibold); }
 .budget-table ::deep .group-row { background: var(--colorNeutralBackground3); font-weight: var(--fontWeightSemibold); }
@@ -23,9 +23,6 @@
 .budget-table ::deep .amount-input { margin-block: 0; }
 .budget-table ::deep .amount-input label { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .budget-table ::deep .amount-input fluent-text-input::part(control) { text-align: right; font-variant-numeric: tabular-nums; }
-/* A physical keyboard can type the minus in the dense desktop columns, so the
-   sign toggle only appears where the stacked phone layout has room for it. */
-.budget-table ::deep .amount-sign { display: none; }
 .budget-table ::deep .available-pill { padding: var(--spacingVerticalXXS) var(--spacingHorizontalS); }
 .budget-table ::deep .numeric small { display: block; font-size: var(--fontSizeBase100); }
 .budget-table ::deep .empty-group { padding-inline-start: var(--spacingHorizontalXXL); color: var(--colorNeutralForeground3); }
@@ -69,7 +66,6 @@
         font-size: var(--fontSizeBase100);
         line-height: var(--lineHeightBase100);
     }
-    .budget-table ::deep .amount-sign { display: inline-flex; }
     /* Touch targets: the budget workspace's compact controls reach 40px. */
     .budget-table ::deep .row-move,
     .budget-table ::deep .group-toggle,

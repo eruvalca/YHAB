@@ -64,8 +64,9 @@ On phones the table stacks instead of scrolling sideways: the category and
 Available share the first line, and Assigned and Activity share the second.
 Each value carries its own label, and the assignment field uses the decimal
 keypad with a **±** toggle beside it. Compact row, group, and shell controls
-keep a 40-pixel touch target; the sign toggle is omitted from the dense desktop
-columns, where a physical keyboard types the minus directly.
+keep a 40-pixel touch target. The **±** toggle stays available at every width,
+so a tablet or landscape phone with a numeric keypad can enter a negative
+assignment without a physical minus key.
 
 Drag a category's move handle, with a mouse or by touch, to reorder it within
 its group or drop it into another expanded group. The row follows the pointer,

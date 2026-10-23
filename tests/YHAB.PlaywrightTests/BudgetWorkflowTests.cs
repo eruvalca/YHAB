@@ -45,7 +45,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             await VerifyBudgetLayoutAsync(page, width);
             await VerifyCategoryEditorLayoutAsync(page);
             await VerifyApiGuardsAsync(page);
-            await AddAccountAndAssignAsync(page, width);
+            await AddAccountAndAssignAsync(page);
             await VerifyStickySummaryAsync(page, width);
             var planUrl = page.Url;
             await PurchaseAsync(page, width);
@@ -195,7 +195,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         after.GetProperty("transactions").GetArrayLength().ShouldBe(before.GetProperty("transactions").GetArrayLength());
     }
 
-    private static async Task AddAccountAndAssignAsync(IPage page, int width)
+    private static async Task AddAccountAndAssignAsync(IPage page)
     {
         await OpenPlanNavigationAsync(page);
         await Button(page, "Add account").ClickAsync();
@@ -208,7 +208,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await Input(page, "Assign to Groceries").FillAsync("250 + 50");
         await Input(page, "Assign to Groceries").PressAsync("Tab");
         await page.Locator(".hero-amount").Filter(new() { HasText = "$700.00" }).WaitForAsync();
-        await VerifyAmountEditingAsync(page, width);
+        await VerifyAmountEditingAsync(page);
     }
 
     private static async Task PurchaseAsync(IPage page, int width)
@@ -367,7 +367,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await Button(page, "Close").ClickAsync();
     }
 
-    private static async Task VerifyAmountEditingAsync(IPage page, int width)
+    private static async Task VerifyAmountEditingAsync(IPage page)
     {
         var amount = Input(page, "Assign to Groceries");
         var original = (await amount.ElementHandleAsync()).ShouldNotBeNull();
@@ -382,13 +382,10 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await amount.PressAsync("Backspace");
         await amount.PressAsync("Tab");
         await page.WaitForFunctionAsync("() => [...document.querySelectorAll('fluent-field')].find(field => field.querySelector('label')?.textContent === 'Assign to Groceries')?.querySelector('fluent-text-input')?.shadowRoot?.querySelector('input')?.value === '0.00'");
-        // Phones show the sign toggle beside the decimal field, so it is the next tab stop.
-        if (width < 600)
-        {
-            var sign = page.Locator("fluent-button[aria-label='Change the sign of Assign to Groceries']");
-            (await sign.EvaluateAsync<bool>("button => document.activeElement === button")).ShouldBeTrue();
-            await page.Keyboard.PressAsync("Tab");
-        }
+        // The sign toggle stays beside the decimal field at every width.
+        var sign = page.Locator("fluent-button[aria-label='Change the sign of Assign to Groceries']");
+        (await sign.EvaluateAsync<bool>("button => document.activeElement === button")).ShouldBeTrue();
+        await page.Keyboard.PressAsync("Tab");
         var move = page.GetByRole(AriaRole.Button, new() { Name = "Move Utilities", Exact = true });
         (await move.EvaluateAsync<bool>("button => document.activeElement === button.closest('.sortable-item')")).ShouldBeTrue();
         await page.Keyboard.PressAsync("Tab");
@@ -404,6 +401,15 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await amount.PressAsync("Tab");
         await page.Locator(".hero-amount").Filter(new() { HasText = "$700.00" }).WaitForAsync();
         (await amount.InputValueAsync()).ShouldBe("300.00");
+
+        // Negative assignments remain reachable without a physical minus key at
+        // both phone and desktop widths.
+        await sign.ClickAsync();
+        await page.Locator(".hero-amount").Filter(new() { HasText = "$1,300.00" }).WaitForAsync();
+        (await Input(page, "Assign to Groceries").InputValueAsync()).ShouldBe("-300.00");
+        await sign.ClickAsync();
+        await page.Locator(".hero-amount").Filter(new() { HasText = "$700.00" }).WaitForAsync();
+        (await Input(page, "Assign to Groceries").InputValueAsync()).ShouldBe("300.00");
         await original.DisposeAsync();
     }
 

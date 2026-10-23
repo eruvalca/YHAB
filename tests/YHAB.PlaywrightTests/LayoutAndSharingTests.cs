@@ -127,6 +127,7 @@ public sealed class LayoutAndSharingTests(ITestOutputHelper output)
             page.Locator(".budget-table .rename-name").First,
             page.Locator(".budget-table .category-row .row-move").First,
             page.Locator(".budget-table .category-row fluent-text-input").First,
+            page.Locator(".budget-table .category-row fluent-button.amount-sign").First,
             page.Locator("[data-theme-select]"),
         };
         foreach (var target in targets)
