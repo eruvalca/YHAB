@@ -266,6 +266,34 @@ public sealed class FirstRunTests
         board.FindAll(".first-run-checklist").ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task AssignmentCompletionIsRecordedWhileTheCategoryEditorIsOpenAsync()
+    {
+        await using var context = CreateContext();
+        var module = context.JSInterop.SetupModule(ModulePath);
+        module.Setup<bool>("isDismissed", _ => false).SetResult(false);
+        module.Setup<bool>("hasAssigned", _ => false).SetResult(false);
+        var plan = CreatePlan(withAccount: true, withCategory: true);
+        var month = BudgetFacts.Month(plan.Today);
+        var allocation = new AllocationData(plan.Categories[0].Id, month, 300);
+
+        var board = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, plan).Add(item => item.OnCommand, _ => { }));
+        await board.Find(".category-row .category-link").ClickAsync();
+        board.Find(".category-details").ShouldNotBeNull();
+
+        board.Render(parameters => parameters.Add(item => item.Plan, plan with { Version = 8, Allocations = [allocation] })
+            .Add(item => item.OnCommand, _ => { }));
+
+        await board.WaitForAssertionAsync(() => module.Invocations.ShouldContain(item => string.Equals(item.Identifier, "completeAssignment", StringComparison.Ordinal)));
+        board.Find(".category-details").ShouldNotBeNull();
+
+        await board.Find("fluent-button[aria-label='Next month']").ClickAsync();
+        await board.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Close", StringComparison.Ordinal)).ClickAsync();
+
+        board.FindAll(".first-run-panel").ShouldBeEmpty();
+        board.FindAll(".category-details").ShouldBeEmpty();
+    }
+
     private static IRenderedComponent<BudgetBoard> RenderBoard(BunitContext context, PlanSnapshot plan, BudgetMonth budget)
         => context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, plan)
             .Add(item => item.OnCommand, _ => { })

@@ -58,10 +58,7 @@
     }
     <div class="budget-workspace-scope">
         <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalM)" VerticalGap="var(--spacingVerticalM)" Class="budget-workspace">
-            @if (_category is null)
-            {
-                <FirstRunChecklist Plan="Plan" Budget="_budget" OnAddAccount="AddAccountAsync" OnAddCategory="AddCategoryAsync" OnShowHelp="ShowHelp" Busy="IsBusy" />
-            }
+            <FirstRunChecklist Plan="Plan" Budget="_budget" Hidden="@(_category is not null)" OnAddAccount="AddAccountAsync" OnAddCategory="AddCategoryAsync" OnShowHelp="ShowHelp" Busy="IsBusy" />
             <div class="budget-categories">
                 <BudgetCategoryTable @ref="_categoryTable" Plan="Plan" Budget="_budget" OnCommand="OnCommand" OnSelect="EditCategory" Busy="IsBusy" SelectedCategoryId="_category?.Id" />
             </div>
