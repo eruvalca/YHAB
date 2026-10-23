@@ -2,9 +2,9 @@ name: Validate and deploy
 
 on:
   pull_request:
-    # `labeled` lets an author opt into the full browser suite. Label events
-    # re-run this workflow; the gate ignores a skipped full-suite rerun and
-    # reuses the last completed result for the same commit.
+    # `labeled` events let an author opt into the full browser suite. The suite
+    # follows label presence, so a new commit still runs it without re-applying
+    # the label. The gate reuses a completed result for the same commit.
     types: [opened, synchronize, reopened, ready_for_review, labeled]
   push:
     branches: [main]
@@ -147,16 +147,17 @@ jobs:
 
   browser-full:
     name: Browser full suite
-    # Pull requests opt in when the `run-full-browser` label is applied. The
-    # merge queue and every main push always run the full suite as the post-merge
-    # net. Re-apply the label after a new commit to validate that commit.
+    # Pull requests opt in with the `run-full-browser` label. The label is
+    # evaluated on every pull request event, so each new commit while the label
+    # is present runs the full suite. The merge queue and every main push always
+    # run the full suite as the post-merge net.
     if: |
       github.event_name == 'push' ||
       github.event_name == 'merge_group' ||
       (github.event_name == 'pull_request' &&
-       github.event.action == 'labeled' &&
-       github.event.label.name == 'run-full-browser' &&
-       github.event.pull_request.draft == false)
+       github.event.pull_request.draft == false &&
+       contains(github.event.pull_request.labels.*.name, 'run-full-browser') &&
+       (github.event.action != 'labeled' || github.event.label.name == 'run-full-browser'))
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
@@ -212,23 +213,50 @@ jobs:
           GH_REPO: ${{ github.repository }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           FULL_RESULT: ${{ needs.browser-full.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
-          if [ "$FULL_RESULT" = "success" ]; then
-            echo "Full browser suite passed in this run."
-            exit 0
-          fi
-          conclusion=""
+          fail() {
+            echo "::error::$1"
+            exit 1
+          }
+          case "$FULL_RESULT" in
+            success)
+              echo "Full browser suite passed in this run."
+              exit 0
+              ;;
+            failure)
+              fail "The full browser suite failed in this run. See $RUN_URL."
+              ;;
+            cancelled)
+              fail "The full browser suite was cancelled in this run. Re-run it with the 'run-full-browser' label."
+              ;;
+          esac
+          record=""
           if [ -n "${HEAD_SHA:-}" ]; then
-            conclusion=$(gh api "repos/${{ github.repository }}/commits/$HEAD_SHA/check-runs?check_name=Browser%20full%20suite&per_page=100" \
-              --jq '[.check_runs[] | select(.name == "Browser full suite" and .conclusion != null and .conclusion != "skipped" and .conclusion != "neutral")] | sort_by(.completed_at // .started_at) | last | .conclusion // ""' 2>/dev/null || true)
+            record=$(gh api "repos/${{ github.repository }}/commits/$HEAD_SHA/check-runs?check_name=Browser%20full%20suite&per_page=100" \
+              --jq '[.check_runs[] | select(.name == "Browser full suite" and .conclusion != null and .conclusion != "skipped" and .conclusion != "neutral")] | sort_by(.completed_at // .started_at) | last | [(.conclusion // ""), (.html_url // "")] | @tsv' 2>/dev/null || true)
           fi
-          if [ "$conclusion" = "success" ]; then
-            echo "Full browser suite already passed for $HEAD_SHA."
-            exit 0
-          fi
-          echo "::error::The full browser suite has not passed for this commit. Apply the 'run-full-browser' label (or remove and re-apply it after a new commit) and wait for it to pass before merging."
-          exit 1
+          conclusion=$(printf '%s' "$record" | cut -f1)
+          url=$(printf '%s' "$record" | cut -f2)
+          case "$conclusion" in
+            success)
+              echo "Full browser suite already passed for $HEAD_SHA."
+              exit 0
+              ;;
+            failure)
+              fail "The full browser suite failed for $HEAD_SHA.${url:+ See $url.}"
+              ;;
+            cancelled)
+              fail "The most recent full browser suite run for $HEAD_SHA was cancelled.${url:+ See $url.} Re-run it with the 'run-full-browser' label."
+              ;;
+            "")
+              fail "The full browser suite has not run for $HEAD_SHA. Apply the 'run-full-browser' label to this pull request; every new commit while the label is present runs the suite."
+              ;;
+            *)
+              fail "The full browser suite concluded '$conclusion' for $HEAD_SHA.${url:+ See $url.}"
+              ;;
+          esac
 
   publish:
     name: Validate deployment artifacts

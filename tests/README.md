@@ -19,8 +19,8 @@ The deployment workflow runs formatting, the Release build, unit/component tests
 PostgreSQL, and Aspire startup/deployment checks on every pull request and
 `main` push. Browser validation is tiered: ready pull requests run the
 `Category=BrowserSmoke` cases on every push, the `run-full-browser` label runs
-the complete Chromium suite for that commit, and every `main` push runs it again
-as the post-merge net. The extended browser performance cases run in the
+the complete Chromium suite on each commit while it is present, and every `main`
+push runs it again as the post-merge net. The extended browser performance cases run in the
 separate
 [Performance validation](../.github/workflows/performance.yml) workflow weekly
 and on demand. Every successful run on
@@ -60,10 +60,11 @@ and Aspire startup/deployment checks. Browser coverage is tiered:
   money walkthrough, manual plan/purchase/undo/reports, inline catalog editing,
   navigation and theme handoff, PWA install/offline behavior, and browser
   artifact capture.
-- The full Chromium suite runs on a pull request when the `run-full-browser`
-  label is applied, and on every `main` push as the post-merge net. The label is
-  a per-commit opt-in: remove and re-apply it after a new commit or after leaving
-  draft status.
+- The full Chromium suite runs on a pull request while the `run-full-browser`
+  label is present, and on every `main` push as the post-merge net. Each new
+  commit on a labeled pull request runs the suite again. Removing the label stops
+  new full-suite runs, but the gate still requires a passing run on the current
+  commit.
 - `Category=Performance` runs weekly in the separate workflow.
 
 The `Browser validation gate` check requires the full suite to have passed on the
