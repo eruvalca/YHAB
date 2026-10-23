@@ -25,8 +25,9 @@ Commands and results:
 
 ## Browser validation
 
-- [ ] The `Browser smoke` suite covers this change
-- [ ] The full Chromium suite is required — apply the `run-full-browser` label to this pull request and wait for `Browser validation gate` to pass; the label stays effective for new commits
+- [ ] `Browser validation gate` passed for the tier selected from the changed paths
+
+UI/rendering and Playwright changes require the full Chromium suite; other application changes require smoke. Documentation-only changes require neither. Apply `run-full-browser` to request additional full coverage without rerunning unrelated jobs; while present, it also requests full coverage on new commits. This extra run does not replace the required tier.
 
 ## Deployment and data
 

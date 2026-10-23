@@ -2,10 +2,7 @@ name: Validate and deploy
 
 on:
   pull_request:
-    # `labeled` events let an author opt into the full browser suite. The suite
-    # follows label presence, so a new commit still runs it without re-applying
-    # the label. The gate reuses a completed result for the same commit.
-    types: [opened, synchronize, reopened, ready_for_review, labeled]
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
   # The merge queue runs the full browser suite on the combined merge group.
@@ -13,14 +10,12 @@ on:
 
 permissions:
   contents: read
-  checks: read
 
 concurrency:
-  # Ordinary PR updates share the PR-ref group so a new push cancels the stale
-  # run. Main pushes, merge groups, and label events get run-specific groups so
-  # each validation/deployment run stays independent.
-  group: yhab-${{ github.workflow }}-${{ (github.event_name == 'pull_request' && github.event.action != 'labeled') && github.ref || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' && github.event.action != 'labeled' }}
+  # PR updates share the PR-ref group so a new push cancels the stale run.
+  # Main pushes and merge groups stay independent.
+  group: yhab-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   DOTNET_NOLOGO: true
@@ -28,7 +23,47 @@ env:
   ASPIRE_VERSION: 13.6.2
 
 jobs:
+  changes:
+    name: Select validation scope
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      application: ${{ steps.scope.outputs.application }}
+      deploy: ${{ steps.scope.outputs.deploy }}
+      browser: ${{ steps.scope.outputs.browser }}
+      browser-requested: ${{ steps.scope.outputs.browser-requested }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Classify changed paths
+        id: scope
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          IS_DRAFT: ${{ github.event.pull_request.draft }}
+          FULL_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'run-full-browser') }}
+        run: |
+          if ($env:EVENT_NAME -ne 'pull_request') {
+            $scope = ./scripts/Get-ValidationScope.ps1 -Full
+          }
+          else {
+            $paths = @(gh api --paginate "repos/$env:GH_REPO/pulls/$env:PR_NUMBER/files?per_page=100" --jq '.[] | .filename, (.previous_filename // empty)')
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+            $scope = ./scripts/Get-ValidationScope.ps1 -Paths $paths
+            if ($env:IS_DRAFT -eq 'true') {
+              $scope.browser = 'none'
+            }
+          }
+          $requested = if ($env:FULL_LABEL -eq 'true') { 'full' } else { $scope.browser }
+          "application=$($scope.application.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "deploy=$($scope.deploy.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "browser=$($scope.browser)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "browser-requested=$requested" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
   fast:
+    needs: changes
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -40,16 +75,20 @@ jobs:
         shell: pwsh
         run: |
           ./scripts/Test-ValidationScope.ps1
+          ./scripts/Test-BrowserValidationGate.ps1
           ./scripts/Test-DocumentationReviewHook.ps1
           ./scripts/Test-AgentValidationHook.ps1
       - name: Check project-reference policy
         shell: pwsh
         run: ./scripts/Test-ArchitectureProjectReferences.ps1
       - name: Check architecture before optimization
+        if: needs.changes.outputs.application == 'true'
         run: dotnet test --project tests/YHAB.UnitTests/YHAB.UnitTests.csproj --configuration Debug --filter-class "YHAB.UnitTests.Architecture.*" --report-trx --report-trx-filename architecture-debug.trx --results-directory "${{ runner.temp }}/yhab-test-results"
       - name: Build
+        if: needs.changes.outputs.application == 'true'
         run: dotnet build YHAB.slnx --configuration Release
       - name: Test unit and component layers
+        if: needs.changes.outputs.application == 'true'
         shell: pwsh
         run: |
           foreach ($project in @('YHAB.UnitTests', 'YHAB.ComponentTests')) {
@@ -57,7 +96,7 @@ jobs:
             if ($LASTEXITCODE) { exit $LASTEXITCODE }
           }
       - name: Retain test results
-        if: ${{ !cancelled() }}
+        if: needs.changes.outputs.application == 'true' && !cancelled()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: test-results-fast
@@ -67,6 +106,8 @@ jobs:
 
   tests:
     name: Test ${{ matrix.project }}
+    needs: changes
+    if: needs.changes.outputs.application == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -104,10 +145,11 @@ jobs:
 
   browser-smoke:
     name: Browser smoke
-    # Drafts do not need a browser run; marking a PR ready triggers one.
+    needs: changes
     if: |
       github.event_name == 'pull_request' &&
-      github.event.pull_request.draft == false
+      github.event.pull_request.draft == false &&
+      needs.changes.outputs.browser == 'smoke'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -147,119 +189,44 @@ jobs:
 
   browser-full:
     name: Browser full suite
-    # Pull requests opt in with the `run-full-browser` label. The label is
-    # evaluated on every pull request event, so each new commit while the label
-    # is present runs the full suite. The merge queue and every main push always
-    # run the full suite as the post-merge net.
+    needs: changes
+    # Browser-affecting paths require this suite. The label can additionally
+    # request it for any PR and remains effective on subsequent commits.
     if: |
       github.event_name == 'push' ||
       github.event_name == 'merge_group' ||
       (github.event_name == 'pull_request' &&
        github.event.pull_request.draft == false &&
-       contains(github.event.pull_request.labels.*.name, 'run-full-browser') &&
-       (github.event.action != 'labeled' || github.event.label.name == 'run-full-browser'))
+       needs.changes.outputs.browser-requested == 'full')
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - uses: ./.github/actions/setup-dotnet
-      - name: Create and trust test HTTPS certificate
-        uses: ./.github/actions/trust-test-cert
-      - name: Build test project
-        shell: pwsh
-        run: |
-          dotnet build "tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj" --configuration Release
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-      - uses: ./.github/actions/install-playwright-browser
-      - name: Run browser cases
-        shell: pwsh
-        run: |
-          dotnet test --project "tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj" --configuration Release --no-build --max-parallel-test-modules 1 --output Detailed --filter-not-trait Category=Performance --report-trx --results-directory "$env:RUNNER_TEMP/yhab-test-results"
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-      - name: Retain test results
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: test-results-browser-full
-          path: ${{ runner.temp }}/yhab-test-results/*.trx
-          retention-days: 7
-          if-no-files-found: warn
-      - name: Retain browser failure diagnostics
-        if: failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: browser-diagnostics-full
-          path: |
-            tests/YHAB.PlaywrightTests/bin/Release/net10.0/TestResults/**/trace.zip
-            tests/YHAB.PlaywrightTests/bin/Release/net10.0/TestResults/**/*.png
-          retention-days: 7
-          if-no-files-found: warn
+      - uses: ./.github/actions/run-full-browser
 
   browser-gate:
     name: Browser validation gate
-    needs: [browser-full]
-    # Native merge queue is unavailable for a public repository owned by a user
-    # account. This gate gives the same guarantee: the full suite must have
-    # passed on this exact commit before merging. It also runs on merge_group so
-    # the same required check keeps working if native merge queue is enabled.
+    needs: [changes, browser-smoke, browser-full]
+    # The required gate follows the selected tier. A label-requested full run is
+    # additional evidence and does not replace a PR's required smoke coverage.
     if: always() && (github.event_name == 'pull_request' || github.event_name == 'merge_group')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Confirm the full browser suite passed for this commit
-        shell: bash
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Confirm the selected browser validation passed
+        shell: pwsh
         env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BROWSER_SCOPE: ${{ needs.changes.outputs.browser }}
+          SMOKE_RESULT: ${{ needs.browser-smoke.result }}
           FULL_RESULT: ${{ needs.browser-full.result }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          set -euo pipefail
-          fail() {
-            echo "::error::$1"
-            exit 1
-          }
-          case "$FULL_RESULT" in
-            success)
-              echo "Full browser suite passed in this run."
-              exit 0
-              ;;
-            failure)
-              fail "The full browser suite failed in this run. See $RUN_URL."
-              ;;
-            cancelled)
-              fail "The full browser suite was cancelled in this run. See $RUN_URL. Re-run it with the 'run-full-browser' label."
-              ;;
-          esac
-          record=""
-          if [ -n "${HEAD_SHA:-}" ]; then
-            record=$(gh api "repos/${{ github.repository }}/commits/$HEAD_SHA/check-runs?check_name=Browser%20full%20suite&per_page=100" \
-              --jq '[.check_runs[] | select(.name == "Browser full suite" and .conclusion != null and .conclusion != "skipped" and .conclusion != "neutral")] | sort_by(.completed_at // .started_at) | last | [(.conclusion // ""), (.html_url // "")] | @tsv' 2>/dev/null || true)
-          fi
-          conclusion=$(printf '%s' "$record" | cut -f1)
-          url=$(printf '%s' "$record" | cut -f2)
-          case "$conclusion" in
-            success)
-              echo "Full browser suite already passed for $HEAD_SHA."
-              exit 0
-              ;;
-            failure)
-              fail "The full browser suite failed for $HEAD_SHA.${url:+ See $url.}"
-              ;;
-            cancelled)
-              fail "The most recent full browser suite run for $HEAD_SHA was cancelled.${url:+ See $url.} Re-run it with the 'run-full-browser' label."
-              ;;
-            "")
-              fail "The full browser suite has not run for $HEAD_SHA. Apply the 'run-full-browser' label to this pull request; every new commit while the label is present runs the suite."
-              ;;
-            *)
-              fail "The full browser suite concluded '$conclusion' for $HEAD_SHA.${url:+ See $url.}"
-              ;;
-          esac
+        run: ./scripts/Confirm-BrowserValidation.ps1 -Scope $env:BROWSER_SCOPE -SmokeResult $env:SMOKE_RESULT -FullResult $env:FULL_RESULT -RunUrl $env:RUN_URL
 
   publish:
     name: Validate deployment artifacts
+    needs: changes
+    if: needs.changes.outputs.deploy == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
