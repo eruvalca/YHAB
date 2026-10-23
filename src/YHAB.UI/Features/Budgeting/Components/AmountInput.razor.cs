@@ -15,9 +15,12 @@ public sealed partial class AmountInput
     [Parameter] public TextInputSize Size { get; set; } = TextInputSize.Medium;
     [Parameter] public TextInputMode InputMode { get; set; } = TextInputMode.Decimal;
     [Parameter] public bool AllowNegative { get; set; }
+    [Parameter] public bool RejectNegative { get; set; }
     [Parameter] public bool CommitOnSave { get; set; }
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public bool ReadOnly { get; set; }
+    private const string ExpressionError = "Enter an amount or expression using + − * / and parentheses.";
+    private const string NonNegativeError = "Enter an amount of zero or more.";
     private string _text = string.Empty;
     private string? _error;
     private decimal? _lastValue;
@@ -118,7 +121,7 @@ public sealed partial class AmountInput
 
         if (CommitOnSave)
         {
-            if (TryGetAmount(_text, out var draftAmount))
+            if (TryGetAmount(_text, out var draftAmount, out var draftError))
             {
                 _error = null;
                 _lastValue = draftAmount;
@@ -131,7 +134,7 @@ public sealed partial class AmountInput
             }
             else
             {
-                _error = "Enter an amount or expression using + − * / and parentheses.";
+                _error = draftError;
                 await ValidChanged.InvokeAsync(false);
             }
 
@@ -142,9 +145,9 @@ public sealed partial class AmountInput
         // resulting amount equals Value (for example clearing an existing zero).
         StateHasChanged();
         await Task.Yield();
-        if (!TryGetAmount(_text, out var amount))
+        if (!TryGetAmount(_text, out var amount, out var error))
         {
-            _error = "Enter an amount or expression using + − * / and parentheses.";
+            _error = error;
             await ValidChanged.InvokeAsync(false);
             return;
         }
@@ -177,9 +180,9 @@ public sealed partial class AmountInput
 
     internal async Task<decimal?> CommitAsync()
     {
-        if (!TryGetAmount(_text, out var amount))
+        if (!TryGetAmount(_text, out var amount, out var error))
         {
-            _error = "Enter an amount or expression using + − * / and parentheses.";
+            _error = error;
             await ValidChanged.InvokeAsync(false);
             StateHasChanged();
             return null;
@@ -206,10 +209,28 @@ public sealed partial class AmountInput
         return amount;
     }
 
-    private static bool TryGetAmount(string expression, out decimal amount)
+    private bool TryGetAmount(string expression, out decimal amount, out string? error)
     {
         amount = 0m;
-        return string.IsNullOrWhiteSpace(expression) || AmountExpression.TryEvaluate(expression, out amount);
+        error = null;
+        if (string.IsNullOrWhiteSpace(expression))
+        {
+            return true;
+        }
+
+        if (!AmountExpression.TryEvaluate(expression, out amount))
+        {
+            error = ExpressionError;
+            return false;
+        }
+
+        if (RejectNegative && amount < 0m)
+        {
+            error = NonNegativeError;
+            return false;
+        }
+
+        return true;
     }
 
     private async Task ToggleSignAsync()

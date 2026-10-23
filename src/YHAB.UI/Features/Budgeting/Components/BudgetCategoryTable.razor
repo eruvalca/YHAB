@@ -48,7 +48,7 @@
                             <ItemTemplate>
                                 @if (_rows.TryGetValue(context, out var row))
                                 {
-                                    <BudgetCategoryRow @key="context" Plan="Plan" Row="row" Month="Budget.Month" OnCommand="OnCommand" OnSelect="OnSelect"
+                                    <BudgetCategoryRow @key="context" Plan="Plan" Budget="Budget" Row="row" Month="Budget.Month" OnCommand="OnCommand" OnSelect="OnSelect"
                                                        Moving="@(_movingCategory == context)" OnToggleMove="() => ToggleCategoryMove(context)"
                                                        Busy="Busy" Selected="@(SelectedCategoryId == context)" Draft="Draft(context)" />
                                 }

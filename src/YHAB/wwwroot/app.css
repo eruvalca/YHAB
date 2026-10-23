@@ -285,6 +285,9 @@ body { background: var(--colorNeutralBackground2); color: var(--colorNeutralFore
 .available-pill[data-tone="positive"] { background: var(--colorPaletteGreenBackground1); color: var(--colorPaletteGreenForeground1); }
 .available-pill[data-tone="attention"] { background: var(--colorPaletteMarigoldBackground1); color: var(--colorPaletteMarigoldForeground2); }
 .available-pill[data-tone="negative"] { background: var(--colorPaletteRedBackground1); color: var(--colorPaletteRedForeground1); }
+button.available-pill { border: 0; color: inherit; font-family: inherit; font-size: inherit; line-height: inherit; font-variant-numeric: tabular-nums; cursor: pointer; }
+button.available-pill:hover { text-decoration: underline; }
+button.available-pill:focus-visible { outline: 2px solid var(--colorStrokeFocus2); outline-offset: 2px; }
 .history-panel, .danger-zone { margin-top: var(--spacingVerticalXXXL); padding-block: var(--spacingVerticalL); border-top: 1px solid var(--colorNeutralStroke2); }
 .history-panel summary, .danger-zone summary { cursor: pointer; color: var(--colorNeutralForeground3); margin-bottom: var(--spacingVerticalM); }
 .history-panel li { margin-bottom: var(--spacingVerticalS); }

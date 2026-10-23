@@ -31,10 +31,16 @@ category.
    keypad's `12,50` is 12.50 while `1,234.56` keeps its grouping.
    On a phone, editor amount fields ask for the numeric keypad. A numeric keypad
    has no minus key, so fields that accept a negative amount (an opening balance
-   and split amounts) also show a sign control. The monthly assignment field uses
-   a decimal keypad with a **±** toggle at every width. Account, transaction,
-   move-money, and target editor amounts are committed by their Save action, even
-   when the field has not blurred.
+   and split amounts) also show a sign control. The monthly assignment field stays
+   positive and uses the decimal keypad; take money back out of a category with
+   its **Available** pill instead. A typed negative assignment, including an
+   expression that evaluates below zero, is rejected with an inline message.
+   Account, transaction, move-money, and target editor amounts are committed by
+   their Save action, even when the field has not blurred.
+   Select a category's **Available** pill to move money without editing its
+   assignment. A positive balance offers **Move money** to Ready to assign or
+   another category; an overspent balance offers to cover that shortfall from
+   Ready to assign or a category that has money.
 4. Add transactions in an account or **All transactions**. The editor starts on
    Outflow and asks for a spending category whenever money leaves the budget;
    Ready to assign remains available for inflows, including transfers that put
@@ -76,10 +82,9 @@ the plan.
 On phones the table stacks instead of scrolling sideways: the category and
 Available share the first line, and Assigned and Activity share the second.
 Each value carries its own label, and the assignment field uses the decimal
-keypad with a **±** toggle beside it. Compact row, group, and shell controls
-keep a 40-pixel touch target. The **±** toggle stays available at every width,
-so a tablet or landscape phone with a numeric keypad can enter a negative
-assignment without a physical minus key.
+keypad. Compact row, group, and shell controls keep a 40-pixel touch target.
+The Available pill is a button at every width, so covering overspending and
+moving money out of a category work without a physical minus key.
 
 Drag a category's move handle, with a mouse or by touch, to reorder it within
 its group or drop it into another expanded group. The row follows the pointer,
@@ -512,7 +517,7 @@ isolated AppHosts. Browser tests exercise both desktop and phone widths.
 | Category history and payee management | `MergingAUsedCategoryPreservesAssignmentsSpendingAndAccountBalance`, `MergingAssignedCategoryPersistsHistoryAndSupportsUndoRedoAsync`, `PayeeRenameChangesMatchingPostedAndRecurringEntriesOnly`, `TransactionEditorsUsePayeeProjectionAndRefreshSuggestionsAsync` |
 | Private plans, SQL integrity, durable history, and concurrent edits | `OwnerIsolationHistoryAndConcurrentWritesPersistAcrossContextsAsync`, `DatabaseRejectsCrossPlanReferencesAndAccountDeletionRemovesOwnedLedgerAsync` |
 | In-app plan sharing, editing, and access removal | `ShareCodeGrantsEditingAndReadAccessUntilTheOwnerRemovesItAsync`, `JoinRejectsInvalidExpiredEmptyAndOwnerCodesAsync`, `ASharedMemberCanLeaveButAnOwnerCannotAsync`, `CodesAreSingleUseAndRedemptionRetriesAreIdempotentAsync`, `ConcurrentRedemptionIsIdempotentAndConcurrentRemovalHasOneWinnerAsync`, `PlansPageSeparatesOwnedAndSharedPlansAndShowsJoinFormAsync`, `OwnerCreatesShareCodeAndRemovesACollaboratorAsync`, `SharedMemberSeesOwnerAndRejectsUnconfirmedLeaveAsync`, `PlansPageJoinsWithACodeAsync`, `JoinServiceErrorIsShownAsync` |
-| Manual browser workflow, calculator entry, keyboard undo/redo, reports, and API guards | `ManualPlanPurchaseUndoAndReportsAgreeAsync` at 1440px and 390px, including the phone amount keypad, editor tap size, sticky editor chrome, and the signed-balance sign control |
+| Manual browser workflow, calculator entry, keyboard undo/redo, reports, and API guards | `ManualPlanPurchaseUndoAndReportsAgreeAsync` at 1440px and 390px, including the phone amount keypad, the Available-pill move flow, editor tap size, and sticky editor chrome; `TappingAvailableMovesMoneyOutOfTheCategoryAsync` covers the touch move flow |
 | Themes, mobile navigation, and SSR document continuity | `FluentNavigationPreservesDocumentAndThemeChoice` at 1280px and 390px |
 | Actual startup, migrations, and database readiness | `AppHostCompletesMigrationsAndServesHealthyApplication` |
 

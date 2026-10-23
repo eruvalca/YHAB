@@ -62,7 +62,12 @@ assets/provider setup and [build rules](../../build/README.md) for enforcement.
 - A decimal keypad has no minus key, so a field that must accept a negative amount
   sets `AllowNegative` on `AmountInput` and uses the `±` control it renders; a
   dense column with no room for that control keeps `InputMode="Text"` instead.
-  Leaving it unset silently removes touch entry for that field.
+  Leaving it unset silently removes touch entry for that field. A positive-only
+  field sets `RejectNegative`, which rejects typed negative literals and expression
+  results without hiding a stored negative value. The budget table's monthly
+  Assigned field is positive-only: moving money out of a category is a transfer to
+  Ready to assign or another category, offered by the row's Available pill
+  (`AvailablePill`), not a signed assignment.
 - Static `FluentNavItem` links and `FluentButton` controls need `tabindex="0"`:
   interactive navigation initialization does not run, and enhanced navigation
   can remove a web component's browser-added tabindex. Keep enhanced navigation enabled

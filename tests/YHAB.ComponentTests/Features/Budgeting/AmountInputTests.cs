@@ -291,4 +291,47 @@ public sealed class AmountInputTests
         validity.ShouldBe([true, false]);
         component.Find("[role='alert']").TextContent.ShouldContain("Enter an amount or expression");
     }
+
+    [Fact]
+    public async Task FieldsThatRejectNegativesRefuseLiteralsAndExpressionResultsAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var values = new List<decimal>();
+        var validity = new List<bool>();
+        var component = context.Render<AmountInput>(parameters => parameters.Add(item => item.Label, "Assigned")
+            .Add(item => item.Value, 100m).Add(item => item.ValueChanged, values.Add).Add(item => item.ValidChanged, validity.Add)
+            .Add(item => item.RejectNegative, true));
+
+        await component.Find("fluent-text-input").ChangeAsync(new() { Value = "-25" });
+        values.ShouldBeEmpty();
+        validity.ShouldBe([false]);
+        component.Find("[role='alert']").TextContent.ShouldContain("zero or more");
+
+        await component.Find("fluent-text-input").ChangeAsync(new() { Value = "25 - 50" });
+        values.ShouldBeEmpty();
+        validity.ShouldBe([false, false]);
+
+        await component.Find("fluent-text-input").ChangeAsync(new() { Value = "25" });
+        values.ShouldBe([25m]);
+        validity.ShouldBe([false, false, true]);
+        component.FindAll("[role='alert']").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task SignedFieldsAcceptTypedNegativeAmountsAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var values = new List<decimal>();
+        var component = context.Render<AmountInput>(parameters => parameters.Add(item => item.Label, "Opening balance")
+            .Add(item => item.Value, 0m).Add(item => item.ValueChanged, values.Add).Add(item => item.AllowNegative, true));
+
+        await component.Find("fluent-text-input").ChangeAsync(new() { Value = "-25" });
+
+        values.ShouldBe([-25m]);
+        component.FindAll("[role='alert']").ShouldBeEmpty();
+    }
 }

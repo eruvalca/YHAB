@@ -94,13 +94,118 @@ public sealed class BudgetCatalogTests
     }
 
     [Fact]
-    public async Task AssignmentFieldOffersDecimalEntryAndASignToggleAsync()
+    public async Task AssignmentFieldKeepsDecimalEntryWithoutASignToggleAsync()
     {
         await using var context = CreateContext();
         var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, Plan()).Add(item => item.OnCommand, _ => { }));
         var input = component.Find(".category-row .amount-input fluent-text-input");
         input.GetAttribute("inputmode").ShouldBe("decimal");
-        component.Find(".category-row fluent-button.amount-sign").TextContent.Trim().ShouldBe("±");
+        component.FindAll(".category-row fluent-button.amount-sign").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task AvailablePillMovesMoneyOutToReadyToAssignAsync()
+    {
+        await using var context = CreateContext();
+        var plan = Plan();
+        var groceries = plan.Categories[0];
+        var commands = new List<PlanCommand>();
+        var board = RenderBoard(context, plan, commands, readyToAssign: 100m,
+            Row(groceries, assigned: 40m, activity: 0m, available: 40m),
+            Row(plan.Categories[1], assigned: 0m, activity: 0m, available: 0m));
+
+        var pill = board.Find($"[data-category-id='{groceries.Id}'] button.available-pill");
+        pill.GetAttribute("aria-haspopup").ShouldBe("dialog");
+        await pill.ClickAsync();
+        pill.GetAttribute("aria-expanded").ShouldBe("true");
+        await board.Find(".money-popover fluent-text-input").ChangeAsync(new() { Value = "25" });
+        await board.FindAll(".money-popover fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Move money", StringComparison.Ordinal)).ClickAsync();
+
+        var command = commands.Single().ShouldBeOfType<MoveMoney>();
+        command.FromCategoryId.ShouldBe(groceries.Id);
+        command.ToCategoryId.ShouldBeNull();
+        command.Amount.ShouldBe(25m);
+    }
+
+    [Fact]
+    public async Task OverspentAvailablePillPrefillsTheCoverAmountAsync()
+    {
+        await using var context = CreateContext();
+        var plan = Plan();
+        var groceries = plan.Categories[0];
+        var commands = new List<PlanCommand>();
+        var board = RenderBoard(context, plan, commands, readyToAssign: 100m,
+            Row(groceries, assigned: 0m, activity: -25m, available: -25m),
+            Row(plan.Categories[1], assigned: 0m, activity: 0m, available: 0m));
+
+        await board.Find($"[data-category-id='{groceries.Id}'] button.available-pill").ClickAsync();
+        board.Find(".money-popover h2").TextContent.ShouldBe("Cover overspending");
+        board.Find(".money-popover fluent-text-input").GetAttribute("value").ShouldBe("25.00");
+        await board.FindAll(".money-popover fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Move money", StringComparison.Ordinal)).ClickAsync();
+
+        var command = commands.Single().ShouldBeOfType<MoveMoney>();
+        command.FromCategoryId.ShouldBeNull();
+        command.ToCategoryId.ShouldBe(groceries.Id);
+        command.Amount.ShouldBe(25m);
+    }
+
+    [Fact]
+    public async Task ZeroAvailablePillIsNotAnActionAsync()
+    {
+        await using var context = CreateContext();
+        var plan = Plan();
+        var board = RenderBoard(context, plan, [], readyToAssign: 100m,
+            Row(plan.Categories[0], assigned: 0m, activity: 0m, available: 0m),
+            Row(plan.Categories[1], assigned: 0m, activity: 0m, available: 0m));
+
+        board.FindAll("button.available-pill").ShouldBeEmpty();
+        board.Find($"[data-category-id='{plan.Categories[0].Id}'] .available-pill").TagName.ShouldBe("SPAN");
+    }
+
+    [Fact]
+    public async Task MoveDraftStaysOpenUntilTheSavedPlanVersionArrivesAsync()
+    {
+        await using var context = CreateContext();
+        var plan = Plan();
+        var groceries = plan.Categories[0];
+        var commands = new List<PlanCommand>();
+        var rows = new[]
+        {
+            Row(groceries, assigned: 40m, activity: 0m, available: 40m),
+            Row(plan.Categories[1], assigned: 0m, activity: 0m, available: 0m),
+        };
+        var board = RenderBoard(context, plan, commands, readyToAssign: 100m, rows);
+
+        await board.Find($"[data-category-id='{groceries.Id}'] button.available-pill").ClickAsync();
+        await board.Find(".money-popover fluent-text-input").ChangeAsync(new() { Value = "25" });
+        await board.FindAll(".money-popover fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Move money", StringComparison.Ordinal)).ClickAsync();
+        commands.Single().ShouldBeOfType<MoveMoney>().Amount.ShouldBe(25m);
+
+        // A rejected or still-pending command keeps the draft ready to retry.
+        board.Find("fluent-popover-b").GetAttribute("opened").ShouldBe("true");
+        board.Find(".money-popover fluent-text-input").GetAttribute("value").ShouldBe("25");
+
+        // The saved plan arrives as a new version and closes the completed draft.
+        board.Render(parameters => parameters
+            .Add(item => item.Plan, plan with { Version = plan.Version + 1 })
+            .Add(item => item.OnCommand, commands.Add)
+            .Add(item => item.LoadMonth, MonthLoader(100m, rows)));
+        board.Find("fluent-popover-b").GetAttribute("opened").ShouldBe("false");
+    }
+
+    [Fact]
+    public async Task AssignmentFieldRejectsNegativeEditsAsync()
+    {
+        await using var context = CreateContext();
+        var commands = new List<PlanCommand>();
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, Plan()).Add(item => item.OnCommand, commands.Add));
+
+        await component.Find(".category-row .amount-input fluent-text-input").ChangeAsync(new() { Value = "-25" });
+        commands.ShouldBeEmpty();
+        component.Find(".category-row [role='alert']").TextContent.ShouldContain("zero or more");
+
+        await component.Find(".category-row .amount-input fluent-text-input").ChangeAsync(new() { Value = "25 - 50" });
+        commands.ShouldBeEmpty();
     }
 
     [Fact]
@@ -299,6 +404,20 @@ public sealed class BudgetCatalogTests
     }
 
     private static string ListId(Guid group) => $"category-list-{group:N}";
+
+    private static IRenderedComponent<BudgetBoard> RenderBoard(BunitContext context, PlanSnapshot plan, List<PlanCommand> commands,
+        decimal readyToAssign, params CategoryMonth[] categories)
+        => context.Render<BudgetBoard>(parameters => parameters
+            .Add(item => item.Plan, plan)
+            .Add(item => item.OnCommand, commands.Add)
+            .Add(item => item.LoadMonth, MonthLoader(readyToAssign, categories)));
+
+    private static Func<DateOnly, CancellationToken, Task<BudgetMonth>> MonthLoader(decimal readyToAssign, params CategoryMonth[] categories)
+        => (month, _) => Task.FromResult(new BudgetMonth(month, readyToAssign, categories.Sum(item => item.Assigned),
+            categories.Sum(item => item.Activity), categories.Sum(item => item.Available), 0m, 0m, 0m, categories));
+
+    private static CategoryMonth Row(CategoryData category, decimal assigned, decimal activity, decimal available)
+        => new(category, assigned, activity, available, 0m, 0m, 0m, 0m, false);
 
     private static FluentSortableList<Guid> List(IRenderedComponent<BudgetBoard> component, Guid group) =>
         component.FindComponents<FluentSortableList<Guid>>().Single(item => string.Equals(item.Instance.Id, ListId(group), StringComparison.Ordinal)).Instance;

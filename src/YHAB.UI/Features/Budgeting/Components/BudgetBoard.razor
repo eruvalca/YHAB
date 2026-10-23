@@ -45,12 +45,12 @@
                 <h2 id="budget-help-heading">How this works</h2>
                 <FluentButton OnClick="HideHelp" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle" aria-label="Close help">Close</FluentButton>
             </FluentStack>
-            <p class="muted">Positive balances roll forward. @Money(_budget.AssignedInFuture) is assigned in future months. Enter arithmetic such as 150 + 25 in any amount field. Drag a move handle to reorder, or click it for move controls. Rename a category beside its name, or press F2 on the name. Select a category to adjust its target.</p>
+            <p class="muted">Positive balances roll forward. @Money(_budget.AssignedInFuture) is assigned in future months. Enter arithmetic such as 150 + 25 in any amount field. Select an Available balance to move money to Ready to assign or another category. Drag a move handle to reorder, or click it for move controls. Rename a category beside its name, or press F2 on the name. Select a category to adjust its target.</p>
         </section>
     }
     @if (_budget.CashOverspending + _budget.CreditOverspending > 0)
     {
-        <div class="notice" data-kind="warning">@Money(_budget.CashOverspending) cash overspending and @Money(_budget.CreditOverspending) credit overspending. Move money into these categories to cover it.</div>
+        <div class="notice" data-kind="warning">@Money(_budget.CashOverspending) cash overspending and @Money(_budget.CreditOverspending) credit overspending. Open an overspent Available balance to cover it.</div>
     }
     @if (_move)
     {
