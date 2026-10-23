@@ -8,12 +8,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: yhab-browser-request-${{ github.ref }}
+  group: yhab-browser-request-${{ github.ref }}-${{ github.event.label.name }}
   cancel-in-progress: true
 
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
+  ASPIRE_VERSION: 13.6.2
 
 jobs:
   browser-full:

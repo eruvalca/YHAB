@@ -26,6 +26,9 @@ jobs:
   changes:
     name: Select validation scope
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
     timeout-minutes: 5
     outputs:
       application: ${{ steps.scope.outputs.application }}

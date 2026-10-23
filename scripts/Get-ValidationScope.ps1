@@ -29,7 +29,7 @@ foreach ($path in $Paths) {
         $browser = 'full'
         continue
     }
-    if ($path -cmatch '^(src/YHAB/.+\.cs|src/YHAB\.(AppHost|ServiceDefaults|SharedKernel)/|tests/)') {
+    if ($path -cmatch '^(src/YHAB/.+\.cs\z|src/YHAB\.(AppHost|ServiceDefaults|SharedKernel)/|tests/)') {
         $browser = 'smoke'
         continue
     }
