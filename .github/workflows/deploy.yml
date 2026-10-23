@@ -52,8 +52,9 @@ jobs:
             $scope = ./scripts/Get-ValidationScope.ps1 -Full
           }
           else {
-            $paths = @(gh api --paginate "repos/$env:GH_REPO/pulls/$env:PR_NUMBER/files?per_page=100" --jq '.[] | .filename, (.previous_filename // empty)')
+            $encodedPaths = @(gh api --paginate "repos/$env:GH_REPO/pulls/$env:PR_NUMBER/files?per_page=100" --jq '.[] | (.filename, (.previous_filename // empty)) | @json')
             if ($LASTEXITCODE) { exit $LASTEXITCODE }
+            $paths = @($encodedPaths | ForEach-Object { $_ | ConvertFrom-Json })
             $scope = ./scripts/Get-ValidationScope.ps1 -Paths $paths
             if ($env:IS_DRAFT -eq 'true') {
               $scope.browser = 'none'
@@ -110,7 +111,6 @@ jobs:
   tests:
     name: Test ${{ matrix.project }}
     needs: changes
-    if: needs.changes.outputs.application == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -118,12 +118,15 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - uses: ./.github/actions/setup-dotnet
+      - if: needs.changes.outputs.application == 'true'
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - if: needs.changes.outputs.application == 'true'
+        uses: ./.github/actions/setup-dotnet
       - name: Create and trust test HTTPS certificate
-        if: matrix.project == 'YHAB.AspireIntegrationTests'
+        if: needs.changes.outputs.application == 'true' && matrix.project == 'YHAB.AspireIntegrationTests'
         uses: ./.github/actions/trust-test-cert
       - name: Build test project
+        if: needs.changes.outputs.application == 'true'
         shell: pwsh
         env:
           PROJECT: ${{ matrix.project }}
@@ -131,6 +134,7 @@ jobs:
           dotnet build "tests/$env:PROJECT/$env:PROJECT.csproj" --configuration Release
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Run tests
+        if: needs.changes.outputs.application == 'true'
         shell: pwsh
         env:
           PROJECT: ${{ matrix.project }}
@@ -138,7 +142,7 @@ jobs:
           dotnet test --project "tests/$env:PROJECT/$env:PROJECT.csproj" --configuration Release --no-build --max-parallel-test-modules 1 --output Detailed --report-trx --results-directory "$env:RUNNER_TEMP/yhab-test-results"
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Retain test results
-        if: ${{ !cancelled() }}
+        if: needs.changes.outputs.application == 'true' && !cancelled()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: test-results-${{ matrix.project }}

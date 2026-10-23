@@ -12,6 +12,7 @@ $cases = @(
     @{ Paths = @('src/YHAB/wwwroot/app.css'); Application = $true; Deploy = $true; Browser = 'full' },
     @{ Paths = @('tests/YHAB.PlaywrightTests/BudgetTests.cs'); Application = $true; Deploy = $false; Browser = 'full' },
     @{ Paths = @('src/YHAB/Features/Budgets/BudgetService.cs'); Application = $true; Deploy = $true; Browser = 'smoke' },
+    @{ Paths = @('src/YHAB/Program.cs'); Application = $true; Deploy = $true; Browser = 'full' },
     @{ Paths = @('src/YHAB/YHAB.csproj'); Application = $true; Deploy = $true; Browser = 'full' },
     @{ Paths = @('src/YHAB.SharedKernel/Money.cs'); Application = $true; Deploy = $true; Browser = 'smoke' },
     @{ Paths = @('tests/YHAB.UnitTests/Example.cs'); Application = $true; Deploy = $false; Browser = 'smoke' },

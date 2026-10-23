@@ -24,7 +24,7 @@ foreach ($path in $Paths) {
     if ($browser -eq 'full') {
         continue
     }
-    if ($path -cmatch '^(src/YHAB\.(UI|Client)/|tests/YHAB\.PlaywrightTests/)' -or
+    if ($path -cmatch '^(src/YHAB\.(UI|Client)/|tests/YHAB\.PlaywrightTests/|src/YHAB/Program\.cs\z)' -or
         $path -cmatch '\.(razor|razor\.cs|css|scss|js|mjs|ts|html)\z') {
         $browser = 'full'
         continue

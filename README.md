@@ -526,7 +526,7 @@ on every PR and push to `main`. On pull requests,
 `scripts/Get-ValidationScope.ps1` classifies the changed paths: application
 changes select the Release build, unit/component tests, and PostgreSQL/Aspire
 checks; deployment inputs also select `aspire publish`; documentation-only
-changes skip those jobs. UI/rendering and Playwright changes select the complete
+changes skip that work. UI/rendering and Playwright changes select the complete
 Chromium suite, other application changes select `Category=BrowserSmoke`, and
 documentation-only changes select no browser run. Unknown paths conservatively
 select full validation. Applying `run-full-browser` requests an additional full

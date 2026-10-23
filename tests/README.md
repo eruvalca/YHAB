@@ -18,7 +18,7 @@ isolated AppHost builders for the Aspire and Playwright projects.
 The deployment workflow checks formatting and tooling on every pull request and
 `main` push. Pull-request changed paths select application build/tests,
 PostgreSQL/Aspire checks, deployment validation, and browser coverage;
-documentation-only changes skip those expensive jobs. Every `main` push runs all
+documentation-only changes skip that expensive work. Every `main` push runs all
 validation and deploys to production; pull requests do not deploy. The extended
 browser performance cases run in the separate
 [Performance validation](../.github/workflows/performance.yml) workflow weekly
