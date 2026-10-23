@@ -1,0 +1,47 @@
+@inherits YHAB.UI.Components.CancellableComponentBase
+@if (PanelVisible)
+{
+    <section class="first-run-panel" aria-label="Getting started" data-current-step="@CurrentStep">
+        @if (!HasAccounts)
+        {
+            <section class="first-run-account" aria-labelledby="first-run-account-heading">
+                <h2 id="first-run-account-heading">Add your first account</h2>
+                <p class="muted">Give the money in your plan a starting point.</p>
+                <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalS)" VerticalGap="var(--spacingVerticalXS)">
+                    <FluentButton Appearance="ButtonAppearance.Primary" OnClick="AddAccountAsync" Disabled="Busy">Add your first account</FluentButton>
+                    <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="ShowHelpAsync">How this works</FluentButton>
+                </FluentStack>
+            </section>
+        }
+        @if (ChecklistVisible)
+        {
+            <section class="first-run-checklist" aria-label="Getting started checklist">
+                <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalM)" VerticalGap="var(--spacingVerticalXS)">
+                    <ol class="first-run-steps">
+                        <li data-complete="@Complete(HasAccounts)" data-current="@Current(1)" aria-current="@StepStatus(1)">
+                            <span class="step-marker" aria-hidden="true">@Marker(HasAccounts, 1)</span>
+                            <span><span class="visually-hidden">@StepLabel(HasAccounts, 1)</span>Add an account</span>
+                        </li>
+                        <li data-complete="@Complete(HasCategories)" data-current="@Current(2)" aria-current="@StepStatus(2)">
+                            <span class="step-marker" aria-hidden="true">@Marker(HasCategories, 2)</span>
+                            <span><span class="visually-hidden">@StepLabel(HasCategories, 2)</span>Add categories</span>
+                        </li>
+                        <li data-complete="@Complete(HasAssigned)" data-current="@Current(3)" aria-current="@StepStatus(3)">
+                            <span class="step-marker" aria-hidden="true">@Marker(HasAssigned, 3)</span>
+                            <span><span class="visually-hidden">@StepLabel(HasAssigned, 3)</span>Assign money</span>
+                        </li>
+                    </ol>
+                    @if (IsCurrent(2))
+                    {
+                        <FluentButton Appearance="ButtonAppearance.Primary" Size="ButtonSize.Small" OnClick="AddCategoryAsync" Disabled="Busy">Add a category</FluentButton>
+                    }
+                    @if (IsCurrent(3))
+                    {
+                        <FluentButton Appearance="ButtonAppearance.Subtle" Size="ButtonSize.Small" OnClick="ShowHelpAsync">How this works</FluentButton>
+                    }
+                    <FluentButton Appearance="ButtonAppearance.Subtle" Size="ButtonSize.Small" OnClick="DismissAsync" aria-label="Dismiss getting started checklist">Dismiss</FluentButton>
+                </FluentStack>
+            </section>
+        }
+    </section>
+}

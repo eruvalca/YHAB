@@ -1,5 +1,5 @@
 .editor-surface { margin-block: var(--spacingVerticalXL); padding: clamp(1rem, 2vw, 1.75rem); border: 1px solid var(--colorBrandStroke2); border-radius: var(--borderRadiusXLarge); background: var(--colorNeutralBackground1); box-shadow: var(--shadow8); }
-h2 { margin: 0; }
+h2 { margin: 0; scroll-margin-top: var(--spacingVerticalS); }
 .editor-surface ::deep .editor-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacingHorizontalS); }
 .editor-surface ::deep fluent-field:has(> fluent-text-input, > fluent-dropdown, > fluent-textarea),
 .editor-surface ::deep fluent-text-input,

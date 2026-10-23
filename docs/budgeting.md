@@ -7,6 +7,19 @@ connections, imports, or photo storage.
 
 ## Everyday workflow
 
+A new plan starts with a first-run path in the board itself: a primary
+**Add your first account** card and a three-step checklist (account, categories,
+assign money). The panel sits beside the category table on wide screens and above
+it on narrow screens. The checklist follows the plan's actual progress, and
+**Dismiss** and assignment completion are remembered per plan in the browser, so
+changing months or reopening the plan does not reset the checklist while the
+account card remains. **How this works** beside the monthly summary opens
+carryover, arithmetic, dragging, and target help inline. **Fund targets** and
+**Move money** appear once the plan has an account; when shown but unavailable
+they state what is missing: Fund targets needs a category target, money in Ready
+to assign, and a visible eligible target, and Move money needs at least two
+categories.
+
 1. Create a plan from **Your plans**. Suggested category groups are optional.
 2. Add checking, savings, cash, credit, loan, or tracking accounts. Enter an
    opening date and a signed opening balance; money owed is negative.
@@ -125,8 +138,10 @@ retains normal document scrolling; keyboard focus and editor headings stay below
 the summary. On desktop, **Hide menu / Show menu** in the site header frees space
 for the plan and remembers your preference across navigation and reloads. Without
 a saved preference, the global menu is collapsed within a plan, leaving a single
-compact plan sidebar. On smaller screens, open **Plan & accounts** for navigation.
-The same sidebar is used by transactions, reports, and plan settings. Installation
+compact plan sidebar. On smaller screens, open **Plan & accounts** for navigation;
+a new plan's **Add your first account** action stays in the board, so starting does
+not require the drawer. The same sidebar is used by transactions, reports, and plan
+settings. Installation
 controls remain available in the site footer.
 
 ## Monthly rules
@@ -151,7 +166,8 @@ controls remain available in the site footer.
   arrives. Set-aside targets ask for new contributions. Balance targets track
   the amount still available. Dated targets spread remaining contributions across
   the months left; refill targets count spending within their target period.
-- **Fund targets** uses only positive Ready to assign and prioritizes overspent
+- **Fund targets** is available when a category has a target and Ready to assign
+  is positive. It uses only positive Ready to assign and prioritizes overspent
   categories, then due dates and the displayed group/category order. Hidden and snoozed categories
   are excluded.
 

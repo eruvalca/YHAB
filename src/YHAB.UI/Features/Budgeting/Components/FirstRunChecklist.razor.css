@@ -1,0 +1,61 @@
+.first-run-panel { display: flex; flex: 0 1 20rem; flex-direction: column; gap: var(--spacingVerticalM); min-width: 0; order: 2; }
+
+.first-run-account {
+    padding: var(--spacingVerticalM) var(--spacingHorizontalM);
+    border: 1px solid var(--colorBrandStroke2);
+    border-radius: var(--borderRadiusMedium);
+    background: var(--colorBrandBackground2);
+}
+
+.first-run-account h2 { margin: 0 0 var(--spacingVerticalXS); font-size: var(--fontSizeBase400); }
+.first-run-account p { margin: 0 0 var(--spacingVerticalM); }
+
+.first-run-checklist {
+    padding: var(--spacingVerticalM) var(--spacingHorizontalM);
+    border: 1px solid var(--colorNeutralStroke2);
+    border-radius: var(--borderRadiusMedium);
+    background: var(--colorNeutralBackground1);
+}
+
+.first-run-steps {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacingHorizontalS);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.first-run-steps li {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacingHorizontalXS);
+    font-size: var(--fontSizeBase200);
+    white-space: nowrap;
+}
+
+.first-run-steps li[data-current="true"] { font-weight: var(--fontWeightSemibold); }
+.first-run-steps li[data-complete="true"] .step-marker { border-color: var(--colorPaletteGreenBorder1); color: var(--colorPaletteGreenForeground1); }
+.first-run-steps li[data-current="true"] .step-marker { border-color: var(--colorBrandStroke1); background: var(--colorBrandBackground2); color: var(--colorBrandForeground1); }
+
+.step-marker {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 1px solid var(--colorNeutralStroke1);
+    border-radius: 50%;
+    font-size: var(--fontSizeBase100);
+    font-variant-numeric: tabular-nums;
+}
+
+@container budget-workspace (max-width: 56rem) {
+    .first-run-panel { flex-basis: 100%; order: 0; }
+}
+
+@media (max-width: 999px) {
+    .first-run-panel { flex-basis: 100%; order: 0; }
+}

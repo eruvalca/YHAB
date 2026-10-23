@@ -109,6 +109,47 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
     }
 
     [Fact]
+    [Trait("Category", "BrowserSmoke")]
+    public async Task FirstRunPanelStaysAboveTheTableWhenColumnsWrapAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(4));
+        await using var builder = await TestAppHost.CreateAsync(timeout.Token);
+        await using var app = await builder.BuildAsync(timeout.Token);
+        await app.StartAsync(timeout.Token);
+        await app.ResourceNotifications.WaitForResourceHealthyAsync("yhab", timeout.Token);
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync();
+        await using var context = await browser.NewContextAsync(new()
+        {
+            BaseURL = app.GetEndpoint("yhab", "https").ToString(),
+            IgnoreHTTPSErrors = true,
+            ViewportSize = new() { Width = 1024, Height = 960 },
+        });
+        await context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = true });
+        var page = await context.NewPageAsync();
+        var errors = new ConcurrentQueue<string>();
+        page.PageError += (_, error) => errors.Enqueue(error);
+        try
+        {
+            await BudgetWorkflowTests.RegisterAndLoginAsync(page);
+            await page.GotoAsync("/plans");
+            await page.GetByLabel("Plan name", new() { Exact = true }).FillAsync("Wrapped first run");
+            await page.GetByRole(AriaRole.Button, new() { Name = "Create your plan" }).ClickAsync();
+            await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+            var card = (await page.Locator(".first-run-account").BoundingBoxAsync()).ShouldNotBeNull();
+            var table = (await page.Locator(".table-toolbar").BoundingBoxAsync()).ShouldNotBeNull();
+            card.Y.ShouldBeLessThan(table.Y + 1);
+            (await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth")).ShouldBeTrue();
+            errors.ShouldBeEmpty();
+        }
+        finally
+        {
+            await BrowserArtifacts.CaptureAsync(page, context, Path.Combine(AppContext.BaseDirectory, "TestResults", "first-run-1024"), output.WriteLine);
+        }
+    }
+
+    [Fact]
     public async Task SortableCategoriesMoveByKeyboardAndTouchAsync()
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
@@ -413,6 +454,8 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
     private static async Task TouchDragAsync(IPage page, ICDPSession cdp, ILocator handle, ILocator target, Func<Task> whileDragging)
     {
         await handle.ScrollIntoViewIfNeededAsync();
+        // Keep the drag away from the viewport edge so SortableJS auto-scroll does not move the rows mid-gesture.
+        await handle.EvaluateAsync("element => element.scrollIntoView({ block: 'center' })");
         var from = (await handle.BoundingBoxAsync()).ShouldNotBeNull();
         var to = (await target.BoundingBoxAsync()).ShouldNotBeNull();
         var (x, y) = (from.X + from.Width / 2, from.Y + from.Height / 2);

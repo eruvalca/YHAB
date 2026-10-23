@@ -8,6 +8,7 @@ public sealed partial class BudgetBoard
 {
     [Parameter, EditorRequired] public PlanSnapshot Plan { get; set; } = default!;
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
+    [Parameter] public EventCallback OnAddAccount { get; set; }
     [Parameter] public bool Busy { get; set; }
     [Parameter] public Func<DateOnly, CancellationToken, Task<BudgetMonth>>? LoadMonth { get; set; }
 
@@ -21,15 +22,33 @@ public sealed partial class BudgetBoard
     private long _version = -1;
     private PlanSnapshot? _loadedPlan;
     private bool _move;
+    private bool _help;
+    private BudgetCategoryTable? _categoryTable;
     private CategoryData? _category;
     private CategoryMonth? EditingMonth => _budget.Categories.SingleOrDefault(item => item.Category.Id == _category?.Id);
+    private bool HasAccounts => Plan.Accounts.Count > 0;
+    private bool HasTargets => Plan.Categories.Any(item => item.Target is not null);
+    private bool HasFundableNeed => _budget.Categories.Any(item =>
+        !item.Snoozed && !item.Category.Hidden
+        && !Plan.Groups.Any(group => group.Id == item.Category.GroupId && group.Hidden)
+        && (item.TargetNeeded > 0 || item.Available < 0));
+    private string? FundTargetsHint
+    {
+        get
+        {
+            if (!HasTargets) { return "Select a category and add a target before funding targets."; }
+            if (_budget.ReadyToAssign <= 0) { return "Add money to Ready to assign before funding targets."; }
+            return HasFundableNeed ? null : "Every target is funded, hidden, or snoozed. Nothing to fund this month.";
+        }
+    }
+    private string? MoveMoneyHint => Plan.Categories.Count < 2 ? "Add at least two categories before moving money." : null;
 
     protected override async Task OnParametersSetAsync()
     {
         if (_month == default) { _month = BudgetFacts.Month(Plan.Today); }
         if (_loadedPlan?.Id != Plan.Id || _version != Plan.Version || _budget is null || (_error is not null && !ReferenceEquals(_loadedPlan, Plan)))
         {
-            if (_loadedPlan?.Id != Plan.Id) { CloseEditors(); }
+            if (_loadedPlan?.Id != Plan.Id) { _help = false; CloseEditors(); }
             else { _move = false; _category = Plan.Categories.SingleOrDefault(item => item.Id == _category?.Id); }
             _version = Plan.Version;
             _loadedPlan = Plan;
@@ -67,7 +86,11 @@ public sealed partial class BudgetBoard
     private async Task NextAsync() { _month = _month.AddMonths(1); await CalculateAsync(); }
     private async Task CurrentAsync() { _month = BudgetFacts.Month(Plan.Today); await CalculateAsync(); }
     private Task AutoAssignAsync() => OnCommand.InvokeAsync(new AutoAssign(Plan.Version, _month));
-    private void ShowMove() { CloseEditors(); _move = true; }
+    private Task AddAccountAsync() => OnAddAccount.InvokeAsync();
+    private void ShowMove() { if (MoveMoneyHint is not null) { return; } CloseEditors(); _move = true; }
+    private void ShowHelp() => _help = true;
+    private void HideHelp() => _help = false;
+    private Task AddCategoryAsync() { _help = false; _categoryTable?.BeginAddCategory(); return Task.CompletedTask; }
     private void EditCategory(CategoryData category) { _move = false; _category = category; }
     private void CloseEditors() { _move = false; _category = null; }
 }
