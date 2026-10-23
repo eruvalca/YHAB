@@ -692,8 +692,9 @@ Amount checks cover click/Tab selection, clearing to zero, replacing selected te
 preserved focus and input identity across saves, and stable formatting when zero
 is cleared again. Component cases cover pending saves, rejected values, blank
 normalization, no-op expressions without another save, comma-decimal keypad entry,
-the sign control that replaces the missing keypad minus key, and text-mode fields
-that keep the full keyboard. Account, transaction (including splits), move-money,
+the sign control that replaces the missing keypad minus key, rejection of typed
+negative results in positive-only fields, and text-mode fields that keep the full
+keyboard. Account, transaction (including splits), move-money,
 and target editors must save a typed amount when Save is clicked before the field
 blurs; browser checks save the account and an edited transaction without Tab.
 Component checks also verify that switching to a transfer between budget accounts

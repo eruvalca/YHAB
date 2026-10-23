@@ -16,6 +16,8 @@ public sealed partial class AvailablePill
     private CategoryData[] _targets = [];
     private Dictionary<Guid, decimal> _available = [];
     private bool _open;
+    private long _draftVersion;
+    private bool _draftOverspent;
     private bool _valid = true;
     private bool _saving;
     private Guid? _other;
@@ -55,10 +57,19 @@ public sealed partial class AvailablePill
             return;
         }
 
-        _targets = BuildTargets();
-        if (_other is { } id && !_targets.Any(item => item.Id == id))
+        // A saved plan or a month change can make an open draft describe a
+        // different transfer. Close it instead of reinterpreting the amount; the
+        // user confirms the new operation from the refreshed row.
+        if (Plan.Version != _draftVersion || Overspent != _draftOverspent)
         {
-            _other = null;
+            _open = false;
+            return;
+        }
+
+        _targets = BuildTargets();
+        if (!_targets.Any(item => item.Id == (_other ?? Guid.Empty)))
+        {
+            _open = false;
         }
     }
 
@@ -115,6 +126,8 @@ public sealed partial class AvailablePill
     private void ResetDraft()
     {
         _targets = BuildTargets();
+        _draftVersion = Plan.Version;
+        _draftOverspent = Overspent;
         _other = Overspent && Budget.ReadyToAssign <= 0m ? _targets.FirstOrDefault()?.Id : null;
         _valid = true;
         _amount = Overspent ? Math.Min(Math.Abs(Row.Available), Math.Max(0m, SourceAvailable)) : 0m;
@@ -134,7 +147,14 @@ public sealed partial class AvailablePill
         if (Overspent)
         {
             var limit = Math.Max(0m, SourceAvailable);
-            _amount = _amount <= 0m ? Math.Min(Math.Abs(Row.Available), limit) : Math.Min(_amount, limit);
+            var next = _amount <= 0m ? Math.Min(Math.Abs(Row.Available), limit) : Math.Min(_amount, limit);
+            if (next != _amount)
+            {
+                // The source change replaces the draft, so an earlier invalid
+                // expression no longer describes what will be saved.
+                _amount = next;
+                _valid = true;
+            }
         }
 
         return Task.CompletedTask;
@@ -159,7 +179,6 @@ public sealed partial class AvailablePill
             await OnCommand.InvokeAsync(Overspent
                 ? new MoveMoney(Plan.Version, _other, Row.Category.Id, Budget.Month, value)
                 : new MoveMoney(Plan.Version, Row.Category.Id, _other, Budget.Month, value));
-            _open = false;
         }
         finally
         {

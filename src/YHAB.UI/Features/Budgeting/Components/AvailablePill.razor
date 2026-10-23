@@ -26,7 +26,7 @@ else
                         <FluentSelect Margin="0" TOption="CategoryData" TValue="Guid" Label="@SelectLabel" Items="_targets"
                                       OptionText="item => item.Name" OptionValue="item => item.Id"
                                       Value="@(_other ?? Guid.Empty)" ValueChanged="TargetChangedAsync" />
-                        <AmountInput @ref="_amountInput" Label="Amount" CommitOnSave="true" @bind-Value="_amount"
+                        <AmountInput @ref="_amountInput" Label="Amount" CommitOnSave="true" RejectNegative="true" @bind-Value="_amount"
                                      ValidChanged="value => _valid = value" />
                         <p class="money-popover-limit">@LimitText</p>
                         <FluentStack HorizontalGap="var(--spacingHorizontalS)">

@@ -139,6 +139,8 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             dialog[0].ShouldBeGreaterThanOrEqualTo(0);
             (dialog[0] + dialog[1]).ShouldBeLessThanOrEqualTo(width + 1);
             (await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth")).ShouldBeTrue();
+            var amountLabel = popover.Locator("fluent-field").Filter(new() { Has = page.GetByText("Amount", new() { Exact = true }) }).Locator("label[slot='label']");
+            (await amountLabel.BoundingBoxAsync()).ShouldNotBeNull().Width.ShouldBeGreaterThan(20);
             var moveAmount = popover.Locator("fluent-field").Filter(new() { Has = page.GetByText("Amount", new() { Exact = true }) }).Locator("input");
             await moveAmount.ClickAsync();
             await page.Keyboard.TypeAsync("25");

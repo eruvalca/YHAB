@@ -33,9 +33,10 @@ category.
    has no minus key, so fields that accept a negative amount (an opening balance
    and split amounts) also show a sign control. The monthly assignment field stays
    positive and uses the decimal keypad; take money back out of a category with
-   its **Available** pill instead. Account, transaction, move-money, and target
-   editor amounts are committed by their Save action, even when the field has not
-   blurred.
+   its **Available** pill instead. A typed negative assignment, including an
+   expression that evaluates below zero, is rejected with an inline message.
+   Account, transaction, move-money, and target editor amounts are committed by
+   their Save action, even when the field has not blurred.
    Select a category's **Available** pill to move money without editing its
    assignment. A positive balance offers **Move money** to Ready to assign or
    another category; an overspent balance offers to cover that shortfall from

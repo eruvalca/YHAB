@@ -163,6 +163,52 @@ public sealed class BudgetCatalogTests
     }
 
     [Fact]
+    public async Task MoveDraftStaysOpenUntilTheSavedPlanVersionArrivesAsync()
+    {
+        await using var context = CreateContext();
+        var plan = Plan();
+        var groceries = plan.Categories[0];
+        var commands = new List<PlanCommand>();
+        var rows = new[]
+        {
+            Row(groceries, assigned: 40m, activity: 0m, available: 40m),
+            Row(plan.Categories[1], assigned: 0m, activity: 0m, available: 0m),
+        };
+        var board = RenderBoard(context, plan, commands, readyToAssign: 100m, rows);
+
+        await board.Find($"[data-category-id='{groceries.Id}'] button.available-pill").ClickAsync();
+        await board.Find(".money-popover fluent-text-input").ChangeAsync(new() { Value = "25" });
+        await board.FindAll(".money-popover fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Move money", StringComparison.Ordinal)).ClickAsync();
+        commands.Single().ShouldBeOfType<MoveMoney>().Amount.ShouldBe(25m);
+
+        // A rejected or still-pending command keeps the draft ready to retry.
+        board.Find("fluent-popover-b").GetAttribute("opened").ShouldBe("true");
+        board.Find(".money-popover fluent-text-input").GetAttribute("value").ShouldBe("25");
+
+        // The saved plan arrives as a new version and closes the completed draft.
+        board.Render(parameters => parameters
+            .Add(item => item.Plan, plan with { Version = plan.Version + 1 })
+            .Add(item => item.OnCommand, commands.Add)
+            .Add(item => item.LoadMonth, MonthLoader(100m, rows)));
+        board.Find("fluent-popover-b").GetAttribute("opened").ShouldBe("false");
+    }
+
+    [Fact]
+    public async Task AssignmentFieldRejectsNegativeEditsAsync()
+    {
+        await using var context = CreateContext();
+        var commands = new List<PlanCommand>();
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, Plan()).Add(item => item.OnCommand, commands.Add));
+
+        await component.Find(".category-row .amount-input fluent-text-input").ChangeAsync(new() { Value = "-25" });
+        commands.ShouldBeEmpty();
+        component.Find(".category-row [role='alert']").TextContent.ShouldContain("zero or more");
+
+        await component.Find(".category-row .amount-input fluent-text-input").ChangeAsync(new() { Value = "25 - 50" });
+        commands.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task AssignmentRefreshPreservesAnOpenTargetDraftAsync()
     {
         await using var context = CreateContext();
@@ -361,15 +407,14 @@ public sealed class BudgetCatalogTests
 
     private static IRenderedComponent<BudgetBoard> RenderBoard(BunitContext context, PlanSnapshot plan, List<PlanCommand> commands,
         decimal readyToAssign, params CategoryMonth[] categories)
-    {
-        Func<DateOnly, CancellationToken, Task<BudgetMonth>> load = (month, _) =>
-            Task.FromResult(new BudgetMonth(month, readyToAssign, categories.Sum(item => item.Assigned), categories.Sum(item => item.Activity),
-                categories.Sum(item => item.Available), 0m, 0m, 0m, categories));
-        return context.Render<BudgetBoard>(parameters => parameters
+        => context.Render<BudgetBoard>(parameters => parameters
             .Add(item => item.Plan, plan)
             .Add(item => item.OnCommand, commands.Add)
-            .Add(item => item.LoadMonth, load));
-    }
+            .Add(item => item.LoadMonth, MonthLoader(readyToAssign, categories)));
+
+    private static Func<DateOnly, CancellationToken, Task<BudgetMonth>> MonthLoader(decimal readyToAssign, params CategoryMonth[] categories)
+        => (month, _) => Task.FromResult(new BudgetMonth(month, readyToAssign, categories.Sum(item => item.Assigned),
+            categories.Sum(item => item.Activity), categories.Sum(item => item.Available), 0m, 0m, 0m, categories));
 
     private static CategoryMonth Row(CategoryData category, decimal assigned, decimal activity, decimal available)
         => new(category, assigned, activity, available, 0m, 0m, 0m, 0m, false);
