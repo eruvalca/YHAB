@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Bunit;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Shouldly;
 using Xunit;
@@ -121,6 +122,28 @@ public sealed class AmountInputTests
         values.ShouldBe([-800m, 800m]);
         component.Render(parameters => parameters.Add(item => item.Value, 800m).Add(item => item.AllowNegative, true));
         component.Find("fluent-text-input").GetAttribute("value").ShouldBe("800.00");
+    }
+
+    [Fact]
+    public async Task DirectSignTapNegatesThePendingBlurCommitAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var values = new List<decimal>();
+        var component = context.Render<AmountInput>(parameters => parameters.Add(item => item.Label, "Assigned")
+            .Add(item => item.Value, 0m).Add(item => item.AllowNegative, true)
+            .Add(item => item.ValueChanged, value => { values.Add(value); return completion.Task; }));
+
+        var sign = component.Find("fluent-button.amount-sign");
+        await sign.TriggerEventAsync("onpointerdown", new PointerEventArgs());
+        var change = component.Find("fluent-text-input").ChangeAsync(new() { Value = "125" });
+        await sign.ClickAsync();
+        await component.WaitForAssertionAsync(() => values.ShouldBe([-125m]));
+        completion.SetResult();
+        await change;
+        values.ShouldBe([-125m]);
     }
 
     [Fact]

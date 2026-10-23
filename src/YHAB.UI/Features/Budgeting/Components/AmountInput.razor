@@ -2,11 +2,11 @@
     <FluentTextInput Id="@Id" Label="@Label" Value="@_text" ValueChanged="EvaluateAsync" Immediate="@CommitOnSave"
                      Placeholder="0.00 or 25 + 10" InputMode="@InputMode" MaxLength="200" Size="@Size"
                      Class="amount-input" aria-invalid="@(_error is null ? "false" : "true")" aria-describedby="@(_error is null ? null : $"{Id}-error")"
-                     Margin="0" Width="100%" Disabled="@Disabled" ReadOnly="@ReadOnly" />
+                     Margin="0" Width="100%" Disabled="@Disabled" ReadOnly="@ReadOnly" OnFocusIn="FocusIn" />
     @if (AllowNegative)
     {
         <FluentButton Class="amount-sign" Appearance="ButtonAppearance.Subtle" Size="ButtonSize.Large" IconOnly="true" OnClick="ToggleSignAsync"
-                      Disabled="@(Disabled || ReadOnly)" aria-label="@($"Change the sign of {Label}")" title="Change sign">±</FluentButton>
+                      @onpointerdown="PrepareSignToggle" Disabled="@(Disabled || ReadOnly)" aria-label="@($"Change the sign of {Label}")" title="Change sign">±</FluentButton>
     }
 </div>
 @if (_error is not null)

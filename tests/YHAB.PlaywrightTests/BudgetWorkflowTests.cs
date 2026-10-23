@@ -410,6 +410,18 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await sign.ClickAsync();
         await page.Locator(".hero-amount").Filter(new() { HasText = "$700.00" }).WaitForAsync();
         (await Input(page, "Assign to Groceries").InputValueAsync()).ShouldBe("300.00");
+
+        // Tapping the sign while the field still has focus must save the negated
+        // draft instead of committing the positive value first.
+        await amount.ClickAsync();
+        await page.Keyboard.TypeAsync("125");
+        await sign.ClickAsync();
+        await page.Locator(".hero-amount").Filter(new() { HasText = "$1,125.00" }).WaitForAsync();
+        (await Input(page, "Assign to Groceries").InputValueAsync()).ShouldBe("-125.00");
+        await amount.ClickAsync();
+        await page.Keyboard.TypeAsync("300");
+        await amount.PressAsync("Tab");
+        await page.Locator(".hero-amount").Filter(new() { HasText = "$700.00" }).WaitForAsync();
         await original.DisposeAsync();
     }
 

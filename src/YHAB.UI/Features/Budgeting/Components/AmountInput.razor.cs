@@ -22,8 +22,21 @@ public sealed partial class AmountInput
     private string? _error;
     private decimal? _lastValue;
     private bool _evaluating;
+    private bool _negateCommit;
+    private bool _signClickConsumed;
+    private bool _wasReadOnly;
 
-    protected override void OnParametersSet() => SynchronizeValue();
+    protected override void OnParametersSet()
+    {
+        SynchronizeValue();
+        if (_wasReadOnly && !ReadOnly)
+        {
+            // A suppressed sign click belongs to the save that just finished.
+            _signClickConsumed = false;
+        }
+
+        _wasReadOnly = ReadOnly;
+    }
 
     private void SynchronizeValue()
     {
@@ -35,9 +48,33 @@ public sealed partial class AmountInput
         }
     }
 
+    // The sign button is pressed while the amount field still has focus. Its
+    // pointerdown runs before the blur that commits the draft, so let that
+    // commit carry the negation instead of racing the now-disabled button.
+    private void PrepareSignToggle()
+    {
+        if (Disabled || ReadOnly || CommitOnSave)
+        {
+            return;
+        }
+
+        _negateCommit = true;
+        _signClickConsumed = false;
+    }
+
+    private void FocusIn() => _negateCommit = false;
+
     private async Task EvaluateAsync(string? expression)
     {
         _text = expression ?? string.Empty;
+        var signPending = _negateCommit;
+        if (signPending)
+        {
+            // Consume before yielding so the button's click cannot toggle twice.
+            _negateCommit = false;
+            _signClickConsumed = true;
+        }
+
         if (CommitOnSave)
         {
             if (TryGetAmount(_text, out var draftAmount))
@@ -69,6 +106,11 @@ public sealed partial class AmountInput
             _error = "Enter an amount or expression using + − * / and parentheses.";
             await ValidChanged.InvokeAsync(false);
             return;
+        }
+
+        if (signPending)
+        {
+            amount = -amount;
         }
 
         _error = null;
@@ -136,6 +178,13 @@ public sealed partial class AmountInput
             return;
         }
 
+        if (_signClickConsumed)
+        {
+            _signClickConsumed = false;
+            return;
+        }
+
+        _negateCommit = false;
         // Negate what the field currently shows, falling back to the saved value
         // when the draft is not yet a valid amount. Reusing the evaluation path
         // keeps validation and change notification in one place.
