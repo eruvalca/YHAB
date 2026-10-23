@@ -3,6 +3,15 @@
 @if (_budget is not null)
 {
 <div class="budget-board">
+    @if (!HasAccounts)
+    {
+        <section class="first-run-account" aria-labelledby="first-run-account-heading">
+            <h2 id="first-run-account-heading">Add your first account</h2>
+            <p>Your plan needs an account for the money you have. Add checking, savings, cash, credit, loan, or tracking.</p>
+            <FluentButton Appearance="ButtonAppearance.Primary" Size="ButtonSize.Large" OnClick="AddAccountAsync" Disabled="IsBusy">Add your first account</FluentButton>
+        </section>
+    }
+    <FirstRunChecklist Plan="Plan" Budget="_budget" OnAddCategory="AddCategoryAsync" OnShowHelp="ShowHelp" Busy="IsBusy" />
     <section class="budget-summary" aria-label="Monthly budget summary" data-negative="@(_budget.ReadyToAssign < 0 ? "true" : "false")">
         <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalAlignment="HorizontalAlignment.SpaceBetween" HorizontalGap="var(--spacingHorizontalM)" VerticalGap="var(--spacingVerticalS)">
             <div>
@@ -18,10 +27,15 @@
                 <span>@(_budget.ReadyToAssign < 0 ? "Overassigned" : "Ready to assign")</span>
                 <strong class="hero-amount" data-money-tone="@MoneyTone(_budget.ReadyToAssign)">@Money(_budget.ReadyToAssign)</strong>
             </div>
-            <FluentStack Width="auto" Wrap="true" HorizontalGap="var(--spacingHorizontalS)" VerticalGap="var(--spacingVerticalXS)">
-                <FluentButton OnClick="AutoAssignAsync" Disabled="@(IsBusy || _budget.ReadyToAssign <= 0)" Size="ButtonSize.Small" Appearance="ButtonAppearance.Primary">Fund targets</FluentButton>
-                <FluentButton OnClick="ShowMove" Disabled="IsBusy" Size="ButtonSize.Small" Appearance="ButtonAppearance.Outline">Move money</FluentButton>
-            </FluentStack>
+            <div class="summary-actions">
+                <FluentStack Width="auto" Wrap="true" HorizontalGap="var(--spacingHorizontalS)" VerticalGap="var(--spacingVerticalXS)">
+                    <FluentButton OnClick="AutoAssignAsync" Disabled="@(IsBusy || FundTargetsHint is not null)" Size="ButtonSize.Small" Appearance="ButtonAppearance.Primary" title="@FundTargetsHint" aria-describedby="@(FundTargetsHint is null ? null : "fund-targets-hint")">Fund targets</FluentButton>
+                    <FluentButton OnClick="ShowMove" Disabled="@(IsBusy || MoveMoneyHint is not null)" Size="ButtonSize.Small" Appearance="ButtonAppearance.Outline" title="@MoveMoneyHint" aria-describedby="@(MoveMoneyHint is null ? null : "move-money-hint")">Move money</FluentButton>
+                    <FluentButton OnClick="ShowHelp" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle">How this works</FluentButton>
+                </FluentStack>
+                @if (FundTargetsHint is not null) { <p class="action-hint muted" id="fund-targets-hint">@FundTargetsHint</p> }
+                @if (MoveMoneyHint is not null) { <p class="action-hint muted" id="move-money-hint">@MoveMoneyHint</p> }
+            </div>
         </FluentStack>
         <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalL)" VerticalGap="var(--spacingVerticalXS)" Class="budget-totals">
             <div class="budget-total"><span>Assigned</span> <strong>@Money(_budget.Assigned)</strong></div>
@@ -30,6 +44,16 @@
             <div class="budget-total"><span>Underfunded</span> <strong data-money-tone="@(_budget.Categories.Any(item => item.TargetNeeded > 0 || item.Available < 0) ? "attention" : "neutral")">@Money(_budget.Categories.Sum(item => Math.Max(item.TargetNeeded, -item.Available)))</strong></div>
         </FluentStack>
     </section>
+    @if (_help)
+    {
+        <section class="budget-help" aria-labelledby="budget-help-heading">
+            <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalAlignment="HorizontalAlignment.SpaceBetween" HorizontalGap="var(--spacingHorizontalM)">
+                <h2 id="budget-help-heading">How this works</h2>
+                <FluentButton OnClick="HideHelp" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle" aria-label="Close help">Close</FluentButton>
+            </FluentStack>
+            <p class="muted">Positive balances roll forward. @Money(_budget.AssignedInFuture) is assigned in future months. Enter arithmetic such as 150 + 25 in any amount field. Drag a move handle to reorder, or click it for move controls. Rename a category beside its name, or press F2 on the name. Select a category to adjust its target.</p>
+        </section>
+    }
     @if (_budget.CashOverspending + _budget.CreditOverspending > 0)
     {
         <div class="notice" data-kind="warning">@Money(_budget.CashOverspending) cash overspending and @Money(_budget.CreditOverspending) credit overspending. Move money into these categories to cover it.</div>
@@ -40,7 +64,7 @@
     }
     <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalM)" VerticalGap="var(--spacingVerticalM)" Class="budget-workspace">
         <div class="budget-categories">
-            <BudgetCategoryTable Plan="Plan" Budget="_budget" OnCommand="OnCommand" OnSelect="EditCategory" Busy="IsBusy" SelectedCategoryId="_category?.Id" />
+            <BudgetCategoryTable @ref="_categoryTable" Plan="Plan" Budget="_budget" OnCommand="OnCommand" OnSelect="EditCategory" Busy="IsBusy" SelectedCategoryId="_category?.Id" />
         </div>
         @if (_category is not null)
         {
@@ -49,7 +73,6 @@
             </aside>
         }
     </FluentStack>
-    <details class="budget-help"><summary>Plan tips &amp; future assignments</summary><p class="muted">Positive balances roll forward. @Money(_budget.AssignedInFuture) is assigned in future months. Enter arithmetic such as 150 + 25 in any amount field. Drag a move handle to reorder, or click it for move controls. Rename a category beside its name, or press F2 on the name. Select a category to adjust its target.</p></details>
 </div>
 }
 else if (_error is null) { <p role="status">Loading month…</p> }

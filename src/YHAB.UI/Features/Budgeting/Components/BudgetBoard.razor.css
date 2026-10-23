@@ -13,5 +13,13 @@ h1 { margin: 0; font-size: var(--fontSizeBase400); line-height: var(--lineHeight
 .month-label { white-space: nowrap; }
 .hero-amount[data-money-tone="positive"] { color: var(--colorPaletteGreenForeground1); }
 .hero-amount[data-money-tone="negative"] { color: var(--colorPaletteRedForeground1); }
-.budget-help { margin-block: var(--spacingVerticalM); font-size: var(--fontSizeBase200); }
+.budget-help { margin-block: var(--spacingVerticalM); padding: var(--spacingVerticalM) var(--spacingHorizontalM); border: 1px solid var(--colorNeutralStroke2); border-radius: var(--borderRadiusMedium); background: var(--colorNeutralBackground1); font-size: var(--fontSizeBase200); }
+.budget-help h2 { margin: 0; font-size: var(--fontSizeBase400); }
+.budget-help p { margin: 0; }
+.first-run-account { margin-block: var(--spacingVerticalM); padding: clamp(1rem, 3vw, 1.75rem); border: 1px solid var(--colorBrandStroke2); border-radius: var(--borderRadiusLarge); background: var(--colorBrandBackground2); }
+.first-run-account h2 { margin: 0 0 var(--spacingVerticalXS); font-size: var(--fontSizeBase500); }
+.first-run-account p { margin: 0 0 var(--spacingVerticalM); color: var(--colorNeutralForeground2); }
+.summary-actions { display: flex; flex-direction: column; align-items: flex-end; gap: var(--spacingVerticalXXS); }
+.action-hint { margin: 0; font-size: var(--fontSizeBase100); text-align: end; }
 @media (max-width: 1200px) { .category-details { flex-basis: 100%; position: static; max-height: none; overflow-y: visible; } }
+@media (max-width: 600px) { .summary-actions { align-items: flex-start; } .action-hint { text-align: start; } }
