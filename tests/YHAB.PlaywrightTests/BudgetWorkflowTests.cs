@@ -70,7 +70,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             await VerifyBudgetLayoutAsync(page, width);
             await page.ScreenshotAsync(new() { Path = Path.Combine(AppContext.BaseDirectory, "TestResults", $"budget-{width}-dark.png"), FullPage = true });
             await OpenPlanNavigationAsync(page);
-            await page.GetByRole(AriaRole.Link, new() { Name = "Reflect", Exact = true }).ClickAsync();
+            await page.Locator(".plan-drawer").GetByRole(AriaRole.Link, new() { Name = "Reflect", Exact = true }).ClickAsync();
             await page.GetByRole(AriaRole.Heading, new() { Name = "Reflect", Exact = true }).WaitForAsync();
             await page.WaitForFunctionAsync("document.body.dataset.theme === 'dark'");
             var spending = page.Locator(".spending-row").Filter(new() { HasText = "Groceries" });
@@ -123,7 +123,11 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
 
             // A touch tap on the balance opens the move-money flow, so a phone
             // never needs a minus key to take money back out of a category.
-            await page.Locator("button.available-pill[aria-label='$125.00 available in Groceries. Move money.']").TapAsync();
+            // Center the row first: a control resting under a sticky header can
+            // be scrolled clear between focus and click, which drops the tap.
+            var pill = page.Locator("button.available-pill[aria-label='$125.00 available in Groceries. Move money.']");
+            await pill.EvaluateAsync("element => element.scrollIntoView({ block: 'center' })");
+            await pill.TapAsync();
             var popover = page.Locator("fluent-popover-b[opened='true']");
             await using var dialogHandle = await page.WaitForFunctionAsync("""
                 () => {
@@ -512,7 +516,16 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await amount.PressAsync("Tab");
         await page.Locator(".hero-amount").Filter(new() { HasText = "$0.00" }).WaitForAsync();
         var summary = (await page.Locator(".budget-summary").BoundingBoxAsync()).ShouldNotBeNull();
-        summary.Y.ShouldBeInRange(0, 16);
+        if (width < 1000)
+        {
+            var tabs = (await page.Locator(".plan-page-tabs").BoundingBoxAsync()).ShouldNotBeNull();
+            tabs.Y.ShouldBeInRange(-1, 1);
+            summary.Y.ShouldBeInRange(tabs.Y + tabs.Height - 1, tabs.Y + tabs.Height + 16);
+        }
+        else
+        {
+            summary.Y.ShouldBeInRange(0, 16);
+        }
         // The phone summary now carries three 40px actions; keep enough of the
         // 640px viewport below it for the table.
         summary.Height.ShouldBeLessThan(width < 768 ? 300 : 155);
