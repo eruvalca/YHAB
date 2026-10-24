@@ -56,6 +56,17 @@ public sealed class BudgetCatalogTests
     }
 
     [Fact]
+    public async Task RenameButtonsStayAvailableWithoutAddingTabStopsAsync()
+    {
+        await using var context = CreateContext();
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, Plan()).Add(item => item.OnCommand, _ => { }));
+        var rename = component.Find("button[aria-label='Rename Groceries']");
+        rename.GetAttribute("tabindex").ShouldBe("-1");
+        await component.Find(".category-link").KeyDownAsync(new Microsoft.AspNetCore.Components.Web.KeyboardEventArgs { Key = "F2" });
+        component.Find(".inline-name-form").ShouldNotBeNull();
+    }
+
+    [Fact]
     public async Task CategoryGridKeepsTableSemanticsAroundSortableListsAsync()
     {
         await using var context = CreateContext();
