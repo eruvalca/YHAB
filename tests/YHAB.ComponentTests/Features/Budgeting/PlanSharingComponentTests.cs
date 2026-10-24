@@ -108,6 +108,27 @@ public sealed class PlanSharingComponentTests
     }
 
     [Fact]
+    public async Task GeneratedDuplicateLabelsDoNotCollideWithLiteralDisplayNamesAsync()
+    {
+        await using var context = CreateContext();
+        var budgets = Substitute.For<IBudgetClient>();
+        var plan = Plan(isOwner: true);
+        Configure(budgets, plan, new PlanShareSummary("Alice", true,
+            [new("owner-b", "Member"), new("owner-c", "Member"), new("owner-d", "Member (1)")]));
+        context.Services.AddSingleton(budgets);
+
+        var component = context.Render<PlanSettings>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+
+        await component.WaitForAssertionAsync(() => component.Find("#remove-share-form").ShouldNotBeNull());
+        var labels = component.FindAll("#sharing-section .share-list li").Select(item => item.TextContent).ToArray();
+        labels.ShouldBe(["Member (2)", "Member (3)", "Member (1)"]);
+        labels.Distinct(StringComparer.OrdinalIgnoreCase).Count().ShouldBe(labels.Length);
+        var options = component.FindAll("#remove-person option");
+        options.Select(option => option.GetAttribute("value")).ShouldBe(["", "owner-b", "owner-c", "owner-d"]);
+        options.Select(option => option.TextContent).ShouldBe(["Choose a person", "Member (2)", "Member (3)", "Member (1)"]);
+    }
+
+    [Fact]
     public async Task RemovingLastCollaboratorKeepsSuccessFeedbackInTheSharingSectionAsync()
     {
         await using var context = CreateContext();
