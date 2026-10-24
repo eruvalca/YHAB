@@ -17,13 +17,10 @@
     <DataAnnotationsValidator />
     <ValidationSummary class="error-text" role="alert" />
     <div class="form-field">
-        <label for="username">Username</label>
-        <input type="text" value="@_username" id="username" placeholder="Choose your username." disabled />
-    </div>
-    <div class="form-field">
-        <label for="Input.PhoneNumber">Phone number</label>
-        <InputText @bind-Value="Input.PhoneNumber" id="Input.PhoneNumber" placeholder="Enter your phone number" />
-        <ValidationMessage For="() => Input.PhoneNumber" class="error-text" />
+        <label for="Input.DisplayName">Display name</label>
+        <InputText @bind-Value="Input.DisplayName" id="Input.DisplayName" maxlength="@UserDisplayNames.MaximumLength" placeholder="How collaborators see you" aria-describedby="display-name-hint" />
+        <ValidationMessage For="() => Input.DisplayName" class="error-text" />
+        <p id="display-name-hint" class="field-hint">People you share a plan with see this name. Your email address stays private. Leave it blank to use “@UserDisplayNames.Default”.</p>
     </div>
     <button type="submit">Save</button>
 </EditForm>

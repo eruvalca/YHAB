@@ -25,12 +25,12 @@ internal sealed class BudgetStore(IDbContextFactory<ApplicationDbContext> contex
         var owners = ownerIds.Length == 0
             ? []
             : await database.Set<ApplicationUser>().Where(item => ownerIds.Contains(item.Id))
-                .Select(item => new { item.Id, item.UserName }).ToListAsync(cancellationToken);
-        var names = owners.ToDictionary(item => item.Id, item => item.UserName, StringComparer.Ordinal);
+                .Select(item => new { item.Id, item.DisplayName }).ToListAsync(cancellationToken);
+        var names = owners.ToDictionary(item => item.Id, item => UserDisplayNames.Resolve(item.DisplayName), StringComparer.Ordinal);
         return plans.Select(item => new PlanSummary(item.Id, item.Name, item.Notes, item.Version)
         {
             IsOwner = string.Equals(item.OwnerId, userId, StringComparison.Ordinal),
-            SharedBy = string.Equals(item.OwnerId, userId, StringComparison.Ordinal) ? null : names.GetValueOrDefault(item.OwnerId) ?? "another account",
+            SharedBy = string.Equals(item.OwnerId, userId, StringComparison.Ordinal) ? null : names.GetValueOrDefault(item.OwnerId) ?? UserDisplayNames.Default,
         }).ToArray();
     }
 

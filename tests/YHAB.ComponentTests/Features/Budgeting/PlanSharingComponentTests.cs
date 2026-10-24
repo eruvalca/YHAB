@@ -23,7 +23,7 @@ public sealed class PlanSharingComponentTests
         budgets.ListAsync(Arg.Any<CancellationToken>()).Returns(
         [
             new(Guid.NewGuid(), "Household", "", 3),
-            new(Guid.NewGuid(), "Beach trip", "", 5) { IsOwner = false, SharedBy = "a@example.test" },
+            new(Guid.NewGuid(), "Beach trip", "", 5) { IsOwner = false, SharedBy = "Alice" },
         ]);
         context.Services.AddSingleton(budgets);
 
@@ -32,7 +32,8 @@ public sealed class PlanSharingComponentTests
         await component.WaitForAssertionAsync(() => component.FindAll(".plan-card").Count.ShouldBe(2));
         component.Markup.ShouldContain("Your plans");
         component.Markup.ShouldContain("Shared with you");
-        component.Markup.ShouldContain("Shared by a@example.test");
+        component.Find(".plan-card-shared").TextContent.ShouldBe("Shared by Alice");
+        component.Find(".plan-card-shared").TextContent.ShouldNotContain("@");
         component.Markup.ShouldContain("Plans start private.");
         component.Find("#join-plan-form").ShouldNotBeNull();
         component.Find("#join-code").ShouldNotBeNull();
@@ -44,12 +45,12 @@ public sealed class PlanSharingComponentTests
         await using var context = CreateContext();
         var budgets = Substitute.For<IBudgetClient>();
         var plan = Plan(isOwner: true);
-        var sharing = new PlanShareSummary("a@example.test", true, [new("owner-b", "b@example.test"), new("owner-c", "c@example.test")]);
+        var sharing = new PlanShareSummary("Alice", true, [new("owner-b", "Bob"), new("owner-c", "Carol")]);
         Configure(budgets, plan, sharing);
         budgets.CreateShareCodeAsync(plan.Id, Arg.Any<CancellationToken>())
             .Returns(new PlanShareCode(plan.Id, "ABCDE-FGHIJ-KLMNO-PQRST", new DateTimeOffset(2026, 10, 9, 12, 0, 0, TimeSpan.Zero)));
         budgets.UnshareAsync(plan.Id, "owner-b", Arg.Any<CancellationToken>())
-            .Returns(new PlanShareSummary("a@example.test", true, [new("owner-c", "c@example.test")]));
+            .Returns(new PlanShareSummary("Alice", true, [new("owner-c", "Carol")]));
         context.Services.AddSingleton(budgets);
 
         var component = context.Render<PlanSettings>(parameters => parameters.Add(item => item.PlanId, plan.Id));
@@ -57,6 +58,9 @@ public sealed class PlanSharingComponentTests
         await component.WaitForAssertionAsync(() => component.Find("#create-share-code-form").ShouldNotBeNull());
         component.FindAll("#share-email").ShouldBeEmpty();
         component.Markup.ShouldContain("Create a one-time code");
+        component.Find("#sharing-section").TextContent.ShouldContain("will see your display name (Alice), but never your email address");
+        component.Find("#sharing-section").TextContent.ShouldNotContain("@");
+        component.FindAll("#sharing-section .share-list li").Select(item => item.TextContent).ShouldBe(["Bob", "Carol"]);
 
         await component.Find("#create-share-code-form").SubmitAsync();
 
@@ -72,8 +76,8 @@ public sealed class PlanSharingComponentTests
         await component.Find("#remove-share-form").SubmitAsync();
 
         await budgets.Received(1).UnshareAsync(plan.Id, "owner-b", Arg.Any<CancellationToken>());
-        component.Markup.ShouldNotContain("b@example.test");
-        component.Markup.ShouldContain("c@example.test");
+        component.Markup.ShouldNotContain("Bob");
+        component.Markup.ShouldContain("Carol");
         component.Markup.ShouldNotContain("Leave this plan");
     }
 
@@ -83,9 +87,9 @@ public sealed class PlanSharingComponentTests
         await using var context = CreateContext();
         var budgets = Substitute.For<IBudgetClient>();
         var plan = Plan(isOwner: true);
-        Configure(budgets, plan, new PlanShareSummary("a@example.test", true, [new("owner-b", "b@example.test")]));
+        Configure(budgets, plan, new PlanShareSummary("Alice", true, [new("owner-b", "Bob")]));
         budgets.UnshareAsync(plan.Id, "owner-b", Arg.Any<CancellationToken>())
-            .Returns(new PlanShareSummary("a@example.test", true, []));
+            .Returns(new PlanShareSummary("Alice", true, []));
         context.Services.AddSingleton(budgets);
 
         var component = context.Render<PlanSettings>(parameters => parameters.Add(item => item.PlanId, plan.Id));
@@ -107,7 +111,7 @@ public sealed class PlanSharingComponentTests
         await using var context = CreateContext();
         var budgets = Substitute.For<IBudgetClient>();
         var plan = Plan(isOwner: true);
-        Configure(budgets, plan, new PlanShareSummary("a@example.test", true, [new("owner-b", "b@example.test")]));
+        Configure(budgets, plan, new PlanShareSummary("Alice", true, [new("owner-b", "Bob")]));
         context.Services.AddSingleton(budgets);
 
         var component = context.Render<PlanSettings>(parameters => parameters.Add(item => item.PlanId, plan.Id));
@@ -130,7 +134,7 @@ public sealed class PlanSharingComponentTests
         await using var context = CreateContext();
         var budgets = Substitute.For<IBudgetClient>();
         var plan = Plan(isOwner: true);
-        Configure(budgets, plan, new PlanShareSummary("a@example.test", true, [new("owner-b", "b@example.test")]));
+        Configure(budgets, plan, new PlanShareSummary("Alice", true, [new("owner-b", "Bob")]));
         budgets.UnshareAsync(plan.Id, "owner-b", Arg.Any<CancellationToken>())
             .Returns(Task.FromException<PlanShareSummary>(new BudgetRequestException(404, "That account is no longer in this plan.")));
         context.Services.AddSingleton(budgets);
@@ -154,15 +158,16 @@ public sealed class PlanSharingComponentTests
     {
         await using var context = CreateContext();
         var budgets = Substitute.For<IBudgetClient>();
-        var plan = Plan(isOwner: false, ownerName: "a@example.test");
-        Configure(budgets, plan, new PlanShareSummary("a@example.test", false, [new("owner-b", "b@example.test")]));
+        var plan = Plan(isOwner: false, ownerName: "Alice");
+        Configure(budgets, plan, new PlanShareSummary("Alice", false, [new("owner-b", "Bob")]));
         budgets.LeaveAsync(plan.Id, Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
         context.Services.AddSingleton(budgets);
 
         var component = context.Render<PlanSettings>(parameters => parameters.Add(item => item.PlanId, plan.Id));
 
         await component.WaitForAssertionAsync(() => component.Find("#leave-plan-form").ShouldNotBeNull());
-        component.Markup.ShouldContain("This plan is shared with you by a@example.test.");
+        component.Markup.ShouldContain("This plan is shared with you by Alice.");
+        component.Find("#sharing-section").TextContent.ShouldNotContain("@");
         component.FindAll("#create-share-code-form").ShouldBeEmpty();
         component.FindAll("#remove-share-form").ShouldBeEmpty();
 
@@ -249,7 +254,7 @@ public sealed class PlanSharingComponentTests
         await using var context = CreateContext();
         var budgets = Substitute.For<IBudgetClient>();
         var plan = Plan(isOwner: true);
-        Configure(budgets, plan, new PlanShareSummary("a@example.test", true, []));
+        Configure(budgets, plan, new PlanShareSummary("Alice", true, []));
         budgets.ExecuteAsync(plan.Id, Arg.Any<PlanCommand>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new BudgetRequestException(400, "Settings could not be saved.")));
         context.Services.AddSingleton(budgets);
@@ -270,7 +275,7 @@ public sealed class PlanSharingComponentTests
         await using var context = CreateContext();
         var budgets = Substitute.For<IBudgetClient>();
         var plan = Plan(isOwner: true);
-        Configure(budgets, plan, new PlanShareSummary("a@example.test", true, []));
+        Configure(budgets, plan, new PlanShareSummary("Alice", true, []));
         budgets.ExecuteAsync(plan.Id, Arg.Any<PlanCommand>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new BudgetRequestException(409, "Plan changed elsewhere.")));
         context.Services.AddSingleton(budgets);
@@ -289,7 +294,7 @@ public sealed class PlanSharingComponentTests
         await using var context = CreateContext();
         var budgets = Substitute.For<IBudgetClient>();
         var plan = Plan(isOwner: true);
-        Configure(budgets, plan, new PlanShareSummary("a@example.test", true, []));
+        Configure(budgets, plan, new PlanShareSummary("Alice", true, []));
         budgets.ExecuteAsync(plan.Id, Arg.Any<PlanCommand>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
         var reads = 0;
         budgets.ReadViewAsync(plan.Id, Arg.Any<CancellationToken>()).Returns(_ =>

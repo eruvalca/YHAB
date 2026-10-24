@@ -38,6 +38,8 @@ public sealed class AccountRegistrationServiceTests
         user.ShouldBeSameAs(createdUser);
         user.UserName.ShouldBe("member@example.test");
         user.Email.ShouldBe("member@example.test");
+        user.DisplayName.ShouldBe(UserDisplayNames.Default);
+        string.Equals(user.DisplayName, user.Email, StringComparison.Ordinal).ShouldBeFalse();
         steps.ShouldBe(_passwordCreationSteps);
         await identity.Users.DidNotReceiveWithAnyArgs().CreateAsync(default!);
         await identity.Users.DidNotReceiveWithAnyArgs().AddLoginAsync(default!, default!);
@@ -85,6 +87,8 @@ public sealed class AccountRegistrationServiceTests
         user.ShouldBeSameAs(createdUser);
         user.UserName.ShouldBe("member@example.test");
         user.Email.ShouldBe("member@example.test");
+        user.DisplayName.ShouldBe(UserDisplayNames.Default);
+        string.Equals(user.DisplayName, user.Email, StringComparison.Ordinal).ShouldBeFalse();
         steps.ShouldBe(_externalCreationSteps);
         await identity.Users.DidNotReceiveWithAnyArgs().CreateAsync(default!, default!);
     }

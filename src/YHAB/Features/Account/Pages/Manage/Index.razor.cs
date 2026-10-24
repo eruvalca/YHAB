@@ -11,8 +11,7 @@ public sealed partial class Index
     [Inject] private IdentityCancellation Cancellation { get; set; } = default!;
 
     private ApplicationUser? _user;
-    private string? _username;
-    private string? _phoneNumber;
+    private string? _displayName;
 
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
@@ -31,10 +30,8 @@ public sealed partial class Index
             return;
         }
 
-        _username = await UserManager.GetUserNameAsync(_user);
-        _phoneNumber = await UserManager.GetPhoneNumberAsync(_user);
-
-        Input.PhoneNumber ??= _phoneNumber;
+        _displayName = UserDisplayNames.Normalize(_user.DisplayName);
+        Input.DisplayName ??= UserDisplayNames.Resolve(_displayName);
     }
 
     private async Task OnValidSubmitAsync()
@@ -45,15 +42,25 @@ public sealed partial class Index
             return;
         }
 
-        if (!string.Equals(Input.PhoneNumber, _phoneNumber, StringComparison.Ordinal))
+        var displayName = UserDisplayNames.Normalize(Input.DisplayName);
+        if (displayName is not null && (string.Equals(displayName, _user.Email, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(displayName, _user.UserName, StringComparison.OrdinalIgnoreCase)))
         {
-            var setPhoneResult = await UserManager.SetPhoneNumberAsync(_user, Input.PhoneNumber);
-            if (!setPhoneResult.Succeeded)
+            RedirectManager.RedirectToCurrentPageWithStatus("Error: Choose a display name that is not your email address.", HttpContext);
+            return;
+        }
+
+        if (!string.Equals(UserDisplayNames.Resolve(displayName), UserDisplayNames.Resolve(_displayName), StringComparison.Ordinal))
+        {
+            _user.DisplayName = displayName;
+            var update = await UserManager.UpdateAsync(_user);
+            if (!update.Succeeded)
             {
-                RedirectManager.RedirectToCurrentPageWithStatus("Error: Failed to set phone number.", HttpContext);
+                RedirectManager.RedirectToCurrentPageWithStatus("Error: Failed to update your display name.", HttpContext);
                 return;
             }
             Cancellation.CompleteWrite();
+            _displayName = displayName;
         }
 
         await SignInManager.RefreshSignInAsync(_user);
@@ -62,8 +69,8 @@ public sealed partial class Index
 
     private sealed class InputModel
     {
-        [Phone]
-        [Display(Name = "Phone number")]
-        public string? PhoneNumber { get; set; }
+        [StringLength(UserDisplayNames.MaximumLength)]
+        [Display(Name = "Display name")]
+        public string? DisplayName { get; set; }
     }
 }
