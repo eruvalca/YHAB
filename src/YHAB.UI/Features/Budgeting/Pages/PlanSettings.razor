@@ -85,10 +85,10 @@
                                 @if (_removeFeedback is { IsError: true } removeError) { <p id="remove-person-error" class="validation-message" role="alert">@removeError.Message</p> }
                             </div>
                             <button type="submit" class="secondary-action">Remove access</button>
-                            @if (_removeFeedback is { IsError: false } removeSuccess) { <div class="notice" data-kind="success" role="status">@removeSuccess.Message</div> }
                         </FluentStack>
                     </EditForm>
                 }
+                @if (sharing.IsOwner && _removeFeedback is { IsError: false } removeSuccess) { <div class="notice" data-kind="success" role="status">@removeSuccess.Message</div> }
                 @if (!sharing.IsOwner)
                 {
                     <EditForm Model="Leave" id="leave-plan-form" method="post" FormName="LeavePlan" OnValidSubmit="LeaveAsync" OnInvalidSubmit="LeaveInvalid" Enhance>

@@ -78,6 +78,30 @@ public sealed class PlanSharingComponentTests
     }
 
     [Fact]
+    public async Task RemovingLastCollaboratorKeepsSuccessFeedbackInTheSharingSectionAsync()
+    {
+        await using var context = CreateContext();
+        var budgets = Substitute.For<IBudgetClient>();
+        var plan = Plan(isOwner: true);
+        Configure(budgets, plan, new PlanShareSummary("a@example.test", true, [new("owner-b", "b@example.test")]));
+        budgets.UnshareAsync(plan.Id, "owner-b", Arg.Any<CancellationToken>())
+            .Returns(new PlanShareSummary("a@example.test", true, []));
+        context.Services.AddSingleton(budgets);
+
+        var component = context.Render<PlanSettings>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+        await component.WaitForAssertionAsync(() => component.Find("#remove-share-form").ShouldNotBeNull());
+        SetFormValue(component.Instance, "Remove", "MemberId", "owner-b");
+
+        await component.Find("#remove-share-form").SubmitAsync();
+
+        var success = component.Find("#sharing-section .notice[data-kind='success']");
+        success.TextContent.ShouldBe("That account can no longer open this plan.");
+        success.GetAttribute("role").ShouldBe("status");
+        component.FindAll("#remove-share-form").ShouldBeEmpty();
+        component.Find("#sharing-section").TextContent.ShouldContain("No one else has access yet.");
+    }
+
+    [Fact]
     public async Task SharedMemberSeesOwnerAndRejectsUnconfirmedLeaveAsync()
     {
         await using var context = CreateContext();
