@@ -1,6 +1,6 @@
 .plan-navigation { padding: var(--spacingVerticalS) var(--spacingHorizontalXS); min-width: 0; }
 .back-link { display: inline-block; margin-bottom: var(--spacingVerticalS); font-size: var(--fontSizeBase200); text-decoration: none; }
-h2 { font-size: var(--fontSizeBase400); margin-bottom: var(--spacingVerticalS); overflow-wrap: anywhere; }
+.plan-name { font-size: var(--fontSizeBase400); font-weight: var(--fontWeightSemibold); margin-bottom: var(--spacingVerticalS); overflow-wrap: anywhere; }
 .account-nav-heading { margin-top: var(--spacingVerticalL); }
 .account-nav-heading .eyebrow { margin-bottom: var(--spacingVerticalXS); }
 .account-nav-link { display: block; padding: var(--spacingVerticalS) var(--spacingHorizontalXS); text-decoration: none; color: var(--colorNeutralForeground1); font-size: var(--fontSizeBase300); }

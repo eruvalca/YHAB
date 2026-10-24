@@ -39,6 +39,10 @@
     display: inline-flex;
 }
 
+.desktop-menu-toggle [data-navigation-label] {
+    color: var(--colorNeutralForeground1);
+}
+
 .page ::deep .app-layout:not([mobile]) .site-navigation[data-collapsed="true"] {
     display: none;
 }
@@ -86,7 +90,7 @@
 .theme-control {
     margin-inline-start: auto;
     white-space: nowrap;
-    font-size: var(--fontSizeBase200);
+    font-size: var(--fontSizeBase300);
 }
 
 .theme-control select {

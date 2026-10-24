@@ -63,6 +63,15 @@ button, input, select, textarea {
     font: inherit;
 }
 
+input, select, textarea {
+    font-size: 1rem;
+}
+
+fluent-text-input, fluent-dropdown, fluent-textarea,
+fluent-select, fluent-text-area {
+    --fontSizeBase300: 1rem;
+}
+
 /* Fluent dropdowns supply slotted native buttons. Their web component owns
    their border, spacing and typography; these rules style our native buttons. */
 button:where(:not([slot])) {
@@ -245,9 +254,13 @@ th, td {
 }
 
 /* Reusable budgeting surfaces inherit Fluent's selected light/dark palette. */
-body[data-theme="dark"] { color-scheme: dark; }
+body[data-theme="dark"] {
+    --colorBrandForeground1: var(--colorBrandForegroundLinkHover);
+    --colorBrandForegroundLink: var(--colorBrandForegroundLinkHover);
+    color-scheme: dark;
+}
 body { background: var(--colorNeutralBackground2); color: var(--colorNeutralForeground1); }
-.eyebrow { color: var(--colorBrandForeground1); font-size: var(--fontSizeBase100); font-weight: var(--fontWeightSemibold); letter-spacing: 0.12em; margin-bottom: var(--spacingVerticalS); }
+.eyebrow { color: var(--colorBrandForeground1); font-size: var(--fontSizeBase200); font-weight: var(--fontWeightSemibold); letter-spacing: 0.12em; margin-bottom: var(--spacingVerticalS); }
 .lead { color: var(--colorNeutralForeground2); font-size: var(--fontSizeBase400); max-width: 43rem; }
 .muted, .field-hint { color: var(--colorNeutralForeground3); }
 .field-hint { font-size: var(--fontSizeBase200); }
