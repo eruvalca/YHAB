@@ -4,7 +4,7 @@
     @if (_hasTarget)
     {
         <FluentGrid Spacing="3">
-            <FluentGridItem Xs="12"><FluentSelect Margin="0" Size="ListSize.Large" TOption="TargetKind" TValue="TargetKind" Label="Target behavior" Items="_kinds" OptionText="KindLabel" @bind-Value="_kind" /></FluentGridItem>
+            <FluentGridItem Xs="12"><FluentSelect Margin="0" Size="ListSize.Large" TOption="TargetKind" TValue="TargetKind" Label="Target behavior" Items="_kinds" OptionText="KindLabel" aria-describedby="target-kind-description" @bind-Value="_kind" /></FluentGridItem>
             <FluentGridItem Xs="12"><FluentSelect Margin="0" Size="ListSize.Large" TOption="TargetCadence" TValue="TargetCadence" Label="Frequency" Items="_cadences" @bind-Value="_cadence" /></FluentGridItem>
             <FluentGridItem Xs="12"><AmountInput @ref="_amountInput" Label="Target amount" Size="TextInputSize.Large" CommitOnSave="true" @bind-Value="_amount" ValidChanged="value => _valid = value" /></FluentGridItem>
             @if (_cadence == TargetCadence.Weekly)
@@ -20,7 +20,7 @@
                 }
             }
         </FluentGrid>
-        <p class="muted">@TargetDescription</p>
+        <p class="muted" id="target-kind-description">@TargetDescription</p>
     }
     <details class="category-options"><summary>Category details</summary>
     <FluentGrid Spacing="3">
@@ -34,9 +34,13 @@
         <FluentButton OnClick="SaveAsync" Disabled="@(Busy || _saving || !_valid || string.IsNullOrWhiteSpace(_name) || _group == Guid.Empty)" Size="ButtonSize.Large" Appearance="ButtonAppearance.Primary">Save category</FluentButton>
         @if (Category?.Target is not null)
         {
-            <FluentButton OnClick="SnoozeAsync" Disabled="Busy" Size="ButtonSize.Large" Appearance="ButtonAppearance.Subtle">@(_snoozed ? "Resume target this month" : "Snooze target this month")</FluentButton>
+            <FluentButton OnClick="SnoozeAsync" Disabled="Busy" Size="ButtonSize.Large" Appearance="ButtonAppearance.Subtle" aria-describedby="target-snooze-hint">@(_snoozed ? "Resume target this month" : "Snooze target this month")</FluentButton>
         }
     </div>
+    @if (Category?.Target is not null)
+    {
+        <p class="muted" id="target-snooze-hint">@BudgetGlossary.Definition(BudgetTerm.Snooze)</p>
+    }
     @if (Category is { CreditAccountId: null })
     {
         <details class="danger-zone"><summary>Remove category</summary>

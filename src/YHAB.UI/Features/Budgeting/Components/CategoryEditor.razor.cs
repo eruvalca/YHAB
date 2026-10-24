@@ -33,12 +33,7 @@ public sealed partial class CategoryEditor
     private int _repeat;
     private DayOfWeek _weekday = DayOfWeek.Friday;
     private Guid _replacement;
-    private string TargetDescription => _kind switch
-    {
-        TargetKind.Refill => "Refill up to this amount. Money left from the previous period reduces what you need to add.",
-        TargetKind.SetAside => "Set aside new money each period, even when money is left over.",
-        _ => "Build toward a balance. Spending from this category increases what you need to replace.",
-    };
+    private string TargetDescription => BudgetGlossary.Definition(BudgetGlossary.For(_kind));
     protected override void OnInitialized()
     {
         _name = Category?.Name ?? "";
@@ -68,7 +63,7 @@ public sealed partial class CategoryEditor
         _repeat = target?.RepeatEveryMonths ?? 0;
         _weekday = target?.Weekday ?? DayOfWeek.Friday;
     }
-    private static string KindLabel(TargetKind kind) => kind switch { TargetKind.Refill => "Refill up to", TargetKind.SetAside => "Set aside another", _ => "Have a balance of" };
+    private static string KindLabel(TargetKind kind) => BudgetGlossary.Label(BudgetGlossary.For(kind));
     private async Task SaveAsync()
     {
         if (_saving)

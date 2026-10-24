@@ -64,7 +64,7 @@ internal static class PlanCommandHandler
         DeleteTransactions => "Deleted transactions",
         AssignMoney => "Assigned money",
         MoveMoney => "Moved money",
-        AutoAssign => "Funded underfunded categories",
+        AutoAssign => "Funded targets",
         UpdatePlan => "Updated plan",
         RenamePayee => "Renamed payee",
         PostRecurring => "Posted recurring transactions",
