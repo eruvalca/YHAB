@@ -1,0 +1,8 @@
+.budget-term { display: inline-flex; flex-wrap: wrap; align-items: center; }
+.term-info { display: inline-flex; align-items: center; justify-content: center; margin-inline-start: var(--spacingHorizontalXXS); padding: 0; border: 0; background: transparent; color: var(--colorNeutralForeground3); line-height: 1; }
+.term-info:hover { color: var(--colorBrandForeground1); }
+.term-info:focus-visible { outline: 2px solid var(--colorStrokeFocus2); outline-offset: 2px; border-radius: var(--borderRadiusSmall); }
+.term-definition { flex-basis: 100%; max-width: 32rem; margin-block-start: var(--spacingVerticalXXS); color: var(--colorNeutralForeground3); font-size: var(--fontSizeBase100); line-height: var(--lineHeightBase200); }
+.term-definition[hidden] { display: none; }
+.term-link { margin-inline-start: var(--spacingHorizontalXS); padding: 0; border: 0; background: transparent; color: var(--colorBrandForeground1); font-size: inherit; font-weight: var(--fontWeightSemibold); text-decoration: underline; }
+.term-link:focus-visible { outline: 2px solid var(--colorStrokeFocus2); outline-offset: 2px; }
