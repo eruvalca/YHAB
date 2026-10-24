@@ -37,6 +37,7 @@ public sealed class AccessibilityTests(ITestOutputHelper output)
         {
             await page.GotoAsync("/");
             await page.Locator(".welcome h1").WaitForAsync();
+            await page.Locator("#desktop-navigation[data-collapsed]").WaitForAsync();
             await page.Locator("[data-theme-select]").SelectOptionAsync("dark");
             await AssertAccessibilityAsync(page, "Home");
 
@@ -64,6 +65,13 @@ public sealed class AccessibilityTests(ITestOutputHelper output)
     private static async Task AssertAccessibilityAsync(IPage page, string pageName)
     {
         await page.WaitForFunctionAsync("document.body.dataset.theme === 'dark'");
+        var firstHeadingLevel = await page.GetByRole(AriaRole.Heading).First.EvaluateAsync<int>("""
+            heading => /^H([1-6])$/.test(heading.tagName)
+                ? Number(heading.tagName[1])
+                : Number(heading.getAttribute('aria-level') ?? 2)
+            """);
+        firstHeadingLevel.ShouldBe(1, $"The first exposed heading on {pageName} must be level 1.");
+
         var result = await page.RunAxe(new AxeRunContext
         {
             Exclude = [new AxeSelector("fluent-button[disabled]")],
