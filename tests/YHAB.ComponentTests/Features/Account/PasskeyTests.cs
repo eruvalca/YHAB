@@ -141,7 +141,7 @@ public sealed class PasskeyTests
             .Returns(succeeds ? IdentityResult.Success : IdentityResult.Failed());
         var component = context.Render<RenamePasskey>(parameters => parameters
             .AddCascadingValue<HttpContext>(account.Http).Add(page => page.Id, "AQID"));
-        component.Find("h4").TextContent.ShouldContain("Old name");
+        component.Find("h2").TextContent.ShouldContain("Old name");
         await component.Find("input[name='Input.Name']").ChangeAsync(new ChangeEventArgs { Value = "New name" });
 
         await component.Find("form").SubmitAsync();

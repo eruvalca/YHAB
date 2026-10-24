@@ -8,7 +8,7 @@
     <FluentNav UseIcons="true" BackgroundColor="transparent" BackgroundColorHover="var(--colorSubtleBackgroundHover)" aria-label="Main navigation">
         <FluentNavItem Href="/" Match="NavLinkMatch.All" IconRest="@(new Icons.Regular.Size20.Home())" IconActive="@(new Icons.Filled.Size20.Home())" tabindex="0">Home</FluentNavItem>
         <FluentNavItem Href="plans" IconRest="@(new Icons.Regular.Size20.Wallet())" IconActive="@(new Icons.Filled.Size20.Wallet())" tabindex="0">Your plans</FluentNavItem>
-        <FluentNavSectionHeader Title="Account" />
+        <p class="navigation-section-label">Account</p>
         <AuthorizeView>
             <Authorized>
                 <FluentNavItem Href="Account/Manage" IconRest="@(new Icons.Regular.Size20.Person())" tabindex="0">Your account</FluentNavItem>

@@ -10,7 +10,7 @@ the CLI and editor find `global.json` and `YHAB.slnx`.
 | `YHAB.ComponentTests` | Calculator input events, month-specific assignments, invalid-input feedback, delayed workspace loading and interactive-only recurring posting, account workflows, navigation, framework-leakage copy, error page copy and request IDs, and passkey option gating, using bUnit. |
 | `YHAB.IntegrationTests` | Real PostgreSQL: migrations and legacy data upgrades, Identity, private plan isolation, cross-plan foreign keys, optimistic concurrency, category merges, editable recurring occurrence dates, durable undo/redo, and deletion of owned ledger data. |
 | `YHAB.AspireIntegrationTests` | The real AppHost, database/migration startup dependencies, readiness, resource endpoints, and cross-process HTTP behavior. |
-| `YHAB.PlaywrightTests` | Real Chromium: Fluent controls, desktop/mobile navigation, persistent themes, drawer behavior, document continuity, framework-leakage routes and auth copy, manual plan/purchase/undo/report workflows, and API authentication/antiforgery/revision guards. |
+| `YHAB.PlaywrightTests` | Real Chromium: Fluent controls, desktop/mobile navigation, persistent themes, drawer behavior, document continuity, framework-leakage routes and auth copy, axe heading-order/dark-mode contrast and input-size accessibility checks, manual plan/purchase/undo/report workflows, and API authentication/antiforgery/revision guards. |
 
 `YHAB.Testing` is a shared support library, not a test project. It configures
 isolated AppHost builders for the Aspire and Playwright projects.
@@ -54,8 +54,8 @@ and Aspire startup/deployment checks. Browser coverage is tiered:
 
 - `BrowserSmoke` is required for non-browser application changes: the household
   money walkthrough, manual plan/purchase/undo/reports, inline catalog editing,
-  navigation and theme handoff, PWA install/offline behavior, and browser
-  artifact capture.
+  navigation and theme handoff, Home/Plans/Plan/Manage accessibility, PWA
+  install/offline behavior, and browser artifact capture.
 - The full Chromium suite is required for UI/rendering and Playwright changes and
   runs on every `main` push and merge group. Applying `run-full-browser` requests
   an additional full run for any ready pull request without rerunning unrelated

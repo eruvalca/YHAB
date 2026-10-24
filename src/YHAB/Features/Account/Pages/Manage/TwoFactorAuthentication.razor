@@ -11,7 +11,7 @@
 <PageTitle>Two-factor authentication (2FA)</PageTitle>
 
 <StatusMessage />
-<h3>Two-factor authentication (2FA)</h3>
+<h2>Two-factor authentication (2FA)</h2>
 @if (_canTrack)
 {
     if (_is2faEnabled)
@@ -52,7 +52,7 @@
         </div>
     }
 
-    <h4>Authenticator app</h4>
+    <h3>Authenticator app</h3>
     @if (!_hasAuthenticator)
     {
         <a href="Account/Manage/EnableAuthenticator">Add authenticator app</a>
