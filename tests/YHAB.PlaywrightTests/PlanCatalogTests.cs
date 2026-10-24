@@ -145,6 +145,11 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             var tabs = page.GetByRole(AriaRole.Navigation, new() { Name = "Plan pages", Exact = true });
             (await tabs.IsVisibleAsync()).ShouldBeTrue();
             (await tabs.GetByRole(AriaRole.Link).CountAsync()).ShouldBe(4);
+            foreach (var link in await tabs.GetByRole(AriaRole.Link).AllAsync())
+            {
+                var target = (await link.BoundingBoxAsync()).ShouldNotBeNull();
+                target.Height.ShouldBeGreaterThanOrEqualTo(40);
+            }
             (await tabs.GetByRole(AriaRole.Link, new() { Name = "Plan", Exact = true }).GetAttributeAsync("aria-current")).ShouldBe("page");
             (await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth")).ShouldBeTrue();
 
@@ -153,6 +158,8 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             var sticky = (await tabs.BoundingBoxAsync()).ShouldNotBeNull();
             sticky.Y.ShouldBeInRange(-1, 1);
             (sticky.Y + sticky.Height).ShouldBeGreaterThan(0);
+            var summary = (await page.Locator(".budget-summary").BoundingBoxAsync()).ShouldNotBeNull();
+            summary.Y.ShouldBeGreaterThanOrEqualTo(sticky.Y + sticky.Height - 1);
 
             await tabs.GetByRole(AriaRole.Link, new() { Name = "Reflect", Exact = true }).ClickAsync();
             await page.GetByRole(AriaRole.Heading, new() { Name = "Reflect", Exact = true }).WaitForAsync();

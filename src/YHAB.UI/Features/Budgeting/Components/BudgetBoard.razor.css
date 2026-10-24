@@ -1,4 +1,4 @@
-.budget-summary { position: sticky; top: 0; z-index: 5; padding: var(--spacingVerticalS) var(--spacingHorizontalM); border-radius: var(--borderRadiusMedium); background: var(--colorNeutralBackground1); border: 1px solid var(--colorNeutralStroke2); }
+.budget-summary { position: sticky; top: var(--plan-page-tabs-height, 0px); z-index: 5; padding: var(--spacingVerticalS) var(--spacingHorizontalM); border-radius: var(--borderRadiusMedium); background: var(--colorNeutralBackground1); border: 1px solid var(--colorNeutralStroke2); }
 .budget-summary[data-negative="true"] { border-color: var(--colorPaletteRedBorder1); }
 h1 { margin: 0; font-size: var(--fontSizeBase400); line-height: var(--lineHeightBase400); }
 .ready-balance > span { display: block; color: var(--colorNeutralForeground2); font-size: var(--fontSizeBase200); }

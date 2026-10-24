@@ -633,8 +633,10 @@ At 1440 × 960 it checks that at least ten target-bearing categories fit in the
 viewport, with category rows between 36 and 64 pixels tall. At phone width it
 checks the collapsed plan navigation and document overflow. At both 320px and
 390px it also scrolls to the document bottom, verifies that sticky plan-page tabs
-remain reachable without horizontal overflow, and navigates to Reflect with the
-active-page state updated. A phone-sized touch
+remain reachable with 40px targets and without horizontal overflow or covering the
+sticky budget summary, then navigates to Reflect with the active-page state
+updated; a component check keeps Transactions current on an account register. A
+phone-sized touch
 context on the WebAssembly renderer also moves categories by keyboard and by
 Chromium touch input. It checks drag feedback, the optimistic order while a save
 is held, and restoration after a rejected save. A rejected keyboard move checks

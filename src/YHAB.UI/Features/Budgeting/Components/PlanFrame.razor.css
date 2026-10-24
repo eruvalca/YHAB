@@ -1,3 +1,4 @@
+.plan-frame { --plan-page-tabs-height: 0px; }
 .plan-page-tabs { display: none; }
 .plan-sidebar { flex: 0 0 14rem; min-width: 0; }
 .plan-content { flex: 1 1 35rem; min-width: 0; }
@@ -9,6 +10,7 @@
     .plan-drawer::details-content { content-visibility: visible; }
 }
 @media (max-width: 999px) {
+    .plan-frame { --plan-page-tabs-height: calc(2.5rem + 2px); }
     .plan-page-tabs {
         position: sticky;
         top: 0;
@@ -19,7 +21,7 @@
         background: var(--colorNeutralBackground1);
         border-block: 1px solid var(--colorNeutralStroke2);
     }
-    .plan-page-tabs a {
+    .plan-page-tabs ::deep a {
         display: flex;
         align-items: center;
         justify-content: center;
@@ -32,8 +34,8 @@
         text-align: center;
         text-decoration: none;
     }
-    .plan-page-tabs a:hover { background: var(--colorSubtleBackgroundHover); }
-    .plan-page-tabs a.active {
+    .plan-page-tabs ::deep a:hover { background: var(--colorSubtleBackgroundHover); }
+    .plan-page-tabs ::deep a.active {
         color: var(--colorBrandForeground1);
         border-bottom-color: var(--colorBrandForeground1);
         font-weight: var(--fontWeightSemibold);

@@ -153,7 +153,8 @@ for the plan and remembers your preference across navigation and reloads. Withou
 a saved preference, the global menu is collapsed within a plan, leaving a single
 compact plan sidebar. On smaller screens, sticky **Plan**, **Transactions**,
 **Reflect**, and **Settings** tabs keep page navigation reachable while scrolling
-and identify the current page. Open **Plan & accounts** for accounts; a new plan's
+and identify the current page; **Transactions** stays current while an individual
+account register is open. Open **Plan & accounts** for accounts; a new plan's
 **Add your first account** action stays in the board, so starting does not require
 the drawer. The same sidebar is used by transactions, reports, and plan settings.
 Installation
