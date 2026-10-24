@@ -43,10 +43,10 @@ public sealed partial class Index
         }
 
         var displayName = UserDisplayNames.Normalize(Input.DisplayName);
-        if (displayName is not null && (string.Equals(displayName, _user.Email, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(displayName, _user.UserName, StringComparison.OrdinalIgnoreCase)))
+        if (displayName is not null && (ContainsAccountIdentity(displayName, _user.Email)
+            || ContainsAccountIdentity(displayName, _user.UserName)))
         {
-            RedirectManager.RedirectToCurrentPageWithStatus("Error: Choose a display name that is not your email address.", HttpContext);
+            RedirectManager.RedirectToCurrentPageWithStatus("Error: Choose a display name that does not include your email address.", HttpContext);
             return;
         }
 
@@ -73,4 +73,8 @@ public sealed partial class Index
         [Display(Name = "Display name")]
         public string? DisplayName { get; set; }
     }
+
+    private static bool ContainsAccountIdentity(string displayName, string? identity)
+        => !string.IsNullOrWhiteSpace(identity)
+            && displayName.Contains(identity.Trim(), StringComparison.OrdinalIgnoreCase);
 }

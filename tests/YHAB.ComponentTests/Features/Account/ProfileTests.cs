@@ -112,7 +112,28 @@ public sealed class ProfileTests
         user.DisplayName.ShouldBe("Alice");
         await account.Users.DidNotReceiveWithAnyArgs().UpdateAsync(default!);
         await account.SignIn.DidNotReceiveWithAnyArgs().RefreshSignInAsync(default!);
-        account.StatusCookie.ShouldContain("Choose a display name that is not your email address");
+        account.StatusCookie.ShouldContain("Choose a display name that does not include your email address");
+        account.StatusCookie.ShouldNotContain("Your profile has been updated");
+    }
+
+    [Theory]
+    [InlineData("Alice (member@example.test)")]
+    [InlineData("Alice (MEMBER@EXAMPLE.TEST)")]
+    public async Task DisplayNameContainingTheEmailIsRejectedWithoutWritingOrRefreshingSessionAsync(string displayName)
+    {
+        await using var context = new BunitContext();
+        var account = context.ConfigureAccount();
+        var user = account.Authenticate();
+        user.DisplayName = "Alice";
+        var component = account.Render<Profile>(context);
+        await component.Find("input[name='Input.DisplayName']").ChangeAsync(new ChangeEventArgs { Value = displayName });
+
+        await component.Find("form").SubmitAsync();
+
+        user.DisplayName.ShouldBe("Alice");
+        await account.Users.DidNotReceiveWithAnyArgs().UpdateAsync(default!);
+        await account.SignIn.DidNotReceiveWithAnyArgs().RefreshSignInAsync(default!);
+        account.StatusCookie.ShouldContain("Choose a display name that does not include your email address");
         account.StatusCookie.ShouldNotContain("Your profile has been updated");
     }
 

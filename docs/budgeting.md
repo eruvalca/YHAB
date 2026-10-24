@@ -100,9 +100,9 @@ sets their display name on **Profile** (`/Account/Manage`), and the share sectio
 warns that people added to the plan will see it. Accounts without a display name
 appear as **Member**, and duplicate names are numbered while skipping labels
 another collaborator already uses, so the owner can tell the access list and
-removal choices apart. Email addresses and usernames remain private to each
-account owner and are never rendered to collaborators or returned in sharing
-responses.
+removal choices apart. Display names cannot include the account email address.
+Email addresses and usernames remain private to each account owner and are never
+rendered to collaborators or returned in sharing responses.
 
 Create groups with **Category group** above the plan table, and add categories
 with the **+** on a group header. New names are entered directly in the table.
