@@ -151,10 +151,12 @@ retains normal document scrolling; keyboard focus and editor headings stay below
 the summary. On desktop, **Hide menu / Show menu** in the site header frees space
 for the plan and remembers your preference across navigation and reloads. Without
 a saved preference, the global menu is collapsed within a plan, leaving a single
-compact plan sidebar. On smaller screens, open **Plan & accounts** for navigation;
-a new plan's **Add your first account** action stays in the board, so starting does
-not require the drawer. The same sidebar is used by transactions, reports, and plan
-settings. Installation
+compact plan sidebar. On smaller screens, sticky **Plan**, **Transactions**,
+**Reflect**, and **Settings** tabs keep page navigation reachable while scrolling
+and identify the current page. Open **Plan & accounts** for accounts; a new plan's
+**Add your first account** action stays in the board, so starting does not require
+the drawer. The same sidebar is used by transactions, reports, and plan settings.
+Installation
 controls remain available in the site footer.
 
 ## Monthly rules

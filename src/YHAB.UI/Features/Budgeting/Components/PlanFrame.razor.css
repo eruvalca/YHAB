@@ -1,3 +1,4 @@
+.plan-page-tabs { display: none; }
 .plan-sidebar { flex: 0 0 14rem; min-width: 0; }
 .plan-content { flex: 1 1 35rem; min-width: 0; }
 .plan-drawer { margin: 0; }
@@ -8,6 +9,35 @@
     .plan-drawer::details-content { content-visibility: visible; }
 }
 @media (max-width: 999px) {
+    .plan-page-tabs {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        margin-block: calc(-1 * var(--spacingVerticalM)) var(--spacingVerticalM);
+        background: var(--colorNeutralBackground1);
+        border-block: 1px solid var(--colorNeutralStroke2);
+    }
+    .plan-page-tabs a {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 0;
+        min-height: 2.5rem;
+        padding: var(--spacingVerticalXS) var(--spacingHorizontalXXS);
+        color: var(--colorNeutralForeground2);
+        border-bottom: 3px solid transparent;
+        font-size: var(--fontSizeBase200);
+        text-align: center;
+        text-decoration: none;
+    }
+    .plan-page-tabs a:hover { background: var(--colorSubtleBackgroundHover); }
+    .plan-page-tabs a.active {
+        color: var(--colorBrandForeground1);
+        border-bottom-color: var(--colorBrandForeground1);
+        font-weight: var(--fontWeightSemibold);
+    }
     .plan-sidebar, .plan-content { flex-basis: 100%; }
     .plan-sidebar { border-bottom: 1px solid var(--colorNeutralStroke2); }
     .plan-drawer > summary { display: flex; align-items: center; min-height: 2.5rem; }

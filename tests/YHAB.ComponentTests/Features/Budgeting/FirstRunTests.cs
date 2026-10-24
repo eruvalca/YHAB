@@ -53,6 +53,25 @@ public sealed class FirstRunTests
     }
 
     [Fact]
+    public async Task PlanFrameProvidesCompactLinksToEveryPlanPageAsync()
+    {
+        await using var context = CreateContext();
+        var plan = CreatePlan();
+        var frame = context.Render<PlanFrame>(parameters => parameters.Add(item => item.Plan, plan)
+            .Add(item => item.ChildContent, builder => builder.AddContent(0, "Plan content")));
+
+        var links = frame.FindAll(".plan-page-tabs a");
+        links.Count.ShouldBe(4);
+        links.Select(item => item.GetAttribute("href")).ShouldBe([
+            $"/plans/{plan.Id}",
+            $"/plans/{plan.Id}/accounts",
+            $"/plans/{plan.Id}/reports",
+            $"/plans/{plan.Id}/settings"]);
+        links.Select(item => item.TextContent).ShouldBe(["Plan", "Transactions", "Reflect", "Settings"]);
+        frame.Find(".plan-drawer .plan-navigation").ShouldNotBeNull();
+    }
+
+    [Fact]
     public async Task ChecklistMarksTheAccountStepAndOffersTheCategoryEditorAsync()
     {
         await using var context = CreateContext();
