@@ -82,6 +82,32 @@ public sealed class PlanSharingComponentTests
     }
 
     [Fact]
+    public async Task DuplicateCollaboratorNamesAreNumberedSoTheOwnerCanRemoveTheRightAccountAsync()
+    {
+        await using var context = CreateContext();
+        var budgets = Substitute.For<IBudgetClient>();
+        var plan = Plan(isOwner: true);
+        Configure(budgets, plan, new PlanShareSummary("Alice", true, [new("owner-b", "Member"), new("owner-c", "Member")]));
+        budgets.UnshareAsync(plan.Id, "owner-c", Arg.Any<CancellationToken>())
+            .Returns(new PlanShareSummary("Alice", true, [new("owner-b", "Member")]));
+        context.Services.AddSingleton(budgets);
+
+        var component = context.Render<PlanSettings>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+
+        await component.WaitForAssertionAsync(() => component.Find("#remove-share-form").ShouldNotBeNull());
+        component.FindAll("#sharing-section .share-list li").Select(item => item.TextContent).ShouldBe(["Member (1)", "Member (2)"]);
+        var options = component.FindAll("#remove-person option");
+        options.Select(option => option.GetAttribute("value")).ShouldBe(["", "owner-b", "owner-c"]);
+        options.Select(option => option.TextContent).ShouldBe(["Choose a person", "Member (1)", "Member (2)"]);
+
+        SetFormValue(component.Instance, "Remove", "MemberId", "owner-c");
+        await component.Find("#remove-share-form").SubmitAsync();
+
+        await budgets.Received(1).UnshareAsync(plan.Id, "owner-c", Arg.Any<CancellationToken>());
+        component.FindAll("#sharing-section .share-list li").Select(item => item.TextContent).ShouldBe(["Member"]);
+    }
+
+    [Fact]
     public async Task RemovingLastCollaboratorKeepsSuccessFeedbackInTheSharingSectionAsync()
     {
         await using var context = CreateContext();

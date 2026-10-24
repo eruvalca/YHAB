@@ -176,6 +176,23 @@ public sealed partial class PlanSettings(IBudgetClient budgets, NavigationManage
 
     private static bool RequiresPageNotice(BudgetRequestException exception) => exception.Status is 401 or 403 or 409;
 
+    // Display names are editable and default to the same fallback, so number duplicates
+    // to keep the access list and removal choices unambiguous without exposing account identity.
+    private LabeledCollaborator[] LabeledCollaborators()
+    {
+        if (_sharing is null) { return []; }
+        var counts = _sharing.Collaborators
+            .GroupBy(person => person.Name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
+        var seen = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        return _sharing.Collaborators.Select(person =>
+        {
+            if (counts[person.Name] == 1) { return new LabeledCollaborator(person.UserId, person.Name); }
+            seen[person.Name] = seen.GetValueOrDefault(person.Name) + 1;
+            return new LabeledCollaborator(person.UserId, $"{person.Name} ({seen[person.Name]})");
+        }).ToArray();
+    }
+
     private async Task LoadAsync(CancellationToken cancellationToken)
     {
         var view = await budgets.ReadViewAsync(PlanId, cancellationToken);
@@ -190,6 +207,7 @@ public sealed partial class PlanSettings(IBudgetClient budgets, NavigationManage
         _sharing = sharing;
     }
     private sealed record Feedback(string Message, bool IsError);
+    private sealed record LabeledCollaborator(string UserId, string Label);
     private sealed class SettingsInput
     {
         public long Version { get; set; }
