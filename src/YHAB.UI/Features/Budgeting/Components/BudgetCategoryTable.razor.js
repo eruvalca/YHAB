@@ -71,6 +71,10 @@ function focusin(state, event) {
     } else if (event.target.matches('.assigned-cell fluent-text-input')) {
         state.activeAmount = event.target;
         state.focused = { id: row.dataset.categoryId, kind: 'amount' };
+    } else if (event.target.matches('.category-name .rename-name, .category-name .inline-name-form fluent-text-input')) {
+        const name = nameControl(row);
+        if (name) state.activeName = name;
+        state.focused = { id: row.dataset.categoryId, kind: 'name' };
     } else {
         return;
     }
@@ -106,7 +110,7 @@ export function initialize(table) {
     document.addEventListener('pointerdown', event => {
         if (!table.contains(event.target)) state.focused = null;
     }, { signal: controller.signal });
-    observer.observe(table, { childList: true, subtree: true });
+    observer.observe(table, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled'] });
     synchronize(state);
 }
 

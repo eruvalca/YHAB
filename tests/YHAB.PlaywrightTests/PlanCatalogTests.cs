@@ -189,6 +189,13 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             Task FocusedAsync(Guid id, string selector) => page.WaitForFunctionAsync(
                 "([id, selector]) => document.activeElement === document.querySelector(`[data-category-id='${id}'] ${selector}`)",
                 new object[] { id.ToString(), selector });
+            async Task RovingTabStopsAsync()
+            {
+                (await page.Locator(".category-row .category-link").EvaluateAllAsync<int>(
+                    "elements => elements.filter(element => element.tabIndex === 0).length")).ShouldBe(1);
+                (await page.Locator(".category-row .assigned-cell fluent-text-input").EvaluateAllAsync<int>(
+                    "elements => elements.filter(element => element.tabIndex === 0).length")).ShouldBe(1);
+            }
 
             await Name(categories[0].Id).FocusAsync();
             await Name(categories[0].Id).PressAsync("ArrowDown");
@@ -202,10 +209,7 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             await FocusedAsync(categories[2].Id, "fluent-text-input");
             await Amount(categories[2].Id).PressAsync("ArrowLeft");
             await FocusedAsync(categories[2].Id, ".category-link");
-            (await page.Locator(".category-row .category-link").EvaluateAllAsync<int>(
-                "elements => elements.filter(element => element.tabIndex === 0).length")).ShouldBe(1);
-            (await page.Locator(".category-row .assigned-cell fluent-text-input").EvaluateAllAsync<int>(
-                "elements => elements.filter(element => element.tabIndex === 0).length")).ShouldBe(1);
+            await RovingTabStopsAsync();
 
             await Name(categories[2].Id).PressAsync("F2");
             await Input(page, "Category name").FillAsync("Keyboard renamed");
@@ -213,6 +217,15 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             var renamed = Row(page, categories[2].Id.ToString()).GetByRole(AriaRole.Button, new() { Name = "Keyboard renamed", Exact = true });
             await renamed.WaitForAsync();
             await FocusedAsync(categories[2].Id, ".category-link");
+            await RovingTabStopsAsync();
+
+            await Row(page, categories[2].Id.ToString()).GetByRole(AriaRole.Button, new() { Name = "Rename Keyboard renamed", Exact = true }).ClickAsync();
+            await Input(page, "Category name").FillAsync("Pointer renamed");
+            await Button(page, "Save").ClickAsync();
+            renamed = Row(page, categories[2].Id.ToString()).GetByRole(AriaRole.Button, new() { Name = "Pointer renamed", Exact = true });
+            await renamed.WaitForAsync();
+            await FocusedAsync(categories[2].Id, ".category-link");
+            await RovingTabStopsAsync();
             errors.ShouldBeEmpty();
         }
         finally
@@ -275,6 +288,8 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
                 (await DomOrderAsync(page, destination)).ShouldBe(PlanOrder(plan, destination));
                 (await DomOrderAsync(page, source)).ShouldBe(PlanOrder(plan, source));
             }
+            (await page.Locator(".category-row .category-link").EvaluateAllAsync<int>(
+                "elements => elements.filter(element => element.tabIndex === 0).length")).ShouldBe(1);
 
             var cdp = await context.NewCDPSessionAsync(page);
             var before = await DomOrderAsync(page, destination);
