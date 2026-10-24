@@ -78,6 +78,78 @@ public sealed class PlanSharingComponentTests
     }
 
     [Fact]
+    public async Task RemovingLastCollaboratorKeepsSuccessFeedbackInTheSharingSectionAsync()
+    {
+        await using var context = CreateContext();
+        var budgets = Substitute.For<IBudgetClient>();
+        var plan = Plan(isOwner: true);
+        Configure(budgets, plan, new PlanShareSummary("a@example.test", true, [new("owner-b", "b@example.test")]));
+        budgets.UnshareAsync(plan.Id, "owner-b", Arg.Any<CancellationToken>())
+            .Returns(new PlanShareSummary("a@example.test", true, []));
+        context.Services.AddSingleton(budgets);
+
+        var component = context.Render<PlanSettings>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+        await component.WaitForAssertionAsync(() => component.Find("#remove-share-form").ShouldNotBeNull());
+        SetFormValue(component.Instance, "Remove", "MemberId", "owner-b");
+
+        await component.Find("#remove-share-form").SubmitAsync();
+
+        var success = component.Find("#sharing-section .notice[data-kind='success']");
+        success.TextContent.ShouldBe("That account can no longer open this plan.");
+        success.GetAttribute("role").ShouldBe("status");
+        component.FindAll("#remove-share-form").ShouldBeEmpty();
+        component.Find("#sharing-section").TextContent.ShouldContain("No one else has access yet.");
+    }
+
+    [Fact]
+    public async Task RemovingWithoutSelectionMarksPersonFieldInvalidAsync()
+    {
+        await using var context = CreateContext();
+        var budgets = Substitute.For<IBudgetClient>();
+        var plan = Plan(isOwner: true);
+        Configure(budgets, plan, new PlanShareSummary("a@example.test", true, [new("owner-b", "b@example.test")]));
+        context.Services.AddSingleton(budgets);
+
+        var component = context.Render<PlanSettings>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+        await component.WaitForAssertionAsync(() => component.Find("#remove-share-form").ShouldNotBeNull());
+
+        await component.Find("#remove-share-form").SubmitAsync();
+
+        var select = component.Find("#remove-person");
+        select.GetAttribute("aria-invalid").ShouldBe("true");
+        select.GetAttribute("aria-describedby").ShouldBe("remove-person-error");
+        select.ClassList.Contains("invalid").ShouldBeTrue();
+        select.GetAttribute("data-validation-focus").ShouldNotBeNull();
+        component.Find("#remove-person-error").TextContent.ShouldBe("Choose a person to remove.");
+        await budgets.DidNotReceive().UnshareAsync(plan.Id, Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RemovalServiceErrorMarksPersonFieldInvalidAsync()
+    {
+        await using var context = CreateContext();
+        var budgets = Substitute.For<IBudgetClient>();
+        var plan = Plan(isOwner: true);
+        Configure(budgets, plan, new PlanShareSummary("a@example.test", true, [new("owner-b", "b@example.test")]));
+        budgets.UnshareAsync(plan.Id, "owner-b", Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<PlanShareSummary>(new BudgetRequestException(404, "That account is no longer in this plan.")));
+        context.Services.AddSingleton(budgets);
+
+        var component = context.Render<PlanSettings>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+        await component.WaitForAssertionAsync(() => component.Find("#remove-share-form").ShouldNotBeNull());
+        SetFormValue(component.Instance, "Remove", "MemberId", "owner-b");
+
+        await component.Find("#remove-share-form").SubmitAsync();
+
+        var select = component.Find("#remove-person");
+        select.GetAttribute("aria-invalid").ShouldBe("true");
+        select.GetAttribute("aria-describedby").ShouldBe("remove-person-error");
+        select.ClassList.Contains("invalid").ShouldBeTrue();
+        component.Find("#remove-person-error").TextContent.ShouldBe("That account is no longer in this plan.");
+        component.FindAll(".notice[data-kind='error']").ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task SharedMemberSeesOwnerAndRejectsUnconfirmedLeaveAsync()
     {
         await using var context = CreateContext();
@@ -125,7 +197,7 @@ public sealed class PlanSharingComponentTests
     }
 
     [Fact]
-    public async Task JoinServiceErrorIsShownAsync()
+    public async Task JoinServiceErrorIsShownNextToTheCodeFieldAsync()
     {
         await using var context = CreateContext();
         var budgets = Substitute.For<IBudgetClient>();
@@ -139,7 +211,100 @@ public sealed class PlanSharingComponentTests
         SetFormValue(component.Instance, "Join", "Code", "BAD-CODE");
         await component.Find("#join-plan-form").SubmitAsync();
 
-        component.Find(".notice[data-kind='error']").TextContent.ShouldContain("invalid or expired");
+        var error = component.Find("#join-code-error");
+        error.TextContent.ShouldContain("invalid or expired");
+        error.GetAttribute("role").ShouldBe("alert");
+        error.Closest("#join-plan-form").ShouldNotBeNull();
+        component.Find("#join-code").GetAttribute("aria-invalid").ShouldBe("true");
+        component.Find("#join-code").GetAttribute("aria-describedby").ShouldBe("join-code-error");
+        component.Find("#join-code").HasAttribute("data-validation-focus").ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData(401)]
+    [InlineData(403)]
+    [InlineData(409)]
+    public async Task JoinSessionAndRevisionErrorsRemainAtPageLevelAsync(int status)
+    {
+        await using var context = CreateContext();
+        var budgets = Substitute.For<IBudgetClient>();
+        budgets.ListAsync(Arg.Any<CancellationToken>()).Returns([]);
+        budgets.JoinAsync("BAD-CODE", Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<Guid>(new BudgetRequestException(status, "Request failed.")));
+        context.Services.AddSingleton(budgets);
+
+        var component = context.Render<Plans>();
+        await component.WaitForAssertionAsync(() => component.Find("#join-plan-form").ShouldNotBeNull());
+        SetFormValue(component.Instance, "Join", "Code", "BAD-CODE");
+        await component.Find("#join-plan-form").SubmitAsync();
+
+        component.Find(".notice[data-kind='error']").TextContent.ShouldBe("Request failed.");
+        component.Find("#join-plan-form").QuerySelectorAll(".notice, .validation-message").ShouldBeEmpty();
+        component.Find("#join-code").HasAttribute("aria-invalid").ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task PlanSettingsErrorIsShownInsideTheSettingsSectionAsync()
+    {
+        await using var context = CreateContext();
+        var budgets = Substitute.For<IBudgetClient>();
+        var plan = Plan(isOwner: true);
+        Configure(budgets, plan, new PlanShareSummary("a@example.test", true, []));
+        budgets.ExecuteAsync(plan.Id, Arg.Any<PlanCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new BudgetRequestException(400, "Settings could not be saved.")));
+        context.Services.AddSingleton(budgets);
+        var component = context.Render<PlanSettings>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+        await component.WaitForAssertionAsync(() => component.Find("#plan-settings-section").ShouldNotBeNull());
+
+        await component.Find("#plan-settings-section form").SubmitAsync();
+
+        var error = component.Find("#plan-settings-section .notice[data-kind='error']");
+        error.TextContent.ShouldBe("Settings could not be saved.");
+        error.GetAttribute("role").ShouldBe("alert");
+        component.Find("#rename-payee-section").QuerySelectorAll(".notice").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task PlanSettingsRevisionErrorRemainsAtPageLevelAsync()
+    {
+        await using var context = CreateContext();
+        var budgets = Substitute.For<IBudgetClient>();
+        var plan = Plan(isOwner: true);
+        Configure(budgets, plan, new PlanShareSummary("a@example.test", true, []));
+        budgets.ExecuteAsync(plan.Id, Arg.Any<PlanCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new BudgetRequestException(409, "Plan changed elsewhere.")));
+        context.Services.AddSingleton(budgets);
+        var component = context.Render<PlanSettings>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+        await component.WaitForAssertionAsync(() => component.Find("#plan-settings-section").ShouldNotBeNull());
+
+        await component.Find("#plan-settings-section form").SubmitAsync();
+
+        component.Find(".notice[data-kind='error']").TextContent.ShouldBe("Plan changed elsewhere.");
+        component.Find("#plan-settings-section").QuerySelectorAll(".notice").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task SavedSettingsRefreshFailureKeepsTheSavedMessageAsync()
+    {
+        await using var context = CreateContext();
+        var budgets = Substitute.For<IBudgetClient>();
+        var plan = Plan(isOwner: true);
+        Configure(budgets, plan, new PlanShareSummary("a@example.test", true, []));
+        budgets.ExecuteAsync(plan.Id, Arg.Any<PlanCommand>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        var reads = 0;
+        budgets.ReadViewAsync(plan.Id, Arg.Any<CancellationToken>()).Returns(_ =>
+            reads++ == 0
+                ? Task.FromResult(new PlanView(plan, [], false))
+                : Task.FromException<PlanView>(new BudgetRequestException(400, "Refresh failed.")));
+        context.Services.AddSingleton(budgets);
+        var component = context.Render<PlanSettings>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+        await component.WaitForAssertionAsync(() => component.Find("#plan-settings-section").ShouldNotBeNull());
+
+        await component.Find("#plan-settings-section form").SubmitAsync();
+
+        component.Find(".notice[data-kind='error']").TextContent
+            .ShouldBe("Your change was saved. Reload to update the displayed settings.");
+        component.Find("#plan-settings-section").QuerySelectorAll(".notice").ShouldBeEmpty();
     }
 
     private static void SetFormValue(object page, string formProperty, string valueProperty, object? value)

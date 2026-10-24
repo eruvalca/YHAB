@@ -52,6 +52,19 @@ public sealed class LayoutAndSharingTests(ITestOutputHelper output)
                 });
             }
 
+            await page.GetByLabel("Share code", new() { Exact = true }).FillAsync("BAD-CODE");
+            await page.GetByRole(AriaRole.Button, new() { Name = "Join plan", Exact = true }).ClickAsync();
+            var joinError = page.Locator("#join-plan-form #join-code-error");
+            await joinError.WaitForAsync();
+            (await joinError.GetAttributeAsync("role")).ShouldBe("alert");
+            await page.WaitForFunctionAsync("document.activeElement?.id === 'join-code'");
+            (await page.Locator("#join-code").EvaluateAsync<bool>("""
+                element => {
+                    const bounds = element.getBoundingClientRect();
+                    return bounds.top >= 0 && bounds.bottom <= innerHeight;
+                }
+                """)).ShouldBeTrue();
+
             await page.GetByLabel("Plan name", new() { Exact = true }).FillAsync("A shared plan");
             await page.GetByRole(AriaRole.Button, new() { Name = "Create your plan" }).ClickAsync();
             await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
