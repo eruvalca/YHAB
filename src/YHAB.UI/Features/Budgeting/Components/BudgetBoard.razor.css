@@ -20,7 +20,7 @@ h1 { margin: 0; font-size: var(--fontSizeBase400); line-height: var(--lineHeight
 .budget-glossary { margin-block: var(--spacingVerticalS); }
 .budget-glossary dt { font-weight: var(--fontWeightSemibold); }
 .budget-glossary dd { margin: 0 0 var(--spacingVerticalXS); }
-.still-needed-breakdown { display: block; color: var(--colorNeutralForeground3); font-size: var(--fontSizeBase100); }
+.still-needed-breakdown { margin-inline-start: var(--spacingHorizontalXS); color: var(--colorNeutralForeground3); font-size: var(--fontSizeBase100); }
 .summary-actions { display: flex; flex-direction: column; align-items: flex-end; gap: var(--spacingVerticalXXS); }
 .action-hint { margin: 0; font-size: var(--fontSizeBase100); text-align: end; }
 @media (max-width: 1200px) { .category-details { flex-basis: 100%; position: static; max-height: none; overflow-y: visible; } }
