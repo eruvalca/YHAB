@@ -23,6 +23,8 @@ public sealed partial class BudgetBoard
     private PlanSnapshot? _loadedPlan;
     private bool _move;
     private bool _help;
+    private bool _focusHelp;
+    private ElementReference _helpPanel;
     private BudgetCategoryTable? _categoryTable;
     private CategoryData? _category;
     private CategoryMonth? EditingMonth => _budget.Categories.SingleOrDefault(item => item.Category.Id == _category?.Id);
@@ -31,6 +33,31 @@ public sealed partial class BudgetBoard
         !item.Snoozed && !item.Category.Hidden
         && !Plan.Groups.Any(group => group.Id == item.Category.GroupId && group.Hidden)
         && (item.TargetNeeded > 0 || item.Available < 0));
+    private decimal StillNeeded => _budget.Categories.Sum(item => Math.Max(item.TargetNeeded, -item.Available));
+    // Every category contributes to whichever shortfall is larger, so the parts always add up to StillNeeded.
+    private string? StillNeededBreakdown
+    {
+        get
+        {
+            decimal targets = 0;
+            decimal overspending = 0;
+            foreach (var item in _budget.Categories)
+            {
+                var target = Math.Max(item.TargetNeeded, 0);
+                var overspent = Math.Max(-item.Available, 0);
+                if (target >= overspent) { targets += target; }
+                else { overspending += overspent; }
+            }
+
+            return (targets, overspending) switch
+            {
+                (0, 0) => null,
+                (_, 0) => $"{BudgetFacts.Money(targets)} for targets",
+                (0, _) => $"{BudgetFacts.Money(overspending)} to cover overspending",
+                _ => $"{BudgetFacts.Money(targets)} for targets, {BudgetFacts.Money(overspending)} to cover overspending",
+            };
+        }
+    }
     private string? FundTargetsHint
     {
         get
@@ -52,6 +79,13 @@ public sealed partial class BudgetBoard
             _loadedPlan = Plan;
             await CalculateAsync();
         }
+    }
+    // Opening help moves focus to the panel so keyboard users land on the explanation instead of the next control.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_focusHelp || IsDisposed) { return; }
+        _focusHelp = false;
+        await _helpPanel.FocusAsync();
     }
     private async Task CalculateAsync()
     {
@@ -86,7 +120,12 @@ public sealed partial class BudgetBoard
     private Task AutoAssignAsync() => OnCommand.InvokeAsync(new AutoAssign(Plan.Version, _month));
     private Task AddAccountAsync() => OnAddAccount.InvokeAsync();
     private void ShowMove() { if (MoveMoneyHint is not null) { return; } CloseEditors(); _move = true; }
-    private void ShowHelp() => _help = true;
+    private Task ShowHelpAsync()
+    {
+        _help = true;
+        _focusHelp = true;
+        return Task.CompletedTask;
+    }
     private void HideHelp() => _help = false;
     private Task AddCategoryAsync() { _help = false; _categoryTable?.BeginAddCategory(); return Task.CompletedTask; }
     private void EditCategory(CategoryData category) { _move = false; _category = category; }

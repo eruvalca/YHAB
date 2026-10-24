@@ -13,7 +13,8 @@ public sealed partial class BudgetCategoryTable
     [Parameter, EditorRequired] public EventCallback<CategoryData> OnSelect { get; set; }
     [Parameter] public Guid? SelectedCategoryId { get; set; }
     [Parameter] public bool Busy { get; set; }
-    private static readonly string[] _filters = ["All categories", "Underfunded", "Overspent", "Available", "Hidden"];
+    private static readonly string _stillNeeded = BudgetGlossary.Label(BudgetTerm.StillNeeded);
+    private static readonly string[] _filters = ["All categories", _stillNeeded, "Overspent", "Available", "Hidden"];
     private string _filter = "All categories";
     private readonly HashSet<Guid> _collapsed = [];
     private readonly Dictionary<Guid, InlineNameDraft> _drafts = [];
@@ -60,8 +61,14 @@ public sealed partial class BudgetCategoryTable
         var hiddenGroup = Plan.Groups.Any(value => value.Id == group && value.Hidden);
         return Order(group).Select(id => _rows.GetValueOrDefault(id)).OfType<CategoryMonth>()
             .Where(item => (string.Equals(_filter, "Hidden", StringComparison.Ordinal) ? item.Category.Hidden || hiddenGroup : !item.Category.Hidden && !hiddenGroup)
-                && (_filter switch { "Underfunded" => item.TargetNeeded > 0, "Overspent" => item.Available < 0, "Available" => item.Available > 0, _ => true }))
+                && MatchesView(item))
             .ToArray();
+    }
+
+    private bool MatchesView(CategoryMonth item)
+    {
+        if (string.Equals(_filter, _stillNeeded, StringComparison.Ordinal)) { return item.TargetNeeded > 0 || item.Available < 0; }
+        return _filter switch { "Overspent" => item.Available < 0, "Available" => item.Available > 0, _ => true };
     }
 
     private bool ShowGroup(GroupData group, int count) => count > 0 || _newCategoryGroup == group.Id

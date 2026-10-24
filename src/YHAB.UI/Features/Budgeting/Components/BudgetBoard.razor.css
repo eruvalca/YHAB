@@ -17,6 +17,10 @@ h1 { margin: 0; font-size: var(--fontSizeBase400); line-height: var(--lineHeight
 .budget-help { margin-block: var(--spacingVerticalM); padding: var(--spacingVerticalM) var(--spacingHorizontalM); border: 1px solid var(--colorNeutralStroke2); border-radius: var(--borderRadiusMedium); background: var(--colorNeutralBackground1); font-size: var(--fontSizeBase200); }
 .budget-help h2 { margin: 0; font-size: var(--fontSizeBase400); }
 .budget-help p { margin: 0; }
+.budget-glossary { margin-block: var(--spacingVerticalS); }
+.budget-glossary dt { font-weight: var(--fontWeightSemibold); }
+.budget-glossary dd { margin: 0 0 var(--spacingVerticalXS); }
+.still-needed-breakdown { display: block; color: var(--colorNeutralForeground3); font-size: var(--fontSizeBase100); }
 .summary-actions { display: flex; flex-direction: column; align-items: flex-end; gap: var(--spacingVerticalXXS); }
 .action-hint { margin: 0; font-size: var(--fontSizeBase100); text-align: end; }
 @media (max-width: 1200px) { .category-details { flex-basis: 100%; position: static; max-height: none; overflow-y: visible; } }
