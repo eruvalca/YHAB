@@ -1,4 +1,18 @@
 const instances = new WeakMap();
+let live = 0;
+// Blazor can detach the table before disposal clears its element reference, so
+// release the listeners and their remembered elements when the DOM removes it.
+const removalObserver = new MutationObserver(records => {
+    for (const record of records) {
+        for (const node of record.removedNodes) {
+            if (!(node instanceof Element)) continue;
+            const tables = node.matches('.budget-table') ? [node] : node.querySelectorAll('.budget-table');
+            for (const table of tables) {
+                if (!table.isConnected) dispose(table);
+            }
+        }
+    }
+});
 
 function rows(table) {
     return [...table.querySelectorAll('.category-row[data-category-id]')].filter(row => row.getClientRects().length > 0);
@@ -21,7 +35,8 @@ function synchronize(state) {
     for (const kind of ['name', 'amount']) {
         const items = controls(state.table, kind);
         const activeKey = kind === 'name' ? 'activeName' : 'activeAmount';
-        if (!items.some(item => item.control === state[activeKey])) state[activeKey] = items[0]?.control ?? null;
+        if (items.length === 0) continue;
+        if (!items.some(item => item.control === state[activeKey])) state[activeKey] = items[0].control;
         for (const item of items) item.control.tabIndex = item.control === state[activeKey] ? 0 : -1;
     }
 }
@@ -57,6 +72,8 @@ function keydown(state, event) {
         event.preventDefault();
         focus(state, row, 'amount');
     } else if (event.key === 'ArrowLeft' && kind === 'amount') {
+        const input = event.target.shadowRoot?.activeElement;
+        if (!input || input.selectionStart !== 0 || input.selectionEnd !== 0) return;
         event.preventDefault();
         focus(state, row, 'name');
     }
@@ -111,7 +128,9 @@ export function initialize(table) {
         if (!table.contains(event.target)) state.focused = null;
     }, { signal: controller.signal });
     observer.observe(table, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled'] });
-    synchronize(state);
+    if (++live === 1) removalObserver.observe(document.documentElement, { childList: true, subtree: true });
+    if (!table.isConnected) dispose(table);
+    else synchronize(state);
 }
 
 export function dispose(table) {
@@ -120,4 +139,5 @@ export function dispose(table) {
     state.controller.abort();
     state.observer.disconnect();
     instances.delete(table);
+    if (--live === 0) removalObserver.disconnect();
 }

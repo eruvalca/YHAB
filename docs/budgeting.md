@@ -74,12 +74,14 @@ Create groups with **Category group** above the plan table, and add categories
 with the **+** on a group header. New names are entered directly in the table.
 Use **Rename**, double-click a name, or press F2 on a name to edit it inline;
 Enter saves and Escape cancels. Names and assignment fields each use one roving
-Tab stop for the visible rows. Up and Down move between rows in the same column,
-while Right and Left move between a category's name and assignment. Saving a
-rename restores focus to its name; **Rename** remains available to pointer and
-assistive-technology users without adding another sequential Tab stop. An open
-name draft survives a reorder of any category because the table keeps it by
-category id outside the sortable subtree, whose unkeyed wrappers recreate rows.
+Tab stop for the visible rows. Up and Down move between rows in the same column.
+Right moves from a name to its assignment; Left moves back only when the
+assignment caret is at the start, and otherwise preserves normal caret movement.
+Saving a rename restores focus to its name; **Rename** remains available to
+pointer and assistive-technology users without adding another sequential Tab
+stop. An open name draft survives a reorder of any category because the table
+keeps it by category id outside the sortable subtree, whose unkeyed wrappers
+recreate rows.
 Empty groups remain visible so they can receive categories. Collapse individual
 groups or all groups to focus the plan.
 

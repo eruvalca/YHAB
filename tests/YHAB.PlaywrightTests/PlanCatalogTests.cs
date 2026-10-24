@@ -207,6 +207,7 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             await FocusedAsync(categories[1].Id, "fluent-text-input");
             await Amount(categories[1].Id).PressAsync("ArrowDown");
             await FocusedAsync(categories[2].Id, "fluent-text-input");
+            await Input(page, "Assign to Utilities").EvaluateAsync("input => input.setSelectionRange(0, 0)");
             await Amount(categories[2].Id).PressAsync("ArrowLeft");
             await FocusedAsync(categories[2].Id, ".category-link");
             await RovingTabStopsAsync();
@@ -226,6 +227,20 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             await renamed.WaitForAsync();
             await FocusedAsync(categories[2].Id, ".category-link");
             await RovingTabStopsAsync();
+
+            var expression = Input(page, "Assign to Pointer renamed");
+            await expression.FillAsync("150 + 25");
+            await expression.EvaluateAsync("input => input.setSelectionRange(4, 4)");
+            await expression.PressAsync("ArrowLeft");
+            (await expression.EvaluateAsync<bool>("input => input.getRootNode().activeElement === input && input.selectionStart === 3")).ShouldBeTrue();
+            await expression.PressAsync("Tab");
+            await page.WaitForFunctionAsync(
+                "id => !document.querySelector(`[data-category-id='${id}'] .category-link`).disabled", categories[2].Id.ToString());
+            (await expression.InputValueAsync()).ShouldBe("175.00");
+            (await Name(categories[2].Id).GetAttributeAsync("tabindex")).ShouldBe("0");
+            await expression.EvaluateAsync("input => input.setSelectionRange(0, 0)");
+            await expression.PressAsync("ArrowLeft");
+            await FocusedAsync(categories[2].Id, ".category-link");
             errors.ShouldBeEmpty();
         }
         finally
