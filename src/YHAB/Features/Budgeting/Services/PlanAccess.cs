@@ -24,8 +24,14 @@ internal static class PlanAccess
             ? snapshot with { IsOwner = true }
             : snapshot with { IsOwner = false, OwnerName = await OwnerNameAsync(database, plan.OwnerId, cancellationToken) };
 
-    public static Task<string?> OwnerNameAsync(ApplicationDbContext database, string ownerId, CancellationToken cancellationToken)
-        => database.Set<ApplicationUser>().Where(item => item.Id == ownerId).Select(item => item.UserName).SingleOrDefaultAsync(cancellationToken);
+    public static async Task<string?> OwnerNameAsync(ApplicationDbContext database, string ownerId, CancellationToken cancellationToken)
+    {
+        var owner = await database.Set<ApplicationUser>().AsNoTracking()
+            .Where(item => item.Id == ownerId)
+            .Select(item => new { item.DisplayName, item.Email, item.UserName })
+            .SingleOrDefaultAsync(cancellationToken);
+        return owner is null ? null : UserDisplayNames.Resolve(owner.DisplayName, owner.Email, owner.UserName);
+    }
 
     public static BudgetRequestException Unavailable() => new(404, "This plan is not available.");
 }

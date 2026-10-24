@@ -31,8 +31,9 @@ internal sealed class BudgetDatabase(PostgreSqlContainer container, ServiceProvi
             var result = new BudgetDatabase(container, provider);
             await using var context = await result.Factory.CreateDbContextAsync(cancellationToken);
             await context.Database.MigrateAsync(cancellationToken);
-            context.Users.AddRange(new ApplicationUser { Id = "owner-a", UserName = "a@example.test", NormalizedUserName = "A@EXAMPLE.TEST" },
-                new ApplicationUser { Id = "owner-b", UserName = "b@example.test", NormalizedUserName = "B@EXAMPLE.TEST" });
+            context.Users.AddRange(
+                new ApplicationUser { Id = "owner-a", UserName = "a@example.test", NormalizedUserName = "A@EXAMPLE.TEST", DisplayName = "Alice" },
+                new ApplicationUser { Id = "owner-b", UserName = "b@example.test", NormalizedUserName = "B@EXAMPLE.TEST", DisplayName = "Bob" });
             await context.SaveChangesAsync(cancellationToken);
             return result;
         }

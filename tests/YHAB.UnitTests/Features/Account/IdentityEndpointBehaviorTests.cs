@@ -195,6 +195,7 @@ public sealed class IdentityEndpointBehaviorTests
         var data = JsonSerializer.Deserialize<Dictionary<string, string>>(await context.ReadBodyAsync()).ShouldNotBeNull();
         data.ShouldBe(new Dictionary<string, string>(StringComparer.Ordinal)
         {
+            ["DisplayName"] = user.DisplayName!,
             ["Id"] = user.Id,
             ["UserName"] = user.UserName!,
             ["Email"] = user.Email!,
@@ -228,6 +229,7 @@ public sealed class IdentityEndpointBehaviorTests
         .RuleFor(u => u.Id, f => f.Random.Guid().ToString())
         .RuleFor(u => u.UserName, f => f.Internet.UserName())
         .RuleFor(u => u.Email, f => f.Internet.Email(provider: "example.test"))
+        .RuleFor(u => u.DisplayName, f => f.Name.FullName())
         .Generate();
 
     private sealed class EndpointContext(WebApplication app, IdentityTestContext identity,

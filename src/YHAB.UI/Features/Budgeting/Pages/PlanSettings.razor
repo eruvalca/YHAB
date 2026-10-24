@@ -39,7 +39,7 @@
             {
                 @if (sharing.IsOwner)
                 {
-                    <p>Create a one-time code and give it to the person you want to add. Codes expire after seven days and stop working once used. Everyone with access can open and edit this plan.</p>
+                    <p>Create a one-time code and give it to the person you want to add. Codes expire after seven days and stop working once used. Everyone with access can open and edit this plan and will see your display name (@sharing.OwnerName), but never your email address.</p>
                     <EditForm Model="ShareCodeForm" id="create-share-code-form" method="post" FormName="CreateShareCode" OnValidSubmit="CreateShareCodeAsync" Enhance>
                         <input type="hidden" name="ShareCodeForm.Action" value="@ShareCodeForm.Action" />
                         <button type="submit" class="primary-action">Create share code</button>
@@ -69,9 +69,9 @@
                 {
                     <h3>People with access</h3>
                     <ul class="share-list">
-                        @foreach (var person in sharing.Collaborators)
+                        @foreach (var person in LabeledCollaborators())
                         {
-                            <li @key="person.UserId">@person.Name</li>
+                            <li @key="person.UserId">@person.Label</li>
                         }
                     </ul>
                 }
@@ -81,7 +81,7 @@
                         <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalM)">
                             <div class="form-field">
                                 <label for="remove-person">Stop sharing with</label>
-                                <InputSelect id="remove-person" @bind-Value="Remove.MemberId" aria-describedby="@(_removeFeedback is { IsError: true } ? "remove-person-error" : null)" data-validation-focus><option value="">Choose a person</option>@foreach (var person in sharing.Collaborators) { <option value="@person.UserId">@person.Name</option> }</InputSelect>
+                                <InputSelect id="remove-person" @bind-Value="Remove.MemberId" aria-describedby="@(_removeFeedback is { IsError: true } ? "remove-person-error" : null)" data-validation-focus><option value="">Choose a person</option>@foreach (var person in LabeledCollaborators()) { <option value="@person.UserId">@person.Label</option> }</InputSelect>
                                 @if (_removeFeedback is { IsError: true } removeError) { <p id="remove-person-error" class="validation-message" role="alert">@removeError.Message</p> }
                             </div>
                             <button type="submit" class="secondary-action">Remove access</button>

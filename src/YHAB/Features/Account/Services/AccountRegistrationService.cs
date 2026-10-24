@@ -38,7 +38,7 @@ internal sealed class AccountRegistrationService(UserManager<ApplicationUser> us
         {
             throw new NotSupportedException("The default UI requires a user store with email support.");
         }
-        var user = new ApplicationUser();
+        var user = new ApplicationUser { DisplayName = UserDisplayNames.Default };
         await userStore.SetUserNameAsync(user, email, cancellation.Token);
         await ((IUserEmailStore<ApplicationUser>)userStore).SetEmailAsync(user, email, cancellation.Token);
         cancellation.Token.ThrowIfCancellationRequested();
