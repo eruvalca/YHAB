@@ -2,36 +2,38 @@
 @page "/plans/{PlanId:guid}/settings"
 @attribute [Authorize]
 <PageTitle>Plan settings · YHAB</PageTitle>
-@if (_message is not null) { <div class="notice" data-kind="@(_failed ? "error" : "success")" role="status">@_message</div> }
+@if (_pageError is not null) { <div class="notice" data-kind="error" role="alert">@_pageError</div> }
 @if (_plan is { } plan)
 {
     <PlanFrame Plan="plan" Balances="_balances">
         <p class="eyebrow">MAKE IT YOURS</p><h1>Plan settings</h1>
-        <section class="surface">
+        <section class="surface" id="plan-settings-section">
             <h2>A plan with a purpose</h2>
-            <EditForm Model="Settings" method="post" FormName="PlanSettings" OnValidSubmit="SaveAsync" Enhance>
-                <DataAnnotationsValidator /><ValidationSummary />
+            <EditForm Model="Settings" method="post" FormName="PlanSettings" OnValidSubmit="SaveAsync" OnInvalidSubmit="SaveInvalid" Enhance>
+                <DataAnnotationsValidator />
                 <input type="hidden" name="Settings.Version" value="@Settings.Version" />
                 <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalL)">
-                    <div class="form-field"><label for="settings-name">Plan name</label><InputText id="settings-name" @bind-Value="Settings.Name" maxlength="100" /></div>
-                    <div class="form-field"><label for="settings-notes">Notes & intentions</label><InputTextArea id="settings-notes" @bind-Value="Settings.Notes" maxlength="4000" rows="4" /></div>
+                    <div class="form-field"><label for="settings-name">Plan name</label><InputText id="settings-name" @bind-Value="Settings.Name" maxlength="100" aria-describedby="settings-name-error" data-validation-focus /><ValidationMessage For="() => Settings.Name" id="settings-name-error" role="alert" /></div>
+                    <div class="form-field"><label for="settings-notes">Notes & intentions</label><InputTextArea id="settings-notes" @bind-Value="Settings.Notes" maxlength="4000" rows="4" aria-describedby="settings-notes-error" data-validation-focus /><ValidationMessage For="() => Settings.Notes" id="settings-notes-error" role="alert" /></div>
                     <button type="submit" class="primary-action">Save plan settings</button>
+                    @if (_settingsFeedback is { } settingsFeedback) { <div class="notice" data-kind="@(settingsFeedback.IsError ? "error" : "success")" role="@(settingsFeedback.IsError ? "alert" : "status")">@settingsFeedback.Message</div> }
                 </FluentStack>
             </EditForm>
         </section>
-        <section class="surface report-section">
+        <section class="surface report-section" id="rename-payee-section">
             <h2>Manage payees</h2><p>Rename a payee across posted and recurring transactions. You can undo this from your plan.</p>
-            <EditForm Model="Payee" method="post" FormName="RenamePayee" OnValidSubmit="RenameAsync" Enhance>
-                <DataAnnotationsValidator /><ValidationSummary />
+            <EditForm Model="Payee" method="post" FormName="RenamePayee" OnValidSubmit="RenameAsync" OnInvalidSubmit="RenameInvalid" Enhance>
+                <DataAnnotationsValidator />
                 <input type="hidden" name="Payee.Version" value="@Payee.Version" />
                 <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalL)">
-                    <div class="form-field"><label for="old-payee">Existing payee</label><InputSelect id="old-payee" @bind-Value="Payee.OldName"><option value="">Choose a payee</option>@foreach (var name in _payees) { <option value="@name">@name</option> }</InputSelect></div>
-                    <div class="form-field"><label for="new-payee">New name</label><InputText id="new-payee" @bind-Value="Payee.NewName" maxlength="200" /></div>
+                    <div class="form-field"><label for="old-payee">Existing payee</label><InputSelect id="old-payee" @bind-Value="Payee.OldName" aria-describedby="old-payee-error" data-validation-focus><option value="">Choose a payee</option>@foreach (var name in _payees) { <option value="@name">@name</option> }</InputSelect><ValidationMessage For="() => Payee.OldName" id="old-payee-error" role="alert" /></div>
+                    <div class="form-field"><label for="new-payee">New name</label><InputText id="new-payee" @bind-Value="Payee.NewName" maxlength="200" aria-describedby="new-payee-error" data-validation-focus /><ValidationMessage For="() => Payee.NewName" id="new-payee-error" role="alert" /></div>
                     <button type="submit" class="primary-action">Rename payee</button>
+                    @if (_renameFeedback is { } renameFeedback) { <div class="notice" data-kind="@(renameFeedback.IsError ? "error" : "success")" role="@(renameFeedback.IsError ? "alert" : "status")">@renameFeedback.Message</div> }
                 </FluentStack>
             </EditForm>
         </section>
-        <section class="surface">
+        <section class="surface" id="sharing-section">
             <h2>Share this plan</h2>
             @if (_sharing is { } sharing)
             {
@@ -41,6 +43,7 @@
                     <EditForm Model="ShareCodeForm" id="create-share-code-form" method="post" FormName="CreateShareCode" OnValidSubmit="CreateShareCodeAsync" Enhance>
                         <input type="hidden" name="ShareCodeForm.Action" value="@ShareCodeForm.Action" />
                         <button type="submit" class="primary-action">Create share code</button>
+                        @if (_shareFeedback is { } shareFeedback) { <div class="notice" data-kind="@(shareFeedback.IsError ? "error" : "success")" role="@(shareFeedback.IsError ? "alert" : "status")">@shareFeedback.Message</div> }
                     </EditForm>
                     @if (_shareCode is { } shareCode)
                     {
@@ -78,19 +81,22 @@
                         <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalM)">
                             <div class="form-field">
                                 <label for="remove-person">Stop sharing with</label>
-                                <InputSelect id="remove-person" @bind-Value="Remove.MemberId"><option value="">Choose a person</option>@foreach (var person in sharing.Collaborators) { <option value="@person.UserId">@person.Name</option> }</InputSelect>
+                                <InputSelect id="remove-person" @bind-Value="Remove.MemberId" aria-invalid="@(_removeFeedback is { IsError: true } ? "true" : null)" aria-describedby="@(_removeFeedback is { IsError: true } ? "remove-person-error" : null)" data-validation-focus><option value="">Choose a person</option>@foreach (var person in sharing.Collaborators) { <option value="@person.UserId">@person.Name</option> }</InputSelect>
+                                @if (_removeFeedback is { IsError: true } removeError) { <p id="remove-person-error" class="validation-message" role="alert">@removeError.Message</p> }
                             </div>
                             <button type="submit" class="secondary-action">Remove access</button>
+                            @if (_removeFeedback is { IsError: false } removeSuccess) { <div class="notice" data-kind="success" role="status">@removeSuccess.Message</div> }
                         </FluentStack>
                     </EditForm>
                 }
                 @if (!sharing.IsOwner)
                 {
-                    <EditForm Model="Leave" id="leave-plan-form" method="post" FormName="LeavePlan" OnValidSubmit="LeaveAsync" Enhance>
-                        <DataAnnotationsValidator /><ValidationSummary />
+                    <EditForm Model="Leave" id="leave-plan-form" method="post" FormName="LeavePlan" OnValidSubmit="LeaveAsync" OnInvalidSubmit="LeaveInvalid" Enhance>
+                        <DataAnnotationsValidator />
                         <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalM)">
-                            <div class="checkbox-field"><label for="leave-confirm">I understand I will lose access to this plan.</label><InputCheckbox id="leave-confirm" @bind-Value="Leave.Confirmed" /></div>
+                            <div class="checkbox-field"><label for="leave-confirm">I understand I will lose access to this plan.</label><InputCheckbox id="leave-confirm" @bind-Value="Leave.Confirmed" aria-describedby="leave-confirm-error" data-validation-focus /><ValidationMessage For="() => Leave.Confirmed" id="leave-confirm-error" role="alert" /></div>
                             <button type="submit" class="secondary-action">Leave this plan</button>
+                            @if (_leaveFeedback is { } leaveFeedback) { <div class="notice" data-kind="@(leaveFeedback.IsError ? "error" : "success")" role="@(leaveFeedback.IsError ? "alert" : "status")">@leaveFeedback.Message</div> }
                         </FluentStack>
                     </EditForm>
                 }

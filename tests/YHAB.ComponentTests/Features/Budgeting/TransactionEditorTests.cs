@@ -27,8 +27,9 @@ public sealed class TransactionEditorTests
         category.GetAttribute("placeholder").ShouldBe("Choose a category");
         category.GetAttribute("aria-invalid").ShouldBe("true");
         category.GetAttribute("aria-describedby").ShouldBe("transaction-category-error");
-        component.Find("#transaction-category-error").TextContent
-            .ShouldBe("An outflow needs a spending category. Choose one, or switch the direction to Inflow.");
+        var categoryError = component.Find("#transaction-category-error");
+        categoryError.TextContent.ShouldBe("An outflow needs a spending category. Choose one, or switch the direction to Inflow.");
+        categoryError.Closest(".editor-surface").ShouldBe(category.Closest(".editor-surface"));
         SaveButton(component).HasAttribute("disabled").ShouldBeTrue();
 
         var option = category.QuerySelector("fluent-option[text='Groceries']").ShouldNotBeNull();
