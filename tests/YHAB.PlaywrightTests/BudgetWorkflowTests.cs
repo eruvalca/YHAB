@@ -123,7 +123,11 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
 
             // A touch tap on the balance opens the move-money flow, so a phone
             // never needs a minus key to take money back out of a category.
-            await page.Locator("button.available-pill[aria-label='$125.00 available in Groceries. Move money.']").TapAsync();
+            // Center the row first: a control resting under a sticky header can
+            // be scrolled clear between focus and click, which drops the tap.
+            var pill = page.Locator("button.available-pill[aria-label='$125.00 available in Groceries. Move money.']");
+            await pill.EvaluateAsync("element => element.scrollIntoView({ block: 'center' })");
+            await pill.TapAsync();
             var popover = page.Locator("fluent-popover-b[opened='true']");
             await using var dialogHandle = await page.WaitForFunctionAsync("""
                 () => {

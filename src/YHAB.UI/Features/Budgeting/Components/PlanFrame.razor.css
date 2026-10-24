@@ -15,24 +15,30 @@
         position: sticky;
         top: 0;
         z-index: 10;
+        box-sizing: border-box;
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
+        height: var(--plan-page-tabs-height);
         margin-block: calc(-1 * var(--spacingVerticalM)) var(--spacingVerticalM);
         background: var(--colorNeutralBackground1);
         border-block: 1px solid var(--colorNeutralStroke2);
     }
     .plan-page-tabs ::deep a {
+        box-sizing: border-box;
         display: flex;
         align-items: center;
         justify-content: center;
         min-width: 0;
-        min-height: 2.5rem;
+        height: 100%;
         padding: var(--spacingVerticalXS) var(--spacingHorizontalXXS);
         color: var(--colorNeutralForeground2);
         border-bottom: 3px solid transparent;
         font-size: var(--fontSizeBase200);
         text-align: center;
         text-decoration: none;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     .plan-page-tabs ::deep a:hover { background: var(--colorSubtleBackgroundHover); }
     .plan-page-tabs ::deep a.active {
