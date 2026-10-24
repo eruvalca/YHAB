@@ -77,11 +77,11 @@
                 }
                 @if (sharing.IsOwner && sharing.Collaborators.Count > 0)
                 {
-                    <EditForm Model="Remove" id="remove-share-form" method="post" FormName="RemoveShare" OnValidSubmit="RemoveAsync" Enhance>
+                    <EditForm EditContext="_removeEditContext" id="remove-share-form" method="post" FormName="RemoveShare" OnValidSubmit="RemoveAsync" Enhance>
                         <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalM)">
                             <div class="form-field">
                                 <label for="remove-person">Stop sharing with</label>
-                                <InputSelect id="remove-person" @bind-Value="Remove.MemberId" aria-invalid="@(_removeFeedback is { IsError: true } ? "true" : null)" aria-describedby="@(_removeFeedback is { IsError: true } ? "remove-person-error" : null)" data-validation-focus><option value="">Choose a person</option>@foreach (var person in sharing.Collaborators) { <option value="@person.UserId">@person.Name</option> }</InputSelect>
+                                <InputSelect id="remove-person" @bind-Value="Remove.MemberId" aria-describedby="@(_removeFeedback is { IsError: true } ? "remove-person-error" : null)" data-validation-focus><option value="">Choose a person</option>@foreach (var person in sharing.Collaborators) { <option value="@person.UserId">@person.Name</option> }</InputSelect>
                                 @if (_removeFeedback is { IsError: true } removeError) { <p id="remove-person-error" class="validation-message" role="alert">@removeError.Message</p> }
                             </div>
                             <button type="submit" class="secondary-action">Remove access</button>

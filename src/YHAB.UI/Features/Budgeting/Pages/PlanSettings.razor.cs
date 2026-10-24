@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
 using YHAB.SharedKernel.Budgeting;
 
 namespace YHAB.UI.Features.Budgeting.Pages;
@@ -25,6 +26,8 @@ public sealed partial class PlanSettings(IBudgetClient budgets, NavigationManage
     private Feedback? _shareFeedback;
     private Feedback? _removeFeedback;
     private Feedback? _leaveFeedback;
+    private EditContext _removeEditContext = default!;
+    private ValidationMessageStore _removeMessages = default!;
     protected override async Task OnInitializedAsync()
     {
         using var operation = CreateOperation();
@@ -36,6 +39,8 @@ public sealed partial class PlanSettings(IBudgetClient budgets, NavigationManage
             Payee ??= new() { Version = _plan!.Version };
             ShareCodeForm ??= new();
             Remove ??= new();
+            _removeEditContext = new(Remove);
+            _removeMessages = new(_removeEditContext);
             Leave ??= new();
         }
         catch (BudgetRequestException exception) { _pageError = exception.Message; }
@@ -73,9 +78,12 @@ public sealed partial class PlanSettings(IBudgetClient budgets, NavigationManage
     {
         _pageError = null;
         _removeFeedback = null;
+        ClearRemoveErrors();
         if (string.IsNullOrWhiteSpace(Remove.MemberId))
         {
             _removeFeedback = new("Choose a person to remove.", true);
+            _removeMessages.Add(() => Remove.MemberId, _removeFeedback.Message);
+            _removeEditContext.NotifyFieldChanged(_removeEditContext.Field(nameof(Remove.MemberId)));
             return;
         }
         using var operation = CreateOperation();
@@ -84,11 +92,16 @@ public sealed partial class PlanSettings(IBudgetClient budgets, NavigationManage
         {
             _sharing = await budgets.UnshareAsync(PlanId, Remove.MemberId, token);
             token.ThrowIfCancellationRequested();
-            Remove = new();
+            Remove.MemberId = string.Empty;
             _removeFeedback = new("That account can no longer open this plan.", false);
         }
         catch (BudgetRequestException exception) { ShowActionError(exception, feedback => _removeFeedback = feedback); }
         catch (HttpRequestException) { _pageError = ConnectionError; }
+    }
+    private void ClearRemoveErrors()
+    {
+        _removeMessages.Clear();
+        _removeEditContext.NotifyFieldChanged(_removeEditContext.Field(nameof(Remove.MemberId)));
     }
     private void LeaveInvalid() => _leaveFeedback = null;
     private async Task LeaveAsync()

@@ -102,6 +102,29 @@ public sealed class PlanSharingComponentTests
     }
 
     [Fact]
+    public async Task RemovingWithoutSelectionMarksPersonFieldInvalidAsync()
+    {
+        await using var context = CreateContext();
+        var budgets = Substitute.For<IBudgetClient>();
+        var plan = Plan(isOwner: true);
+        Configure(budgets, plan, new PlanShareSummary("a@example.test", true, [new("owner-b", "b@example.test")]));
+        context.Services.AddSingleton(budgets);
+
+        var component = context.Render<PlanSettings>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+        await component.WaitForAssertionAsync(() => component.Find("#remove-share-form").ShouldNotBeNull());
+
+        await component.Find("#remove-share-form").SubmitAsync();
+
+        var select = component.Find("#remove-person");
+        select.GetAttribute("aria-invalid").ShouldBe("true");
+        select.GetAttribute("aria-describedby").ShouldBe("remove-person-error");
+        select.ClassList.Contains("invalid").ShouldBeTrue();
+        select.GetAttribute("data-validation-focus").ShouldNotBeNull();
+        component.Find("#remove-person-error").TextContent.ShouldBe("Choose a person to remove.");
+        await budgets.DidNotReceive().UnshareAsync(plan.Id, Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task SharedMemberSeesOwnerAndRejectsUnconfirmedLeaveAsync()
     {
         await using var context = CreateContext();
