@@ -95,7 +95,15 @@ public sealed partial class PlanSettings(IBudgetClient budgets, NavigationManage
             Remove.MemberId = string.Empty;
             _removeFeedback = new("That account can no longer open this plan.", false);
         }
-        catch (BudgetRequestException exception) { ShowActionError(exception, feedback => _removeFeedback = feedback); }
+        catch (BudgetRequestException exception)
+        {
+            ShowActionError(exception, feedback => _removeFeedback = feedback);
+            if (!RequiresPageNotice(exception))
+            {
+                _removeMessages.Add(() => Remove.MemberId, exception.Message);
+                _removeEditContext.NotifyFieldChanged(_removeEditContext.Field(nameof(Remove.MemberId)));
+            }
+        }
         catch (HttpRequestException) { _pageError = ConnectionError; }
     }
     private void ClearRemoveErrors()

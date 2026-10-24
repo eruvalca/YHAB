@@ -125,6 +125,31 @@ public sealed class PlanSharingComponentTests
     }
 
     [Fact]
+    public async Task RemovalServiceErrorMarksPersonFieldInvalidAsync()
+    {
+        await using var context = CreateContext();
+        var budgets = Substitute.For<IBudgetClient>();
+        var plan = Plan(isOwner: true);
+        Configure(budgets, plan, new PlanShareSummary("a@example.test", true, [new("owner-b", "b@example.test")]));
+        budgets.UnshareAsync(plan.Id, "owner-b", Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<PlanShareSummary>(new BudgetRequestException(404, "That account is no longer in this plan.")));
+        context.Services.AddSingleton(budgets);
+
+        var component = context.Render<PlanSettings>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+        await component.WaitForAssertionAsync(() => component.Find("#remove-share-form").ShouldNotBeNull());
+        SetFormValue(component.Instance, "Remove", "MemberId", "owner-b");
+
+        await component.Find("#remove-share-form").SubmitAsync();
+
+        var select = component.Find("#remove-person");
+        select.GetAttribute("aria-invalid").ShouldBe("true");
+        select.GetAttribute("aria-describedby").ShouldBe("remove-person-error");
+        select.ClassList.Contains("invalid").ShouldBeTrue();
+        component.Find("#remove-person-error").TextContent.ShouldBe("That account is no longer in this plan.");
+        component.FindAll(".notice[data-kind='error']").ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task SharedMemberSeesOwnerAndRejectsUnconfirmedLeaveAsync()
     {
         await using var context = CreateContext();
