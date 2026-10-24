@@ -28,9 +28,9 @@ internal static class PlanAccess
     {
         var owner = await database.Set<ApplicationUser>().AsNoTracking()
             .Where(item => item.Id == ownerId)
-            .Select(item => new { item.DisplayName })
+            .Select(item => new { item.DisplayName, item.Email, item.UserName })
             .SingleOrDefaultAsync(cancellationToken);
-        return owner is null ? null : UserDisplayNames.Resolve(owner.DisplayName);
+        return owner is null ? null : UserDisplayNames.Resolve(owner.DisplayName, owner.Email, owner.UserName);
     }
 
     public static BudgetRequestException Unavailable() => new(404, "This plan is not available.");

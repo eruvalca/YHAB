@@ -192,6 +192,31 @@ public sealed class PlanSharingTests
         summary.SharedBy.ShouldBe("Member");
     }
 
+    [Fact]
+    public async Task DisplayNameThatEqualsTheCurrentAccountEmailFallsBackToMemberAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(3));
+        await using var database = await BudgetDatabase.CreateAsync(timeout.Token);
+        // A name saved before an email change can become the account's current address.
+        await AddUserAsync(database, "owner-e", "new@example.test", "new@example.test", timeout.Token);
+        await AddUserAsync(database, "owner-f", "f@example.test", "f@example.test", timeout.Token);
+        var id = await database.Store.CreateAsync("owner-e", new("Renamed plan"), timeout.Token);
+        var code = await database.Sharing.CreateShareCodeAsync("owner-e", id, timeout.Token);
+        (await database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token)).ShouldBe(id);
+        var secondCode = await database.Sharing.CreateShareCodeAsync("owner-e", id, timeout.Token);
+        (await database.Sharing.JoinAsync("owner-f", secondCode.Code, timeout.Token)).ShouldBe(id);
+
+        var sharing = await database.Sharing.ReadAsync("owner-b", id, timeout.Token);
+        sharing.OwnerName.ShouldBe("Member");
+        sharing.Collaborators.ShouldBe([new("owner-b", "Bob"), new("owner-f", "Member")]);
+
+        var plan = (await database.Store.ReadAsync("owner-b", id, timeout.Token)).ShouldNotBeNull();
+        plan.OwnerName.ShouldBe("Member");
+        var summary = (await database.Store.ListAsync("owner-b", timeout.Token)).ShouldHaveSingleItem();
+        summary.SharedBy.ShouldBe("Member");
+    }
+
     private static async Task<BudgetRequestException?> CaptureAsync(Func<Task> action)
     {
         try

@@ -31,7 +31,7 @@ public sealed partial class Index
         }
 
         _displayName = UserDisplayNames.Normalize(_user.DisplayName);
-        Input.DisplayName ??= UserDisplayNames.Resolve(_displayName);
+        Input.DisplayName ??= UserDisplayNames.Resolve(_displayName, _user.Email, _user.UserName);
     }
 
     private async Task OnValidSubmitAsync()
@@ -43,14 +43,15 @@ public sealed partial class Index
         }
 
         var displayName = UserDisplayNames.Normalize(Input.DisplayName);
-        if (displayName is not null && (ContainsAccountIdentity(displayName, _user.Email)
-            || ContainsAccountIdentity(displayName, _user.UserName)))
+        if (displayName is not null && (UserDisplayNames.ContainsIdentity(displayName, _user.Email)
+            || UserDisplayNames.ContainsIdentity(displayName, _user.UserName)))
         {
             RedirectManager.RedirectToCurrentPageWithStatus("Error: Choose a display name that does not include your email address.", HttpContext);
             return;
         }
 
-        if (!string.Equals(UserDisplayNames.Resolve(displayName), UserDisplayNames.Resolve(_displayName), StringComparison.Ordinal))
+        if (!string.Equals(UserDisplayNames.Resolve(displayName, _user.Email, _user.UserName),
+            UserDisplayNames.Resolve(_displayName, _user.Email, _user.UserName), StringComparison.Ordinal))
         {
             _user.DisplayName = displayName;
             var update = await UserManager.UpdateAsync(_user);
@@ -73,8 +74,4 @@ public sealed partial class Index
         [Display(Name = "Display name")]
         public string? DisplayName { get; set; }
     }
-
-    private static bool ContainsAccountIdentity(string displayName, string? identity)
-        => !string.IsNullOrWhiteSpace(identity)
-            && displayName.Contains(identity.Trim(), StringComparison.OrdinalIgnoreCase);
 }

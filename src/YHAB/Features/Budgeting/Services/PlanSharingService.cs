@@ -188,11 +188,11 @@ internal sealed class PlanSharingService(IDbContextFactory<ApplicationDbContext>
         var collaborators = await database.Set<BudgetPlanMember>().AsNoTracking()
             .Where(item => item.PlanId == plan.Id)
             .Join(database.Set<ApplicationUser>(), member => member.UserId, user => user.Id,
-                (member, user) => new { user.Id, user.DisplayName })
+                (member, user) => new { user.Id, user.DisplayName, user.Email, user.UserName })
             .OrderBy(item => item.DisplayName)
             .ThenBy(item => item.Id)
             .ToListAsync(cancellationToken);
         return new(owner, string.Equals(plan.OwnerId, userId, StringComparison.Ordinal),
-            collaborators.Select(item => new PlanCollaborator(item.Id, UserDisplayNames.Resolve(item.DisplayName))).ToArray());
+            collaborators.Select(item => new PlanCollaborator(item.Id, UserDisplayNames.Resolve(item.DisplayName, item.Email, item.UserName))).ToArray());
     }
 }
