@@ -35,17 +35,26 @@ function synchronize(state) {
     for (const kind of ['name', 'amount']) {
         const items = controls(state.table, kind);
         const activeKey = kind === 'name' ? 'activeName' : 'activeAmount';
+        const activeIdKey = kind === 'name' ? 'activeNameId' : 'activeAmountId';
         if (items.length === 0) continue;
-        if (!items.some(item => item.control === state[activeKey])) state[activeKey] = items[0].control;
-        for (const item of items) item.control.tabIndex = item.control === state[activeKey] ? 0 : -1;
+        const remembered = items.find(item => item.row.dataset.categoryId === state[activeIdKey]);
+        const active = remembered ?? items.find(item => item.control === state[activeKey]) ?? items[0];
+        state[activeKey] = active.control;
+        if (remembered || !state[activeIdKey]) state[activeIdKey] = active.row.dataset.categoryId;
+        for (const item of items) item.control.tabIndex = item.control === active.control ? 0 : -1;
     }
 }
 
 function focus(state, row, kind) {
     const control = kind === 'name' ? nameControl(row) : amountControl(row);
     if (!control || control.disabled) return;
-    if (kind === 'name') state.activeName = control;
-    else state.activeAmount = control;
+    if (kind === 'name') {
+        state.activeName = control;
+        state.activeNameId = row.dataset.categoryId;
+    } else {
+        state.activeAmount = control;
+        state.activeAmountId = row.dataset.categoryId;
+    }
     state.focused = { id: row.dataset.categoryId, kind };
     synchronize(state);
     control.focus();
@@ -81,19 +90,26 @@ function keydown(state, event) {
 
 function focusin(state, event) {
     const row = event.target.closest?.('.category-row[data-category-id]');
-    if (!row) return;
+    if (!row) {
+        state.focused = null;
+        synchronize(state);
+        return;
+    }
     if (event.target.matches('.category-name .category-link')) {
         state.activeName = event.target;
+        state.activeNameId = row.dataset.categoryId;
         state.focused = { id: row.dataset.categoryId, kind: 'name' };
     } else if (event.target.matches('.assigned-cell fluent-text-input')) {
         state.activeAmount = event.target;
+        state.activeAmountId = row.dataset.categoryId;
         state.focused = { id: row.dataset.categoryId, kind: 'amount' };
-    } else if (event.target.matches('.category-name .rename-name, .category-name .inline-name-form fluent-text-input')) {
+    } else if (event.target.matches('.category-name .rename-name') || event.target.closest('.category-name .inline-name-form')) {
         const name = nameControl(row);
         if (name) state.activeName = name;
+        state.activeNameId = row.dataset.categoryId;
         state.focused = { id: row.dataset.categoryId, kind: 'name' };
     } else {
-        return;
+        state.focused = null;
     }
     synchronize(state);
 }
@@ -109,7 +125,7 @@ function restore(state) {
 export function initialize(table) {
     if (instances.has(table)) return;
     const controller = new AbortController();
-    const state = { table, controller, activeName: null, activeAmount: null, focused: null };
+    const state = { table, controller, activeName: null, activeNameId: null, activeAmount: null, activeAmountId: null, focused: null };
     const observer = new MutationObserver(() => restore(state));
     state.observer = observer;
     instances.set(table, state);

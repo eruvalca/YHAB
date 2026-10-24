@@ -228,6 +228,13 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             await FocusedAsync(categories[2].Id, ".category-link");
             await RovingTabStopsAsync();
 
+            await Row(page, categories[2].Id.ToString()).GetByRole(AriaRole.Button, new() { Name = "Rename Pointer renamed", Exact = true }).ClickAsync();
+            await Amount(categories[0].Id).FocusAsync();
+            await Button(page, "Cancel").FocusAsync();
+            await Button(page, "Cancel").ClickAsync();
+            await FocusedAsync(categories[2].Id, ".category-link");
+            await RovingTabStopsAsync();
+
             var expression = Input(page, "Assign to Pointer renamed");
             await expression.FillAsync("150 + 25");
             await expression.EvaluateAsync("input => input.setSelectionRange(4, 4)");
@@ -235,7 +242,8 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             (await expression.EvaluateAsync<bool>("input => input.getRootNode().activeElement === input && input.selectionStart === 3")).ShouldBeTrue();
             await expression.PressAsync("Tab");
             await page.WaitForFunctionAsync(
-                "id => !document.querySelector(`[data-category-id='${id}'] .category-link`).disabled", categories[2].Id.ToString());
+                "id => { const row = document.querySelector(`[data-category-id='${id}']`); return !row.querySelector('.category-link').disabled && row.querySelector('fluent-text-input').shadowRoot.querySelector('input').value === '175.00'; }",
+                categories[2].Id.ToString());
             (await expression.InputValueAsync()).ShouldBe("175.00");
             (await Name(categories[2].Id).GetAttributeAsync("tabindex")).ShouldBe("0");
             await expression.EvaluateAsync("input => input.setSelectionRange(0, 0)");
@@ -419,6 +427,10 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             var source = groups[Array.IndexOf(groups, later) - 1];
             var moved = plan.Categories.Where(item => item.GroupId == source.Id && !item.Hidden).OrderBy(item => item.SortOrder).ThenBy(item => item.Id).Last();
             var item = page.Locator($"#category-list-{source.Id:N} > .sortable-item").Filter(new() { Has = page.Locator($"[data-category-id='{moved.Id}']") });
+            var movedName = Row(page, moved.Id.ToString()).Locator(".category-link");
+            var movedAmount = Row(page, moved.Id.ToString()).Locator(".assigned-cell fluent-text-input");
+            await movedName.FocusAsync();
+            await movedAmount.FocusAsync();
             await item.ScrollIntoViewIfNeededAsync();
             await item.FocusAsync();
             await item.PressAsync("Enter");
@@ -428,6 +440,10 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             await page.WaitForFunctionAsync("id => document.activeElement?.closest('.sortable-item')?.querySelector('[data-category-id]')?.getAttribute('data-category-id') === id",
                 moved.Id.ToString(), new() { Timeout = 15000 });
             (await page.EvaluateAsync<string?>("() => document.activeElement?.getAttribute('aria-grabbed')")).ShouldBe("true");
+            await page.WaitForFunctionAsync("id => { const row = document.querySelector(`[data-category-id='${id}']`); return row?.querySelector('.category-link')?.tabIndex === 0 && row.querySelector('.assigned-cell fluent-text-input')?.tabIndex === 0; }",
+                moved.Id.ToString(), new() { Timeout = 15000 });
+            (await movedName.GetAttributeAsync("tabindex")).ShouldBe("0");
+            (await movedAmount.GetAttributeAsync("tabindex")).ShouldBe("0");
             Volatile.Write(ref slow.Value, false);
             // The same focused row must still accept a keyboard move after a delayed server render.
             await page.Keyboard.PressAsync("ArrowLeft");
