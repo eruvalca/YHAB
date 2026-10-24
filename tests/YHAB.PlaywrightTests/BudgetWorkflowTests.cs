@@ -466,9 +466,10 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         (await move.EvaluateAsync<bool>("button => document.activeElement === button.closest('.sortable-item')")).ShouldBeTrue();
         await page.Keyboard.PressAsync("Tab");
         (await move.EvaluateAsync<bool>("button => document.activeElement === button")).ShouldBeTrue();
-        await page.Keyboard.PressAsync("Tab");
-        await page.Keyboard.PressAsync("Tab");
-        await page.Keyboard.PressAsync("Tab");
+        await page.Keyboard.PressAsync("Shift+Tab");
+        await page.Keyboard.PressAsync("Shift+Tab");
+        // Return to the roving amount stop, then move to the next category.
+        await page.Keyboard.PressAsync("ArrowDown");
         var next = Input(page, "Assign to Utilities");
         (await next.EvaluateAsync<bool>("input => input.getRootNode().activeElement === input && input.selectionStart === 0 && input.selectionEnd === input.value.length")).ShouldBeTrue();
         (await page.Locator(".budget-table [role='alert']").CountAsync()).ShouldBe(0);

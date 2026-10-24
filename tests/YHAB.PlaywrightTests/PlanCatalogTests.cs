@@ -150,6 +150,78 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task CategoryNamesAndAmountsNavigateByArrowKeysAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(4));
+        await using var builder = await TestAppHost.CreateAsync(timeout.Token);
+        await using var app = await builder.BuildAsync(timeout.Token);
+        await app.StartAsync(timeout.Token);
+        await app.ResourceNotifications.WaitForResourceHealthyAsync("yhab", timeout.Token);
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync();
+        await using var context = await browser.NewContextAsync(new()
+        {
+            BaseURL = app.GetEndpoint("yhab", "https").ToString(),
+            IgnoreHTTPSErrors = true,
+            ViewportSize = new() { Width = 1440, Height = 960 },
+        });
+        await context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = true });
+        var page = await context.NewPageAsync();
+        var errors = new ConcurrentQueue<string>();
+        page.PageError += (_, error) => errors.Enqueue(error);
+        try
+        {
+            await BudgetWorkflowTests.RegisterAndLoginAsync(page);
+            await page.GotoAsync("/plans");
+            await page.GetByLabel("Plan name", new() { Exact = true }).FillAsync("Keyboard navigation");
+            await page.GetByRole(AriaRole.Button, new() { Name = "Create your plan" }).ClickAsync();
+            await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+            var path = new Uri(page.Url).AbsolutePath;
+            var plan = await ReadAsync(page, path);
+            var categories = plan.Groups.Where(group => !group.Hidden).OrderBy(group => group.SortOrder).ThenBy(group => group.Id)
+                .SelectMany(group => plan.Categories.Where(category => category.GroupId == group.Id && !category.Hidden)
+                    .OrderBy(category => category.SortOrder).ThenBy(category => category.Id))
+                .Take(3).ToArray();
+            categories.Length.ShouldBe(3);
+            ILocator Name(Guid id) => Row(page, id.ToString()).Locator(".category-link");
+            ILocator Amount(Guid id) => Row(page, id.ToString()).Locator(".assigned-cell fluent-text-input");
+            Task FocusedAsync(Guid id, string selector) => page.WaitForFunctionAsync(
+                "([id, selector]) => document.activeElement === document.querySelector(`[data-category-id='${id}'] ${selector}`)",
+                new object[] { id.ToString(), selector });
+
+            await Name(categories[0].Id).FocusAsync();
+            await Name(categories[0].Id).PressAsync("ArrowDown");
+            await FocusedAsync(categories[1].Id, ".category-link");
+            await Name(categories[1].Id).PressAsync("ArrowUp");
+            await FocusedAsync(categories[0].Id, ".category-link");
+            await Name(categories[0].Id).PressAsync("ArrowDown");
+            await Name(categories[1].Id).PressAsync("ArrowRight");
+            await FocusedAsync(categories[1].Id, "fluent-text-input");
+            await Amount(categories[1].Id).PressAsync("ArrowDown");
+            await FocusedAsync(categories[2].Id, "fluent-text-input");
+            await Amount(categories[2].Id).PressAsync("ArrowLeft");
+            await FocusedAsync(categories[2].Id, ".category-link");
+            (await page.Locator(".category-row .category-link").EvaluateAllAsync<int>(
+                "elements => elements.filter(element => element.tabIndex === 0).length")).ShouldBe(1);
+            (await page.Locator(".category-row .assigned-cell fluent-text-input").EvaluateAllAsync<int>(
+                "elements => elements.filter(element => element.tabIndex === 0).length")).ShouldBe(1);
+
+            await Name(categories[2].Id).PressAsync("F2");
+            await Input(page, "Category name").FillAsync("Keyboard renamed");
+            await Button(page, "Save").ClickAsync();
+            var renamed = Row(page, categories[2].Id.ToString()).GetByRole(AriaRole.Button, new() { Name = "Keyboard renamed", Exact = true });
+            await renamed.WaitForAsync();
+            await FocusedAsync(categories[2].Id, ".category-link");
+            errors.ShouldBeEmpty();
+        }
+        finally
+        {
+            await BrowserArtifacts.CaptureAsync(page, context, Path.Combine(AppContext.BaseDirectory, "TestResults", "plan-category-keyboard"), output.WriteLine);
+        }
+    }
+
+    [Fact]
     public async Task SortableCategoriesMoveByKeyboardAndTouchAsync()
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);

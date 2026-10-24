@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.FluentUI.AspNetCore.Components;
+using Microsoft.JSInterop;
 using YHAB.SharedKernel.Budgeting;
 
 namespace YHAB.UI.Features.Budgeting.Components;
@@ -26,7 +27,32 @@ public sealed partial class BudgetCategoryTable
     private Guid? _newCategoryGroup;
     private bool _newGroup;
     private long _version = -1;
+    private ElementReference _table;
+    private TableInterop? _interop;
+    private readonly CancellationTokenSource _disposal = new();
     private GroupData[] Groups { get; set; } = [];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _interop = new(JS);
+            await _interop.InitializeAsync(_table, _disposal.Token);
+        }
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        await _disposal.CancelAsync();
+        try
+        {
+            if (_interop is not null) { await _interop.DisposeAsync(); }
+        }
+        finally
+        {
+            _disposal.Dispose();
+        }
+    }
 
     protected override void OnParametersSet()
     {
@@ -160,5 +186,34 @@ public sealed partial class BudgetCategoryTable
         var command = !Busy && _dragGroup is { } source && source != before ? new ReorderGroup(Plan.Version, source, before) : null;
         ClearDrag();
         return command is null ? Task.CompletedTask : OnCommand.InvokeAsync(command);
+    }
+
+    private sealed class TableInterop(IJSRuntime js) : IAsyncDisposable
+    {
+        private const string ModulePath = "./_content/YHAB.UI/Features/Budgeting/Components/BudgetCategoryTable.razor.js";
+        private IJSObjectReference? _module;
+        private ElementReference _table;
+
+        public async ValueTask InitializeAsync(ElementReference table, CancellationToken cancellationToken)
+        {
+            _table = table;
+            _module = await js.InvokeAsync<IJSObjectReference>("import", cancellationToken, ModulePath);
+            await _module.InvokeVoidAsync("initialize", cancellationToken, table);
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            if (_module is null) { return; }
+            try
+            {
+                // Browser cleanup must run after component cancellation; a disconnected circuit has already released it.
+                await _module.InvokeVoidAsync("dispose", CancellationToken.None, _table);
+                await _module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // The disconnected circuit has already released the browser resources.
+            }
+        }
     }
 }
