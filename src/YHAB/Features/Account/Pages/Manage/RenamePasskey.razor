@@ -13,11 +13,11 @@
     <DataAnnotationsValidator />
     @if (_passkey?.Name is { } name)
     {
-        <h4>Enter a new name for your "@name" passkey</h4>
+        <h2>Enter a new name for your "@name" passkey</h2>
     }
     else
     {
-        <h4>Enter a name for your passkey</h4>
+        <h2>Enter a name for your passkey</h2>
     }
     <hr />
     <ValidationSummary class="error-text" role="alert" />

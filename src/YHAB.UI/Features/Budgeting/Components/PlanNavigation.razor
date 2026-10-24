@@ -1,6 +1,6 @@
 <nav class="plan-navigation" aria-label="Plan navigation">
     <a class="back-link" href="/plans">← All plans</a>
-    <h2>@Plan.Name</h2>
+    <p class="plan-name">@Plan.Name</p>
     <FluentNav aria-label="Budget pages" UseIcons="true" BackgroundColor="transparent" BackgroundColorHover="var(--colorSubtleBackgroundHover)">
         <FluentNavItem Href="@($"/plans/{Plan.Id}")" Match="NavLinkMatch.All" IconRest="@(new Icons.Regular.Size20.Wallet())" tabindex="0">Plan your money</FluentNavItem>
         <FluentNavItem Href="@($"/plans/{Plan.Id}/accounts")" Match="NavLinkMatch.All" IconRest="@(new Icons.Regular.Size20.Receipt())" tabindex="0">All transactions</FluentNavItem>
