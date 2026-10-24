@@ -34,7 +34,7 @@ public static class BudgetGlossary
         BudgetTerm.Available => "What a category has left after assigning and spending; a positive balance carries into next month.",
         BudgetTerm.StillNeeded => "Money this month's targets and overspent categories still need.",
         BudgetTerm.FundTargets => "Fill this month's targets from Ready to assign in one step.",
-        BudgetTerm.MoveMoney => "Move money between Ready to assign and a category without changing this month's assignment.",
+        BudgetTerm.MoveMoney => "Move money between Ready to assign and a category, or between categories, changing this month's assigned amounts without changing account balances.",
         BudgetTerm.Refill => "Refill up to this amount. Money left from the previous period reduces what you need to add.",
         BudgetTerm.SetAside => "Set aside new money each period, even when money is left over.",
         BudgetTerm.HaveABalance => "Build toward a balance. Spending from this category increases what you need to replace.",

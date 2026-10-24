@@ -34,7 +34,8 @@ public sealed partial class BudgetBoard
         && !Plan.Groups.Any(group => group.Id == item.Category.GroupId && group.Hidden)
         && (item.TargetNeeded > 0 || item.Available < 0));
     private decimal StillNeeded => _budget.Categories.Sum(item => Math.Max(item.TargetNeeded, -item.Available));
-    // Every category contributes to whichever shortfall is larger, so the parts always add up to StillNeeded.
+    // TargetNeeded already includes restoring a negative Available, so count overspending first and
+    // attribute only the remaining need to targets. The parts always add up to StillNeeded.
     private string? StillNeededBreakdown
     {
         get
@@ -43,10 +44,10 @@ public sealed partial class BudgetBoard
             decimal overspending = 0;
             foreach (var item in _budget.Categories)
             {
-                var target = Math.Max(item.TargetNeeded, 0);
                 var overspent = Math.Max(-item.Available, 0);
-                if (target >= overspent) { targets += target; }
-                else { overspending += overspent; }
+                var target = Math.Max(item.TargetNeeded, 0);
+                overspending += overspent;
+                targets += Math.Max(target - overspent, 0);
             }
 
             return (targets, overspending) switch

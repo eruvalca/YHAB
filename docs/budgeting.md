@@ -71,8 +71,9 @@ The board and its help panel use these labels the same way everywhere:
 - **Still needed** is money this month's targets and overspent categories still
   need. The summary splits it into target shortfalls and overspending.
 - **Fund targets** fills this month's targets from Ready to assign in one step,
-  and **Move money** moves money between Ready to assign and a category without
-  changing this month's assignment.
+  and **Move money** reallocates money between Ready to assign and a category, or
+  between categories, changing this month's assigned amounts without changing
+  account balances.
 - A target can **refill up to** an amount, counting money already left in the
   category; **set aside another** amount each period even when money is left
   over; or build to **have a balance of** an amount by a due date. **Snooze**

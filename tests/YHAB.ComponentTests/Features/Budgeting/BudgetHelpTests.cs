@@ -87,6 +87,30 @@ public sealed class BudgetHelpTests
     }
 
     [Fact]
+    public async Task StillNeededAttributesOverspendingBeforeTargetNeedInTheSameCategoryAsync()
+    {
+        await using var context = CreateContext();
+        var plan = CreatePlan();
+        var month = BudgetFacts.Month(plan.Today);
+        // A $100 monthly balance target with -$50 available needs $150: $50 restores the
+        // overspending and $100 completes the target.
+        var category = plan.Categories[0] with { Target = new(TargetKind.Balance, TargetCadence.Monthly, 100, month, null) };
+        plan = plan with { Categories = [category] };
+        var budget = new BudgetMonth(month, 500, 0, 0, -50, 50, 0, 0,
+        [
+            new(category, 0, 0, -50, 50, 0, 150, 100, false),
+        ]);
+
+        var board = RenderBoard(context, plan, budget);
+
+        var stillNeeded = board.FindAll(".budget-total")
+            .Single(item => item.TextContent.Contains("Still needed", StringComparison.Ordinal));
+        stillNeeded.TextContent.ShouldContain("$150.00");
+        board.Find(".still-needed-breakdown").TextContent
+            .ShouldBe("$100.00 for targets, $50.00 to cover overspending");
+    }
+
+    [Fact]
     public async Task HelpPanelDefinesEveryBudgetTermAsync()
     {
         await using var context = CreateContext();
