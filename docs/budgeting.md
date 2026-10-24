@@ -14,11 +14,14 @@ it on narrow screens. The checklist follows the plan's actual progress, and
 **Dismiss** and assignment completion are remembered per plan in the browser, so
 changing months or reopening the plan does not reset the checklist while the
 account card remains. **How this works** beside the monthly summary opens
-carryover, arithmetic, dragging, and target help inline. **Fund targets** and
-**Move money** appear once the plan has an account; when shown but unavailable
-they state what is missing: Fund targets needs money in Ready to assign and a
-visible target or overspent category, and Move money needs at least one
-category.
+**How YHAB works**, a glossary of the budget terms plus carryover, arithmetic,
+dragging, and target help. Every summary label has the same one-sentence
+definition behind its info button, with a **See how this works** link to that
+panel, so help never requires scrolling to the bottom of the page. **Fund
+targets** and **Move money** appear once the plan has an account; when shown but
+unavailable they state what is missing: Fund targets needs money in Ready to
+assign and a visible target or overspent category, and Move money needs at least
+one category.
 
 1. Create a plan from **Your plans**. Suggested category groups are optional.
 2. Add checking, savings, cash, credit, loan, or tracking accounts. Enter an
@@ -53,6 +56,28 @@ category.
 6. Review spending, income/expense, and net worth in **Reflect**. Reports include
    the selected date range and exclude recurring templates and duplicate
    within-budget transfers.
+
+## Budget terms
+
+The board and its help panel use these labels the same way everywhere:
+
+- **Ready to assign** is money you have that is not assigned to a category yet.
+  When it is below zero the same spot reads **Overassigned**, because more money
+  is assigned to categories than the plan holds.
+- **Assigned** is money you have given categories this month.
+- **Activity** is money spent from or added to your categories this month.
+- **Available** is what a category has left after assigning and spending; a
+  positive balance carries into next month.
+- **Still needed** is money this month's targets and overspent categories still
+  need. The summary splits it into target shortfalls and overspending.
+- **Fund targets** fills this month's targets from Ready to assign in one step,
+  and **Move money** reallocates money between Ready to assign and a category, or
+  between categories, changing this month's assigned amounts without changing
+  account balances.
+- A target can **refill up to** an amount, counting money already left in the
+  category; **set aside another** amount each period even when money is left
+  over; or build to **have a balance of** an amount by a due date. **Snooze**
+  pauses a category's target for this month without deleting it.
 
 ## Sharing a plan
 
@@ -152,9 +177,9 @@ last confirmed amount alongside the workspace error. Green marks positive money,
 red marks negative balances/outflows, and amber marks funding still needed.
 Signs, labels, and overspending messages retain the meaning without color.
 The compact monthly summary stays at the top of the viewport as you scroll the
-category table, keeping Ready to assign and all four totals visible. The page
-retains normal document scrolling; keyboard focus and editor headings stay below
-the summary. On desktop, **Hide menu / Show menu** in the site header frees space
+category table, keeping Ready to assign, all four totals, and their definitions
+within reach. The page retains normal document scrolling; keyboard focus and
+editor headings stay below the summary. On desktop, **Hide menu / Show menu** in the site header frees space
 for the plan and remembers your preference across navigation and reloads. Without
 a saved preference, the global menu is collapsed within a plan, leaving a single
 compact plan sidebar. On smaller screens, open **Plan & accounts** for navigation;
