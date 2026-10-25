@@ -1,3 +1,5 @@
+.plan-frame { --plan-page-tabs-height: 0px; }
+.plan-page-tabs { display: none; }
 .plan-sidebar { flex: 0 0 14rem; min-width: 0; }
 .plan-content { flex: 1 1 35rem; min-width: 0; }
 .plan-drawer { margin: 0; }
@@ -8,6 +10,42 @@
     .plan-drawer::details-content { content-visibility: visible; }
 }
 @media (max-width: 999px) {
+    .plan-frame { --plan-page-tabs-height: calc(2.5rem + 2px); }
+    .plan-page-tabs {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        box-sizing: border-box;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        height: var(--plan-page-tabs-height);
+        margin-block: calc(-1 * var(--spacingVerticalM)) var(--spacingVerticalM);
+        background: var(--colorNeutralBackground1);
+        border-block: 1px solid var(--colorNeutralStroke2);
+    }
+    .plan-page-tabs ::deep a {
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 0;
+        height: 100%;
+        padding: var(--spacingVerticalXS) var(--spacingHorizontalXXS);
+        color: var(--colorNeutralForeground2);
+        border-bottom: 3px solid transparent;
+        font-size: var(--fontSizeBase200);
+        text-align: center;
+        text-decoration: none;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .plan-page-tabs ::deep a:hover { background: var(--colorSubtleBackgroundHover); }
+    .plan-page-tabs ::deep a.active {
+        color: var(--colorBrandForeground1);
+        border-bottom-color: var(--colorBrandForeground1);
+        font-weight: var(--fontWeightSemibold);
+    }
     .plan-sidebar, .plan-content { flex-basis: 100%; }
     .plan-sidebar { border-bottom: 1px solid var(--colorNeutralStroke2); }
     .plan-drawer > summary { display: flex; align-items: center; min-height: 2.5rem; }

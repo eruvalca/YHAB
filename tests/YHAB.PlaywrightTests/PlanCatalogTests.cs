@@ -108,6 +108,73 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
         }
     }
 
+    [Theory]
+    [InlineData(320)]
+    [InlineData(390)]
+    [Trait("Category", "BrowserSmoke")]
+    public async Task CompactPlanNavigationRemainsReachableAfterScrollingAsync(int width)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(4));
+        await using var builder = await TestAppHost.CreateAsync(timeout.Token);
+        await using var app = await builder.BuildAsync(timeout.Token);
+        await app.StartAsync(timeout.Token);
+        await app.ResourceNotifications.WaitForResourceHealthyAsync("yhab", timeout.Token);
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync();
+        await using var context = await browser.NewContextAsync(new()
+        {
+            BaseURL = app.GetEndpoint("yhab", "https").ToString(),
+            IgnoreHTTPSErrors = true,
+            ViewportSize = new() { Width = width, Height = 640 },
+            HasTouch = true,
+            IsMobile = true,
+        });
+        await context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = true });
+        var page = await context.NewPageAsync();
+        var errors = new ConcurrentQueue<string>();
+        page.PageError += (_, error) => errors.Enqueue(error);
+        try
+        {
+            await BudgetWorkflowTests.RegisterAndLoginAsync(page);
+            await page.GotoAsync("/plans");
+            await page.GetByLabel("Plan name", new() { Exact = true }).FillAsync($"Reachable planning {width}");
+            await page.GetByRole(AriaRole.Button, new() { Name = "Create your plan" }).ClickAsync();
+            await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+            var path = new Uri(page.Url).AbsolutePath;
+            var tabs = page.GetByRole(AriaRole.Navigation, new() { Name = "Plan pages", Exact = true });
+            (await tabs.IsVisibleAsync()).ShouldBeTrue();
+            (await tabs.GetByRole(AriaRole.Link).CountAsync()).ShouldBe(4);
+            foreach (var link in await tabs.GetByRole(AriaRole.Link).AllAsync())
+            {
+                var target = (await link.BoundingBoxAsync()).ShouldNotBeNull();
+                target.Height.ShouldBeGreaterThanOrEqualTo(40);
+            }
+            (await tabs.GetByRole(AriaRole.Link, new() { Name = "Plan", Exact = true }).GetAttributeAsync("aria-current")).ShouldBe("page");
+            (await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth")).ShouldBeTrue();
+
+            await page.EvaluateAsync("window.scrollTo(0, document.documentElement.scrollHeight)");
+            await page.WaitForFunctionAsync("window.scrollY > 0");
+            var sticky = (await tabs.BoundingBoxAsync()).ShouldNotBeNull();
+            sticky.Y.ShouldBeInRange(-1, 1);
+            (sticky.Y + sticky.Height).ShouldBeGreaterThan(0);
+            var summary = (await page.Locator(".budget-summary").BoundingBoxAsync()).ShouldNotBeNull();
+            summary.Y.ShouldBeGreaterThanOrEqualTo(sticky.Y + sticky.Height - 1);
+
+            await tabs.GetByRole(AriaRole.Link, new() { Name = "Reflect", Exact = true }).ClickAsync();
+            await page.GetByRole(AriaRole.Heading, new() { Name = "Reflect", Exact = true }).WaitForAsync();
+            new Uri(page.Url).AbsolutePath.ShouldBe($"{path}/reports");
+            (await tabs.GetByRole(AriaRole.Link, new() { Name = "Reflect", Exact = true }).GetAttributeAsync("aria-current")).ShouldBe("page");
+            (await tabs.GetByRole(AriaRole.Link, new() { Name = "Plan", Exact = true }).GetAttributeAsync("aria-current")).ShouldBeNull();
+            (await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth")).ShouldBeTrue();
+            errors.ShouldBeEmpty();
+        }
+        finally
+        {
+            await BrowserArtifacts.CaptureAsync(page, context, Path.Combine(AppContext.BaseDirectory, "TestResults", $"plan-page-tabs-{width}"), output.WriteLine);
+        }
+    }
+
     [Fact]
     [Trait("Category", "BrowserSmoke")]
     public async Task FirstRunPanelStaysAboveTheTableWhenColumnsWrapAsync()
@@ -146,6 +213,114 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
         finally
         {
             await BrowserArtifacts.CaptureAsync(page, context, Path.Combine(AppContext.BaseDirectory, "TestResults", "first-run-1024"), output.WriteLine);
+        }
+    }
+
+    [Fact]
+    public async Task CategoryNamesAndAmountsNavigateByArrowKeysAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(4));
+        await using var builder = await TestAppHost.CreateAsync(timeout.Token);
+        await using var app = await builder.BuildAsync(timeout.Token);
+        await app.StartAsync(timeout.Token);
+        await app.ResourceNotifications.WaitForResourceHealthyAsync("yhab", timeout.Token);
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync();
+        await using var context = await browser.NewContextAsync(new()
+        {
+            BaseURL = app.GetEndpoint("yhab", "https").ToString(),
+            IgnoreHTTPSErrors = true,
+            ViewportSize = new() { Width = 1440, Height = 960 },
+        });
+        await context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = true });
+        var page = await context.NewPageAsync();
+        var errors = new ConcurrentQueue<string>();
+        page.PageError += (_, error) => errors.Enqueue(error);
+        try
+        {
+            await BudgetWorkflowTests.RegisterAndLoginAsync(page);
+            await page.GotoAsync("/plans");
+            await page.GetByLabel("Plan name", new() { Exact = true }).FillAsync("Keyboard navigation");
+            await page.GetByRole(AriaRole.Button, new() { Name = "Create your plan" }).ClickAsync();
+            await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+            var path = new Uri(page.Url).AbsolutePath;
+            var plan = await ReadAsync(page, path);
+            var categories = plan.Groups.Where(group => !group.Hidden).OrderBy(group => group.SortOrder).ThenBy(group => group.Id)
+                .SelectMany(group => plan.Categories.Where(category => category.GroupId == group.Id && !category.Hidden)
+                    .OrderBy(category => category.SortOrder).ThenBy(category => category.Id))
+                .Take(3).ToArray();
+            categories.Length.ShouldBe(3);
+            ILocator Name(Guid id) => Row(page, id.ToString()).Locator(".category-link");
+            ILocator Amount(Guid id) => Row(page, id.ToString()).Locator(".assigned-cell fluent-text-input");
+            Task FocusedAsync(Guid id, string selector) => page.WaitForFunctionAsync(
+                "([id, selector]) => document.activeElement === document.querySelector(`[data-category-id='${id}'] ${selector}`)",
+                new object[] { id.ToString(), selector });
+            async Task RovingTabStopsAsync()
+            {
+                (await page.Locator(".category-row .category-link").EvaluateAllAsync<int>(
+                    "elements => elements.filter(element => element.tabIndex === 0).length")).ShouldBe(1);
+                (await page.Locator(".category-row .assigned-cell fluent-text-input").EvaluateAllAsync<int>(
+                    "elements => elements.filter(element => element.tabIndex === 0).length")).ShouldBe(1);
+            }
+
+            await Name(categories[0].Id).FocusAsync();
+            await Name(categories[0].Id).PressAsync("ArrowDown");
+            await FocusedAsync(categories[1].Id, ".category-link");
+            await Name(categories[1].Id).PressAsync("ArrowUp");
+            await FocusedAsync(categories[0].Id, ".category-link");
+            await Name(categories[0].Id).PressAsync("ArrowDown");
+            await Name(categories[1].Id).PressAsync("ArrowRight");
+            await FocusedAsync(categories[1].Id, "fluent-text-input");
+            await Amount(categories[1].Id).PressAsync("ArrowDown");
+            await FocusedAsync(categories[2].Id, "fluent-text-input");
+            await Input(page, "Assign to Utilities").EvaluateAsync("input => input.setSelectionRange(0, 0)");
+            await Amount(categories[2].Id).PressAsync("ArrowLeft");
+            await FocusedAsync(categories[2].Id, ".category-link");
+            await RovingTabStopsAsync();
+
+            await Name(categories[2].Id).PressAsync("F2");
+            await Input(page, "Category name").FillAsync("Keyboard renamed");
+            await Button(page, "Save").ClickAsync();
+            var renamed = Row(page, categories[2].Id.ToString()).GetByRole(AriaRole.Button, new() { Name = "Keyboard renamed", Exact = true });
+            await renamed.WaitForAsync();
+            await FocusedAsync(categories[2].Id, ".category-link");
+            await RovingTabStopsAsync();
+
+            await Row(page, categories[2].Id.ToString()).GetByRole(AriaRole.Button, new() { Name = "Rename Keyboard renamed", Exact = true }).ClickAsync();
+            await Input(page, "Category name").FillAsync("Pointer renamed");
+            await Button(page, "Save").ClickAsync();
+            renamed = Row(page, categories[2].Id.ToString()).GetByRole(AriaRole.Button, new() { Name = "Pointer renamed", Exact = true });
+            await renamed.WaitForAsync();
+            await FocusedAsync(categories[2].Id, ".category-link");
+            await RovingTabStopsAsync();
+
+            await Row(page, categories[2].Id.ToString()).GetByRole(AriaRole.Button, new() { Name = "Rename Pointer renamed", Exact = true }).ClickAsync();
+            await Amount(categories[0].Id).FocusAsync();
+            await Button(page, "Cancel").FocusAsync();
+            await Button(page, "Cancel").ClickAsync();
+            await FocusedAsync(categories[2].Id, ".category-link");
+            await RovingTabStopsAsync();
+
+            var expression = Input(page, "Assign to Pointer renamed");
+            await expression.FillAsync("150 + 25");
+            await expression.EvaluateAsync("input => input.setSelectionRange(4, 4)");
+            await expression.PressAsync("ArrowLeft");
+            (await expression.EvaluateAsync<bool>("input => input.getRootNode().activeElement === input && input.selectionStart === 3")).ShouldBeTrue();
+            await expression.PressAsync("Tab");
+            await page.WaitForFunctionAsync(
+                "id => { const row = document.querySelector(`[data-category-id='${id}']`); return !row.querySelector('.category-link').disabled && row.querySelector('fluent-text-input').shadowRoot.querySelector('input').value === '175.00'; }",
+                categories[2].Id.ToString());
+            (await expression.InputValueAsync()).ShouldBe("175.00");
+            (await Name(categories[2].Id).GetAttributeAsync("tabindex")).ShouldBe("0");
+            await expression.EvaluateAsync("input => input.setSelectionRange(0, 0)");
+            await expression.PressAsync("ArrowLeft");
+            await FocusedAsync(categories[2].Id, ".category-link");
+            errors.ShouldBeEmpty();
+        }
+        finally
+        {
+            await BrowserArtifacts.CaptureAsync(page, context, Path.Combine(AppContext.BaseDirectory, "TestResults", "plan-category-keyboard"), output.WriteLine);
         }
     }
 
@@ -203,6 +378,8 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
                 (await DomOrderAsync(page, destination)).ShouldBe(PlanOrder(plan, destination));
                 (await DomOrderAsync(page, source)).ShouldBe(PlanOrder(plan, source));
             }
+            (await page.Locator(".category-row .category-link").EvaluateAllAsync<int>(
+                "elements => elements.filter(element => element.tabIndex === 0).length")).ShouldBe(1);
 
             var cdp = await context.NewCDPSessionAsync(page);
             var before = await DomOrderAsync(page, destination);
@@ -317,6 +494,10 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             var source = groups[Array.IndexOf(groups, later) - 1];
             var moved = plan.Categories.Where(item => item.GroupId == source.Id && !item.Hidden).OrderBy(item => item.SortOrder).ThenBy(item => item.Id).Last();
             var item = page.Locator($"#category-list-{source.Id:N} > .sortable-item").Filter(new() { Has = page.Locator($"[data-category-id='{moved.Id}']") });
+            var movedName = Row(page, moved.Id.ToString()).Locator(".category-link");
+            var movedAmount = Row(page, moved.Id.ToString()).Locator(".assigned-cell fluent-text-input");
+            await movedName.FocusAsync();
+            await movedAmount.FocusAsync();
             await item.ScrollIntoViewIfNeededAsync();
             await item.FocusAsync();
             await item.PressAsync("Enter");
@@ -326,6 +507,10 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             await page.WaitForFunctionAsync("id => document.activeElement?.closest('.sortable-item')?.querySelector('[data-category-id]')?.getAttribute('data-category-id') === id",
                 moved.Id.ToString(), new() { Timeout = 15000 });
             (await page.EvaluateAsync<string?>("() => document.activeElement?.getAttribute('aria-grabbed')")).ShouldBe("true");
+            await page.WaitForFunctionAsync("id => { const row = document.querySelector(`[data-category-id='${id}']`); return row?.querySelector('.category-link')?.tabIndex === 0 && row.querySelector('.assigned-cell fluent-text-input')?.tabIndex === 0; }",
+                moved.Id.ToString(), new() { Timeout = 15000 });
+            (await movedName.GetAttributeAsync("tabindex")).ShouldBe("0");
+            (await movedAmount.GetAttributeAsync("tabindex")).ShouldBe("0");
             Volatile.Write(ref slow.Value, false);
             // The same focused row must still accept a keyboard move after a delayed server render.
             await page.Keyboard.PressAsync("ArrowLeft");

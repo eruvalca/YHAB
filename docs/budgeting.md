@@ -14,11 +14,14 @@ it on narrow screens. The checklist follows the plan's actual progress, and
 **Dismiss** and assignment completion are remembered per plan in the browser, so
 changing months or reopening the plan does not reset the checklist while the
 account card remains. **How this works** beside the monthly summary opens
-carryover, arithmetic, dragging, and target help inline. **Fund targets** and
-**Move money** appear once the plan has an account; when shown but unavailable
-they state what is missing: Fund targets needs money in Ready to assign and a
-visible target or overspent category, and Move money needs at least one
-category.
+**How YHAB works**, a glossary of the budget terms plus carryover, arithmetic,
+dragging, and target help. Every summary label has the same one-sentence
+definition behind its info button, with a **See how this works** link to that
+panel, so help never requires scrolling to the bottom of the page. **Fund
+targets** and **Move money** appear once the plan has an account; when shown but
+unavailable they state what is missing: Fund targets needs money in Ready to
+assign and a visible target or overspent category, and Move money needs at least
+one category.
 
 1. Create a plan from **Your plans**. Suggested category groups are optional.
 2. Add checking, savings, cash, credit, loan, or tracking accounts. Enter an
@@ -54,6 +57,28 @@ category.
    the selected date range and exclude recurring templates and duplicate
    within-budget transfers.
 
+## Budget terms
+
+The board and its help panel use these labels the same way everywhere:
+
+- **Ready to assign** is money you have that is not assigned to a category yet.
+  When it is below zero the same spot reads **Overassigned**, because more money
+  is assigned to categories than the plan holds.
+- **Assigned** is money you have given categories this month.
+- **Activity** is money spent from or added to your categories this month.
+- **Available** is what a category has left after assigning and spending; a
+  positive balance carries into next month.
+- **Still needed** is money this month's targets and overspent categories still
+  need. The summary splits it into target shortfalls and overspending.
+- **Fund targets** fills this month's targets from Ready to assign in one step,
+  and **Move money** reallocates money between Ready to assign and a category, or
+  between categories, changing this month's assigned amounts without changing
+  account balances.
+- A target can **refill up to** an amount, counting money already left in the
+  category; **set aside another** amount each period even when money is left
+  over; or build to **have a balance of** an amount by a due date. **Snooze**
+  pauses a category's target for this month without deleting it.
+
 ## Sharing a plan
 
 A plan starts private to its owner. On **Plan settings**, the owner creates a
@@ -70,6 +95,16 @@ a removed account no longer appears in its plans list or API responses. Only the
 owner can create codes or remove accounts; creating a code does not change the
 plan revision, balances, or history.
 
+Collaborators identify each other by display name, not email address. The owner
+sets their display name on **Profile** (`/Account/Manage`), and the share section
+warns that people added to the plan will see it. Accounts without a display name
+appear as **Member**, and duplicate names are numbered while skipping labels
+another collaborator already uses, so the owner can tell the access list and
+removal choices apart. Display names cannot include the account email address, and
+sharing falls back to **Member** if a saved name ever matches the current address.
+Email addresses and usernames remain private to each account owner and are never
+rendered to collaborators or returned in sharing responses.
+
 An owner can hand a plan to a collaborator with **Transfer ownership**. The new
 owner gains the owner-only controls, and the previous owner stays on the plan as a
 collaborator with edit access, so they can keep working or use **Leave this plan**.
@@ -78,11 +113,17 @@ Transferring does not change the plan revision, balances, or history.
 Create groups with **Category group** above the plan table, and add categories
 with the **+** on a group header. New names are entered directly in the table.
 Use **Rename**, double-click a name, or press F2 on a name to edit it inline;
-Enter saves and Escape cancels. An open name draft survives a reorder of any
-category because the table keeps it by category id outside the sortable
-subtree, whose unkeyed wrappers recreate rows. Empty groups remain visible so
-they can receive categories. Collapse individual groups or all groups to focus
-the plan.
+Enter saves and Escape cancels. Names and assignment fields each use one roving
+Tab stop for the visible rows. Up and Down move between rows in the same column.
+Right moves from a name to its assignment; Left moves back only when the
+assignment caret is at the start, and otherwise preserves normal caret movement.
+Saving a rename restores focus to its name; **Rename** remains available to
+pointer and assistive-technology users without adding another sequential Tab
+stop. An open name draft survives a reorder of any category because the table
+keeps it by category id outside the sortable subtree, whose unkeyed wrappers
+recreate rows.
+Empty groups remain visible so they can receive categories. Collapse individual
+groups or all groups to focus the plan.
 
 On phones the table stacks instead of scrolling sideways: the category and
 Available share the first line, and Assigned and Activity share the second.
@@ -151,15 +192,18 @@ last confirmed amount alongside the workspace error. Green marks positive money,
 red marks negative balances/outflows, and amber marks funding still needed.
 Signs, labels, and overspending messages retain the meaning without color.
 The compact monthly summary stays at the top of the viewport as you scroll the
-category table, keeping Ready to assign and all four totals visible. The page
-retains normal document scrolling; keyboard focus and editor headings stay below
-the summary. On desktop, **Hide menu / Show menu** in the site header frees space
+category table, keeping Ready to assign, all four totals, and their definitions
+within reach. The page retains normal document scrolling; keyboard focus and
+editor headings stay below the summary. On desktop, **Hide menu / Show menu** in the site header frees space
 for the plan and remembers your preference across navigation and reloads. Without
 a saved preference, the global menu is collapsed within a plan, leaving a single
-compact plan sidebar. On smaller screens, open **Plan & accounts** for navigation;
-a new plan's **Add your first account** action stays in the board, so starting does
-not require the drawer. The same sidebar is used by transactions, reports, and plan
-settings. Installation
+compact plan sidebar. On smaller screens, sticky **Plan**, **Transactions**,
+**Reflect**, and **Settings** tabs keep page navigation reachable while scrolling
+and identify the current page; **Transactions** stays current while an individual
+account register is open. Open **Plan & accounts** for accounts; a new plan's
+**Add your first account** action stays in the board, so starting does not require
+the drawer. The same sidebar is used by transactions, reports, and plan settings.
+Installation
 controls remain available in the site footer.
 
 ## Deleting a plan
@@ -534,7 +578,7 @@ isolated AppHosts. Browser tests exercise both desktop and phone widths.
 | Transfers and account closing | `CreditBalanceTransferMovesFundedPaymentMoneyToTheNewCard`, `ClosingAnAccountRequiresZeroBalanceAndKeepsEditableOpeningValues` |
 | Category history and payee management | `MergingAUsedCategoryPreservesAssignmentsSpendingAndAccountBalance`, `MergingAssignedCategoryPersistsHistoryAndSupportsUndoRedoAsync`, `PayeeRenameChangesMatchingPostedAndRecurringEntriesOnly`, `TransactionEditorsUsePayeeProjectionAndRefreshSuggestionsAsync` |
 | Private plans, SQL integrity, durable history, and concurrent edits | `OwnerIsolationHistoryAndConcurrentWritesPersistAcrossContextsAsync`, `DatabaseRejectsCrossPlanReferencesAndAccountDeletionRemovesOwnedLedgerAsync` |
-| In-app plan sharing, editing, and access removal | `ShareCodeGrantsEditingAndReadAccessUntilTheOwnerRemovesItAsync`, `JoinRejectsInvalidExpiredEmptyAndOwnerCodesAsync`, `ASharedMemberCanLeaveButAnOwnerCannotAsync`, `CodesAreSingleUseAndRedemptionRetriesAreIdempotentAsync`, `ConcurrentRedemptionIsIdempotentAndConcurrentRemovalHasOneWinnerAsync`, `PlansPageSeparatesOwnedAndSharedPlansAndShowsJoinFormAsync`, `OwnerCreatesShareCodeAndRemovesACollaboratorAsync`, `SharedMemberSeesOwnerAndRejectsUnconfirmedLeaveAsync`, `PlansPageJoinsWithACodeAsync`, `JoinServiceErrorIsShownAsync` |
+| In-app plan sharing, editing, and access removal | `ShareCodeGrantsEditingAndReadAccessUntilTheOwnerRemovesItAsync`, `JoinRejectsInvalidExpiredEmptyAndOwnerCodesAsync`, `ASharedMemberCanLeaveButAnOwnerCannotAsync`, `CodesAreSingleUseAndRedemptionRetriesAreIdempotentAsync`, `ConcurrentRedemptionIsIdempotentAndConcurrentRemovalHasOneWinnerAsync`, `MissingDisplayNameFallsBackToAFriendlyNameInsteadOfTheEmailAsync`, `DisplayNameThatEqualsTheCurrentAccountEmailFallsBackToMemberAsync`, `PlansPageSeparatesOwnedAndSharedPlansAndShowsJoinFormAsync`, `OwnerCreatesShareCodeAndRemovesACollaboratorAsync`, `DuplicateCollaboratorNamesAreNumberedSoTheOwnerCanRemoveTheRightAccountAsync`, `GeneratedDuplicateLabelsDoNotCollideWithLiteralDisplayNamesAsync`, `SharedMemberSeesOwnerAndRejectsUnconfirmedLeaveAsync`, `PlansPageJoinsWithACodeAsync`, `JoinServiceErrorIsShownAsync` |
 | Plan deletion and ownership transfer | `OwnerDeletesPlanAndCollaboratorsLoseAccessAsync`, `TransferOwnershipMakesTheCollaboratorOwnerAndKeepsThePreviousOwnerAsAMemberAsync`, `OwnerDeletingAPlanRequiresItsExactNameAsync`, `OwnerDeletesPlanWithItsExactNameAsync`, `CollaboratorCannotDeleteOrTransferAPlanAsync`, `OwnerTransfersOwnershipAndKeepsEditingAccessAsync`, `TransferringWithoutSelectionMarksPersonFieldInvalidAsync` |
 | Manual browser workflow, calculator entry, keyboard undo/redo, reports, and API guards | `ManualPlanPurchaseUndoAndReportsAgreeAsync` at 1440px and 390px, including the phone amount keypad, the Available-pill move flow, editor tap size, and sticky editor chrome; `TappingAvailableMovesMoneyOutOfTheCategoryAsync` covers the touch move flow |
 | Themes, mobile navigation, and SSR document continuity | `FluentNavigationPreservesDocumentAndThemeChoice` at 1280px and 390px |

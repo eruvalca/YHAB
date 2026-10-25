@@ -87,7 +87,7 @@ public sealed class IdentityPersistenceTests
             (await database.Database.GetPendingMigrationsAsync(timeout.Token)).ShouldBeEmpty();
             (await database.Database.GetAppliedMigrationsAsync(timeout.Token)).ShouldNotBeEmpty();
             var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-            var user = new ApplicationUser { UserName = "persist@example.test", Email = "persist@example.test" };
+            var user = new ApplicationUser { UserName = "persist@example.test", Email = "persist@example.test", DisplayName = "Persisted person" };
             (await users.CreateAsync(user)).Succeeded.ShouldBeTrue();
             (await users.SetPhoneNumberAsync(user, "+15555550123")).Succeeded.ShouldBeTrue();
             userId = user.Id;
@@ -99,6 +99,7 @@ public sealed class IdentityPersistenceTests
         var persisted = await persistedUsers.FindByIdAsync(userId);
         persisted.ShouldNotBeNull();
         persisted.Email.ShouldBe("persist@example.test");
+        persisted.DisplayName.ShouldBe("Persisted person");
         persisted.PhoneNumber.ShouldBe("+15555550123");
         var duplicate = await persistedUsers.CreateAsync(new ApplicationUser { UserName = "PERSIST@EXAMPLE.TEST" });
         duplicate.Succeeded.ShouldBeFalse();

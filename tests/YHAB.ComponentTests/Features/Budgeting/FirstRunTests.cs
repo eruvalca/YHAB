@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Bunit;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Shouldly;
 using Xunit;
@@ -50,6 +51,40 @@ public sealed class FirstRunTests
         frame.Find(".plan-drawer").HasAttribute("open").ShouldBeFalse();
         frame.Find(".plan-content .first-run-account").ShouldNotBeNull();
         frame.FindAll(".plan-drawer .first-run-account").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task PlanFrameProvidesCompactLinksToEveryPlanPageAsync()
+    {
+        await using var context = CreateContext();
+        var plan = CreatePlan();
+        var frame = context.Render<PlanFrame>(parameters => parameters.Add(item => item.Plan, plan)
+            .Add(item => item.ChildContent, builder => builder.AddContent(0, "Plan content")));
+
+        var links = frame.FindAll(".plan-page-tabs a");
+        links.Count.ShouldBe(4);
+        links.Select(item => item.GetAttribute("href")).ShouldBe([
+            $"/plans/{plan.Id}",
+            $"/plans/{plan.Id}/accounts",
+            $"/plans/{plan.Id}/reports",
+            $"/plans/{plan.Id}/settings"]);
+        links.Select(item => item.TextContent).ShouldBe(["Plan", "Transactions", "Reflect", "Settings"]);
+        frame.Find(".plan-drawer .plan-navigation").ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task PlanFrameKeepsTransactionsActiveOnAnAccountRegisterAsync()
+    {
+        await using var context = CreateContext();
+        var plan = CreatePlan(withAccount: true);
+        context.Services.GetRequiredService<NavigationManager>()
+            .NavigateTo($"http://localhost/plans/{plan.Id}/accounts/{plan.Accounts[0].Id}");
+        var frame = context.Render<PlanFrame>(parameters => parameters.Add(item => item.Plan, plan)
+            .Add(item => item.ChildContent, builder => builder.AddContent(0, "Register content")));
+
+        var active = frame.FindAll(".plan-page-tabs a[aria-current='page']");
+        active.Count.ShouldBe(1);
+        active[0].TextContent.ShouldBe("Transactions");
     }
 
     [Fact]

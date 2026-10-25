@@ -17,7 +17,7 @@ h2 { margin: 0; scroll-margin-top: var(--spacingVerticalS); }
     .editor-surface { padding: var(--spacingVerticalL) var(--spacingHorizontalM); }
     .editor-surface ::deep .editor-heading {
         position: sticky;
-        top: 0;
+        top: var(--plan-page-tabs-height, 0px);
         z-index: 5;
         margin-inline: calc(var(--spacingHorizontalM) * -1);
         padding: var(--spacingVerticalS) var(--spacingHorizontalM);

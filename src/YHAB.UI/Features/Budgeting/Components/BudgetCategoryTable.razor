@@ -1,3 +1,6 @@
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
 <div class="category-catalog">
     <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Bottom" HorizontalGap="var(--spacingHorizontalS)" Class="table-toolbar">
         <FluentSelect TOption="string" TValue="string" Label="View" Items="_filters" @bind-Value="_filter" Margin="0" />
@@ -11,7 +14,7 @@
     }
     <div class="table-container budget-table-container" tabindex="0" role="region" aria-label="@($"Category budget for {Budget.Month.ToString("MMMM yyyy", Culture)}")" data-dragging="@(_dragGroup.HasValue ? "true" : "false")">
         @* The grid keeps table semantics through ARIA roles; sortable item wrappers receive theirs from sortable-lists.js. *@
-        <div class="budget-table" role="table" aria-label="Categories">
+        <div @ref="_table" class="budget-table" role="table" aria-label="Categories">
             <div role="rowgroup"><div class="budget-grid budget-header" role="row"><span role="columnheader">Category</span><span class="numeric" role="columnheader">Assigned</span><span class="numeric" role="columnheader">Activity</span><span class="numeric" role="columnheader">Available</span></div></div>
             @foreach (var group in Groups)
             {

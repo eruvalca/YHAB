@@ -1,12 +1,14 @@
-using System.Diagnostics.CodeAnalysis;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
 
 namespace YHAB.Data;
 
 // Add profile data for application users by adding properties to the ApplicationUser class
-[SuppressMessage("Major Code Smell", "S2094:Classes should not be empty",
-    Justification = "Provides the application's Identity/EF user type while inheriting its current members from IdentityUser.")]
 internal sealed class ApplicationUser : IdentityUser
 {
+    // Shown to people who share a plan with this account. The email stays private.
+    [PersonalData]
+    [MaxLength(UserDisplayNames.MaximumLength)]
+    public string? DisplayName { get; set; }
 }
 

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.FluentUI.AspNetCore.Components;
+using Microsoft.JSInterop;
 using YHAB.SharedKernel.Budgeting;
 
 namespace YHAB.UI.Features.Budgeting.Components;
@@ -13,7 +14,8 @@ public sealed partial class BudgetCategoryTable
     [Parameter, EditorRequired] public EventCallback<CategoryData> OnSelect { get; set; }
     [Parameter] public Guid? SelectedCategoryId { get; set; }
     [Parameter] public bool Busy { get; set; }
-    private static readonly string[] _filters = ["All categories", "Underfunded", "Overspent", "Available", "Hidden"];
+    private static readonly string _stillNeeded = BudgetGlossary.Label(BudgetTerm.StillNeeded);
+    private static readonly string[] _filters = ["All categories", _stillNeeded, "Overspent", "Available", "Hidden"];
     private string _filter = "All categories";
     private readonly HashSet<Guid> _collapsed = [];
     private readonly Dictionary<Guid, InlineNameDraft> _drafts = [];
@@ -26,7 +28,32 @@ public sealed partial class BudgetCategoryTable
     private Guid? _newCategoryGroup;
     private bool _newGroup;
     private long _version = -1;
+    private ElementReference _table;
+    private TableInterop? _interop;
+    private readonly CancellationTokenSource _disposal = new();
     private GroupData[] Groups { get; set; } = [];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _interop = new(JS);
+            await _interop.InitializeAsync(_table, _disposal.Token);
+        }
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        await _disposal.CancelAsync();
+        try
+        {
+            if (_interop is not null) { await _interop.DisposeAsync(); }
+        }
+        finally
+        {
+            _disposal.Dispose();
+        }
+    }
 
     protected override void OnParametersSet()
     {
@@ -60,8 +87,14 @@ public sealed partial class BudgetCategoryTable
         var hiddenGroup = Plan.Groups.Any(value => value.Id == group && value.Hidden);
         return Order(group).Select(id => _rows.GetValueOrDefault(id)).OfType<CategoryMonth>()
             .Where(item => (string.Equals(_filter, "Hidden", StringComparison.Ordinal) ? item.Category.Hidden || hiddenGroup : !item.Category.Hidden && !hiddenGroup)
-                && (_filter switch { "Underfunded" => item.TargetNeeded > 0, "Overspent" => item.Available < 0, "Available" => item.Available > 0, _ => true }))
+                && MatchesView(item))
             .ToArray();
+    }
+
+    private bool MatchesView(CategoryMonth item)
+    {
+        if (string.Equals(_filter, _stillNeeded, StringComparison.Ordinal)) { return item.TargetNeeded > 0 || item.Available < 0; }
+        return _filter switch { "Overspent" => item.Available < 0, "Available" => item.Available > 0, _ => true };
     }
 
     private bool ShowGroup(GroupData group, int count) => count > 0 || _newCategoryGroup == group.Id
@@ -160,5 +193,34 @@ public sealed partial class BudgetCategoryTable
         var command = !Busy && _dragGroup is { } source && source != before ? new ReorderGroup(Plan.Version, source, before) : null;
         ClearDrag();
         return command is null ? Task.CompletedTask : OnCommand.InvokeAsync(command);
+    }
+
+    private sealed class TableInterop(IJSRuntime js) : IAsyncDisposable
+    {
+        private const string ModulePath = "./_content/YHAB.UI/Features/Budgeting/Components/BudgetCategoryTable.razor.js";
+        private IJSObjectReference? _module;
+        private ElementReference _table;
+
+        public async ValueTask InitializeAsync(ElementReference table, CancellationToken cancellationToken)
+        {
+            _table = table;
+            _module = await js.InvokeAsync<IJSObjectReference>("import", cancellationToken, ModulePath);
+            await _module.InvokeVoidAsync("initialize", cancellationToken, table);
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            if (_module is null) { return; }
+            try
+            {
+                // Browser cleanup must run after component cancellation; a disconnected circuit has already released it.
+                await _module.InvokeVoidAsync("dispose", CancellationToken.None, _table);
+                await _module.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // The disconnected circuit has already released the browser resources.
+            }
+        }
     }
 }

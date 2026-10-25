@@ -30,18 +30,19 @@ public sealed class PlanSharingTests
         (await database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token)).ShouldBe(id);
         var shared = await database.Sharing.ReadAsync("owner-a", id, timeout.Token);
         shared.IsOwner.ShouldBeTrue();
-        shared.OwnerName.ShouldBe("a@example.test");
-        shared.Collaborators.ShouldBe([new("owner-b", "b@example.test")]);
+        shared.OwnerName.ShouldBe("Alice");
+        shared.Collaborators.ShouldBe([new("owner-b", "Bob")]);
 
         var sharedPlans = await database.Store.ListAsync("owner-b", timeout.Token);
         var summary = sharedPlans.ShouldHaveSingleItem();
         summary.Id.ShouldBe(id);
         summary.IsOwner.ShouldBeFalse();
-        summary.SharedBy.ShouldBe("a@example.test");
+        summary.SharedBy.ShouldBe("Alice");
 
         var plan = (await database.Store.ReadAsync("owner-b", id, timeout.Token)).ShouldNotBeNull();
         plan.IsOwner.ShouldBeFalse();
-        plan.OwnerName.ShouldBe("a@example.test");
+        plan.OwnerName.ShouldBe("Alice");
+        shared.Collaborators.ShouldAllBe(collaborator => !collaborator.Name.Contains('@', StringComparison.Ordinal));
         (await database.Queries.ViewAsync("owner-b", id, timeout.Token)).Catalog.Id.ShouldBe(id);
         (await database.Queries.WorkspaceAsync("owner-b", id, null, timeout.Token)).View.Catalog.Version.ShouldBe(plan.Version);
 
@@ -112,7 +113,7 @@ public sealed class PlanSharingTests
         timeout.CancelAfter(TimeSpan.FromMinutes(3));
         await using var database = await BudgetDatabase.CreateAsync(timeout.Token);
         var id = await database.Store.CreateAsync("owner-a", new("One-time plan"), timeout.Token);
-        await AddUserAsync(database, "owner-c", "c@example.test", timeout.Token);
+        await AddUserAsync(database, "owner-c", "c@example.test", "Carol", timeout.Token);
 
         var code = await database.Sharing.CreateShareCodeAsync("owner-a", id, timeout.Token);
         (await database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token)).ShouldBe(id);
@@ -123,7 +124,7 @@ public sealed class PlanSharingTests
 
         var secondCode = await database.Sharing.CreateShareCodeAsync("owner-a", id, timeout.Token);
         (await database.Sharing.JoinAsync("owner-b", secondCode.Code, timeout.Token)).ShouldBe(id);
-        (await database.Sharing.ReadAsync("owner-a", id, timeout.Token)).Collaborators.ShouldBe([new("owner-b", "b@example.test")]);
+        (await database.Sharing.ReadAsync("owner-a", id, timeout.Token)).Collaborators.ShouldBe([new("owner-b", "Bob")]);
     }
 
     [Fact]
@@ -139,7 +140,7 @@ public sealed class PlanSharingTests
             database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token),
             database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token));
         joins.ShouldBe([id, id]);
-        (await database.Sharing.ReadAsync("owner-a", id, timeout.Token)).Collaborators.ShouldBe([new("owner-b", "b@example.test")]);
+        (await database.Sharing.ReadAsync("owner-a", id, timeout.Token)).Collaborators.ShouldBe([new("owner-b", "Bob")]);
 
         var removals = await Task.WhenAll(
             CaptureAsync(async () => { await database.Sharing.UnshareAsync("owner-a", id, "owner-b", timeout.Token); }),
@@ -169,7 +170,52 @@ public sealed class PlanSharingTests
         barrier.Release();
 
         (await Task.WhenAll(first, second)).ShouldBe([id, id]);
-        (await database.Sharing.ReadAsync("owner-a", id, timeout.Token)).Collaborators.ShouldBe([new("owner-b", "b@example.test")]);
+        (await database.Sharing.ReadAsync("owner-a", id, timeout.Token)).Collaborators.ShouldBe([new("owner-b", "Bob")]);
+    }
+
+    [Fact]
+    public async Task MissingDisplayNameFallsBackToAFriendlyNameInsteadOfTheEmailAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(3));
+        await using var database = await BudgetDatabase.CreateAsync(timeout.Token);
+        await AddUserAsync(database, "owner-d", "d@example.test", null, timeout.Token);
+        var id = await database.Store.CreateAsync("owner-d", new("Legacy plan"), timeout.Token);
+        var code = await database.Sharing.CreateShareCodeAsync("owner-d", id, timeout.Token);
+        (await database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token)).ShouldBe(id);
+
+        var sharing = await database.Sharing.ReadAsync("owner-b", id, timeout.Token);
+        sharing.OwnerName.ShouldBe("Member");
+
+        var plan = (await database.Store.ReadAsync("owner-b", id, timeout.Token)).ShouldNotBeNull();
+        plan.OwnerName.ShouldBe("Member");
+        var summary = (await database.Store.ListAsync("owner-b", timeout.Token)).ShouldHaveSingleItem();
+        summary.SharedBy.ShouldBe("Member");
+    }
+
+    [Fact]
+    public async Task DisplayNameThatEqualsTheCurrentAccountEmailFallsBackToMemberAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(3));
+        await using var database = await BudgetDatabase.CreateAsync(timeout.Token);
+        // A name saved before an email change can become the account's current address.
+        await AddUserAsync(database, "owner-e", "new@example.test", "new@example.test", timeout.Token);
+        await AddUserAsync(database, "owner-f", "f@example.test", "f@example.test", timeout.Token);
+        var id = await database.Store.CreateAsync("owner-e", new("Renamed plan"), timeout.Token);
+        var code = await database.Sharing.CreateShareCodeAsync("owner-e", id, timeout.Token);
+        (await database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token)).ShouldBe(id);
+        var secondCode = await database.Sharing.CreateShareCodeAsync("owner-e", id, timeout.Token);
+        (await database.Sharing.JoinAsync("owner-f", secondCode.Code, timeout.Token)).ShouldBe(id);
+
+        var sharing = await database.Sharing.ReadAsync("owner-b", id, timeout.Token);
+        sharing.OwnerName.ShouldBe("Member");
+        sharing.Collaborators.ShouldBe([new("owner-b", "Bob"), new("owner-f", "Member")]);
+
+        var plan = (await database.Store.ReadAsync("owner-b", id, timeout.Token)).ShouldNotBeNull();
+        plan.OwnerName.ShouldBe("Member");
+        var summary = (await database.Store.ListAsync("owner-b", timeout.Token)).ShouldHaveSingleItem();
+        summary.SharedBy.ShouldBe("Member");
     }
 
     [Fact]
@@ -218,7 +264,7 @@ public sealed class PlanSharingTests
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         timeout.CancelAfter(TimeSpan.FromMinutes(3));
         await using var database = await BudgetDatabase.CreateAsync(timeout.Token);
-        await AddUserAsync(database, "owner-c", "c@example.test", timeout.Token);
+        await AddUserAsync(database, "owner-c", "c@example.test", "Cara", timeout.Token);
         var id = await database.Store.CreateAsync("owner-a", new("Handover plan"), timeout.Token);
         var code = await database.Sharing.CreateShareCodeAsync("owner-a", id, timeout.Token);
         await database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token);
@@ -231,13 +277,13 @@ public sealed class PlanSharingTests
 
         var transferred = await database.Sharing.TransferOwnershipAsync("owner-a", id, "owner-b", timeout.Token);
         transferred.IsOwner.ShouldBeFalse();
-        transferred.OwnerName.ShouldBe("b@example.test");
-        transferred.Collaborators.ShouldBe([new("owner-a", "a@example.test")]);
+        transferred.OwnerName.ShouldBe("Bob");
+        transferred.Collaborators.ShouldBe([new("owner-a", "Alice")]);
         (await database.Sharing.ReadAsync("owner-b", id, timeout.Token)).IsOwner.ShouldBeTrue();
 
         var previous = (await database.Store.ListAsync("owner-a", timeout.Token)).ShouldHaveSingleItem();
         previous.IsOwner.ShouldBeFalse();
-        previous.SharedBy.ShouldBe("b@example.test");
+        previous.SharedBy.ShouldBe("Bob");
         (await database.Store.ListAsync("owner-b", timeout.Token)).ShouldHaveSingleItem().IsOwner.ShouldBeTrue();
         (await database.Store.ReadAsync("owner-a", id, timeout.Token)).ShouldNotBeNull().IsOwner.ShouldBeFalse();
         // Handing over access is not a ledger change, so the plan revision is untouched.
@@ -267,10 +313,18 @@ public sealed class PlanSharingTests
         }
     }
 
-    private static async Task AddUserAsync(BudgetDatabase database, string id, string email, CancellationToken cancellationToken)
+    private static async Task AddUserAsync(BudgetDatabase database, string id, string email, string? displayName, CancellationToken cancellationToken)
     {
         await using var context = await database.Factory.CreateDbContextAsync(cancellationToken);
-        context.Users.Add(new ApplicationUser { Id = id, UserName = email, NormalizedUserName = email.ToUpperInvariant(), Email = email, NormalizedEmail = email.ToUpperInvariant() });
+        context.Users.Add(new ApplicationUser
+        {
+            Id = id,
+            UserName = email,
+            NormalizedUserName = email.ToUpperInvariant(),
+            Email = email,
+            NormalizedEmail = email.ToUpperInvariant(),
+            DisplayName = displayName,
+        });
         await context.SaveChangesAsync(cancellationToken);
     }
 

@@ -1,0 +1,14 @@
+<span class="budget-term">
+    <span class="budget-term-label">@Label</span>
+    <button type="button" class="term-info" aria-expanded="@(_open ? "true" : "false")" aria-controls="@Id"
+            aria-label="@($"What does {Label} mean?")" title="@Definition" @onclick="Toggle">
+        <FluentIcon Value="@(new Icons.Regular.Size16.Info())" aria-hidden="true" />
+    </button>
+    <span class="term-definition" id="@Id" hidden="@(!_open)">
+        @Definition
+        @if (OnExplain.HasDelegate)
+        {
+            <button type="button" class="term-link" @onclick="ExplainAsync">See how this works</button>
+        }
+    </span>
+</span>
