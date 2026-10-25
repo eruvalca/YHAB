@@ -1,9 +1,15 @@
 .budget-summary { position: sticky; top: var(--plan-page-tabs-height, 0px); z-index: 5; padding: var(--spacingVerticalS) var(--spacingHorizontalM); border-radius: var(--borderRadiusMedium); background: var(--colorNeutralBackground1); border: 1px solid var(--colorNeutralStroke2); }
 .budget-summary[data-negative="true"] { border-color: var(--colorPaletteRedBorder1); }
-h1 { margin: 0; font-size: var(--yh-font-title); line-height: 1.25; }
+h1 { margin: 0; font-size: var(--yh-font-title-compact); line-height: 1.25; }
+@media (min-width: 601px) {
+    /* The summary is dense chrome, so its actions use the compact control step
+       while phones keep the 40px touch target. */
+    .budget-summary ::deep fluent-button { min-height: var(--yh-control-compact); }
+    .budget-summary ::deep fluent-button[icon-only] { min-width: var(--yh-control-compact); }
+}
 .ready-balance > span { display: block; color: var(--colorNeutralForeground2); font-size: var(--fontSizeBase200); }
 .hero-amount { display: block; font-size: var(--fontSizeBase600); line-height: var(--lineHeightBase600); font-variant-numeric: tabular-nums; color: var(--colorBrandForeground1); }
-.budget-summary ::deep .budget-totals { border-top: 1px solid var(--colorNeutralStroke2); margin-top: var(--spacingVerticalS); padding-top: var(--spacingVerticalXS); font-size: var(--fontSizeBase200); }
+.budget-summary ::deep .budget-totals { border-top: 1px solid var(--colorNeutralStroke2); margin-top: var(--spacingVerticalXS); padding-top: 0; font-size: var(--fontSizeBase200); }
 .budget-total > span { color: var(--colorNeutralForeground2); }
 .budget-total strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .budget-workspace-scope { container: budget-workspace / inline-size; }

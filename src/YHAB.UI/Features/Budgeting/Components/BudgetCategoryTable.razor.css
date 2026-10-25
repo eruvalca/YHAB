@@ -1,12 +1,17 @@
 .category-catalog { min-width: 0; }
-.category-catalog ::deep .table-toolbar { margin-block: var(--spacingVerticalS); }
+.category-catalog ::deep .table-toolbar { margin-block: var(--spacingVerticalXS); }
+@media (min-width: 601px) {
+    /* The table toolbar is dense chrome; phones keep 40px touch targets. */
+    .category-catalog ::deep .table-toolbar fluent-button { min-height: var(--yh-control-compact); }
+    .category-catalog ::deep .table-toolbar fluent-button[icon-only] { min-width: var(--yh-control-compact); }
+}
 .category-catalog ::deep .table-toolbar label { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .budget-table-container { margin-block: 0; }
 /* A div grid keeps the table's aligned columns while each group's rows remain a sortable list. */
 /* Contain visually hidden labels in the horizontal scroller so they cannot widen the page. */
 .budget-table { position: relative; min-width: 35rem; }
 .budget-table ::deep .budget-grid { display: grid; grid-template-columns: minmax(0, 42fr) minmax(0, 24fr) repeat(2, minmax(0, 17fr)); align-items: center; border-bottom: 1px solid var(--colorNeutralStroke2); }
-.budget-table ::deep .budget-grid > * { box-sizing: border-box; min-width: 0; padding: var(--spacingVerticalXS) var(--spacingHorizontalS); }
+.budget-table ::deep .budget-grid > * { box-sizing: border-box; min-width: 0; padding: var(--spacingVerticalXXS) var(--spacingHorizontalS); }
 .budget-table ::deep .budget-header { font-weight: var(--fontWeightSemibold); }
 .budget-table ::deep .group-row { background: var(--colorNeutralBackground3); font-weight: var(--fontWeightSemibold); }
 .budget-table ::deep .row-panel, .budget-table ::deep .category-move-row { padding: var(--spacingVerticalXS) var(--spacingHorizontalS); border-bottom: 1px solid var(--colorNeutralStroke2); }

@@ -295,7 +295,8 @@ notices (`notice` with a semantic `data-kind`), and table overflow
 `--yh-control-font` (16px) text so mobile browsers do not zoom on focus, and a
 primary action is never smaller than the standard step. The type scale uses
 `--yh-font-body` (14px), `--yh-font-eyebrow` (12px), and the capped
-`--yh-font-title` and `--yh-font-display` heading ramps. Use these tokens for new
+`--yh-font-title`, `--yh-font-title-compact` (for dense page headers such as the
+budget summary), and `--yh-font-display` heading ramps. Use these tokens for new
 controls and headings instead of ad hoc sizes.
 Component-specific styles belong in adjacent `.razor.css` files. Use narrowly
 scoped `::deep` selectors for child component markup.

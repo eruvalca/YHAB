@@ -17,6 +17,7 @@
        page/display headings share a single capped ramp. */
     --yh-font-body: 0.875rem;
     --yh-font-eyebrow: 0.75rem;
+    --yh-font-title-compact: clamp(1.25rem, 1.5vw, 1.5rem);
     --yh-font-title: clamp(1.5rem, 2vw, 2rem);
     --yh-font-display: clamp(2rem, 4.5vw, 3rem);
 }
@@ -114,7 +115,9 @@ button:where(:not([slot])) {
 /* Text-style buttons keep their link-like density. */
 .category-link,
 .passkey-login-link,
-.rename-name {
+.rename-name,
+.term-info,
+.term-link {
     min-height: auto;
 }
 

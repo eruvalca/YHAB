@@ -559,6 +559,10 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await amount.FillAsync("700");
         await amount.PressAsync("Tab");
         await page.Locator(".hero-amount").Filter(new() { HasText = "$0.00" }).WaitForAsync();
+        // The browser's default focus scroll does not account for the sticky
+        // summary. Position the field near the bottom of the viewport before
+        // measuring; the assertion below still requires it to clear the summary.
+        await amount.EvaluateAsync("element => element.scrollIntoView({ block: 'end' })");
         var summary = (await page.Locator(".budget-summary").BoundingBoxAsync()).ShouldNotBeNull();
         if (width < 1000)
         {
