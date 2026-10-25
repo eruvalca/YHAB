@@ -165,8 +165,11 @@ internal sealed class PlanSharingService(IDbContextFactory<ApplicationDbContext>
 
             plan.OwnerId = memberId;
             await database.SaveChangesAsync(cancellationToken);
+            // Read the summary before committing so a transient read failure retries the whole
+            // uncommitted operation instead of replaying it after the owner already changed.
+            var summary = await SummarizeAsync(database, plan, userId, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
-            return await SummarizeAsync(database, plan, userId, cancellationToken);
+            return summary;
         }, cancellationToken);
     }
 
@@ -178,13 +181,23 @@ internal sealed class PlanSharingService(IDbContextFactory<ApplicationDbContext>
         {
             throw PlanAccess.Unavailable();
         }
-        if (!string.Equals(plan.Name, planName?.Trim(), StringComparison.Ordinal))
+        var confirmedName = planName?.Trim() ?? string.Empty;
+        if (!string.Equals(plan.Name, confirmedName, StringComparison.Ordinal))
         {
             throw new BudgetRequestException(400, "Type the plan name to confirm deletion.");
         }
-        // Deleting the plan row cascades to its members and every plan-scoped ledger table,
-        // so collaborators and API callers lose access on their next request.
-        await database.Set<BudgetPlan>().Where(item => item.Id == planId).ExecuteDeleteAsync(cancellationToken);
+        // Repeat the checked owner and name in the delete predicate so a transfer or rename
+        // that lands after this read cannot delete the plan on stale authorization.
+        var deleted = await database.Set<BudgetPlan>()
+            .Where(item => item.Id == planId && item.OwnerId == userId && item.Name == confirmedName)
+            .ExecuteDeleteAsync(cancellationToken);
+        if (deleted == 0)
+        {
+            var stillExists = await database.Set<BudgetPlan>().AnyAsync(item => item.Id == planId, cancellationToken);
+            throw stillExists
+                ? new BudgetRequestException(409, "This plan changed. Reload and confirm deletion again.")
+                : PlanAccess.Unavailable();
+        }
     }
 
     public async Task LeaveAsync(string userId, Guid planId, CancellationToken cancellationToken)

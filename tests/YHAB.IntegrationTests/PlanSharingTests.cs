@@ -300,6 +300,27 @@ public sealed class PlanSharingTests
         (await database.Sharing.ReadAsync("owner-b", id, timeout.Token)).Collaborators.ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task DeletionRejectsAPlanRenamedAfterTheConfirmationReadAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(3));
+        using var barrier = new DeleteBarrier();
+        await using var database = await BudgetDatabase.CreateAsync(timeout.Token, interceptor: barrier);
+        var id = await database.Store.CreateAsync("owner-a", new("Doomed plan"), timeout.Token);
+        barrier.Arm();
+
+        var deletion = database.Sharing.DeleteAsync("owner-a", id, "Doomed plan", timeout.Token);
+        await barrier.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10), timeout.Token);
+        var plan = (await database.Store.ReadAsync("owner-a", id, timeout.Token)).ShouldNotBeNull();
+        (await database.Store.ExecuteAsync("owner-a", id, new UpdatePlan(plan.Version, "Renamed plan", ""), timeout.Token)).IsT0.ShouldBeTrue();
+        barrier.Release();
+
+        var conflict = await Should.ThrowAsync<BudgetRequestException>(() => deletion);
+        conflict.Status.ShouldBe(409);
+        (await database.Store.ReadAsync("owner-a", id, timeout.Token)).ShouldNotBeNull().Name.ShouldBe("Renamed plan");
+    }
+
     private static async Task<BudgetRequestException?> CaptureAsync(Func<Task> action)
     {
         try
@@ -333,6 +354,30 @@ public sealed class PlanSharingTests
         private DateTimeOffset _now = new(2026, 10, 2, 12, 0, 0, TimeSpan.Zero);
         public override DateTimeOffset GetUtcNow() => _now;
         public void Advance(TimeSpan duration) => _now = _now.Add(duration);
+    }
+
+    // Pauses the conditional delete so the test can change the plan after ownership and the
+    // confirmed name were read but before the delete predicate runs.
+    private sealed class DeleteBarrier : DbCommandInterceptor, IDisposable
+    {
+        private readonly SemaphoreSlim _gate = new(0);
+        private int _armed;
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public void Arm() => Interlocked.Exchange(ref _armed, 1);
+        public void Release() => _gate.Release();
+        public void Dispose() => _gate.Dispose();
+
+        public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(DbCommand command, CommandEventData eventData,
+            InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.StartsWith("DELETE FROM \"BudgetPlans\"", StringComparison.Ordinal)
+                && Interlocked.Exchange(ref _armed, 0) == 1)
+            {
+                Entered.TrySetResult();
+                await _gate.WaitAsync(cancellationToken);
+            }
+            return result;
+        }
     }
 
     // Holds both invitation lookups until the test releases them, forcing one join to

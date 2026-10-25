@@ -117,7 +117,7 @@
         </section>
         @if (_sharing is { IsOwner: true })
         {
-            <details class="danger-zone" id="delete-plan-section">
+            <details class="danger-zone" id="delete-plan-section" open="@(_deleteFeedback is { IsError: true })">
                 <summary>Delete this plan</summary>
                 <p>Deleting <strong>@plan.Name</strong> permanently removes its accounts, categories, transactions, balances, share codes, and history. It cannot be undone, and everyone else loses access immediately.</p>
                 <p><a href="@($"/api/plans/{PlanId}")" download="@($"plan-{PlanId}.json")">Download this plan's data</a> before deleting it.</p>

@@ -215,12 +215,14 @@ public sealed class PlanSharingComponentTests
 
         await component.WaitForAssertionAsync(() => component.Find("#delete-plan-section").ShouldNotBeNull());
         component.Find("#delete-plan-section").TextContent.ShouldContain("cannot be undone");
+        component.Find("#delete-plan-section").HasAttribute("open").ShouldBeFalse();
         component.Find("#delete-plan-section a").GetAttribute("href").ShouldBe($"/api/plans/{plan.Id}");
         SetFormValue(component.Instance, "Delete", "PlanName", typedName);
 
         await component.Find("#delete-plan-form").SubmitAsync();
 
         await budgets.DidNotReceive().DeleteAsync(plan.Id, Arg.Any<string>(), Arg.Any<CancellationToken>());
+        component.Find("#delete-plan-section").HasAttribute("open").ShouldBeTrue();
         component.Find("#delete-plan-name-error").TextContent.ShouldBe(message);
     }
 
