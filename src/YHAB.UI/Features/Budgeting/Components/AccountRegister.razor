@@ -52,34 +52,53 @@
         <FluentButton OnClick="CancelDelete" Appearance="ButtonAppearance.Subtle">Keep transactions</FluentButton>
     </div>
 }
-<div class="table-container" tabindex="0" aria-label="Account transaction register">
-    <table class="register-table">
-        <thead><tr><th><FluentCheckbox Label="Select page" LabelPosition="LabelPosition.Before" Value="AllVisibleSelected" ValueChanged="SelectVisible" /></th><th scope="col">Date</th><th scope="col">Payee / account</th><th scope="col">Category / memo</th><th scope="col" class="numeric">Outflow</th><th scope="col" class="numeric">Inflow</th>@if (_account is not null) { <th scope="col" class="numeric">Balance</th> }</tr></thead>
-        <tbody>
-            @foreach (var entry in VisibleEntries)
-            {
-                var amount = DisplayAmount(entry);
-                <tr @key="entry.Id" data-selected="@(_selected.Contains(entry.Id) ? "true" : "false")">
-                    <td><FluentCheckbox Label="Select" LabelPosition="LabelPosition.Before" Value="_selected.Contains(entry.Id)" ValueChanged="value => Select(entry.Id, value)" /></td>
-                    <td class="nowrap">@entry.Date.ToString("MM/dd/yyyy", Culture) @if (entry.Repeat != RepeatFrequency.None) { <small>@TransactionEditor.FrequencyLabel(entry.Repeat)</small> }</td>
-                    <td><button class="category-link" @onclick="() => Edit(entry)">@PayeeLabel(entry)</button><small>@AccountName(entry.AccountId) @if (entry.Flag.Length > 0) { <span class="flag" data-flag="@entry.Flag">@entry.Flag flag</span> }</small>
-                        <FluentButton OnClick="() => Duplicate(entry)" Appearance="ButtonAppearance.Subtle">Duplicate</FluentButton>
-                    </td>
-                    <td>@CategoryLabel(entry)<small>@entry.Memo</small></td>
-                    <td class="numeric money" data-money-tone="@(amount < 0 ? "negative" : "neutral")">@(amount < 0 ? Money(-amount) : "—")</td>
-                    <td class="numeric money" data-money-tone="@(amount > 0 ? "positive" : "neutral")">@(amount > 0 ? Money(amount) : "—")</td>
-                    @if (_account is not null) { <td class="numeric money" data-money-tone="@(entry.Repeat == RepeatFrequency.None ? MoneyTone(_running.GetValueOrDefault(entry.Id)) : "neutral")">@(entry.Repeat == RepeatFrequency.None ? Money(_running.GetValueOrDefault(entry.Id)) : "—")</td> }
-                </tr>
-            }
-        </tbody>
-    </table>
-</div>
-@if (_result is { Total: 0 } && !IsBusy)
+@if (_result is null)
+{
+    @if (_error is null)
+    {
+        <p role="status">Loading transactions…</p>
+    }
+}
+else if (_result.Rows.Count > 0)
+{
+    <div class="table-container" tabindex="0" aria-label="Account transaction register">
+        <table class="register-table">
+            <thead><tr><th><FluentCheckbox Label="Select page" LabelPosition="LabelPosition.Before" Value="AllVisibleSelected" ValueChanged="SelectVisible" /></th><th scope="col">Date</th><th scope="col">Payee / account</th><th scope="col">Category / memo</th><th scope="col" class="numeric">Outflow</th><th scope="col" class="numeric">Inflow</th>@if (_account is not null) { <th scope="col" class="numeric">Balance</th> }</tr></thead>
+            <tbody>
+                @foreach (var entry in VisibleEntries)
+                {
+                    var amount = DisplayAmount(entry);
+                    <tr @key="entry.Id" data-selected="@(_selected.Contains(entry.Id) ? "true" : "false")">
+                        <td><FluentCheckbox Label="Select" LabelPosition="LabelPosition.Before" Value="_selected.Contains(entry.Id)" ValueChanged="value => Select(entry.Id, value)" /></td>
+                        <td class="nowrap">@entry.Date.ToString("MM/dd/yyyy", Culture) @if (entry.Repeat != RepeatFrequency.None) { <small>@TransactionEditor.FrequencyLabel(entry.Repeat)</small> }</td>
+                        <td><button class="category-link" @onclick="() => Edit(entry)">@PayeeLabel(entry)</button><small>@AccountName(entry.AccountId) @if (entry.Flag.Length > 0) { <span class="flag" data-flag="@entry.Flag">@entry.Flag flag</span> }</small>
+                            <details class="row-actions">
+                                <summary><span class="visually-hidden">Actions for @PayeeLabel(entry)</span><span aria-hidden="true">Actions</span></summary>
+                                <div class="row-actions-menu">
+                                    <button type="button" @onclick="() => Duplicate(entry)">Duplicate…</button>
+                                </div>
+                            </details>
+                        </td>
+                        <td>@CategoryLabel(entry)<small>@entry.Memo</small></td>
+                        <td class="numeric money" data-money-tone="@(amount < 0 ? "negative" : "neutral")">@(amount < 0 ? Money(-amount) : "—")</td>
+                        <td class="numeric money" data-money-tone="@(amount > 0 ? "positive" : "neutral")">@(amount > 0 ? Money(amount) : "—")</td>
+                        @if (_account is not null) { <td class="numeric money" data-money-tone="@(entry.Repeat == RepeatFrequency.None ? MoneyTone(_running.GetValueOrDefault(entry.Id)) : "neutral")">@(entry.Repeat == RepeatFrequency.None ? Money(_running.GetValueOrDefault(entry.Id)) : "—")</td> }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalM)" Class="pagination">
+        <FluentButton OnClick="PreviousPageAsync" Disabled="@(IsBusy || _page == 0)" Appearance="ButtonAppearance.Subtle">Previous</FluentButton>
+        <span>Page @(_page + 1) · @(_result.Total) transactions</span>
+        <FluentButton OnClick="NextPageAsync" Disabled="@(IsBusy || _result.Next is null)" Appearance="ButtonAppearance.Subtle">Next</FluentButton>
+    </FluentStack>
+}
+else if (_error is null && IsBusy)
+{
+    <p role="status">Loading transactions…</p>
+}
+else if (_error is null)
 {
     <div class="empty-state"><h2>No transactions here yet</h2><p>Add a transaction or adjust your filters. Small habits bring a clearer picture.</p></div>
 }
-<FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalM)" Class="pagination">
-    <FluentButton OnClick="PreviousPageAsync" Disabled="@(IsBusy || _page == 0)" Appearance="ButtonAppearance.Subtle">Previous</FluentButton>
-    <span>Page @(_page + 1) · @(_result?.Total ?? 0) transactions</span>
-    <FluentButton OnClick="NextPageAsync" Disabled="@(IsBusy || _result?.Next is null)" Appearance="ButtonAppearance.Subtle">Next</FluentButton>
-</FluentStack>

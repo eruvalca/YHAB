@@ -3,6 +3,17 @@
 .register-table th, .register-table td { padding-block: var(--spacingVerticalM); }
 .register-table th.numeric { white-space: nowrap; }
 .register-table tr[data-selected="true"] { background: var(--colorBrandBackground2); }
+.row-actions { margin-top: var(--spacingVerticalXS); }
+.row-actions > summary {
+    display: flex;
+    align-items: center;
+    min-height: var(--yh-control-compact);
+    color: var(--colorNeutralForeground3);
+    font-size: var(--fontSizeBase200);
+    cursor: pointer;
+}
+.row-actions-menu { padding-block: var(--spacingVerticalXS); }
+.row-actions-menu button { width: 100%; min-height: var(--yh-control-standard); text-align: start; }
 .date-filters { margin-block: var(--spacingVerticalM); }
 .date-filters summary { cursor: pointer; margin-bottom: var(--spacingVerticalS); }
 .date-filters .form-field { max-width: 13rem; }

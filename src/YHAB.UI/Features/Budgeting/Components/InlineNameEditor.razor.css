@@ -3,7 +3,3 @@
 .rename-name { padding: var(--spacingVerticalXXS) var(--spacingHorizontalXS); border: 0; background: transparent; color: var(--colorNeutralForeground3); font-size: var(--fontSizeBase100); }
 .inline-name-form { padding-block: var(--spacingVerticalXS); }
 .inline-name-form ::deep fluent-field { flex: 1; min-width: 8rem; }
-@media (hover: hover) {
-    .rename-name { opacity: 0; }
-    .inline-name:hover .rename-name, .inline-name:focus-within .rename-name { opacity: 1; }
-}

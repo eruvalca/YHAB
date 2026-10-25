@@ -57,11 +57,11 @@ public sealed class NavigationTests(ITestOutputHelper output)
         var origin = await page.EvaluateAsync<double>("performance.timeOrigin");
 
         await OpenNavigationAsync(page, width);
-        var register = page.GetByRole(AriaRole.Link, new() { Name = "Register", Exact = true });
+        var register = page.GetByRole(AriaRole.Link, new() { Name = "Create your account", Exact = true });
         await register.Locator("svg").First.WaitForAsync(new() { State = WaitForSelectorState.Attached });
         (await register.Locator("svg").CountAsync()).ShouldBeGreaterThan(0);
         await register.ClickAsync();
-        await page.GetByRole(AriaRole.Heading, new() { Name = "Register", Exact = true }).WaitForAsync();
+        await page.GetByRole(AriaRole.Heading, new() { Name = "Create your account", Exact = true }).WaitForAsync();
         (await page.EvaluateAsync<double>("performance.timeOrigin")).ShouldBe(origin);
         await AssertDrawerClosedAsync(page, width);
 
@@ -79,14 +79,14 @@ public sealed class NavigationTests(ITestOutputHelper output)
         (await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth")).ShouldBeTrue();
         await page.Locator("[data-theme-select]").SelectOptionAsync("dark");
         await page.WaitForFunctionAsync("document.body.dataset.theme === 'dark'");
-        await VerifyThemeAfterNavigationAsync(page, width, "Register", "dark");
+        await VerifyThemeAfterNavigationAsync(page, width, "Create your account", "dark");
         (await page.Locator("button[type='submit']").First.EvaluateAsync<string>("element => getComputedStyle(element).borderTopWidth")).ShouldBe("1px");
         await VerifyThemeAfterNavigationAsync(page, width, "Home", "dark");
         await page.ReloadAsync();
         await page.WaitForFunctionAsync("document.body.dataset.theme === 'dark'");
         await page.Locator("[data-theme-select]").SelectOptionAsync("light");
         await page.WaitForFunctionAsync("document.body.dataset.theme !== 'dark'");
-        await VerifyThemeAfterNavigationAsync(page, width, "Register", "light");
+        await VerifyThemeAfterNavigationAsync(page, width, "Create your account", "light");
         await page.Locator("[data-theme-select]").SelectOptionAsync("system");
         await page.EmulateMediaAsync(new() { ColorScheme = ColorScheme.Dark });
         await page.WaitForFunctionAsync("document.body.dataset.theme === 'dark'");
@@ -103,10 +103,12 @@ public sealed class NavigationTests(ITestOutputHelper output)
         var counter = await page.GotoAsync("/counter");
         counter.ShouldNotBeNull().Status.ShouldBe(404);
         await page.GetByRole(AriaRole.Heading, new() { Name = "Not found", Exact = true }).WaitForAsync();
+        await page.Locator("#main-content").GetByRole(AriaRole.Link, new() { Name = "Your plans", Exact = true }).WaitForAsync();
 
         var auth = await page.GotoAsync("/auth");
         auth.ShouldNotBeNull().Status.ShouldBe(404);
         await page.GetByRole(AriaRole.Heading, new() { Name = "Not found", Exact = true }).WaitForAsync();
+        (await page.Locator("#main-content").GetByRole(AriaRole.Link, new() { Name = "Your plans", Exact = true }).CountAsync()).ShouldBe(1);
 
         await page.GotoAsync("/Account/Login");
         await page.GetByRole(AriaRole.Heading, new() { Name = "Log in", Exact = true }).WaitForAsync();
@@ -118,7 +120,7 @@ public sealed class NavigationTests(ITestOutputHelper output)
         (await passkey.GetAttributeAsync("class")).ShouldBe("passkey-login-link");
 
         await page.GotoAsync("/Account/Register");
-        await page.GetByRole(AriaRole.Heading, new() { Name = "Register", Exact = true }).WaitForAsync();
+        await page.GetByRole(AriaRole.Heading, new() { Name = "Create your account", Exact = true }).WaitForAsync();
         var registerText = await page.Locator("body").InnerTextAsync();
         registerText.ShouldNotContain("external authentication services configured");
         (await page.GetByRole(AriaRole.Heading, new() { Name = "Use another service to register.", Exact = true }).CountAsync()).ShouldBe(0);
@@ -136,7 +138,7 @@ public sealed class NavigationTests(ITestOutputHelper output)
         await page.GetByLabel("Email", new() { Exact = true }).FillAsync($"navigation-{Guid.NewGuid():N}@example.test");
         await page.GetByLabel("Password", new() { Exact = true }).FillAsync("Local-test-Only!7926");
         await page.GetByLabel("Confirm Password", new() { Exact = true }).FillAsync("Local-test-Only!7926");
-        await page.GetByRole(AriaRole.Button, new() { Name = "Register", Exact = true }).ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Create your account", Exact = true }).ClickAsync();
         await page.GetByRole(AriaRole.Heading, new() { Name = "Make room for what matters.", Exact = true }).WaitForAsync();
         page.Url.ShouldEndWith("/plans");
     }
@@ -161,8 +163,8 @@ public sealed class NavigationTests(ITestOutputHelper output)
         // A saved desktop preference must not hide the mobile drawer's links.
         await page.SetViewportSizeAsync(390, 900);
         await OpenNavigationAsync(page, 390);
-        await page.GetByRole(AriaRole.Link, new() { Name = "Register", Exact = true }).ClickAsync();
-        await page.GetByRole(AriaRole.Heading, new() { Name = "Register", Exact = true }).WaitForAsync();
+        await page.GetByRole(AriaRole.Link, new() { Name = "Create your account", Exact = true }).ClickAsync();
+        await page.GetByRole(AriaRole.Heading, new() { Name = "Create your account", Exact = true }).WaitForAsync();
         await AssertDrawerClosedAsync(page, 390);
         await page.SetViewportSizeAsync(width, 900);
         var toggle = page.Locator("[data-navigation-toggle]");

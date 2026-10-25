@@ -134,7 +134,7 @@ public sealed class RegistrationTests
         }
         else
         {
-            component.Find("h1").TextContent.ShouldBe("Register");
+            component.Find("h1").TextContent.ShouldBe("Create your account");
             await account.Users.DidNotReceiveWithAnyArgs().AddLoginAsync(default!, default!);
         }
         await account.Users.DidNotReceiveWithAnyArgs().GenerateEmailConfirmationTokenAsync(default!);

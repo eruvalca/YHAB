@@ -179,7 +179,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await page.GetByLabel("Email", new() { Exact = true }).FillAsync(email);
         await page.GetByLabel("Password", new() { Exact = true }).FillAsync(Password);
         await page.GetByLabel("Confirm Password", new() { Exact = true }).FillAsync(Password);
-        await page.GetByRole(AriaRole.Button, new() { Name = "Register", Exact = true }).ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Create your account", Exact = true }).ClickAsync();
         await page.GetByRole(AriaRole.Heading, new() { Name = "Make room for what matters.", Exact = true }).WaitForAsync();
         page.Url.ShouldEndWith("/plans");
         await using (var plans = await page.APIRequest.GetAsync(Address("/api/plans"), new() { IgnoreHTTPSErrors = true }))
@@ -559,6 +559,10 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await amount.FillAsync("700");
         await amount.PressAsync("Tab");
         await page.Locator(".hero-amount").Filter(new() { HasText = "$0.00" }).WaitForAsync();
+        // The browser's default focus scroll does not account for the sticky
+        // summary. Position the field near the bottom of the viewport before
+        // measuring; the assertion below still requires it to clear the summary.
+        await amount.EvaluateAsync("element => element.scrollIntoView({ block: 'end' })");
         var summary = (await page.Locator(".budget-summary").BoundingBoxAsync()).ShouldNotBeNull();
         if (width < 1000)
         {
