@@ -110,6 +110,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             ViewportSize = new() { Width = width, Height = 960 },
             HasTouch = true,
         });
+        await context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = true });
         var page = await context.NewPageAsync();
         try
         {
@@ -279,8 +280,50 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await VerifyDropdownChromeAsync(page);
         await Input(page, "Account name").FillAsync("Everyday checking");
         await Input(page, "Opening balance").FillAsync("800 + 200");
-        await Button(page, "Save account").ClickAsync();
-        await page.Locator(".hero-amount").Filter(new() { HasText = "$1,000.00" }).WaitForAsync();
+        await SaveAccountAsync(page, "$1,000.00");
+    }
+
+    // The phone layout pins the editor's actions to the bottom of the viewport, so
+    // the button can be scrolled clear between focus and click and the click is
+    // dropped before it ever reaches the editor. Settle the scroll before clicking,
+    // then retry only while nothing was sent: a dropped click leaves the editor
+    // open with no saving status, no alert, and an unchanged balance.
+    private static async Task SaveAccountAsync(IPage page, string balance)
+    {
+        var save = Button(page, "Save account");
+        var hero = page.Locator(".hero-amount").Filter(new() { HasText = balance });
+        await save.EvaluateAsync("element => element.scrollIntoView({ block: 'center' })");
+        await save.ClickAsync();
+        if (await IsVisibleWithinAsync(hero, TimeSpan.FromSeconds(5)))
+        {
+            return;
+        }
+
+        var idle = page.Locator(".workspace-status").Filter(new() { HasText = "All changes saved" });
+        var rejected = page.Locator(".notice[role='alert']");
+        if (await save.CountAsync() > 0 && await idle.CountAsync() > 0 && await rejected.CountAsync() == 0)
+        {
+            await save.ClickAsync();
+        }
+
+        await hero.WaitForAsync();
+    }
+
+    private static async Task<bool> IsVisibleWithinAsync(ILocator locator, TimeSpan timeout)
+    {
+        try
+        {
+            await locator.WaitForAsync(new() { Timeout = (float)timeout.TotalMilliseconds });
+            return true;
+        }
+        catch (TimeoutException)
+        {
+            return false;
+        }
+        catch (PlaywrightException exception) when (exception.Message.Contains("Timeout", StringComparison.Ordinal))
+        {
+            return false;
+        }
     }
 
     private static async Task AddAccountAndAssignAsync(IPage page)
