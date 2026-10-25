@@ -2,10 +2,10 @@
 .budget-summary[data-negative="true"] { border-color: var(--colorPaletteRedBorder1); }
 h1 { margin: 0; font-size: var(--yh-font-title-compact); line-height: 1.25; }
 @media (min-width: 601px) {
-    /* The summary is dense chrome, so its actions use the compact control step
-       while phones keep the 40px touch target. */
-    .budget-summary ::deep fluent-button { min-height: var(--yh-control-compact); }
-    .budget-summary ::deep fluent-button[icon-only] { min-width: var(--yh-control-compact); }
+    /* Only the dense month controls use the compact step; summary actions,
+       including the primary action, keep the standard minimum. */
+    .budget-summary ::deep .month-navigation fluent-button { min-height: var(--yh-control-compact); }
+    .budget-summary ::deep .month-navigation fluent-button[icon-only] { min-width: var(--yh-control-compact); }
 }
 .ready-balance > span { display: block; color: var(--colorNeutralForeground2); font-size: var(--fontSizeBase200); }
 .hero-amount { display: block; font-size: var(--fontSizeBase600); line-height: var(--lineHeightBase600); font-variant-numeric: tabular-nums; color: var(--colorBrandForeground1); }
