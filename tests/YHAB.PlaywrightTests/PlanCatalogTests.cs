@@ -370,9 +370,12 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             {
                 var last = (await DomOrderAsync(page, source))[^1];
                 var item = page.Locator($"#category-list-{source:N} > .sortable-item").Filter(new() { Has = page.Locator($"[data-category-id='{last}']") });
-                await item.FocusAsync();
-                await item.PressAsync("Enter");
-                await SavedAsync(page, () => item.PressAsync("ArrowRight"));
+                await SavedAsync(page, async () =>
+                {
+                    // Re-grabbing inside the gesture lets a retry recover a grab that a render dropped.
+                    await GrabAsync(page, item);
+                    await item.PressAsync("ArrowRight");
+                });
                 plan = await ReadAsync(page, path);
                 plan.Categories.Single(category => string.Equals(category.Id.ToString(), last, StringComparison.Ordinal)).GroupId.ShouldBe(destination);
                 (await DomOrderAsync(page, destination)).ShouldBe(PlanOrder(plan, destination));
@@ -383,11 +386,7 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
 
             var cdp = await context.NewCDPSessionAsync(page);
             var before = await DomOrderAsync(page, destination);
-            await SavedAsync(page, () => TouchDragAsync(page, cdp, Row(page, before[0]).Locator(".row-move"), Row(page, before[1]), async () =>
-            {
-                (await page.Locator(".category-list .sortable-drag").CountAsync()).ShouldBeGreaterThan(0);
-                (await page.Locator(".category-list .sortable-ghost").CountAsync()).ShouldBe(1);
-            }));
+            await SavedAsync(page, () => TouchDragAsync(page, cdp, Row(page, before[0]).Locator(".row-move"), Row(page, before[1]), () => VerifyDragAsync(page)));
             plan = await ReadAsync(page, path);
             var within = await DomOrderAsync(page, destination);
             within.ShouldBe(PlanOrder(plan, destination));
@@ -397,7 +396,7 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             // the source group's last row; stacked phone rows make the group's
             // first row fall outside a viewport-sized synthetic drag.
             var moving = (await DomOrderAsync(page, source))[^1];
-            await SavedAsync(page, () => TouchDragAsync(page, cdp, Row(page, moving).Locator(".row-move"), Row(page, within[0]), () => Task.CompletedTask));
+            await SavedAsync(page, () => TouchDragAsync(page, cdp, Row(page, moving).Locator(".row-move"), Row(page, within[0]), () => VerifyDragAsync(page)));
             plan = await ReadAsync(page, path);
             plan.Categories.Single(category => string.Equals(category.Id.ToString(), moving, StringComparison.Ordinal)).GroupId.ShouldBe(destination);
             (await DomOrderAsync(page, destination)).ShouldBe(PlanOrder(plan, destination));
@@ -406,7 +405,7 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             var held = new TaskCompletionSource<IRoute>(TaskCreationOptions.RunContinuationsAsynchronously);
             await page.RouteAsync("**/categories/reorder", route => { held.TrySetResult(route); return Task.CompletedTask; });
             var confirmed = PlanOrder(plan, destination);
-            await TouchDragAsync(page, cdp, Row(page, confirmed[0]).Locator(".row-move"), Row(page, confirmed[1]), () => Task.CompletedTask);
+            await TouchDragAsync(page, cdp, Row(page, confirmed[0]).Locator(".row-move"), Row(page, confirmed[1]), () => VerifyDragAsync(page));
             var request = await held.Task.WaitAsync(TimeSpan.FromSeconds(30), timeout.Token);
             (await DomOrderAsync(page, destination)).ShouldNotBe(confirmed);
             await request.FulfillAsync(new()
@@ -629,14 +628,115 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
     private static string[] PlanOrder(PlanSnapshot plan, Guid group) => plan.Categories.Where(item => item.GroupId == group && !item.Hidden)
         .OrderBy(item => item.SortOrder).ThenBy(item => item.Id).Select(item => item.Id.ToString()).ToArray();
 
+    // Fluent only completes a keyboard move while the focused item is grabbed, and a render can clear
+    // that state between the two key presses. Confirm the grab, and press Enter only when it is missing,
+    // so the arrow key always has something to move.
+    private static async Task GrabAsync(IPage page, ILocator item)
+    {
+        await item.FocusAsync();
+        for (var attempt = 1; attempt <= 2; attempt++)
+        {
+            if (!await IsGrabbedAsync(page))
+            {
+                await item.PressAsync("Enter");
+            }
+
+            try
+            {
+                await page.WaitForFunctionAsync("() => document.activeElement?.getAttribute('aria-grabbed') === 'true'", null, new() { Timeout = 5000 });
+                return;
+            }
+            catch (TimeoutException) when (attempt < 2)
+            {
+                await item.FocusAsync();
+            }
+        }
+    }
+
+    private static Task<bool> IsGrabbedAsync(IPage page)
+        => page.EvaluateAsync<bool>("() => document.activeElement?.getAttribute('aria-grabbed') === 'true'");
+
+    // A synthetic touch drag that misses leaves no drag row and no placeholder, so fail at the gesture
+    // instead of waiting for the reorder that can never arrive.
+    private static async Task VerifyDragAsync(IPage page)
+    {
+        (await page.Locator(".category-list .sortable-drag").CountAsync()).ShouldBeGreaterThan(0);
+        (await page.Locator(".category-list .sortable-ghost").CountAsync()).ShouldBe(1);
+    }
+
     // Waits for the reorder command to commit and the workspace to leave its busy state before reading the result.
+    // A gesture the UI dropped sends no request, so repeat it once; a move that was accepted changes the plan
+    // revision, and a command still in flight shows its saving status, so neither is ever applied twice.
     private static async Task SavedAsync(IPage page, Func<Task> action)
     {
-        var response = await page.RunAndWaitForResponseAsync(action,
-            item => item.Url.EndsWith("/categories/reorder", StringComparison.Ordinal) && string.Equals(item.Request.Method, "POST", StringComparison.Ordinal));
-        response.Status.ShouldBe(200, response.Ok ? null : await response.TextAsync());
+        const int Attempts = 2;
+        var path = new Uri(page.Url).AbsolutePath;
+        var version = (await ReadAsync(page, path)).Version;
+        for (var attempt = 1; attempt <= Attempts; attempt++)
+        {
+            var response = await TryReorderAsync(page, action, retry: attempt > 1);
+            if (response is not null)
+            {
+                response.Status.ShouldBe(200, response.Ok ? null : await response.TextAsync());
+                break;
+            }
+
+            if ((await ReadAsync(page, path)).Version != version)
+            {
+                // The move committed after the response watch expired; the caller verifies the persisted order.
+                break;
+            }
+
+            if (attempt == Attempts || await IsSavingAsync(page))
+            {
+                throw new InvalidOperationException(await DescribeStalledReorderAsync(page, version));
+            }
+        }
+
         await page.WaitForFunctionAsync("() => document.querySelector('.category-list .row-move') && !document.querySelector('.category-list .row-move:not(.sortable-grab)')");
     }
+
+    // The probe is generous enough for a loaded server; only a gesture that produced nothing at all runs out.
+    // A timeout inside the gesture itself is rethrown instead of being mistaken for a dropped gesture.
+    private static async Task<IResponse?> TryReorderAsync(IPage page, Func<Task> action, bool retry)
+    {
+        var gestureTimedOut = false;
+        try
+        {
+            PageRunAndWaitForResponseOptions? options = retry ? null : new() { Timeout = 20000 };
+            return await page.RunAndWaitForResponseAsync(
+                async () =>
+                {
+                    try
+                    {
+                        await action();
+                    }
+                    catch (TimeoutException)
+                    {
+                        gestureTimedOut = true;
+                        throw;
+                    }
+                },
+                item => item.Url.EndsWith("/categories/reorder", StringComparison.Ordinal) && string.Equals(item.Request.Method, "POST", StringComparison.Ordinal),
+                options);
+        }
+        catch (TimeoutException) when (!gestureTimedOut)
+        {
+            return null;
+        }
+    }
+
+    private static async Task<bool> IsSavingAsync(IPage page)
+        => (await page.Locator(".workspace-status").AllInnerTextsAsync()).Any(item => item.Contains("Saving", StringComparison.Ordinal));
+
+    private static async Task<string> DescribeStalledReorderAsync(IPage page, long version)
+        => string.Join(
+            " | ",
+            $"No POST /categories/reorder arrived and the plan revision stayed at {version}",
+            $"grabbed items={await page.Locator(".sortable-item[aria-grabbed='true']").CountAsync()}",
+            $"drag rows={await page.Locator(".category-list .sortable-drag").CountAsync()} ghost={await page.Locator(".category-list .sortable-ghost").CountAsync()}",
+            $"status='{string.Join('/', await page.Locator(".workspace-status").AllInnerTextsAsync())}'",
+            $"focus='{await page.EvaluateAsync<string>("() => `${document.activeElement?.tagName}.${document.activeElement?.className}`")}'");
 
     // Playwright's touchscreen only taps, so the drag is dispatched through the Chromium protocol as real touch input.
     private static async Task TouchDragAsync(IPage page, ICDPSession cdp, ILocator handle, ILocator target, Func<Task> whileDragging)
