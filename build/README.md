@@ -10,12 +10,6 @@ SDK updates also update the compiler, built-in analyzers, and Razor parser used 
 the code-behind validator. Run the solution build and Razor policy checks after
 an SDK update.
 
-CI resolves that policy from the official release metadata and passes the exact
-SDK version to `actions/setup-dotnet`, so `dotnet-install` downloads from the
-direct `builds.dotnet.microsoft.com` feed instead of the `aka.ms` channel
-redirect. The resolver lives in `.github/actions/setup-dotnet/action.yml`; extend
-it when `global.json` adopts a new `rollForward` mode.
-
 ## Local validation and opt-in Git hooks
 
 Run the shared entry point from any directory using PowerShell 7 (`pwsh`):
