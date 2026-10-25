@@ -87,8 +87,21 @@
                             <button type="submit" class="secondary-action">Remove access</button>
                         </FluentStack>
                     </EditForm>
+                    <h3>Transfer ownership</h3>
+                    <p>Make a collaborator the owner. You stay on the plan with edit access, and only the new owner can change access or delete the plan.</p>
+                    <EditForm EditContext="_transferEditContext" id="transfer-owner-form" method="post" FormName="TransferOwnership" OnValidSubmit="TransferAsync" Enhance>
+                        <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalM)">
+                            <div class="form-field">
+                                <label for="transfer-person">New owner</label>
+                                <InputSelect id="transfer-person" @bind-Value="Transfer.MemberId" aria-describedby="@(_transferFeedback is { IsError: true } ? "transfer-person-error" : null)" data-validation-focus><option value="">Choose a person</option>@foreach (var person in sharing.Collaborators) { <option value="@person.UserId">@person.Name</option> }</InputSelect>
+                                @if (_transferFeedback is { IsError: true } transferError) { <p id="transfer-person-error" class="validation-message" role="alert">@transferError.Message</p> }
+                            </div>
+                            <button type="submit" class="secondary-action">Transfer ownership</button>
+                        </FluentStack>
+                    </EditForm>
                 }
                 @if (sharing.IsOwner && _removeFeedback is { IsError: false } removeSuccess) { <div class="notice" data-kind="success" role="status">@removeSuccess.Message</div> }
+                @if (_transferFeedback is { IsError: false } transferSuccess) { <div class="notice" data-kind="success" role="status">@transferSuccess.Message</div> }
                 @if (!sharing.IsOwner)
                 {
                     <EditForm Model="Leave" id="leave-plan-form" method="post" FormName="LeavePlan" OnValidSubmit="LeaveAsync" OnInvalidSubmit="LeaveInvalid" Enhance>
@@ -102,6 +115,24 @@
                 }
             }
         </section>
+        @if (_sharing is { IsOwner: true })
+        {
+            <details class="danger-zone" id="delete-plan-section">
+                <summary>Delete this plan</summary>
+                <p>Deleting <strong>@plan.Name</strong> permanently removes its accounts, categories, transactions, balances, share codes, and history. It cannot be undone, and everyone else loses access immediately.</p>
+                <p><a href="@($"/api/plans/{PlanId}")" download="@($"plan-{PlanId}.json")">Download this plan's data</a> before deleting it.</p>
+                <EditForm EditContext="_deleteEditContext" id="delete-plan-form" method="post" FormName="DeletePlan" OnValidSubmit="DeleteAsync" Enhance>
+                    <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalM)">
+                        <div class="form-field">
+                            <label for="delete-plan-name">Type <strong>@plan.Name</strong> to confirm</label>
+                            <InputText id="delete-plan-name" @bind-Value="Delete.PlanName" maxlength="100" autocomplete="off" aria-describedby="@(_deleteFeedback is { IsError: true } ? "delete-plan-name-error" : null)" data-validation-focus />
+                            @if (_deleteFeedback is { IsError: true } deleteError) { <p id="delete-plan-name-error" class="validation-message" role="alert">@deleteError.Message</p> }
+                        </div>
+                        <button type="submit" class="secondary-action">Delete plan permanently</button>
+                    </FluentStack>
+                </EditForm>
+            </details>
+        }
         <p class="muted">USD · US dates · manual accounts</p>
     </PlanFrame>
 }

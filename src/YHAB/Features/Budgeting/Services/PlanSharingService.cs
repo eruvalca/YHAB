@@ -132,6 +132,61 @@ internal sealed class PlanSharingService(IDbContextFactory<ApplicationDbContext>
         return await SummarizeAsync(database, plan, userId, cancellationToken);
     }
 
+    public async Task<PlanShareSummary> TransferOwnershipAsync(string userId, Guid planId, string memberId, CancellationToken cancellationToken)
+    {
+        await using var strategyContext = await factory.CreateDbContextAsync(cancellationToken);
+        return await strategyContext.Database.CreateExecutionStrategy().ExecuteAsync(async _ =>
+        {
+            await using var database = await factory.CreateDbContextAsync(cancellationToken);
+            await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
+            // Lock the plan row so two owners cannot hand the same plan to different accounts.
+            var plan = await database.Set<BudgetPlan>().FromSql($"""
+                SELECT * FROM "BudgetPlans" WHERE "Id" = {planId} FOR UPDATE
+                """).SingleOrDefaultAsync(cancellationToken);
+            if (plan is null || !string.Equals(plan.OwnerId, userId, StringComparison.Ordinal))
+            {
+                throw PlanAccess.Unavailable();
+            }
+            if (string.IsNullOrWhiteSpace(memberId))
+            {
+                throw new BudgetRequestException(400, "Choose a collaborator to take over this plan.");
+            }
+            var member = await database.Set<BudgetPlanMember>()
+                .SingleOrDefaultAsync(item => item.PlanId == planId && item.UserId == memberId, cancellationToken)
+                ?? throw new BudgetRequestException(404, "That account does not have access to this plan.");
+            // The outgoing owner keeps editing access as an ordinary collaborator.
+            var previousOwnerIsMember = await database.Set<BudgetPlanMember>()
+                .AnyAsync(item => item.PlanId == planId && item.UserId == userId, cancellationToken);
+            database.Remove(member);
+            if (!previousOwnerIsMember)
+            {
+                database.Add(new BudgetPlanMember { PlanId = planId, UserId = userId });
+            }
+
+            plan.OwnerId = memberId;
+            await database.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return await SummarizeAsync(database, plan, userId, cancellationToken);
+        }, cancellationToken);
+    }
+
+    public async Task DeleteAsync(string userId, Guid planId, string planName, CancellationToken cancellationToken)
+    {
+        await using var database = await factory.CreateDbContextAsync(cancellationToken);
+        var plan = await PlanAsync(database, planId, cancellationToken);
+        if (!string.Equals(plan.OwnerId, userId, StringComparison.Ordinal))
+        {
+            throw PlanAccess.Unavailable();
+        }
+        if (!string.Equals(plan.Name, planName?.Trim(), StringComparison.Ordinal))
+        {
+            throw new BudgetRequestException(400, "Type the plan name to confirm deletion.");
+        }
+        // Deleting the plan row cascades to its members and every plan-scoped ledger table,
+        // so collaborators and API callers lose access on their next request.
+        await database.Set<BudgetPlan>().Where(item => item.Id == planId).ExecuteDeleteAsync(cancellationToken);
+    }
+
     public async Task LeaveAsync(string userId, Guid planId, CancellationToken cancellationToken)
     {
         await using var database = await factory.CreateDbContextAsync(cancellationToken);

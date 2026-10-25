@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Shouldly;
 using Xunit;
 using YHAB.Data;
+using YHAB.Features.Budgeting.Data;
 using YHAB.SharedKernel.Budgeting;
 
 namespace YHAB.IntegrationTests;
@@ -169,6 +170,88 @@ public sealed class PlanSharingTests
 
         (await Task.WhenAll(first, second)).ShouldBe([id, id]);
         (await database.Sharing.ReadAsync("owner-a", id, timeout.Token)).Collaborators.ShouldBe([new("owner-b", "b@example.test")]);
+    }
+
+    [Fact]
+    public async Task OwnerDeletesPlanAndCollaboratorsLoseAccessAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(3));
+        await using var database = await BudgetDatabase.CreateAsync(timeout.Token);
+        var id = await database.Store.CreateAsync("owner-a", new("Doomed plan"), timeout.Token);
+        var plan = (await database.Store.ReadAsync("owner-a", id, timeout.Token)).ShouldNotBeNull();
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 500, plan.Today, false, "");
+        (await database.Store.ExecuteAsync("owner-a", id, new SaveAccount(plan.Version, account), timeout.Token)).IsT0.ShouldBeTrue();
+        var code = await database.Sharing.CreateShareCodeAsync("owner-a", id, timeout.Token);
+        await database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token);
+
+        var wrongName = await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.DeleteAsync("owner-a", id, "doomed plan", timeout.Token));
+        wrongName.Status.ShouldBe(400);
+        var missingName = await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.DeleteAsync("owner-a", id, "   ", timeout.Token));
+        missingName.Status.ShouldBe(400);
+        var notOwner = await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.DeleteAsync("owner-b", id, "Doomed plan", timeout.Token));
+        notOwner.Status.ShouldBe(404);
+        (await database.Store.ReadAsync("owner-b", id, timeout.Token)).ShouldNotBeNull();
+
+        await database.Sharing.DeleteAsync("owner-a", id, " Doomed plan ", timeout.Token);
+
+        (await database.Store.ReadAsync("owner-a", id, timeout.Token)).ShouldBeNull();
+        (await database.Store.ReadAsync("owner-b", id, timeout.Token)).ShouldBeNull();
+        (await database.Store.ListAsync("owner-a", timeout.Token)).ShouldBeEmpty();
+        (await database.Store.ListAsync("owner-b", timeout.Token)).ShouldBeEmpty();
+        (await Should.ThrowAsync<BudgetRequestException>(() => database.Queries.ViewAsync("owner-b", id, timeout.Token))).Status.ShouldBe(404);
+
+        await using var verify = await database.Factory.CreateDbContextAsync(timeout.Token);
+        (await verify.Set<BudgetPlan>().AnyAsync(item => item.Id == id, timeout.Token)).ShouldBeFalse();
+        (await verify.Set<BudgetPlanMember>().AnyAsync(item => item.PlanId == id, timeout.Token)).ShouldBeFalse();
+        (await verify.Set<BudgetPlanShareCode>().AnyAsync(item => item.PlanId == id, timeout.Token)).ShouldBeFalse();
+        (await verify.Set<BudgetPlanShareCodeRedemption>().AnyAsync(item => item.PlanId == id, timeout.Token)).ShouldBeFalse();
+        (await verify.Set<BudgetReceipt>().AnyAsync(item => item.PlanId == id, timeout.Token)).ShouldBeFalse();
+        (await verify.Set<BudgetAccount>().AnyAsync(item => item.PlanId == id, timeout.Token)).ShouldBeFalse();
+        (await verify.Set<BudgetCategory>().AnyAsync(item => item.PlanId == id, timeout.Token)).ShouldBeFalse();
+        (await verify.Set<BudgetHistory>().AnyAsync(item => item.PlanId == id, timeout.Token)).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task TransferOwnershipMakesTheCollaboratorOwnerAndKeepsThePreviousOwnerAsAMemberAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(3));
+        await using var database = await BudgetDatabase.CreateAsync(timeout.Token);
+        await AddUserAsync(database, "owner-c", "c@example.test", timeout.Token);
+        var id = await database.Store.CreateAsync("owner-a", new("Handover plan"), timeout.Token);
+        var code = await database.Sharing.CreateShareCodeAsync("owner-a", id, timeout.Token);
+        await database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token);
+        var version = (await database.Store.ReadAsync("owner-a", id, timeout.Token)).ShouldNotBeNull().Version;
+
+        var notOwner = await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.TransferOwnershipAsync("owner-b", id, "owner-a", timeout.Token));
+        notOwner.Status.ShouldBe(404);
+        var notMember = await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.TransferOwnershipAsync("owner-a", id, "owner-c", timeout.Token));
+        notMember.Status.ShouldBe(404);
+
+        var transferred = await database.Sharing.TransferOwnershipAsync("owner-a", id, "owner-b", timeout.Token);
+        transferred.IsOwner.ShouldBeFalse();
+        transferred.OwnerName.ShouldBe("b@example.test");
+        transferred.Collaborators.ShouldBe([new("owner-a", "a@example.test")]);
+        (await database.Sharing.ReadAsync("owner-b", id, timeout.Token)).IsOwner.ShouldBeTrue();
+
+        var previous = (await database.Store.ListAsync("owner-a", timeout.Token)).ShouldHaveSingleItem();
+        previous.IsOwner.ShouldBeFalse();
+        previous.SharedBy.ShouldBe("b@example.test");
+        (await database.Store.ListAsync("owner-b", timeout.Token)).ShouldHaveSingleItem().IsOwner.ShouldBeTrue();
+        (await database.Store.ReadAsync("owner-a", id, timeout.Token)).ShouldNotBeNull().IsOwner.ShouldBeFalse();
+        // Handing over access is not a ledger change, so the plan revision is untouched.
+        (await database.Store.ReadAsync("owner-b", id, timeout.Token)).ShouldNotBeNull().Version.ShouldBe(version);
+        (await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.CreateShareCodeAsync("owner-a", id, timeout.Token)))
+            .Status.ShouldBe(404);
+
+        // The outgoing owner keeps editing access and may leave like any collaborator.
+        (await database.Store.ExecuteAsync("owner-a", id, new UpdatePlan(version, "Handed over", ""), timeout.Token)).IsT0.ShouldBeTrue();
+        await database.Sharing.LeaveAsync("owner-a", id, timeout.Token);
+
+        (await database.Store.ListAsync("owner-a", timeout.Token)).ShouldBeEmpty();
+        (await database.Store.ReadAsync("owner-a", id, timeout.Token)).ShouldBeNull();
+        (await database.Sharing.ReadAsync("owner-b", id, timeout.Token)).Collaborators.ShouldBeEmpty();
     }
 
     private static async Task<BudgetRequestException?> CaptureAsync(Func<Task> action)

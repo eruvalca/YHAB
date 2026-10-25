@@ -16,6 +16,8 @@ public interface IBudgetClient
     Task<PlanShareCode> CreateShareCodeAsync(Guid planId, CancellationToken cancellationToken);
     Task<Guid> JoinAsync(string code, CancellationToken cancellationToken);
     Task<PlanShareSummary> UnshareAsync(Guid planId, string memberId, CancellationToken cancellationToken);
+    Task<PlanShareSummary> TransferOwnershipAsync(Guid planId, string memberId, CancellationToken cancellationToken);
     Task LeaveAsync(Guid planId, CancellationToken cancellationToken);
+    Task DeleteAsync(Guid planId, string planName, CancellationToken cancellationToken);
     Task ExecuteAsync(Guid planId, PlanCommand command, CancellationToken cancellationToken);
 }

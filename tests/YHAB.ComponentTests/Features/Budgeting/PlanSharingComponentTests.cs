@@ -149,6 +149,125 @@ public sealed class PlanSharingComponentTests
         component.FindAll(".notice[data-kind='error']").ShouldBeEmpty();
     }
 
+    [Theory]
+    [InlineData("", "Type the plan name to confirm deletion.")]
+    [InlineData("shared plan", "That name does not match. Type the plan name exactly to confirm deletion.")]
+    public async Task OwnerDeletingAPlanRequiresItsExactNameAsync(string typedName, string message)
+    {
+        await using var context = CreateContext();
+        var budgets = Substitute.For<IBudgetClient>();
+        var plan = Plan(isOwner: true);
+        Configure(budgets, plan, new PlanShareSummary("a@example.test", true, []));
+        context.Services.AddSingleton(budgets);
+
+        var component = context.Render<PlanSettings>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+
+        await component.WaitForAssertionAsync(() => component.Find("#delete-plan-section").ShouldNotBeNull());
+        component.Find("#delete-plan-section").TextContent.ShouldContain("cannot be undone");
+        component.Find("#delete-plan-section a").GetAttribute("href").ShouldBe($"/api/plans/{plan.Id}");
+        SetFormValue(component.Instance, "Delete", "PlanName", typedName);
+
+        await component.Find("#delete-plan-form").SubmitAsync();
+
+        await budgets.DidNotReceive().DeleteAsync(plan.Id, Arg.Any<string>(), Arg.Any<CancellationToken>());
+        component.Find("#delete-plan-name-error").TextContent.ShouldBe(message);
+    }
+
+    [Fact]
+    public async Task OwnerDeletesPlanWithItsExactNameAsync()
+    {
+        await using var context = CreateContext();
+        var budgets = Substitute.For<IBudgetClient>();
+        var plan = Plan(isOwner: true);
+        Configure(budgets, plan, new PlanShareSummary("a@example.test", true, []));
+        budgets.DeleteAsync(plan.Id, plan.Name, Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        context.Services.AddSingleton(budgets);
+
+        var component = context.Render<PlanSettings>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+
+        await component.WaitForAssertionAsync(() => component.Find("#delete-plan-form").ShouldNotBeNull());
+        SetFormValue(component.Instance, "Delete", "PlanName", plan.Name);
+        await component.Find("#delete-plan-form").SubmitAsync();
+
+        await budgets.Received(1).DeleteAsync(plan.Id, plan.Name, Arg.Any<CancellationToken>());
+        context.Services.GetRequiredService<NavigationManager>().Uri.ShouldEndWith("/plans");
+    }
+
+    [Fact]
+    public async Task CollaboratorCannotDeleteOrTransferAPlanAsync()
+    {
+        await using var context = CreateContext();
+        var budgets = Substitute.For<IBudgetClient>();
+        var plan = Plan(isOwner: false, ownerName: "a@example.test");
+        Configure(budgets, plan, new PlanShareSummary("a@example.test", false, [new("owner-c", "c@example.test")]));
+        context.Services.AddSingleton(budgets);
+
+        var component = context.Render<PlanSettings>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+
+        await component.WaitForAssertionAsync(() => component.Find("#leave-plan-form").ShouldNotBeNull());
+        component.FindAll("#delete-plan-section").ShouldBeEmpty();
+        component.FindAll("#delete-plan-form").ShouldBeEmpty();
+        component.FindAll("#transfer-owner-form").ShouldBeEmpty();
+        component.Markup.ShouldNotContain("Delete this plan");
+        component.Markup.ShouldNotContain("Transfer ownership");
+    }
+
+    [Fact]
+    public async Task OwnerTransfersOwnershipAndKeepsEditingAccessAsync()
+    {
+        await using var context = CreateContext();
+        var budgets = Substitute.For<IBudgetClient>();
+        var plan = Plan(isOwner: true);
+        var memberPlan = plan with { IsOwner = false, OwnerName = "b@example.test" };
+        var ownerSharing = new PlanShareSummary("a@example.test", true, [new("owner-b", "b@example.test")]);
+        var memberSharing = new PlanShareSummary("b@example.test", false, [new("owner-a", "a@example.test")]);
+        var viewReads = 0;
+        var sharingReads = 0;
+        budgets.ReadViewAsync(plan.Id, Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult(new PlanView(viewReads++ == 0 ? plan : memberPlan, [], false)));
+        budgets.ReadPayeesAsync(plan.Id, Arg.Any<CancellationToken>()).Returns([]);
+        budgets.ReadSharingAsync(plan.Id, Arg.Any<CancellationToken>())
+            .Returns(_ => Task.FromResult(sharingReads++ == 0 ? ownerSharing : memberSharing));
+        budgets.TransferOwnershipAsync(plan.Id, "owner-b", Arg.Any<CancellationToken>()).Returns(memberSharing);
+        context.Services.AddSingleton(budgets);
+
+        var component = context.Render<PlanSettings>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+
+        await component.WaitForAssertionAsync(() => component.Find("#transfer-owner-form").ShouldNotBeNull());
+        SetFormValue(component.Instance, "Transfer", "MemberId", "owner-b");
+        await component.Find("#transfer-owner-form").SubmitAsync();
+
+        await budgets.Received(1).TransferOwnershipAsync(plan.Id, "owner-b", Arg.Any<CancellationToken>());
+        component.Find("#sharing-section .notice[data-kind='success']").TextContent
+            .ShouldBe("That account is now the plan owner. You can still edit this plan.");
+        component.FindAll("#transfer-owner-form").ShouldBeEmpty();
+        component.FindAll("#remove-share-form").ShouldBeEmpty();
+        component.FindAll("#delete-plan-section").ShouldBeEmpty();
+        component.Find("#leave-plan-form").ShouldNotBeNull();
+        component.Markup.ShouldContain("This plan is shared with you by b@example.test.");
+    }
+
+    [Fact]
+    public async Task TransferringWithoutSelectionMarksPersonFieldInvalidAsync()
+    {
+        await using var context = CreateContext();
+        var budgets = Substitute.For<IBudgetClient>();
+        var plan = Plan(isOwner: true);
+        Configure(budgets, plan, new PlanShareSummary("a@example.test", true, [new("owner-b", "b@example.test")]));
+        context.Services.AddSingleton(budgets);
+
+        var component = context.Render<PlanSettings>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+
+        await component.WaitForAssertionAsync(() => component.Find("#transfer-owner-form").ShouldNotBeNull());
+        await component.Find("#transfer-owner-form").SubmitAsync();
+
+        var select = component.Find("#transfer-person");
+        select.GetAttribute("aria-invalid").ShouldBe("true");
+        select.GetAttribute("aria-describedby").ShouldBe("transfer-person-error");
+        component.Find("#transfer-person-error").TextContent.ShouldBe("Choose a person to take over this plan.");
+        await budgets.DidNotReceive().TransferOwnershipAsync(plan.Id, Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
     [Fact]
     public async Task SharedMemberSeesOwnerAndRejectsUnconfirmedLeaveAsync()
     {

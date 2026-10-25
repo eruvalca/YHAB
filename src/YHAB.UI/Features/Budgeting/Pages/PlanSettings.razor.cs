@@ -9,11 +9,14 @@ public sealed partial class PlanSettings(IBudgetClient budgets, NavigationManage
 {
     private const string ConnectionError = "We couldn't reach your plan. Check your connection and refresh.";
     private const string SavedRefreshError = "Your change was saved. Reload to update the displayed settings.";
+    private const string TransferSavedRefreshError = "Ownership changed. Reload to update the displayed settings.";
     [Parameter] public Guid PlanId { get; set; }
     [SupplyParameterFromForm(FormName = "PlanSettings")] private SettingsInput Settings { get; set; } = default!;
     [SupplyParameterFromForm(FormName = "RenamePayee")] private PayeeInput Payee { get; set; } = default!;
     [SupplyParameterFromForm(FormName = "CreateShareCode")] private ShareCodeInput ShareCodeForm { get; set; } = default!;
     [SupplyParameterFromForm(FormName = "RemoveShare")] private RemoveInput Remove { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "TransferOwnership")] private TransferInput Transfer { get; set; } = default!;
+    [SupplyParameterFromForm(FormName = "DeletePlan")] private DeleteInput Delete { get; set; } = default!;
     [SupplyParameterFromForm(FormName = "LeavePlan")] private LeaveInput Leave { get; set; } = default!;
     private PlanSnapshot? _plan;
     private PlanShareSummary? _sharing;
@@ -25,9 +28,15 @@ public sealed partial class PlanSettings(IBudgetClient budgets, NavigationManage
     private Feedback? _renameFeedback;
     private Feedback? _shareFeedback;
     private Feedback? _removeFeedback;
+    private Feedback? _transferFeedback;
+    private Feedback? _deleteFeedback;
     private Feedback? _leaveFeedback;
     private EditContext _removeEditContext = default!;
     private ValidationMessageStore _removeMessages = default!;
+    private EditContext _transferEditContext = default!;
+    private ValidationMessageStore _transferMessages = default!;
+    private EditContext _deleteEditContext = default!;
+    private ValidationMessageStore _deleteMessages = default!;
     protected override async Task OnInitializedAsync()
     {
         using var operation = CreateOperation();
@@ -41,6 +50,12 @@ public sealed partial class PlanSettings(IBudgetClient budgets, NavigationManage
             Remove ??= new();
             _removeEditContext = new(Remove);
             _removeMessages = new(_removeEditContext);
+            Transfer ??= new();
+            _transferEditContext = new(Transfer);
+            _transferMessages = new(_transferEditContext);
+            Delete ??= new();
+            _deleteEditContext = new(Delete);
+            _deleteMessages = new(_deleteEditContext);
             Leave ??= new();
         }
         catch (BudgetRequestException exception) { _pageError = exception.Message; }
@@ -110,6 +125,93 @@ public sealed partial class PlanSettings(IBudgetClient budgets, NavigationManage
     {
         _removeMessages.Clear();
         _removeEditContext.NotifyFieldChanged(_removeEditContext.Field(nameof(Remove.MemberId)));
+    }
+    private async Task TransferAsync()
+    {
+        _pageError = null;
+        _transferFeedback = null;
+        ClearTransferErrors();
+        if (string.IsNullOrWhiteSpace(Transfer.MemberId))
+        {
+            ShowTransferError("Choose a person to take over this plan.");
+            return;
+        }
+        using var operation = CreateOperation();
+        var token = operation.Token;
+        var transferred = false;
+        try
+        {
+            await budgets.TransferOwnershipAsync(PlanId, Transfer.MemberId, token);
+            transferred = true;
+            token.ThrowIfCancellationRequested();
+            Transfer.MemberId = string.Empty;
+            await LoadAsync(token);
+            _transferFeedback = new("That account is now the plan owner. You can still edit this plan.", false);
+        }
+        catch (BudgetRequestException exception)
+        {
+            if (transferred) { _pageError = TransferSavedRefreshError; }
+            else if (RequiresPageNotice(exception)) { _pageError = exception.Message; }
+            else { ShowTransferError(exception.Message); }
+        }
+        catch (HttpRequestException) { _pageError = transferred ? TransferSavedRefreshError : ConnectionError; }
+    }
+    private void ClearTransferErrors()
+    {
+        _transferMessages.Clear();
+        _transferEditContext.NotifyFieldChanged(_transferEditContext.Field(nameof(Transfer.MemberId)));
+    }
+    private void ShowTransferError(string message)
+    {
+        _transferFeedback = new(message, true);
+        _transferMessages.Add(() => Transfer.MemberId, message);
+        _transferEditContext.NotifyFieldChanged(_transferEditContext.Field(nameof(Transfer.MemberId)));
+    }
+    private async Task DeleteAsync()
+    {
+        _pageError = null;
+        _deleteFeedback = null;
+        ClearDeleteErrors();
+        var typed = Delete.PlanName.Trim();
+        if (typed.Length == 0)
+        {
+            ShowDeleteError("Type the plan name to confirm deletion.");
+            return;
+        }
+        if (!string.Equals(typed, _plan!.Name, StringComparison.Ordinal))
+        {
+            ShowDeleteError("That name does not match. Type the plan name exactly to confirm deletion.");
+            return;
+        }
+        using var operation = CreateOperation();
+        var token = operation.Token;
+        try
+        {
+            await budgets.DeleteAsync(PlanId, typed, token);
+            token.ThrowIfCancellationRequested();
+            navigation.NavigateTo("/plans");
+        }
+        catch (BudgetRequestException exception) when (exception.Status == 404)
+        {
+            navigation.NavigateTo("/plans");
+        }
+        catch (BudgetRequestException exception)
+        {
+            if (RequiresPageNotice(exception)) { _pageError = exception.Message; }
+            else { ShowDeleteError(exception.Message); }
+        }
+        catch (HttpRequestException) { _pageError = ConnectionError; }
+    }
+    private void ClearDeleteErrors()
+    {
+        _deleteMessages.Clear();
+        _deleteEditContext.NotifyFieldChanged(_deleteEditContext.Field(nameof(Delete.PlanName)));
+    }
+    private void ShowDeleteError(string message)
+    {
+        _deleteFeedback = new(message, true);
+        _deleteMessages.Add(() => Delete.PlanName, message);
+        _deleteEditContext.NotifyFieldChanged(_deleteEditContext.Field(nameof(Delete.PlanName)));
     }
     private void LeaveInvalid() => _leaveFeedback = null;
     private async Task LeaveAsync()
@@ -209,6 +311,14 @@ public sealed partial class PlanSettings(IBudgetClient budgets, NavigationManage
     private sealed class RemoveInput
     {
         [Required] public string MemberId { get; set; } = "";
+    }
+    private sealed class TransferInput
+    {
+        [Required] public string MemberId { get; set; } = "";
+    }
+    private sealed class DeleteInput
+    {
+        [Required] public string PlanName { get; set; } = "";
     }
     private sealed class LeaveInput
     {
