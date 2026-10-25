@@ -64,9 +64,20 @@ internal sealed class HttpBudgetClient(HttpClient http) : IBudgetClient
         return await ReadSummaryAsync(response, cancellationToken);
     }
 
+    public async Task<PlanShareSummary> TransferOwnershipAsync(Guid planId, string memberId, CancellationToken cancellationToken)
+    {
+        using var response = await SendAsync(HttpMethod.Post, $"api/plans/{planId}/sharing/{Uri.EscapeDataString(memberId)}/owner", null, cancellationToken);
+        return await ReadSummaryAsync(response, cancellationToken);
+    }
+
     public async Task LeaveAsync(Guid planId, CancellationToken cancellationToken)
     {
         using var response = await SendAsync(HttpMethod.Post, $"api/plans/{planId}/leave", null, cancellationToken);
+    }
+
+    public async Task DeleteAsync(Guid planId, string planName, CancellationToken cancellationToken)
+    {
+        using var response = await SendAsync(HttpMethod.Delete, $"api/plans/{planId}?confirm={Uri.EscapeDataString(planName)}", null, cancellationToken);
     }
 
     private static async Task<PlanShareSummary> ReadSummaryAsync(HttpResponseMessage response, CancellationToken cancellationToken)

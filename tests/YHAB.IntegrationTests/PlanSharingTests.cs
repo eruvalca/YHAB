@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Shouldly;
 using Xunit;
 using YHAB.Data;
+using YHAB.Features.Budgeting.Data;
 using YHAB.SharedKernel.Budgeting;
 
 namespace YHAB.IntegrationTests;
@@ -217,6 +218,109 @@ public sealed class PlanSharingTests
         summary.SharedBy.ShouldBe("Member");
     }
 
+    [Fact]
+    public async Task OwnerDeletesPlanAndCollaboratorsLoseAccessAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(3));
+        await using var database = await BudgetDatabase.CreateAsync(timeout.Token);
+        var id = await database.Store.CreateAsync("owner-a", new("Doomed plan"), timeout.Token);
+        var plan = (await database.Store.ReadAsync("owner-a", id, timeout.Token)).ShouldNotBeNull();
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 500, plan.Today, false, "");
+        (await database.Store.ExecuteAsync("owner-a", id, new SaveAccount(plan.Version, account), timeout.Token)).IsT0.ShouldBeTrue();
+        var code = await database.Sharing.CreateShareCodeAsync("owner-a", id, timeout.Token);
+        await database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token);
+
+        var wrongName = await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.DeleteAsync("owner-a", id, "doomed plan", timeout.Token));
+        wrongName.Status.ShouldBe(400);
+        var missingName = await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.DeleteAsync("owner-a", id, "   ", timeout.Token));
+        missingName.Status.ShouldBe(400);
+        var notOwner = await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.DeleteAsync("owner-b", id, "Doomed plan", timeout.Token));
+        notOwner.Status.ShouldBe(404);
+        (await database.Store.ReadAsync("owner-b", id, timeout.Token)).ShouldNotBeNull();
+
+        await database.Sharing.DeleteAsync("owner-a", id, " Doomed plan ", timeout.Token);
+
+        (await database.Store.ReadAsync("owner-a", id, timeout.Token)).ShouldBeNull();
+        (await database.Store.ReadAsync("owner-b", id, timeout.Token)).ShouldBeNull();
+        (await database.Store.ListAsync("owner-a", timeout.Token)).ShouldBeEmpty();
+        (await database.Store.ListAsync("owner-b", timeout.Token)).ShouldBeEmpty();
+        (await Should.ThrowAsync<BudgetRequestException>(() => database.Queries.ViewAsync("owner-b", id, timeout.Token))).Status.ShouldBe(404);
+
+        await using var verify = await database.Factory.CreateDbContextAsync(timeout.Token);
+        (await verify.Set<BudgetPlan>().AnyAsync(item => item.Id == id, timeout.Token)).ShouldBeFalse();
+        (await verify.Set<BudgetPlanMember>().AnyAsync(item => item.PlanId == id, timeout.Token)).ShouldBeFalse();
+        (await verify.Set<BudgetPlanShareCode>().AnyAsync(item => item.PlanId == id, timeout.Token)).ShouldBeFalse();
+        (await verify.Set<BudgetPlanShareCodeRedemption>().AnyAsync(item => item.PlanId == id, timeout.Token)).ShouldBeFalse();
+        (await verify.Set<BudgetReceipt>().AnyAsync(item => item.PlanId == id, timeout.Token)).ShouldBeFalse();
+        (await verify.Set<BudgetAccount>().AnyAsync(item => item.PlanId == id, timeout.Token)).ShouldBeFalse();
+        (await verify.Set<BudgetCategory>().AnyAsync(item => item.PlanId == id, timeout.Token)).ShouldBeFalse();
+        (await verify.Set<BudgetHistory>().AnyAsync(item => item.PlanId == id, timeout.Token)).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task TransferOwnershipMakesTheCollaboratorOwnerAndKeepsThePreviousOwnerAsAMemberAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(3));
+        await using var database = await BudgetDatabase.CreateAsync(timeout.Token);
+        await AddUserAsync(database, "owner-c", "c@example.test", "Cara", timeout.Token);
+        var id = await database.Store.CreateAsync("owner-a", new("Handover plan"), timeout.Token);
+        var code = await database.Sharing.CreateShareCodeAsync("owner-a", id, timeout.Token);
+        await database.Sharing.JoinAsync("owner-b", code.Code, timeout.Token);
+        var version = (await database.Store.ReadAsync("owner-a", id, timeout.Token)).ShouldNotBeNull().Version;
+
+        var notOwner = await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.TransferOwnershipAsync("owner-b", id, "owner-a", timeout.Token));
+        notOwner.Status.ShouldBe(404);
+        var notMember = await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.TransferOwnershipAsync("owner-a", id, "owner-c", timeout.Token));
+        notMember.Status.ShouldBe(404);
+
+        var transferred = await database.Sharing.TransferOwnershipAsync("owner-a", id, "owner-b", timeout.Token);
+        transferred.IsOwner.ShouldBeFalse();
+        transferred.OwnerName.ShouldBe("Bob");
+        transferred.Collaborators.ShouldBe([new("owner-a", "Alice")]);
+        (await database.Sharing.ReadAsync("owner-b", id, timeout.Token)).IsOwner.ShouldBeTrue();
+
+        var previous = (await database.Store.ListAsync("owner-a", timeout.Token)).ShouldHaveSingleItem();
+        previous.IsOwner.ShouldBeFalse();
+        previous.SharedBy.ShouldBe("Bob");
+        (await database.Store.ListAsync("owner-b", timeout.Token)).ShouldHaveSingleItem().IsOwner.ShouldBeTrue();
+        (await database.Store.ReadAsync("owner-a", id, timeout.Token)).ShouldNotBeNull().IsOwner.ShouldBeFalse();
+        // Handing over access is not a ledger change, so the plan revision is untouched.
+        (await database.Store.ReadAsync("owner-b", id, timeout.Token)).ShouldNotBeNull().Version.ShouldBe(version);
+        (await Should.ThrowAsync<BudgetRequestException>(() => database.Sharing.CreateShareCodeAsync("owner-a", id, timeout.Token)))
+            .Status.ShouldBe(404);
+
+        // The outgoing owner keeps editing access and may leave like any collaborator.
+        (await database.Store.ExecuteAsync("owner-a", id, new UpdatePlan(version, "Handed over", ""), timeout.Token)).IsT0.ShouldBeTrue();
+        await database.Sharing.LeaveAsync("owner-a", id, timeout.Token);
+
+        (await database.Store.ListAsync("owner-a", timeout.Token)).ShouldBeEmpty();
+        (await database.Store.ReadAsync("owner-a", id, timeout.Token)).ShouldBeNull();
+        (await database.Sharing.ReadAsync("owner-b", id, timeout.Token)).Collaborators.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task DeletionRejectsAPlanRenamedAfterTheConfirmationReadAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(3));
+        using var barrier = new DeleteBarrier();
+        await using var database = await BudgetDatabase.CreateAsync(timeout.Token, interceptor: barrier);
+        var id = await database.Store.CreateAsync("owner-a", new("Doomed plan"), timeout.Token);
+        barrier.Arm();
+
+        var deletion = database.Sharing.DeleteAsync("owner-a", id, "Doomed plan", timeout.Token);
+        await barrier.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10), timeout.Token);
+        var plan = (await database.Store.ReadAsync("owner-a", id, timeout.Token)).ShouldNotBeNull();
+        (await database.Store.ExecuteAsync("owner-a", id, new UpdatePlan(plan.Version, "Renamed plan", ""), timeout.Token)).IsT0.ShouldBeTrue();
+        barrier.Release();
+
+        var conflict = await Should.ThrowAsync<BudgetRequestException>(() => deletion);
+        conflict.Status.ShouldBe(409);
+        (await database.Store.ReadAsync("owner-a", id, timeout.Token)).ShouldNotBeNull().Name.ShouldBe("Renamed plan");
+    }
+
     private static async Task<BudgetRequestException?> CaptureAsync(Func<Task> action)
     {
         try
@@ -250,6 +354,30 @@ public sealed class PlanSharingTests
         private DateTimeOffset _now = new(2026, 10, 2, 12, 0, 0, TimeSpan.Zero);
         public override DateTimeOffset GetUtcNow() => _now;
         public void Advance(TimeSpan duration) => _now = _now.Add(duration);
+    }
+
+    // Pauses the conditional delete so the test can change the plan after ownership and the
+    // confirmed name were read but before the delete predicate runs.
+    private sealed class DeleteBarrier : DbCommandInterceptor, IDisposable
+    {
+        private readonly SemaphoreSlim _gate = new(0);
+        private int _armed;
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public void Arm() => Interlocked.Exchange(ref _armed, 1);
+        public void Release() => _gate.Release();
+        public void Dispose() => _gate.Dispose();
+
+        public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(DbCommand command, CommandEventData eventData,
+            InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.StartsWith("DELETE FROM \"BudgetPlans\"", StringComparison.Ordinal)
+                && Interlocked.Exchange(ref _armed, 0) == 1)
+            {
+                Entered.TrySetResult();
+                await _gate.WaitAsync(cancellationToken);
+            }
+            return result;
+        }
     }
 
     // Holds both invitation lookups until the test releases them, forcing one join to

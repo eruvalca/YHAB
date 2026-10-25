@@ -75,6 +75,15 @@ internal static class BudgetEndpoints
         group.MapDelete("/{planId:guid}/sharing/{memberId}", async (Guid planId, string memberId, HttpContext context, [FromServices] PlanSharingService sharing, CancellationToken token)
             => TypedResults.Ok(await sharing.UnshareAsync(Owner(context), planId, memberId, token)))
             .WithSummary("Stop sharing a plan with an account.");
+        group.MapPost("/{planId:guid}/sharing/{memberId}/owner", async (Guid planId, string memberId, HttpContext context, [FromServices] PlanSharingService sharing, CancellationToken token)
+            => TypedResults.Ok(await sharing.TransferOwnershipAsync(Owner(context), planId, memberId, token)))
+            .WithSummary("Make a collaborator the owner of a plan.");
+        group.MapDelete("/{planId:guid}", async (Guid planId, [FromQuery] string? confirm, HttpContext context,
+            [FromServices] PlanSharingService sharing, CancellationToken token) =>
+        {
+            await sharing.DeleteAsync(Owner(context), planId, confirm ?? string.Empty, token);
+            return TypedResults.NoContent();
+        }).WithSummary("Permanently delete a plan you own.");
         group.MapPost("/{planId:guid}/leave", async (Guid planId, HttpContext context, [FromServices] PlanSharingService sharing, CancellationToken token) =>
         {
             await sharing.LeaveAsync(Owner(context), planId, token);

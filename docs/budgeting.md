@@ -109,6 +109,11 @@ sharing falls back to **Member** if a saved name ever matches the current addres
 Email addresses and usernames remain private to each account owner and are never
 rendered to collaborators or returned in sharing responses.
 
+An owner can hand a plan to a collaborator with **Transfer ownership**. The new
+owner gains the owner-only controls, and the previous owner stays on the plan as a
+collaborator with edit access, so they can keep working or use **Leave this plan**.
+Transferring does not change the plan revision, balances, or history.
+
 Create groups with **Category group** above the plan table, and add categories
 with the **+** on a group header. New names are entered directly in the table.
 Use **Rename**, double-click a name, or press F2 on a name to edit it inline;
@@ -204,6 +209,17 @@ account register is open. Open **Plan & accounts** for accounts; a new plan's
 the drawer. The same sidebar is used by transactions, reports, and plan settings.
 Installation
 controls remain available in the site footer.
+
+## Deleting a plan
+
+The owner's **Plan settings** page ends with **Delete this plan**. It warns that
+the plan's accounts, categories, transactions, balances, share codes, and history
+are removed permanently, and it links to a JSON download of the plan's data to
+keep first. Type the plan name exactly into the confirmation field; an empty or
+mismatched name is rejected by the page and by the API. Deletion is not undoable.
+The plan row and its ledger are removed in one operation, so collaborators lose
+access on their next request and the plan disappears from every plans list and
+API response.
 
 ## Monthly rules
 
@@ -517,6 +533,8 @@ plan, and 409 stale revision. Responses are not cacheable.
 | Join with a share code | POST `/api/plans/join` |
 | Stop sharing | DELETE `/api/plans/{planId}/sharing/{userId}` |
 | Leave a shared plan | POST `/api/plans/{planId}/leave` |
+| Transfer ownership | POST `/api/plans/{planId}/sharing/{userId}/owner` |
+| Delete a plan | DELETE `/api/plans/{planId}?confirm={planName}` |
 | Create account/group/category/transaction | POST `/api/plans/{planId}/{collection}` |
 | Move group / category | POST `/api/plans/{planId}/groups/reorder` / `categories/reorder` |
 | Update an item | PUT `/api/plans/{planId}/{collection}/{resourceId}` |
@@ -565,6 +583,7 @@ isolated AppHosts. Browser tests exercise both desktop and phone widths.
 | Category history and payee management | `MergingAUsedCategoryPreservesAssignmentsSpendingAndAccountBalance`, `MergingAssignedCategoryPersistsHistoryAndSupportsUndoRedoAsync`, `PayeeRenameChangesMatchingPostedAndRecurringEntriesOnly`, `TransactionEditorsUsePayeeProjectionAndRefreshSuggestionsAsync` |
 | Private plans, SQL integrity, durable history, and concurrent edits | `OwnerIsolationHistoryAndConcurrentWritesPersistAcrossContextsAsync`, `DatabaseRejectsCrossPlanReferencesAndAccountDeletionRemovesOwnedLedgerAsync` |
 | In-app plan sharing, editing, and access removal | `ShareCodeGrantsEditingAndReadAccessUntilTheOwnerRemovesItAsync`, `JoinRejectsInvalidExpiredEmptyAndOwnerCodesAsync`, `ASharedMemberCanLeaveButAnOwnerCannotAsync`, `CodesAreSingleUseAndRedemptionRetriesAreIdempotentAsync`, `ConcurrentRedemptionIsIdempotentAndConcurrentRemovalHasOneWinnerAsync`, `MissingDisplayNameFallsBackToAFriendlyNameInsteadOfTheEmailAsync`, `DisplayNameThatEqualsTheCurrentAccountEmailFallsBackToMemberAsync`, `PlansPageSeparatesOwnedAndSharedPlansAndShowsJoinFormAsync`, `OwnerCreatesShareCodeAndRemovesACollaboratorAsync`, `DuplicateCollaboratorNamesAreNumberedSoTheOwnerCanRemoveTheRightAccountAsync`, `GeneratedDuplicateLabelsDoNotCollideWithLiteralDisplayNamesAsync`, `SharedMemberSeesOwnerAndRejectsUnconfirmedLeaveAsync`, `PlansPageJoinsWithACodeAsync`, `JoinServiceErrorIsShownAsync` |
+| Plan deletion and ownership transfer | `OwnerDeletesPlanAndCollaboratorsLoseAccessAsync`, `TransferOwnershipMakesTheCollaboratorOwnerAndKeepsThePreviousOwnerAsAMemberAsync`, `OwnerDeletingAPlanRequiresItsExactNameAsync`, `OwnerDeletesPlanWithItsExactNameAsync`, `CollaboratorCannotDeleteOrTransferAPlanAsync`, `OwnerTransfersOwnershipAndKeepsEditingAccessAsync`, `TransferringWithoutSelectionMarksPersonFieldInvalidAsync` |
 | Manual browser workflow, calculator entry, keyboard undo/redo, reports, and API guards | `ManualPlanPurchaseUndoAndReportsAgreeAsync` at 1440px and 390px, including the phone amount keypad, the Available-pill move flow, editor tap size, and sticky editor chrome; `TappingAvailableMovesMoneyOutOfTheCategoryAsync` covers the touch move flow |
 | Themes, mobile navigation, and SSR document continuity | `FluentNavigationPreservesDocumentAndThemeChoice` at 1280px and 390px |
 | Actual startup, migrations, and database readiness | `AppHostCompletesMigrationsAndServesHealthyApplication` |
