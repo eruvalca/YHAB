@@ -7,6 +7,7 @@ using NSubstitute;
 using Shouldly;
 using Xunit;
 using YHAB.SharedKernel.Budgeting;
+using YHAB.UI.Features.Budgeting.Components;
 using YHAB.UI.Features.Budgeting.Pages;
 
 namespace YHAB.ComponentTests.Features.Budgeting;
@@ -103,6 +104,31 @@ public sealed class WorkspaceTests
         await component.WaitForAssertionAsync(() => component.Find(".hero-amount").TextContent.ShouldBe(interactive ? "$3,000.00" : "$1,000.00"));
     }
 
+    [Fact]
+    public void CategoryReportNavigationKeepsTheRegisterAndFiltersActive()
+    {
+        using var context = new BunitContext();
+        var (budgets, empty) = Configure(context);
+        var group = new GroupData(Guid.NewGuid(), "Everyday", 0);
+        var category = new CategoryData(Guid.NewGuid(), group.Id, "Groceries", "", 0, false, null, null);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, empty.Today, false, "");
+        var plan = empty with { Accounts = [account], Groups = [group], Categories = [category] };
+        budgets.ReadViewAsync(plan.Id, Arg.Any<CancellationToken>()).Returns(View(plan));
+        budgets.ReadRegisterAsync(plan.Id, Arg.Any<RegisterQuery>(), Arg.Any<CancellationToken>())
+            .Returns(call => new RegisterPage(call.Arg<RegisterQuery>().Version!.Value, [], 0, null));
+        budgets.ReadPayeesAsync(plan.Id, Arg.Any<CancellationToken>()).Returns([]);
+        context.Services.GetRequiredService<NavigationManager>().NavigateTo(
+            $"/plans/{plan.Id}/accounts?category={category.Id}&from=2026-10-01&to=2026-10-31");
+
+        var workspace = context.Render<Workspace>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+
+        workspace.FindComponents<BudgetBoard>().ShouldBeEmpty();
+        var register = workspace.FindComponent<AccountRegister>().Instance;
+        register.InitialCategoryId.ShouldBe(category.Id);
+        register.InitialFrom.ShouldBe(new DateOnly(2026, 10, 1));
+        register.InitialThrough.ShouldBe(new DateOnly(2026, 10, 31));
+    }
+
     private static PlanView View(PlanSnapshot plan, bool due = false) => new(plan with { Transactions = [] },
         plan.Accounts.Select(account => BudgetFacts.Balance(plan, account, plan.Today)).ToArray(), due);
 
@@ -190,7 +216,7 @@ public sealed class WorkspaceTests
         component.Find(".workspace-status").TextContent.ShouldBe("Change undone");
         var expected = conflicts == 1 ? "$1,200.00" : "$1,300.00";
         component.Find(".hero-amount").TextContent.ShouldBe(expected);
-        component.FindComponent<UI.Features.Budgeting.Components.PlanNavigation>().Instance.Balances!.Single().Working.ShouldBe(conflicts == 1 ? 1200 : 1300);
+        component.FindComponent<PlanNavigation>().Instance.Balances!.Single().Working.ShouldBe(conflicts == 1 ? 1200 : 1300);
         budgets.ReceivedCalls().Where(call => string.Equals(call.GetMethodInfo().Name, nameof(IBudgetClient.ReadMonthAsync), StringComparison.Ordinal))
             .Select(call => (long)call.GetArguments()[2]!).ShouldBe(Enumerable.Range(7, conflicts + 2).Select(value => (long)value));
     }

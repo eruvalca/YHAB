@@ -411,11 +411,11 @@ use one parameterized update; their history does not contain complete transactio
 Rename, undo and redo preserve financial checkpoints. Account edits use a SQL
 aggregate for first transaction date and posted balances.
 Aggregate queries still process relevant account history
-in the database; they do not materialize it in the application. Reports aggregate prior movements per account and
-requested movements per account/month and category/month in SQL. The pure report
-calculator adds dated opening balances and builds net worth and spending from those
-totals; transaction and split entities are not loaded. Both aggregate queries and
-the catalog share one repeatable-read revision, including for partial-month ranges.
+in the database; they do not materialize it in the application. Reports aggregate prior movements per account,
+requested movements per account/month and category/month, and selected-month allocations per category in SQL.
+The pure report calculator adds dated opening balances and builds net worth and spending from those totals;
+transaction, split and allocation entities are not loaded. The aggregate queries and the catalog share one
+repeatable-read revision, including for partial-month ranges.
 The database still processes relevant historical movements to calculate balances.
 The browser never needs the complete ledger for these views. The validation report records observations
 through 100,000 entries, 100 accounts, 500 categories and 20 years of allocations,

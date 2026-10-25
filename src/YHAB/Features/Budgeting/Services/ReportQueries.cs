@@ -38,6 +38,11 @@ internal static class ReportQueries
             .ToArrayAsync(token);
         var totals = new ReportTotals(balances.Where(item => item.Year == 0).ToDictionary(item => item.AccountId, item => item.Amount),
             balances.Where(item => item.Year != 0).Select(item => new ReportAccountMonth(item.AccountId, new(item.Year, item.Month, 1), item.Amount)).ToArray(), categories);
-        return ReportCalculator.FromTotals(catalog, fromDate, through, totals);
+        var budgeted = await database.Set<BudgetAllocation>().Where(item => item.PlanId == catalog.Id
+            && item.Month >= BudgetFacts.Month(fromDate) && item.Month <= BudgetFacts.Month(through))
+            .GroupBy(item => item.CategoryId)
+            .Select(group => new { group.Key, Amount = group.Sum(item => item.Amount) })
+            .ToDictionaryAsync(item => item.Key, item => item.Amount, token);
+        return ReportCalculator.FromTotals(catalog, fromDate, through, totals) with { Budgeted = budgeted };
     }
 }

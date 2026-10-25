@@ -21,7 +21,7 @@
 .expense-bar { background: var(--colorPaletteRedBackground3); }
 @media (max-width: 40rem) { .report-heading { display: block; } .cash-flow-row { grid-template-columns: 4rem minmax(3rem, 1fr); } .cash-flow-row > .numeric { grid-column: 2; } }
 @media print {
-    .report-presets, .report-filter, .report-actions, .print-button, ::deep .plan-sidebar { display: none !important; }
+    .report-presets, .report-filter, .report-actions, .print-button { display: none !important; }
     .report-section, .stat { break-inside: avoid; }
     .trend-chart svg { max-height: 12rem; }
 }

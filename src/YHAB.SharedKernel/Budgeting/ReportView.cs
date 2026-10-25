@@ -1,3 +1,4 @@
 namespace YHAB.SharedKernel.Budgeting;
 
-public sealed record ReportView(long Version, IReadOnlyList<MonthReport> Months, IReadOnlyList<CategorySpending> Spending);
+public sealed record ReportView(long Version, IReadOnlyList<MonthReport> Months, IReadOnlyList<CategorySpending> Spending,
+    IReadOnlyDictionary<Guid, decimal> Budgeted);

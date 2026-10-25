@@ -66,7 +66,8 @@ public sealed class ReportsTests
             var current = call.ArgAt<DateOnly>(1) == new DateOnly(2026, 10, 1);
             return new ReportView(plan.Version,
                 [new(new DateOnly(2026, current ? 10 : 9, 1), current ? 120 : 100, current ? 40 : 30, 1000, 200)],
-                current ? [new(groceries.Id, "Groceries, market", 40)] : []);
+                current ? [new(groceries.Id, "Groceries, market", 40)] : [],
+                new Dictionary<Guid, decimal> { [groceries.Id] = 75 });
         });
         context.Services.GetRequiredService<NavigationManager>().NavigateTo($"/plans/{plan.Id}/reports?from=2026-10-01&to=2026-10-03");
         var component = context.Render<Reports>(parameters => parameters.Add(item => item.PlanId, plan.Id));
@@ -76,6 +77,8 @@ public sealed class ReportsTests
         component.Find(".spending-row").TextContent.ShouldContain("100.0% of spending");
         component.Find(".spending-row").TextContent.ShouldContain("Budgeted $75.00");
         component.Find(".spending-row a").GetAttribute("href").ShouldBe($"/plans/{plan.Id}/accounts?category={groceries.Id}&from=2026-10-01&to=2026-10-03");
+        component.Find(".income-bar").GetAttribute("style").ShouldBe("width:100%");
+        component.Find(".expense-bar").GetAttribute("style").ShouldBe("width:33%");
         var export = component.Find(".report-actions a");
         export.GetAttribute("download").ShouldBe("reports-2026-10-01-2026-10-03.csv");
         var csv = Encoding.UTF8.GetString(Convert.FromBase64String(export.GetAttribute("href")!.Split(',')[1]));
@@ -98,13 +101,44 @@ public sealed class ReportsTests
         using var context = CreateContext(out var budgets, out var plan);
         var category = plan.Categories[0];
         budgets.ReadReportsAsync(plan.Id, Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
-            .Returns(new ReportView(plan.Version, [new(new DateOnly(2026, 10, 1), 0, 40, 1000, 200)], [new(category.Id, categoryName, 40)]));
+            .Returns(new ReportView(plan.Version, [new(new DateOnly(2026, 10, 1), 0, 40, 1000, 200)], [new(category.Id, categoryName, 40)],
+                new Dictionary<Guid, decimal>()));
         var component = context.Render<Reports>(parameters => parameters.Add(item => item.PlanId, plan.Id));
 
         var export = component.Find(".report-actions a");
         var csv = Encoding.UTF8.GetString(Convert.FromBase64String(export.GetAttribute("href")!.Split(',')[1]));
         var expected = "\"'" + categoryName.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"";
         csv.ShouldContain(expected);
+    }
+
+    [Fact]
+    public void CsvExportPreservesNegativeNumericValues()
+    {
+        using var context = CreateContext(out var budgets, out var plan);
+        var category = plan.Categories[0];
+        budgets.ReadReportsAsync(plan.Id, Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .Returns(new ReportView(plan.Version, [new(new DateOnly(2026, 10, 1), 0, -40, 1000, 200)], [new(category.Id, category.Name, -40)],
+                new Dictionary<Guid, decimal>()));
+        var component = context.Render<Reports>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+
+        var export = component.Find(".report-actions a");
+        var csv = Encoding.UTF8.GetString(Convert.FromBase64String(export.GetAttribute("href")!.Split(',')[1]));
+        csv.ShouldContain("\"-40.00\"");
+        csv.ShouldNotContain("\"'-40.00\"");
+    }
+
+    [Fact]
+    public void TrackingOnlyBalancesStillRenderReportContentAndExport()
+    {
+        using var context = CreateContext(out var budgets, out var plan);
+        budgets.ReadReportsAsync(plan.Id, Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .Returns(new ReportView(plan.Version, [new(new DateOnly(2026, 10, 1), 0, 0, 1000, 200)], [],
+                new Dictionary<Guid, decimal>()));
+        var component = context.Render<Reports>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+
+        component.FindAll(".report-empty").ShouldBeEmpty();
+        component.Find(".trend-chart svg").GetAttribute("role").ShouldBe("img");
+        component.Find(".report-actions a").GetAttribute("download").ShouldEndWith(".csv");
     }
 
     private static BunitContext CreateContext(out IBudgetClient budgets, out PlanSnapshot plan)
@@ -121,7 +155,7 @@ public sealed class ReportsTests
         budgets = Substitute.For<IBudgetClient>();
         budgets.ReadViewAsync(plan.Id, Arg.Any<CancellationToken>()).Returns(new PlanView(plan, [], false));
         budgets.ReadReportsAsync(plan.Id, Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
-            .Returns(new ReportView(plan.Version, [], []));
+            .Returns(new ReportView(plan.Version, [], [], new Dictionary<Guid, decimal>()));
         context.Services.AddSingleton(budgets);
         return context;
     }

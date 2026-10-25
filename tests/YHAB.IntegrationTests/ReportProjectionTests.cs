@@ -47,6 +47,10 @@ public sealed class ReportProjectionTests(ITestOutputHelper output)
             actual.Version.ShouldBe(0);
             actual.Months.ShouldBe(ReportCalculator.Months(plan, from, through));
             actual.Spending.ShouldBe(ReportCalculator.Spending(plan, from, through));
+            var expectedBudgeted = plan.Allocations.Where(item => item.Month >= BudgetFacts.Month(from) && item.Month <= BudgetFacts.Month(through))
+                .GroupBy(item => item.CategoryId).ToDictionary(group => group.Key, group => group.Sum(item => item.Amount));
+            actual.Budgeted.Count.ShouldBe(expectedBudgeted.Count);
+            foreach (var (categoryId, amount) in expectedBudgeted) { actual.Budgeted[categoryId].ShouldBe(amount); }
             probe.Materialized.GetValueOrDefault(nameof(BudgetTransaction)).ShouldBe(0);
             probe.Materialized.GetValueOrDefault(nameof(BudgetSplit)).ShouldBe(0);
             probe.Materialized.GetValueOrDefault(nameof(BudgetAllocation)).ShouldBe(0);
@@ -110,6 +114,7 @@ public sealed class ReportProjectionTests(ITestOutputHelper output)
         report.Months.Count.ShouldBe(25);
         report.Months.ShouldAllBe(item => item.Income == 0 && item.Expense == 0 && item.Assets == 0 && item.Debt == 0);
         report.Spending.ShouldBeEmpty();
+        report.Budgeted.ShouldBeEmpty();
         foreach (var (start, end) in new[] { (new DateOnly(1999, 12, 31), from), (from, new DateOnly(2101, 1, 1)), (from, from.AddDays(-1)), (from, from.AddDays(733)) })
         {
             (await Should.ThrowAsync<BudgetRequestException>(() => database.Queries.ReportsAsync("owner-a", id, start, end, token))).Status.ShouldBe(400);

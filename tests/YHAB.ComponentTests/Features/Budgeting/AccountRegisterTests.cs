@@ -41,4 +41,27 @@ public sealed class AccountRegisterTests
         queries[^1].Through.ShouldBeNull();
         component.FindAll(".notice").ShouldBeEmpty();
     }
+
+    [Fact]
+    public async Task UnknownCategoryFilterFallsBackAndCanBeClearedAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], false, false, []) { Today = today };
+        var queries = new List<RegisterQuery>();
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
+            .Add(item => item.InitialCategoryId, Guid.NewGuid()).Add(item => item.InitialFrom, new DateOnly(2026, 10, 1))
+            .Add(item => item.InitialThrough, today).Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (query, _) => { queries.Add(query); return Task.FromResult(new RegisterPage(plan.Version, [], 0, null)); })
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        component.Find(".notice").TextContent.ShouldContain("an unavailable category");
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Clear report filters", StringComparison.Ordinal)).ClickAsync();
+        queries[^1].CategoryId.ShouldBeNull();
+        component.FindAll(".notice").ShouldBeEmpty();
+    }
 }

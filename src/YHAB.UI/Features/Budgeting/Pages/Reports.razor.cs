@@ -17,13 +17,14 @@ public sealed partial class Reports(IBudgetClient budgets)
     private IReadOnlyList<MonthReport> _months = [];
     private IReadOnlyList<MonthReport> _previousMonths = [];
     private IReadOnlyList<CategorySpending> _spending = [];
+    private IReadOnlyDictionary<Guid, decimal> _budgeted = new Dictionary<Guid, decimal>();
     private string? _error;
     private string? _rangeError;
     private DateOnly _from;
     private DateOnly _through;
     private string _fromText = "";
     private string _throughText = "";
-    private bool HasActivity => _months.Any(item => item.Income != 0 || item.Expense != 0) || _spending.Count > 0;
+    private bool HasActivity => _months.Any(item => item.Income != 0 || item.Expense != 0 || item.Assets != 0 || item.Debt != 0) || _spending.Count > 0;
     private decimal TotalSpending => _spending.Sum(item => item.Amount);
     private decimal MaxSpending => Math.Max(1, _spending.Count == 0 ? 0 : _spending.Max(item => item.Amount));
     private decimal MaxCashFlow => Math.Max(1, _months.Count == 0 ? 0 : _months.Max(item => Math.Max(Math.Abs(item.Income), Math.Abs(item.Expense))));
@@ -56,6 +57,7 @@ public sealed partial class Reports(IBudgetClient budgets)
         _months = [];
         _previousMonths = [];
         _spending = [];
+        _budgeted = new Dictionary<Guid, decimal>();
         try
         {
             var view = await budgets.ReadViewAsync(PlanId, token);
@@ -67,6 +69,7 @@ public sealed partial class Reports(IBudgetClient budgets)
             token.ThrowIfCancellationRequested();
             _months = report.Months;
             _spending = report.Spending;
+            _budgeted = report.Budgeted;
             var previousThrough = _from.AddDays(-1);
             var previousFrom = previousThrough.AddDays(-(_through.DayNumber - _from.DayNumber));
             if (previousFrom.Year >= 2000)
@@ -114,10 +117,9 @@ public sealed partial class Reports(IBudgetClient budgets)
     private string PresetUrl(string preset) => $"/plans/{PlanId}/reports?preset={preset}";
     private string RangeUrl(DateOnly from, DateOnly through) => $"/plans/{PlanId}/reports?from={FormatDate(from)}&to={FormatDate(through)}";
     private string RegisterUrl(Guid categoryId) => $"/plans/{PlanId}/accounts?category={categoryId}&from={FormatDate(_from)}&to={FormatDate(_through)}";
-    private decimal Budgeted(Guid categoryId) => _plan!.Allocations.Where(item => item.CategoryId == categoryId
-        && item.Month >= BudgetFacts.Month(_from) && item.Month <= BudgetFacts.Month(_through)).Sum(item => item.Amount);
+    private decimal Budgeted(Guid categoryId) => _budgeted.GetValueOrDefault(categoryId);
     private string Share(decimal amount) => TotalSpending == 0 ? "—" : (amount / TotalSpending).ToString("P1", Culture);
-    private string CashFlowWidth(decimal amount) => (Math.Abs(amount) / MaxCashFlow).ToString("P0", CultureInfo.InvariantCulture);
+    private string CashFlowWidth(decimal amount) => string.Create(CultureInfo.InvariantCulture, $"{Math.Abs(amount) / MaxCashFlow * 100:0}%");
     private static string Comparison(decimal current, decimal previous)
     {
         var difference = current - previous;
@@ -149,7 +151,8 @@ public sealed partial class Reports(IBudgetClient budgets)
     private static string CsvRow(params string[] values) => string.Join(',', values.Select(CsvCell));
     private static string CsvCell(string value)
     {
-        if (value.Length > 0 && value[0] is '=' or '+' or '-' or '@' or '\t' or '\r' or '\n') { value = "'" + value; }
+        if (value.Length > 0 && value[0] is '=' or '+' or '-' or '@' or '\t' or '\r' or '\n'
+            && !decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out _)) { value = "'" + value; }
         return $"\"{value.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
     }
     private static string Amount(decimal value) => value.ToString("0.00", CultureInfo.InvariantCulture);

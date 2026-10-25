@@ -121,7 +121,7 @@ public sealed partial class AccountRegister
         if (entry.Splits.Count > 1) { return string.Join(" · ", entry.Splits.Select(item => CategoryName(item.CategoryId)).Distinct(StringComparer.Ordinal)); }
         return entry.Splits.Count == 1 ? CategoryName(entry.Splits[0].CategoryId) : "Transfer / adjustment";
     }
-    private string CategoryName(Guid? id) => id.HasValue ? Plan.Categories.Single(item => item.Id == id).Name : "Ready to assign";
+    private string CategoryName(Guid? id) => id.HasValue ? Plan.Categories.SingleOrDefault(item => item.Id == id)?.Name ?? "an unavailable category" : "Ready to assign";
     private void Add() { CloseEditors(); _transaction = null; _editKey = Guid.CreateVersion7(); _editing = true; }
     private void Edit(TransactionData entry) { CloseEditors(); _transaction = entry; _editKey = Guid.CreateVersion7(); _editing = true; }
     private void Duplicate(TransactionData entry) => Edit(entry with { Id = Guid.Empty, Date = Plan.Today, Repeat = RepeatFrequency.None, Splits = entry.Splits.Select(item => item with { Id = Guid.CreateVersion7() }).ToArray() });

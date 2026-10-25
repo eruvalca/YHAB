@@ -32,7 +32,7 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
     private AccountData? _editingAccount;
     private IJSObjectReference? _module;
     private DotNetObjectReference<Workspace>? _reference;
-    private bool IsRegister => AccountId.HasValue || navigation.Uri.TrimEnd('/').EndsWith("/accounts", StringComparison.Ordinal);
+    private bool IsRegister => AccountId.HasValue || new Uri(navigation.Uri).AbsolutePath.TrimEnd('/').EndsWith("/accounts", StringComparison.Ordinal);
 
     protected override void OnInitialized() => navigation.LocationChanged += LocationChanged;
 
