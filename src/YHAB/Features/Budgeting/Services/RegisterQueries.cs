@@ -18,6 +18,7 @@ internal static class RegisterQueries
         if (request.AccountId.HasValue && account is null) { throw new BudgetRequestException(404, "Account not found."); }
         var query = all.Where(entry => !request.AccountId.HasValue || entry.AccountId == request.AccountId || entry.TransferAccountId == request.AccountId);
         query = query.Where(entry => (!request.From.HasValue || entry.Date >= request.From) && (!request.Through.HasValue || entry.Date <= request.Through));
+        query = query.Where(entry => !request.CategoryId.HasValue || splits.Any(split => split.TransactionId == entry.Id && split.CategoryId == request.CategoryId));
         query = Filter(query, request);
         query = Search(query, accounts, categories, splits, request);
         var total = await query.CountAsync(token);

@@ -10,6 +10,9 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
 {
     [Parameter] public Guid PlanId { get; set; }
     [Parameter] public Guid? AccountId { get; set; }
+    [SupplyParameterFromQuery(Name = "category")] public Guid? ReportCategoryId { get; set; }
+    [SupplyParameterFromQuery(Name = "from")] public DateOnly? ReportFrom { get; set; }
+    [SupplyParameterFromQuery(Name = "to")] public DateOnly? ReportThrough { get; set; }
     // Each renderer loads its owner-scoped catalog; ledger pages and month totals
     // are fetched separately instead of round-tripping a ledger in prerender state.
     private PlanSnapshot? Snapshot { get; set; }
@@ -29,7 +32,7 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
     private AccountData? _editingAccount;
     private IJSObjectReference? _module;
     private DotNetObjectReference<Workspace>? _reference;
-    private bool IsRegister => AccountId.HasValue || navigation.Uri.TrimEnd('/').EndsWith("/accounts", StringComparison.Ordinal);
+    private bool IsRegister => AccountId.HasValue || new Uri(navigation.Uri).AbsolutePath.TrimEnd('/').EndsWith("/accounts", StringComparison.Ordinal);
 
     protected override void OnInitialized() => navigation.LocationChanged += LocationChanged;
 

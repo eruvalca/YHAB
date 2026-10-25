@@ -62,7 +62,7 @@ public static class ReportCalculator
             .GroupBy(item => item.CategoryId!.Value)
             .Select(group => new CategorySpending(group.Key, names[group.Key], -group.Sum(item => item.Amount)))
             .Where(item => item.Amount != 0).OrderByDescending(item => item.Amount).ThenBy(item => item.CategoryId).ToArray();
-        return new(catalog.Version, months, spending);
+        return new(catalog.Version, months, spending, new Dictionary<Guid, decimal>());
     }
 
     private static int BudgetDirection(PlanSnapshot plan, TransactionData entry)

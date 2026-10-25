@@ -50,3 +50,6 @@
     .plan-sidebar { border-bottom: 1px solid var(--colorNeutralStroke2); }
     .plan-drawer > summary { display: flex; align-items: center; min-height: 2.5rem; }
 }
+@media print {
+    .plan-sidebar { display: none !important; }
+}

@@ -34,6 +34,10 @@
     <div class="form-field"><label for="register-from">From</label><input id="register-from" type="date" @bind="_from" @bind:after="ResetPageAsync" /></div>
     <div class="form-field"><label for="register-to">Through</label><input id="register-to" type="date" @bind="_to" @bind:after="ResetPageAsync" /></div>
 </FluentStack></details>
+@if (_categoryId.HasValue)
+{
+    <div class="notice" data-kind="information">Filtered to @CategoryName(_categoryId)@(_from.HasValue || _to.HasValue ? " and the report date range" : ""). <FluentButton OnClick="ClearReportFiltersAsync" Appearance="ButtonAppearance.Subtle">Clear report filters</FluentButton></div>
+}
 @if (_selected.Count > 0)
 {
     <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalS)" Class="selection-toolbar">

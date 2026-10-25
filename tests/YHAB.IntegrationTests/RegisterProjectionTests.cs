@@ -64,6 +64,25 @@ public sealed class RegisterProjectionTests
     }
 
     [Fact]
+    public async Task ReportDrillDownFiltersByCategoryAndDateAsync()
+    {
+        var token = TestContext.Current.CancellationToken;
+        await using var database = await BudgetDatabase.CreateAsync(token);
+        var plan = await SeedAsync(database, token);
+        var checking = plan.Accounts.Single(item => string.Equals(item.Name, "Checking", StringComparison.Ordinal));
+        var groceries = plan.Categories.Single(item => string.Equals(item.Name, "Groceries", StringComparison.Ordinal)).Id;
+
+        var category = await database.Queries.RegisterAsync("owner-a", plan.Id, new(checking.Id, CategoryId: groceries), token);
+        category.Rows.Select(item => item.Transaction.Memo).ShouldBe(["last food", "tag\\path", "first food"]);
+        var day = plan.Today.AddMonths(-1).AddDays(1);
+        var categoryAndDate = await database.Queries.RegisterAsync("owner-a", plan.Id,
+            new(checking.Id, From: day, Through: day, CategoryId: groceries), token);
+        categoryAndDate.Rows.Single().Transaction.Memo.ShouldBe("first food");
+        (await Should.ThrowAsync<BudgetRequestException>(() => database.Queries.RegisterAsync("owner-b", plan.Id,
+            new(checking.Id, CategoryId: groceries), token))).Status.ShouldBe(404);
+    }
+
+    [Fact]
     public async Task CachedMonthsAreOwnerScopedAndInvalidatedByBackdatedChangesAsync()
     {
         var token = TestContext.Current.CancellationToken;
