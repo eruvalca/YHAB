@@ -21,7 +21,7 @@ var web = builder.AddProject<Projects.YHAB>("yhab")
 // Pin the managed EF tool to the application's EF Core version rather than the global tool.
 #pragma warning disable ASPIREDOTNETTOOL // The agreed Aspire EF migration integration uses the experimental tool resource API.
 var migrations = web.AddEFMigrations("yhab-migrations", "YHAB.Data.ApplicationDbContext",
-        tool => tool.WithToolVersion("10.0.12"))
+        tool => tool.WithToolVersion("10.0.14"))
     .WithReference(database)
     .WaitFor(database)
     // EF constructs the web host at design time but does not serve HTTP. Avoid inherited DCP endpoint tokens.
