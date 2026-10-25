@@ -15,9 +15,9 @@
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
 
-<PageTitle>Register</PageTitle>
+<PageTitle>Create your account · YHAB</PageTitle>
 
-<h1>Register</h1>
+<h1>Create your account</h1>
 
 <div class="account-sections">
     <StatusMessage Message="@Message" />
@@ -42,7 +42,7 @@
             <InputText type="password" @bind-Value="Input.ConfirmPassword" id="Input.ConfirmPassword" autocomplete="new-password" aria-required="true" placeholder="password" />
             <ValidationMessage For="() => Input.ConfirmPassword" class="error-text" />
         </div>
-        <button type="submit">Register</button>
+        <button type="submit">Create your account</button>
     </EditForm>
     <ExternalLoginPicker Heading="Use another service to register." />
 </div>

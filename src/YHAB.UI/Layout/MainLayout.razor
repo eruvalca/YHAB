@@ -4,7 +4,7 @@
 
 <div class="page">
     <FluentLayout Id="app-layout" Class="app-layout" GlobalScrollbar="true" Height="auto">
-        <FluentLayoutItem Area="LayoutArea.Header" Class="header-area" Height="3rem" Padding="0">
+        <FluentLayoutItem Area="LayoutArea.Header" Class="header-area" Height="calc(3rem + env(safe-area-inset-top, 0px))" Padding="0">
             <header class="site-header">
                 <FluentStack VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalM)" Height="100%" Width="100%">
                     <div class="menu-toggle">

@@ -178,7 +178,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await page.GetByLabel("Email", new() { Exact = true }).FillAsync(email);
         await page.GetByLabel("Password", new() { Exact = true }).FillAsync(Password);
         await page.GetByLabel("Confirm Password", new() { Exact = true }).FillAsync(Password);
-        await page.GetByRole(AriaRole.Button, new() { Name = "Register", Exact = true }).ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Create your account", Exact = true }).ClickAsync();
         await page.GetByRole(AriaRole.Heading, new() { Name = "Make room for what matters.", Exact = true }).WaitForAsync();
         page.Url.ShouldEndWith("/plans");
         await using (var plans = await page.APIRequest.GetAsync(Address("/api/plans"), new() { IgnoreHTTPSErrors = true }))

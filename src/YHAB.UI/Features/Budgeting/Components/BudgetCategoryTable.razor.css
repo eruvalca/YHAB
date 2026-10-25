@@ -13,7 +13,7 @@
 .budget-table ::deep .category-row { cursor: pointer; }
 .budget-table ::deep .category-row:hover { background: var(--colorSubtleBackgroundHover); }
 .budget-table ::deep .category-row[data-selected="true"] { background: var(--colorBrandBackground2); box-shadow: inset 3px 0 var(--colorBrandStroke1); }
-.budget-table ::deep .row-move, .budget-table ::deep .group-toggle, .budget-table ::deep .group-add { flex: 0 0 auto; min-width: 1.5rem; min-height: 1.75rem; padding: 0; border: 0; background: transparent; color: var(--colorNeutralForeground3); }
+.budget-table ::deep .row-move, .budget-table ::deep .group-toggle, .budget-table ::deep .group-add { flex: 0 0 auto; min-width: var(--yh-control-compact); min-height: var(--yh-control-compact); padding: 0; border: 0; background: transparent; color: var(--colorNeutralForeground3); }
 .budget-table ::deep .row-move { cursor: grab; }
 .budget-table ::deep .row-move:active { cursor: grabbing; }
 .budget-table ::deep .group-add { font-size: var(--fontSizeBase400); }

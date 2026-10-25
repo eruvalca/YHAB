@@ -1,6 +1,6 @@
 .budget-summary { position: sticky; top: var(--plan-page-tabs-height, 0px); z-index: 5; padding: var(--spacingVerticalS) var(--spacingHorizontalM); border-radius: var(--borderRadiusMedium); background: var(--colorNeutralBackground1); border: 1px solid var(--colorNeutralStroke2); }
 .budget-summary[data-negative="true"] { border-color: var(--colorPaletteRedBorder1); }
-h1 { margin: 0; font-size: var(--fontSizeBase400); line-height: var(--lineHeightBase400); }
+h1 { margin: 0; font-size: var(--yh-font-title); line-height: 1.25; }
 .ready-balance > span { display: block; color: var(--colorNeutralForeground2); font-size: var(--fontSizeBase200); }
 .hero-amount { display: block; font-size: var(--fontSizeBase600); line-height: var(--lineHeightBase600); font-variant-numeric: tabular-nums; color: var(--colorBrandForeground1); }
 .budget-summary ::deep .budget-totals { border-top: 1px solid var(--colorNeutralStroke2); margin-top: var(--spacingVerticalS); padding-top: var(--spacingVerticalXS); font-size: var(--fontSizeBase200); }

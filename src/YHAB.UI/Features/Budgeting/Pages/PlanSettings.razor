@@ -20,19 +20,6 @@
                 </FluentStack>
             </EditForm>
         </section>
-        <section class="surface report-section" id="rename-payee-section">
-            <h2>Manage payees</h2><p>Rename a payee across posted and recurring transactions. You can undo this from your plan.</p>
-            <EditForm Model="Payee" method="post" FormName="RenamePayee" OnValidSubmit="RenameAsync" OnInvalidSubmit="RenameInvalid" Enhance>
-                <DataAnnotationsValidator />
-                <input type="hidden" name="Payee.Version" value="@Payee.Version" />
-                <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalL)">
-                    <div class="form-field"><label for="old-payee">Existing payee</label><InputSelect id="old-payee" @bind-Value="Payee.OldName" aria-describedby="old-payee-error" data-validation-focus><option value="">Choose a payee</option>@foreach (var name in _payees) { <option value="@name">@name</option> }</InputSelect><ValidationMessage For="() => Payee.OldName" id="old-payee-error" role="alert" /></div>
-                    <div class="form-field"><label for="new-payee">New name</label><InputText id="new-payee" @bind-Value="Payee.NewName" maxlength="200" aria-describedby="new-payee-error" data-validation-focus /><ValidationMessage For="() => Payee.NewName" id="new-payee-error" role="alert" /></div>
-                    <button type="submit" class="primary-action">Rename payee</button>
-                    @if (_renameFeedback is { } renameFeedback) { <div class="notice" data-kind="@(renameFeedback.IsError ? "error" : "success")" role="@(renameFeedback.IsError ? "alert" : "status")">@renameFeedback.Message</div> }
-                </FluentStack>
-            </EditForm>
-        </section>
         <section class="surface" id="sharing-section">
             <h2>Share this plan</h2>
             @if (_sharing is { } sharing)
@@ -114,6 +101,23 @@
                     </EditForm>
                 }
             }
+        </section>
+        <section class="surface report-section" id="plan-data-section">
+            <h2>Plan data</h2>
+            <p class="muted">Changes that reach beyond this plan's settings.</p>
+            <div id="rename-payee-section">
+                <h3>Manage payees</h3><p>Rename a payee across posted and recurring transactions. You can undo this from your plan.</p>
+                <EditForm Model="Payee" method="post" FormName="RenamePayee" OnValidSubmit="RenameAsync" OnInvalidSubmit="RenameInvalid" Enhance>
+                    <DataAnnotationsValidator />
+                    <input type="hidden" name="Payee.Version" value="@Payee.Version" />
+                    <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalL)">
+                        <div class="form-field"><label for="old-payee">Existing payee</label><InputSelect id="old-payee" @bind-Value="Payee.OldName" aria-describedby="old-payee-error" data-validation-focus><option value="">Choose a payee</option>@foreach (var name in _payees) { <option value="@name">@name</option> }</InputSelect><ValidationMessage For="() => Payee.OldName" id="old-payee-error" role="alert" /></div>
+                        <div class="form-field"><label for="new-payee">New name</label><InputText id="new-payee" @bind-Value="Payee.NewName" maxlength="200" aria-describedby="new-payee-error" data-validation-focus /><ValidationMessage For="() => Payee.NewName" id="new-payee-error" role="alert" /></div>
+                        <button type="submit" class="primary-action">Rename payee</button>
+                        @if (_renameFeedback is { } renameFeedback) { <div class="notice" data-kind="@(renameFeedback.IsError ? "error" : "success")" role="@(renameFeedback.IsError ? "alert" : "status")">@renameFeedback.Message</div> }
+                    </FluentStack>
+                </EditForm>
+            </div>
         </section>
         @if (_sharing is { IsOwner: true })
         {

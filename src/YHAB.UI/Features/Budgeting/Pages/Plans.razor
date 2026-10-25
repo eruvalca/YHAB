@@ -87,7 +87,8 @@
                     <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalL)">
                         <div class="form-field">
                             <label for="join-code">Share code</label>
-                            <InputText id="join-code" @bind-Value="Join.Code" placeholder="ABCDE-ABCDE-ABCDE-ABCDE" maxlength="64" aria-describedby="join-code-error" data-validation-focus />
+                            <InputText id="join-code" @bind-Value="Join.Code" placeholder="ABCDE-ABCDE-ABCDE-ABCDE" maxlength="64" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="join-code-hint join-code-error" data-validation-focus />
+                            <p class="field-hint" id="join-code-hint">Paste the code you were given. Dashes, spaces, and capitals do not matter.</p>
                             <ValidationMessage For="() => Join.Code" id="join-code-error" role="alert" />
                         </div>
                         <button type="submit" class="primary-action">Join plan</button>

@@ -18,6 +18,11 @@ YHAB** in the site footer for an install button when the browser offers one,
 or instructions for its menu. On iPhone/iPad, use **Share → Add to Home Screen**.
 An installed app opens **Your plans** in its own window; normal authentication
 still applies. Browser and OS support determine the installation experience.
+`manifest.webmanifest` declares standalone display with a `display_override`,
+`orientation: any`, finance/productivity categories, a neutral white splash
+background, and shortcuts to **Your plans** and **Home**. The shell reserves the
+safe-area insets for the header, content, footer, and reconnect notice so an
+installed window clears notches and home indicators.
 
 This is an online application with an offline fallback. After one successful
 visit and service-worker installation, failed full-page and Blazor enhanced GET
@@ -283,8 +288,17 @@ Render boundaries are deliberate:
 Shared styles live in `src/YHAB/wwwroot/app.css`: sizing, typography, forms
 (`account-form`, `form-field`, `checkbox-field`), action groups (`actions`),
 notices (`notice` with a semantic `data-kind`), and table overflow
-(`table-container`). Component-specific styles belong in adjacent `.razor.css`
-files. Use narrowly scoped `::deep` selectors for child component markup.
+(`table-container`). The stylesheet documents one control scale: compact 32px
+(`--yh-control-compact`) for dense in-row actions, standard 40px
+(`--yh-control-standard`) for buttons and inputs, and touch 44px
+(`--yh-control-touch`) for primary call-to-action targets. Controls use
+`--yh-control-font` (16px) text so mobile browsers do not zoom on focus, and a
+primary action is never smaller than the standard step. The type scale uses
+`--yh-font-body` (14px), `--yh-font-eyebrow` (12px), and the capped
+`--yh-font-title` and `--yh-font-display` heading ramps. Use these tokens for new
+controls and headings instead of ad hoc sizes.
+Component-specific styles belong in adjacent `.razor.css` files. Use narrowly
+scoped `::deep` selectors for child component markup.
 Native button styling excludes slotted controls: Fluent dropdowns render a native
 button in their `control` slot and own its border and padding. Filter toolbars use
 explicit Fluent alignment and zero field margins so labels do not displace actions.
