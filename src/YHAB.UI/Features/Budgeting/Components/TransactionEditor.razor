@@ -13,12 +13,12 @@
         {
             <FluentSelect @key="BudgetOutflow" Margin="0" Size="ListSize.Large" TOption="CategoryData" TValue="Guid" Label="Category"
                           Items="CategoryOptions" OptionText="item => item.Name" OptionValue="item => item.Id" Placeholder="@ChooseCategory"
-                          aria-invalid="@(CategoryMissing ? "true" : "false")"
-                          aria-describedby="@(CategoryMissing ? "transaction-category-error" : null)"
+                          aria-invalid="@(CategoryMissing || CategoryUnavailable ? "true" : "false")"
+                          aria-describedby="@(CategoryMissing || CategoryUnavailable ? "transaction-category-error" : null)"
                           @bind-Value="_category" />
-            @if (CategoryMissing)
+            @if (CategoryMissing || CategoryUnavailable)
             {
-                <p @ref="_categoryError" id="transaction-category-error" tabindex="-1" class="validation-message" role="alert">@CategoryError</p>
+                <p @ref="_categoryError" id="transaction-category-error" tabindex="-1" class="validation-message" role="alert">@(CategoryUnavailable ? CategoryUnavailableError : CategoryError)</p>
             }
             <FluentButton OnClick="StartSplit" Size="ButtonSize.Large" Appearance="ButtonAppearance.Subtle">Split across categories</FluentButton>
         }
@@ -31,12 +31,12 @@
                     <FluentGridItem Xs="12" Md="5">
                         <FluentSelect @key="SplitNeedsCategory(split)" Margin="0" Size="ListSize.Large" TOption="CategoryData" TValue="Guid" Label="Split category"
                                       Items="SplitCategoryOptions(split)" OptionText="item => item.Name" OptionValue="item => item.Id" Placeholder="@ChooseCategory"
-                                      aria-invalid="@(SplitCategoryMissing(split) ? "true" : "false")"
-                                      aria-describedby="@(SplitCategoryMissing(split) ? $"{split.Id}-category-error" : null)"
+                                      aria-invalid="@(SplitCategoryMissing(split) || SplitCategoryUnavailable(split) ? "true" : "false")"
+                                      aria-describedby="@(SplitCategoryMissing(split) || SplitCategoryUnavailable(split) ? $"{split.Id}-category-error" : null)"
                                       @bind-Value="split.Category" />
-                        @if (SplitCategoryMissing(split))
+                        @if (SplitCategoryMissing(split) || SplitCategoryUnavailable(split))
                         {
-                            <p id="@($"{split.Id}-category-error")" class="validation-message" role="alert">@BudgetCategoryError</p>
+                            <p id="@($"{split.Id}-category-error")" class="validation-message" role="alert">@(SplitCategoryUnavailable(split) ? CategoryUnavailableError : BudgetCategoryError)</p>
                         }
                     </FluentGridItem>
                     <FluentGridItem Xs="6" Md="3"><AmountInput @ref="split.AmountInput" Label="Split amount" Size="TextInputSize.Large" AllowNegative="true" CommitOnSave="true" @bind-Value="split.Amount" ValidChanged="value => split.Valid = value" /></FluentGridItem>

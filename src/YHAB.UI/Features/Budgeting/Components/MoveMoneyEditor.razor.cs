@@ -28,14 +28,16 @@ public sealed partial class MoveMoneyEditor
         _initial = Signature();
     }
 
-    // A refresh can replace the catalog under an open draft. The chosen
-    // categories and amount stay when they still exist.
+    // A refresh can replace the catalog under an open draft. The chosen categories are kept as they
+    // are: one the refresh removed stays visibly unavailable until the user picks a replacement,
+    // rather than silently changing the allocation the draft would move.
     protected override void OnParametersSet()
     {
         _categories = BuildCategories();
-        if (!_categories.Any(item => item.Id == _to)) { _to = Plan.Categories.Count > 0 ? Plan.Categories[0].Id : Guid.Empty; }
-        if (!_categories.Any(item => item.Id == _from)) { _from = Guid.Empty; }
     }
+
+    private bool FromAvailable => _categories.Any(item => item.Id == _from);
+    private bool ToAvailable => _categories.Any(item => item.Id == _to);
 
     private CategoryData[] BuildCategories() => [new(Guid.Empty, Guid.Empty, "Ready to assign", "", 0, false, null, null), .. Plan.Categories];
     private string Signature() => string.Join("|", _from.ToString(), _to.ToString(), _amount.ToString(CultureInfo.InvariantCulture));

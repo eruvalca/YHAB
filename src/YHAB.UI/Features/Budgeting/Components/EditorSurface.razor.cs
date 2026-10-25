@@ -44,17 +44,23 @@ public sealed partial class EditorSurface
         }
     }
 
-    private async Task RequestCloseAsync()
+    internal async Task RequestCloseAsync()
     {
-        if (IsDirty && !_confirmingDiscard)
+        if (!IsDirty)
         {
-            _confirmingDiscard = true;
-            _focusDiscard = true;
+            await OnClose.InvokeAsync();
             return;
         }
 
-        await OnClose.InvokeAsync();
+        // A close request never discards: only the explicit Discard changes button does.
+        if (!_confirmingDiscard)
+        {
+            _confirmingDiscard = true;
+            _focusDiscard = true;
+        }
     }
+
+    private Task DiscardAsync() => OnClose.InvokeAsync();
 
     private async Task KeepEditingAsync()
     {

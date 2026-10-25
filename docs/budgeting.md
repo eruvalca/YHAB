@@ -191,13 +191,17 @@ payee, direction, and amount before the account and transfer. On phones a long
 editor keeps its title, **Close**, and primary save action on screen while the
 rest of the form scrolls.
 Closing an editor that holds unsaved changes asks **Keep editing** or **Discard
-changes** instead of discarding the draft, and Escape follows the same guard.
+changes** instead of discarding the draft. Escape, **Close**, and the account
+editor's **Cancel** all follow that guard, and only **Discard changes** throws a
+draft away; a repeated close request while the prompt is open keeps the draft.
 Enter saves a transaction from its payee or amount. A plain **Refresh** applies
 the newer plan without closing an open draft: the editor keeps the typed values
-and rebuilds the accounts and categories it offers, so a category the refresh
-retired now blocks the save instead of pointing at a stale record. A plan change
-applied by a command, and a draft whose edited transaction no longer exists,
-still close the editor.
+and rebuilds the accounts and categories it offers, so a refresh-retired category
+or an unavailable move-money selection now blocks the save in either direction
+instead of pointing at a stale record. A plan change applied by a command, and a
+recovery refresh after a save that committed but could not reload, still close
+the editor. A register draft also survives a refresh because the view catalog
+omits the ledger, so an entry missing from it proves nothing about deletion.
 **Undo**, **Redo**, **Refresh**, and the plan status follow the page heading in
 document order, so assistive technology reaches the heading before the actions.
 Assignment saves preserve the existing inputs and keyboard focus. Amount fields
@@ -595,7 +599,7 @@ isolated AppHosts. Browser tests exercise both desktop and phone widths.
 | In-app plan sharing, editing, and access removal | `ShareCodeGrantsEditingAndReadAccessUntilTheOwnerRemovesItAsync`, `JoinRejectsInvalidExpiredEmptyAndOwnerCodesAsync`, `ASharedMemberCanLeaveButAnOwnerCannotAsync`, `CodesAreSingleUseAndRedemptionRetriesAreIdempotentAsync`, `ConcurrentRedemptionIsIdempotentAndConcurrentRemovalHasOneWinnerAsync`, `MissingDisplayNameFallsBackToAFriendlyNameInsteadOfTheEmailAsync`, `DisplayNameThatEqualsTheCurrentAccountEmailFallsBackToMemberAsync`, `PlansPageSeparatesOwnedAndSharedPlansAndShowsJoinFormAsync`, `OwnerCreatesShareCodeAndRemovesACollaboratorAsync`, `DuplicateCollaboratorNamesAreNumberedSoTheOwnerCanRemoveTheRightAccountAsync`, `GeneratedDuplicateLabelsDoNotCollideWithLiteralDisplayNamesAsync`, `SharedMemberSeesOwnerAndRejectsUnconfirmedLeaveAsync`, `PlansPageJoinsWithACodeAsync`, `JoinServiceErrorIsShownAsync` |
 | Plan deletion and ownership transfer | `OwnerDeletesPlanAndCollaboratorsLoseAccessAsync`, `TransferOwnershipMakesTheCollaboratorOwnerAndKeepsThePreviousOwnerAsAMemberAsync`, `OwnerDeletingAPlanRequiresItsExactNameAsync`, `OwnerDeletesPlanWithItsExactNameAsync`, `CollaboratorCannotDeleteOrTransferAPlanAsync`, `OwnerTransfersOwnershipAndKeepsEditingAccessAsync`, `TransferringWithoutSelectionMarksPersonFieldInvalidAsync` |
 | Manual browser workflow, calculator entry, keyboard undo/redo, reports, and API guards | `ManualPlanPurchaseUndoAndReportsAgreeAsync` at 1440px and 390px, including the phone amount keypad, the Available-pill move flow, editor tap size, and sticky editor chrome; `TappingAvailableMovesMoneyOutOfTheCategoryAsync` covers the touch move flow |
-| Editor draft guard, Enter-to-save, and refresh-safe drafts | `ClosingADirtyEditorAsksBeforeDiscardingAsync`, `ClosingACleanEditorClosesWithoutAskingAsync`, `EscapeAsksOnADirtyEditorAndClosesACleanOneAsync`, `EnterInTheAmountFieldSavesTheTransactionAsync`, `EnterInThePayeeFieldSavesTheTypedPayeeAsync`, `EnterDoesNotSaveAnIncompleteTransactionAsync`, `RefreshKeepsAnOpenDraftAndACommandClosesItAsync`, `RefreshClosesADraftWhoseTransactionDisappearedAsync`, `PlanActionsFollowThePageHeadingInDocumentOrder`; `EditorKeepsDraftsAndSavesWithEnterAsync` covers the real keyboard and refresh flow in a browser |
+| Editor draft guard, Enter-to-save, and refresh-safe drafts | `ClosingADirtyEditorAsksBeforeDiscardingAsync`, `ClosingACleanEditorClosesWithoutAskingAsync`, `EscapeAsksOnADirtyEditorAndNeverDiscardsByItselfAsync`, `OtherKeysDoNotCloseTheEditorAsync`, `CancelAsksBeforeDiscardingTypedAccountDetailsAsync`, `CancelClosesAnUnchangedAccountWithoutAskingAsync`, `EnterInTheAmountFieldSavesTheTransactionAsync`, `EnterInThePayeeFieldSavesTheTypedPayeeAsync`, `EnterDoesNotSaveAnIncompleteTransactionAsync`, `InflowRetainsARetiredCategoryAsInvalidAsync`, `InflowSplitsRetainARetiredCategoryAsInvalidAsync`, `RefreshKeepsARemovedDestinationAndBlocksSavingAsync`, `RefreshKeepsAnOpenDraftAndACommandClosesItAsync`, `RefreshKeepsAnEditedDraftWhenTheCatalogOmitsTheLedgerAsync`, `RefreshAfterAConfirmedSaveClosesTheDraftAsync`, `RefreshKeepsTheCategoryEditorWhileACommandResetsItAsync`, `ActionsStayReachableWhenTheMonthReadFailsAsync`, `PlanActionsFollowThePageHeadingInDocumentOrder`; `EditorKeepsDraftsAndSavesWithEnterAsync` covers the real keyboard and refresh flow in a browser |
 | Themes, mobile navigation, and SSR document continuity | `FluentNavigationPreservesDocumentAndThemeChoice` at 1280px and 390px |
 | Actual startup, migrations, and database readiness | `AppHostCompletesMigrationsAndServesHealthyApplication` |
 

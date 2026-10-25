@@ -81,7 +81,7 @@ public sealed class AccountRegisterTests
     }
 
     [Fact]
-    public async Task RefreshClosesADraftWhoseTransactionDisappearedAsync()
+    public async Task RefreshKeepsAnEditedDraftWhenTheCatalogOmitsTheLedgerAsync()
     {
         await using var context = new BunitContext();
         context.Services.AddFluentUIComponents();
@@ -98,13 +98,17 @@ public sealed class AccountRegisterTests
 
         await component.WaitForAssertionAsync(() => component.FindAll(".register-table .category-link").Count.ShouldBe(1));
         await component.Find(".register-table .category-link").ClickAsync();
-        component.FindAll(".editor-surface").Count.ShouldBe(1);
+        await component.FindAll("fluent-text-input")[0].ChangeAsync(new() { Value = "Corner shop edited" });
 
+        // The workspace view loads its catalog without the ledger, so a refresh cannot prove that an
+        // edited entry still exists. It must keep the draft instead of treating the omission as a delete.
         component.Render(parameters => parameters
             .Add(item => item.Plan, plan with { Version = 8, Transactions = [] })
             .Add(item => item.ExternalRefresh, true));
 
-        component.FindAll(".editor-surface").ShouldBeEmpty();
+        component.FindAll(".editor-surface").Count.ShouldBe(1);
+        await component.Find("fluent-button[aria-label='Close editor']").ClickAsync();
+        component.Find("[role='alertdialog']").TextContent.ShouldContain("Discard your unsaved changes?");
     }
 
     [Fact]

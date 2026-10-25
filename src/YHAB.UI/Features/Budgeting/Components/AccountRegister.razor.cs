@@ -85,29 +85,10 @@ public sealed partial class AccountRegister
         }
     }
 
-    // Refresh keeps an open editor only while its edit target survives; the
-    // editor rebuilds its catalog from the new plan and keeps the typed values.
-    private bool KeepOpenDraft()
-    {
-        if (!ExternalRefresh || !_editing)
-        {
-            return false;
-        }
-
-        if (_transaction is null)
-        {
-            return true;
-        }
-
-        var refreshed = Plan.Transactions.SingleOrDefault(item => item.Id == _transaction.Id);
-        if (refreshed is null)
-        {
-            return false;
-        }
-
-        _transaction = refreshed;
-        return true;
-    }
+    // Refresh keeps an open transaction draft. The catalog deliberately omits the ledger, so the
+    // register cannot prove the edited entry still exists; the save reconciles it instead. A
+    // duplicated entry keeps no id and therefore stays a new draft either way.
+    private bool KeepOpenDraft() => ExternalRefresh && _editing;
 
     private async Task LoadAsync()
     {

@@ -26,6 +26,7 @@ public sealed partial class BudgetBoard
     private long _version = -1;
     private PlanSnapshot? _loadedPlan;
     private bool _move;
+    private long _editorEpoch;
     private bool _help;
     private bool _focusHelp;
     private ElementReference _helpPanel;
@@ -81,7 +82,9 @@ public sealed partial class BudgetBoard
             if (_loadedPlan?.Id != Plan.Id) { _help = false; CloseEditors(); }
             else
             {
-                if (!ExternalRefresh) { _move = false; }
+                // A command replaces the editor's baseline; an external refresh keeps the open draft
+                // mounted so the values the user typed are not recreated from the new record.
+                if (!ExternalRefresh) { _move = false; _editorEpoch++; }
                 _category = Plan.Categories.SingleOrDefault(item => item.Id == _category?.Id);
             }
             _version = Plan.Version;

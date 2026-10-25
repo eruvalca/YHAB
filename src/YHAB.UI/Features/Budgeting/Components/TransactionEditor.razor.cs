@@ -17,6 +17,7 @@ public sealed partial class TransactionEditor
     private const string ChooseCategory = "Choose a category";
     private const string OutflowCategoryError = "An outflow needs a spending category. Choose one, or switch the direction to Inflow.";
     private const string BudgetCategoryError = "Money leaving your budget needs a spending category.";
+    private const string CategoryUnavailableError = "That category is no longer available. Choose another category.";
     private static readonly string[] _directions = ["Outflow", "Inflow"];
     private static readonly string[] _flags = ["None", "Red", "Orange", "Yellow", "Green", "Blue", "Purple"];
     private static readonly RepeatFrequency[] _frequencies = Enum.GetValues<RepeatFrequency>();
@@ -57,10 +58,12 @@ public sealed partial class TransactionEditor
             return source is not null && BudgetFacts.IsBudget(source.Kind) ? 1 : -1;
         }
     }
-    private bool CategoryMissing => NeedsCategory && !_split && BudgetOutflow && !_spendingCategories.Any(item => item.Id == _category);
-    // A refresh can retire a category this draft still references, so a saved
-    // split must point at a choice the editor can still offer.
-    private bool SplitCategoryMissing(SplitInput split) => SplitNeedsCategory(split) && !SplitCategoryOptions(split).Any(item => item.Id == split.Category);
+    private bool CategoryMissing => NeedsCategory && !_split && BudgetOutflow && _category == Guid.Empty;
+    // A refresh can retire a category a draft still references; the reference stays invalid in either
+    // direction so the save cannot point at a category the plan no longer offers.
+    private bool CategoryUnavailable => NeedsCategory && !_split && _category != Guid.Empty && !CategoryOptions.Any(item => item.Id == _category);
+    private bool SplitCategoryMissing(SplitInput split) => SplitNeedsCategory(split) && split.Category == Guid.Empty;
+    private bool SplitCategoryUnavailable(SplitInput split) => split.Category != Guid.Empty && !SplitCategoryOptions(split).Any(item => item.Id == split.Category);
     private bool SplitNeedsCategory(SplitInput split) => split.Amount * BudgetDirection < 0;
     private CategoryData[] SplitCategoryOptions(SplitInput split) => SplitNeedsCategory(split) ? _spendingCategories : _categories;
     private bool NeedsCategory
@@ -76,7 +79,8 @@ public sealed partial class TransactionEditor
     private bool CannotSave => Busy || _saving || !_amountValid || _account == Guid.Empty || (_transfer != Guid.Empty && _transfer == _account)
         || (_repeat == RepeatFrequency.None && _date > Plan.Today)
         || CategoryMissing
-        || (NeedsCategory && _split && (_splits.Count == 0 || _splits.Any(item => !item.Valid || SplitCategoryMissing(item)) || _splits.Sum(item => item.Amount) != SignedAmount));
+        || CategoryUnavailable
+        || (NeedsCategory && _split && (_splits.Count == 0 || _splits.Any(item => !item.Valid || SplitCategoryMissing(item) || SplitCategoryUnavailable(item)) || _splits.Sum(item => item.Amount) != SignedAmount));
     // Amount text stays a draft until the editor saves, so the guard compares
     // the committed values plus each field's uncommitted text.
     private bool HasUnsavedChanges() => !string.Equals(Signature(), _initial, StringComparison.Ordinal)

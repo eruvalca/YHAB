@@ -72,7 +72,9 @@ assets/provider setup and [build rules](../../build/README.md) for enforcement.
   the component handles the key. Fluent's `Immediate` text binding is debounced,
   so `budget-workspace.js` blurs the focused field on Enter/Escape first and
   fields opt in with `data-enter-saves`; clear that marker and the key acts on the
-  previous value. Editors report unsaved changes through the `HasUnsavedChanges`
+  previous value. That handler skips keys belonging to an active IME composition,
+  because the later C# `IsComposing` check cannot undo a blur that already ended
+  the composition. Editors report unsaved changes through the `HasUnsavedChanges`
   callback rather than a rendered bool, because the key event can arrive before
   the change that made the draft dirty has re-rendered the editor.
 - Static `FluentNavItem` links and `FluentButton` controls need `tabindex="0"`:

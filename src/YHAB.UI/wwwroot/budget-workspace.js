@@ -26,7 +26,9 @@ function submitInlineName(event) {
 // resulting change event reaches Blazor before the key event, so Enter saves and
 // Escape guards the text the user actually sees.
 function commitEditorField(event) {
-    if (event.defaultPrevented || (event.key !== 'Enter' && event.key !== 'Escape')) return;
+    // A composing Enter or Escape belongs to the input method; blurring would end the composition.
+    if (event.defaultPrevented || event.isComposing || event.keyCode === 229) return;
+    if (event.key !== 'Enter' && event.key !== 'Escape') return;
     const path = event.composedPath();
     if (!path.some(element => element instanceof Element && element.matches('.editor-surface'))) return;
     if (event.key === 'Enter' && !path.some(element => element instanceof Element && element.matches('[data-enter-saves]'))) return;

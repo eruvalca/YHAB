@@ -9,7 +9,7 @@
             <div @ref="_discardPrompt" class="editor-discard notice" data-kind="warning" role="alertdialog" aria-labelledby="@_discardId" tabindex="-1">
                 <p id="@_discardId">Discard your unsaved changes?</p>
                 <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalS)">
-                    <FluentButton Appearance="ButtonAppearance.Primary" OnClick="RequestCloseAsync" Size="ButtonSize.Large">Discard changes</FluentButton>
+                    <FluentButton Appearance="ButtonAppearance.Primary" OnClick="DiscardAsync" Size="ButtonSize.Large">Discard changes</FluentButton>
                     <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="KeepEditingAsync" Size="ButtonSize.Large">Keep editing</FluentButton>
                 </FluentStack>
             </div>

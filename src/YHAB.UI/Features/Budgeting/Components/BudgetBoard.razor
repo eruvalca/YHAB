@@ -78,11 +78,17 @@
             @if (_category is not null)
             {
                 <aside class="category-details" aria-label="Category details">
-                    <CategoryEditor @key="(_category, _month)" Plan="Plan" Category="_category" MonthState="EditingMonth" Month="_month" OnCommand="OnCommand" OnClose="CloseEditors" Busy="IsBusy" />
+                    <CategoryEditor @key="(_category?.Id, _month, _editorEpoch)" Plan="Plan" Category="_category" MonthState="EditingMonth" Month="_month" OnCommand="OnCommand" OnClose="CloseEditors" Busy="IsBusy" />
                 </aside>
             }
         </FluentStack>
     </div>
 </div>
 }
-else if (_error is null) { <p role="status">Loading month…</p> }
+else
+{
+    @* The actions stay reachable when the month could not be read, and follow a heading here too. *@
+    <h1>Plan your money</h1>
+    @PlanActions
+    @if (_error is null) { <p role="status">Loading month…</p> }
+}

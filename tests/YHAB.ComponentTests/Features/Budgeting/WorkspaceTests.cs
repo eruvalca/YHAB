@@ -144,6 +144,42 @@ public sealed class WorkspaceTests
         component.Find(".workspace-toolbar[aria-label='Plan actions']").ShouldNotBeNull();
     }
 
+    [Fact]
+    public async Task RefreshAfterAConfirmedSaveClosesTheDraftAsync()
+    {
+        await using var context = new BunitContext();
+        var (budgets, empty) = Configure(context);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, empty.Today, false, "");
+        var category = new CategoryData(Guid.CreateVersion7(), Guid.CreateVersion7(), "Groceries", "", 0, false, null, null);
+        var plan = empty with { Accounts = [account], Categories = [category] };
+        var entry = new TransactionData(Guid.CreateVersion7(), account.Id, plan.Today, "Visible payee", "", -10, null, "",
+            [new SplitData(Guid.CreateVersion7(), category.Id, -10, "")]);
+        var reads = 0;
+        budgets.ReadViewAsync(plan.Id, Arg.Any<CancellationToken>()).Returns(_ => ++reads switch
+        {
+            1 => Task.FromResult(View(plan)),
+            2 => Task.FromException<PlanView>(new HttpRequestException("Disconnected")),
+            _ => Task.FromResult(View(plan with { Version = plan.Version + 1 })),
+        });
+        budgets.ReadRegisterAsync(plan.Id, Arg.Any<RegisterQuery>(), Arg.Any<CancellationToken>())
+            .Returns(call => new RegisterPage(call.Arg<RegisterQuery>().Version!.Value, [new(entry, 990)], 1, null));
+        budgets.ReadPayeesAsync(plan.Id, Arg.Any<CancellationToken>()).Returns([]);
+        context.Services.GetRequiredService<NavigationManager>().NavigateTo($"/plans/{plan.Id}/accounts");
+
+        var component = context.Render<Workspace>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+        await component.WaitForAssertionAsync(() => component.FindAll(".register-table .category-link").Count.ShouldBe(1));
+        await component.Find(".register-table .category-link").ClickAsync();
+        component.FindAll(".editor-surface").Count.ShouldBe(1);
+        await Button(component, "Save transaction").ClickAsync();
+
+        component.Find("[role='alert']").TextContent.ShouldContain("was saved");
+
+        // The save committed, so recovering from it consumes the draft instead of offering it again.
+        await Button(component, "Refresh plan").ClickAsync();
+
+        await component.WaitForAssertionAsync(() => component.FindAll(".editor-surface").ShouldBeEmpty());
+    }
+
     private static PlanView View(PlanSnapshot plan, bool due = false) => new(plan with { Transactions = [] },
         plan.Accounts.Select(account => BudgetFacts.Balance(plan, account, plan.Today)).ToArray(), due);
 

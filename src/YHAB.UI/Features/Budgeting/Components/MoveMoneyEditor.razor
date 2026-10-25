@@ -5,7 +5,11 @@
         <FluentGridItem Xs="12" Md="4"><FluentSelect Margin="0" Size="ListSize.Large" TOption="CategoryData" TValue="Guid" Label="Move to" Items="_categories" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="_to" /></FluentGridItem>
         <FluentGridItem Xs="12" Md="4"><AmountInput @ref="_amountInput" Label="Amount to move" Size="TextInputSize.Large" CommitOnSave="true" @bind-Value="_amount" ValidChanged="value => _valid = value" /></FluentGridItem>
     </FluentGrid>
+    @if (!FromAvailable || !ToAvailable)
+    {
+        <p class="validation-message" role="alert">That category is no longer available. Choose another category.</p>
+    }
     <div class="editor-actions">
-        <FluentButton OnClick="SaveAsync" Disabled="@(Busy || _saving || !_valid || _amount <= 0 || _from == _to)" Size="ButtonSize.Large" Appearance="ButtonAppearance.Primary">Move money</FluentButton>
+        <FluentButton OnClick="SaveAsync" Disabled="@(Busy || _saving || !_valid || _amount <= 0 || _from == _to || !FromAvailable || !ToAvailable)" Size="ButtonSize.Large" Appearance="ButtonAppearance.Primary">Move money</FluentButton>
     </div>
 </EditorSurface>

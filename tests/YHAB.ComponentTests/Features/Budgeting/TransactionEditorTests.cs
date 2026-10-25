@@ -244,6 +244,43 @@ public sealed class TransactionEditorTests
         SaveButton(component).HasAttribute("disabled").ShouldBeTrue();
     }
 
+    [Fact]
+    public async Task InflowRetainsARetiredCategoryAsInvalidAsync()
+    {
+        await using var context = CreateContext();
+        var plan = CreatePlan();
+        var retired = Guid.CreateVersion7();
+        var transaction = new TransactionData(Guid.CreateVersion7(), plan.Accounts[0].Id, plan.Today, "Refund", "", 12, null, "",
+            [new SplitData(Guid.CreateVersion7(), retired, 12, "")]);
+        var component = context.Render<TransactionEditor>(parameters => parameters.Add(item => item.Plan, plan)
+            .Add(item => item.Payees, []).Add(item => item.Transaction, transaction)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnClose, () => { }));
+
+        component.Find("#transaction-category-error").TextContent
+            .ShouldBe("That category is no longer available. Choose another category.");
+        SaveButton(component).HasAttribute("disabled").ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task InflowSplitsRetainARetiredCategoryAsInvalidAsync()
+    {
+        await using var context = CreateContext();
+        var plan = CreatePlan();
+        var retired = Guid.CreateVersion7();
+        var transaction = new TransactionData(Guid.CreateVersion7(), plan.Accounts[0].Id, plan.Today, "Refund", "", 20, null, "",
+        [
+            new SplitData(Guid.CreateVersion7(), Guid.Empty, 10, ""),
+            new SplitData(Guid.CreateVersion7(), retired, 10, ""),
+        ]);
+        var component = context.Render<TransactionEditor>(parameters => parameters.Add(item => item.Plan, plan)
+            .Add(item => item.Payees, []).Add(item => item.Transaction, transaction)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnClose, () => { }));
+
+        component.FindAll("[role='alert']").Count(item => string.Equals(item.TextContent, "That category is no longer available. Choose another category.", StringComparison.Ordinal))
+            .ShouldBe(1);
+        SaveButton(component).HasAttribute("disabled").ShouldBeTrue();
+    }
+
     private static BunitContext CreateContext()
     {
         var context = new BunitContext();

@@ -49,7 +49,7 @@ public sealed class EditorSurfaceTests
     }
 
     [Fact]
-    public async Task EscapeAsksOnADirtyEditorAndClosesACleanOneAsync()
+    public async Task EscapeAsksOnADirtyEditorAndNeverDiscardsByItselfAsync()
     {
         await using var context = CreateContext();
         var dirtyCloses = 0;
@@ -60,7 +60,14 @@ public sealed class EditorSurfaceTests
         dirtyCloses.ShouldBe(0);
         dirty.Find("[role='alertdialog']").ShouldNotBeNull();
 
+        // A repeated or held Escape must not stand in for the explicit discard action.
         await dirty.Find(".editor-surface").KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
+        await CloseButton(dirty).ClickAsync();
+
+        dirtyCloses.ShouldBe(0);
+        dirty.Find("[role='alertdialog']").ShouldNotBeNull();
+
+        await Button(dirty, "Discard changes").ClickAsync();
 
         dirtyCloses.ShouldBe(1);
 

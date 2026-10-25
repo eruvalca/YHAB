@@ -728,9 +728,9 @@ Opening account and transaction editors must focus a visible
 heading; browser checks also reopen an entry from its register row. Editor draft
 guards are checked headlessly through `EditorSurfaceTests` and the register, then
 again in the browser: closing a dirty editor asks **Keep editing** or **Discard
-changes**, Escape follows the same guard, Enter saves from the payee or amount,
-and a refresh keeps the draft unless its edited transaction disappeared or a
-command caused the change. Those cases use
+changes**, Escape and Cancel follow the same guard, Enter saves from the payee or
+amount, and a refresh keeps the draft unless a command caused the change or it
+follows a save that committed without reloading. Those cases use
 `EditorKeepsDraftsAndSavesWithEnterAsync`, because Fluent's debounced text binding
 and the key event's DOM path are only exercised by a real browser.
 

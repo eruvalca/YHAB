@@ -97,6 +97,10 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         var generation = ++_requestGeneration;
         _busy = true;
         _error = null;
+        // A refresh recovers a save that already committed on a different path than it preserves a
+        // draft: the draft's values are already stored, so keeping it would let a second save insert
+        // a duplicate. Rejected or idle states leave the draft untouched.
+        var preserveDraft = _operation.Phase == WorkspacePhase.Ready;
         var postDue = false;
         try
         {
@@ -105,7 +109,7 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
             var (view, month) = await ReadWorkspaceAsync(planId, !IsRegister, token);
             token.ThrowIfCancellationRequested();
             if (generation != _requestGeneration) { return; }
-            ApplyView(view, month, externalRefresh: true);
+            ApplyView(view, month, externalRefresh: preserveDraft);
             _operation = _operation.Loaded();
             // Interactive reads can complete after the first render. Post only after
             // the snapshot arrives, and never mutate the plan during static SSR.
@@ -132,7 +136,7 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         }
         if (!token.IsCancellationRequested && postDue && generation == _requestGeneration && Snapshot is { } plan)
         {
-            await ExecuteAsync(new PostRecurring(plan.Version, plan.Today), externalRefresh: true);
+            await ExecuteAsync(new PostRecurring(plan.Version, plan.Today), externalRefresh: preserveDraft);
         }
     }
 

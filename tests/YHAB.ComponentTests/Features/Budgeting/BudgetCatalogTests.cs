@@ -233,7 +233,7 @@ public sealed class BudgetCatalogTests
             Version = 8,
             Categories = plan.Categories.Select(item => item with { }).ToArray(),
             Allocations = [new(plan.Categories[1].Id, plan.Today, 25, false)],
-        }));
+        }).Add(item => item.ExternalRefresh, true));
         await component.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Save category", StringComparison.Ordinal)).ClickAsync();
         var saved = commands.Single().ShouldBeOfType<SaveCategory>();
         saved.Version.ShouldBe(8);

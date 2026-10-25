@@ -78,6 +78,55 @@ public sealed class BudgetBoardTests
         commands.ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task ActionsStayReachableWhenTheMonthReadFailsAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var plan = CreatePlan();
+        var component = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, plan)
+            .Add(item => item.LoadMonth, (_, _) => Task.FromException<BudgetMonth>(new HttpRequestException("Disconnected")))
+            .Add(item => item.OnCommand, _ => { })
+            .Add(item => item.PlanActions, builder => builder.AddMarkupContent(0, "<section class=\"workspace-toolbar\"><button type=\"button\" data-refresh>Refresh</button></section>")));
+
+        await component.WaitForAssertionAsync(() => component.FindAll("[data-kind='error']").Count.ShouldBe(1));
+
+        // The recovery action must stay on the page that reports the failure, after a heading.
+        component.FindAll("h1").Count.ShouldBe(1);
+        component.Find("[data-refresh]").ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task RefreshKeepsTheCategoryEditorWhileACommandResetsItAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var current = CreatePlan();
+        var component = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, current)
+            .Add(item => item.LoadMonth, (month, _) => Task.FromResult(BudgetCalculator.Calculate(current, month, current.Today)))
+            .Add(item => item.OnCommand, _ => { }));
+
+        await component.Find(".category-row .category-link").ClickAsync();
+        var draft = component.FindComponent<CategoryEditor>().Instance;
+
+        // A refresh delivers the changed record, but the open draft keeps its typed values.
+        current = current with { Version = current.Version + 1, Categories = [current.Categories[0] with { Name = "Groceries renamed" }] };
+        component.Render(parameters => parameters.Add(item => item.Plan, current).Add(item => item.ExternalRefresh, true));
+
+        component.FindComponent<CategoryEditor>().Instance.ShouldBeSameAs(draft);
+        component.FindAll("h1").Count.ShouldBe(1);
+
+        // A command result is attributed to the same draft and resets its baseline, so it remounts.
+        current = current with { Version = current.Version + 1 };
+        component.Render(parameters => parameters.Add(item => item.Plan, current).Add(item => item.ExternalRefresh, false));
+
+        component.FindComponent<CategoryEditor>().Instance.ShouldNotBeSameAs(draft);
+    }
+
     private static PlanSnapshot CreatePlan()
     {
         var today = new DateOnly(2026, 10, 2);

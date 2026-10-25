@@ -28,6 +28,7 @@ public sealed partial class AccountEditor
     private AmountInput? _balanceInput;
     private AmountInput? _interestInput;
     private AmountInput? _minimumInput;
+    private EditorSurface? _surface;
     private string _initial = "";
     private bool HasUnsavedChanges() => !string.Equals(Signature(), _initial, StringComparison.Ordinal)
         || _balanceInput?.HasDraft is true
@@ -111,5 +112,6 @@ public sealed partial class AccountEditor
             _saving = false;
         }
     }
-    private Task CancelAsync() => OnClose.InvokeAsync();
+    // Cancel is a close action like the heading button, so it shares the draft guard.
+    private Task CancelAsync() => _surface is null ? OnClose.InvokeAsync() : _surface.RequestCloseAsync();
 }
