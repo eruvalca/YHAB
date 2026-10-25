@@ -11,7 +11,8 @@
 .site-header {
     width: 100%;
     height: 100%;
-    padding-inline: var(--spacingHorizontalL);
+    padding-block-start: env(safe-area-inset-top, 0px);
+    padding-inline: calc(var(--spacingHorizontalL) + env(safe-area-inset-left, 0px)) calc(var(--spacingHorizontalL) + env(safe-area-inset-right, 0px));
     background: var(--colorNeutralBackground1);
     color: var(--colorNeutralForeground1);
     border-bottom: 1px solid var(--colorNeutralStroke2);
@@ -68,12 +69,12 @@
     max-width: none;
     min-width: 0;
     margin-inline: auto;
-    padding: var(--spacingVerticalM) var(--spacingHorizontalL);
+    padding: var(--spacingVerticalM) calc(var(--spacingHorizontalL) + env(safe-area-inset-right, 0px)) var(--spacingVerticalM) calc(var(--spacingHorizontalL) + env(safe-area-inset-left, 0px));
 }
 
 .site-footer {
     padding-block: var(--spacingVerticalL) calc(var(--spacingVerticalXXL) + env(safe-area-inset-bottom, 0px));
-    padding-inline: var(--spacingHorizontalL);
+    padding-inline: calc(var(--spacingHorizontalL) + env(safe-area-inset-left, 0px)) calc(var(--spacingHorizontalL) + env(safe-area-inset-right, 0px));
     color: var(--colorNeutralForeground2, #424242);
     font-size: 0.875rem;
 }
@@ -94,12 +95,15 @@
 }
 
 .theme-control select {
+    min-height: var(--yh-control-standard);
     margin-inline-start: var(--spacingHorizontalS);
-    padding: var(--spacingVerticalXS) var(--spacingHorizontalS);
+    padding-block: 0;
+    padding-inline: var(--spacingHorizontalS);
     color: var(--colorNeutralForeground1);
     background: var(--colorNeutralBackground2);
     border: 1px solid var(--colorNeutralStroke2);
     border-radius: var(--borderRadiusMedium);
+    font-size: var(--yh-control-font);
 }
 
 @media (max-width: 700px) {
@@ -142,7 +146,7 @@
     z-index: 1000;
     max-height: 100dvh;
     overflow: auto;
-    padding: 1rem;
+    padding: 1rem calc(1rem + env(safe-area-inset-right, 0px)) calc(1rem + env(safe-area-inset-bottom, 0px)) calc(1rem + env(safe-area-inset-left, 0px));
     border-top: 1px solid var(--colorPaletteRedBorder2, #9c2525);
     background: var(--colorNeutralBackground1, #fff);
     color: var(--colorNeutralForeground1, #242424);

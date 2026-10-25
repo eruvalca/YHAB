@@ -49,6 +49,19 @@ public sealed class WorkspaceTests
         }
     }
 
+    [Fact]
+    public async Task HistoryAndShortcutsRenderAsSeparatePanelsAsync()
+    {
+        await using var context = new BunitContext();
+        var (_, plan) = Configure(context);
+        var component = context.Render<Workspace>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+
+        await component.WaitForAssertionAsync(() => component.FindAll(".history-panel").Count.ShouldBe(2));
+        component.FindAll(".history-panel summary").Select(item => item.TextContent.Trim())
+            .ShouldBe(["Recent changes", "Keyboard shortcuts"]);
+        component.FindAll(".history-panel")[1].TextContent.ShouldContain("Ctrl+Z undo");
+    }
+
     [Theory]
     [InlineData("Static", false)]
     [InlineData("Server", true)]

@@ -47,6 +47,13 @@ assets/provider setup and [build rules](../../build/README.md) for enforcement.
   component markup requires them. Custom CSS supplements Fluent for application
   sizing, accessibility, and static Identity forms; it is not a competing design
   system. Use Fluent design tokens instead of unrelated colors and spacing.
+- Size controls and headings through the shared scale in `app.css`:
+  `--yh-control-compact` for dense in-row actions, `--yh-control-standard` for
+  buttons and inputs, and `--yh-control-touch` for primary call-to-action
+  targets, with `--yh-control-font` for form text. Headings and eyebrows use
+  `--yh-font-title`, `--yh-font-title-compact` for dense page headers,
+  `--yh-font-display`, and `--yh-font-eyebrow`. Do not add
+  one-off sizes or leave a primary action at Fluent's 24px small size.
 - A malformed `.razor.css` rule is not a build error. It reaches the generated
   scoped-CSS bundle as written, and an unterminated block swallows every following
   rule in the assembly, breaking unrelated pages. Verify scoped-CSS edits with a

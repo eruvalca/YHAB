@@ -13,6 +13,78 @@ namespace YHAB.ComponentTests.Features.Budgeting;
 public sealed class AccountRegisterTests
 {
     [Fact]
+    public async Task EmptyRegisterRendersEmptyStateWithoutAHeaderOnlyTableAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], false, false, []) { Today = today };
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(plan.Version, [], 0, null)))
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        component.FindAll(".register-table").ShouldBeEmpty();
+        component.FindAll("th").ShouldBeEmpty();
+        component.FindAll(".pagination").ShouldBeEmpty();
+        component.Find(".empty-state").TextContent.ShouldContain("No transactions here yet");
+    }
+
+    [Fact]
+    public async Task RowMenuHoldsDuplicateInsteadOfRepeatingItInlineAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var entry = new TransactionData(Guid.NewGuid(), account.Id, today, "Visible payee", "", -10, null, "", []);
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], false, false, []) { Today = today };
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(plan.Version, [new(entry, 990)], 1, null)))
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        var row = component.Find(".register-table tbody tr");
+        var menu = row.QuerySelector("details.row-actions");
+        menu.ShouldNotBeNull();
+        row.QuerySelectorAll("fluent-button").ShouldBeEmpty();
+        row.QuerySelectorAll(".row-actions-menu button").Select(button => button.TextContent.Trim()).ShouldBe(["Duplicate…"]);
+        menu.QuerySelector(".visually-hidden").ShouldNotBeNull().TextContent.ShouldBe("Actions for Visible payee");
+    }
+
+    [Fact]
+    public async Task EmptyStateIsHiddenWhileTheRegisterIsBusyAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], false, false, []) { Today = today };
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(plan.Version, [], 0, null)))
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        component.Find(".empty-state").ShouldNotBeNull();
+        component.Render(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
+            .Add(item => item.Busy, true)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(plan.Version, [], 0, null)))
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        component.FindAll(".empty-state").ShouldBeEmpty();
+        component.Find("[role='status']").TextContent.ShouldBe("Loading transactions…");
+    }
+
+    [Fact]
     public async Task ReportFiltersReachTheRegisterQueryAndCanBeClearedAsync()
     {
         await using var context = new BunitContext();

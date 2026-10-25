@@ -4,6 +4,22 @@
     line-height: 1.5;
     background: var(--colorNeutralBackground1, #fff);
     color: var(--colorNeutralForeground1, #242424);
+
+    /* Control scale. Every interactive control uses one of these steps; a
+       primary action is never smaller than the standard step, and form
+       controls use 16px text so mobile browsers do not zoom on focus. */
+    --yh-control-compact: 2rem;      /* 32px: dense in-row actions */
+    --yh-control-standard: 2.5rem;   /* 40px: default buttons and inputs */
+    --yh-control-touch: 2.75rem;     /* 44px: primary call-to-action targets */
+    --yh-control-font: 1rem;
+
+    /* Type scale. Body copy is 14px, eyebrows sit one step below it, and
+       page/display headings share a single capped ramp. */
+    --yh-font-body: 0.875rem;
+    --yh-font-eyebrow: 0.75rem;
+    --yh-font-title-compact: clamp(1.25rem, 1.5vw, 1.5rem);
+    --yh-font-title: clamp(1.5rem, 2vw, 2rem);
+    --yh-font-display: clamp(2rem, 4.5vw, 3rem);
 }
 
 *,
@@ -22,7 +38,7 @@ body {
 }
 
 h1 {
-    font-size: clamp(1.5rem, 2vw, 2rem);
+    font-size: var(--yh-font-title);
 }
 
 h2 {
@@ -64,7 +80,7 @@ button, input, select, textarea {
 }
 
 input, select, textarea {
-    font-size: 1rem;
+    font-size: var(--yh-control-font);
 }
 
 fluent-text-input, fluent-dropdown, fluent-textarea,
@@ -72,10 +88,21 @@ fluent-select, fluent-text-area {
     --fontSizeBase300: 1rem;
 }
 
+/* Fluent buttons render a custom element; every size uses the standard step
+   so no surface falls back to the framework's 24px small size. */
+fluent-button {
+    min-height: var(--yh-control-standard);
+}
+
+fluent-button[icon-only] {
+    min-width: var(--yh-control-standard);
+}
+
 /* Fluent dropdowns supply slotted native buttons. Their web component owns
    their border, spacing and typography; these rules style our native buttons. */
 button:where(:not([slot])) {
     max-width: 100%;
+    min-height: var(--yh-control-standard);
     padding: 0.4rem 0.75rem;
     cursor: pointer;
     border: 1px solid var(--colorNeutralStroke1, #d1d1d1);
@@ -83,6 +110,15 @@ button:where(:not([slot])) {
     background: var(--colorNeutralBackground1, #fff);
     color: var(--colorNeutralForeground1, #242424);
     font-weight: 600;
+}
+
+/* Text-style buttons keep their link-like density. */
+.category-link,
+.passkey-login-link,
+.rename-name,
+.term-info,
+.term-link {
+    min-height: auto;
 }
 
 button:where(:not([slot])):disabled {
@@ -131,6 +167,16 @@ hr {
     border-radius: var(--borderRadiusMedium, 4px);
     background: var(--colorNeutralBackground1, #fff);
     color: inherit;
+}
+
+.form-field input,
+.form-field select {
+    height: var(--yh-control-standard);
+    padding-block: 0;
+}
+
+.form-field textarea {
+    min-height: var(--yh-control-standard);
 }
 
 .form-field button {
@@ -221,6 +267,7 @@ th, td {
 
 /* Identity keeps native form-associated controls for static SSR and passkeys. */
 .account-form button[type="submit"]:not([name="__passkeySubmit"]) {
+    min-height: var(--yh-control-touch);
     background: var(--colorBrandBackground, #0f6cbd);
     border-color: var(--colorBrandBackground, #0f6cbd);
     color: var(--colorNeutralForegroundOnBrand, #fff);
@@ -260,7 +307,7 @@ body[data-theme="dark"] {
     color-scheme: dark;
 }
 body { background: var(--colorNeutralBackground2); color: var(--colorNeutralForeground1); }
-.eyebrow { color: var(--colorBrandForeground1); font-size: var(--fontSizeBase200); font-weight: var(--fontWeightSemibold); letter-spacing: 0.12em; margin-bottom: var(--spacingVerticalS); }
+.eyebrow { color: var(--colorBrandForeground1); font-size: var(--yh-font-eyebrow); font-weight: var(--fontWeightSemibold); letter-spacing: 0.12em; margin-bottom: var(--spacingVerticalS); }
 .lead { color: var(--colorNeutralForeground2); font-size: var(--fontSizeBase400); max-width: 43rem; }
 .muted, .field-hint { color: var(--colorNeutralForeground3); }
 .field-hint { font-size: var(--fontSizeBase200); }
@@ -274,9 +321,9 @@ body { background: var(--colorNeutralBackground2); color: var(--colorNeutralFore
 .plan-card p { color: var(--colorNeutralForeground3); }
 .plan-card .plan-card-shared { color: var(--colorBrandForeground1); font-size: var(--fontSizeBase200); font-weight: var(--fontWeightSemibold); }
 .plan-card-action { display: block; margin-top: var(--spacingVerticalXXXL); color: var(--colorBrandForeground1); font-weight: var(--fontWeightSemibold); }
-.primary-action { display: inline-block; padding: var(--spacingVerticalM) var(--spacingHorizontalXL); text-decoration: none; background: var(--colorBrandBackground); color: var(--colorNeutralForegroundOnBrand); border: 1px solid var(--colorBrandBackground); border-radius: var(--borderRadiusMedium); font-weight: var(--fontWeightSemibold); }
+.primary-action { display: inline-flex; align-items: center; justify-content: center; min-height: var(--yh-control-touch); padding: var(--spacingVerticalM) var(--spacingHorizontalXL); text-decoration: none; background: var(--colorBrandBackground); color: var(--colorNeutralForegroundOnBrand); border: 1px solid var(--colorBrandBackground); border-radius: var(--borderRadiusMedium); font-size: var(--yh-control-font); font-weight: var(--fontWeightSemibold); }
 .primary-action:hover { background: var(--colorBrandBackgroundHover); color: var(--colorNeutralForegroundOnBrand); }
-.secondary-action { display: inline-block; padding: var(--spacingVerticalS) var(--spacingHorizontalL); background: transparent; color: var(--colorBrandForeground1); border: 1px solid var(--colorNeutralStroke2); border-radius: var(--borderRadiusMedium); font-weight: var(--fontWeightSemibold); }
+.secondary-action { display: inline-flex; align-items: center; justify-content: center; min-height: var(--yh-control-standard); padding: var(--spacingVerticalS) var(--spacingHorizontalL); background: transparent; color: var(--colorBrandForeground1); border: 1px solid var(--colorNeutralStroke2); border-radius: var(--borderRadiusMedium); font-size: var(--yh-control-font); font-weight: var(--fontWeightSemibold); }
 .secondary-action:hover { background: var(--colorSubtleBackgroundHover); }
 .empty-state { padding: clamp(2rem, 6vw, 4rem); text-align: center; border: 1px dashed var(--colorNeutralStroke1); border-radius: var(--borderRadiusXLarge); margin-block: var(--spacingVerticalL); color: var(--colorNeutralForeground3); }
 .empty-state h2, .empty-state h3 { color: var(--colorNeutralForeground1); }
@@ -294,7 +341,7 @@ body { background: var(--colorNeutralBackground2); color: var(--colorNeutralFore
 [data-money-tone="negative"] { color: var(--colorPaletteRedForeground1); }
 [data-money-tone="attention"] { color: var(--colorPaletteMarigoldForeground2); }
 .nowrap { white-space: nowrap; }
-.available-pill { display: inline-flex; align-items: center; justify-content: center; padding: var(--spacingVerticalXS) var(--spacingHorizontalM); border-radius: var(--borderRadiusCircular); background: var(--colorNeutralBackground3); font-weight: var(--fontWeightSemibold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.available-pill { display: inline-flex; align-items: center; justify-content: center; min-height: var(--yh-control-compact); padding: var(--spacingVerticalXS) var(--spacingHorizontalM); border-radius: var(--borderRadiusCircular); background: var(--colorNeutralBackground3); font-weight: var(--fontWeightSemibold); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .available-pill[data-tone="positive"] { background: var(--colorPaletteGreenBackground1); color: var(--colorPaletteGreenForeground1); }
 .available-pill[data-tone="attention"] { background: var(--colorPaletteMarigoldBackground1); color: var(--colorPaletteMarigoldForeground2); }
 .available-pill[data-tone="negative"] { background: var(--colorPaletteRedBackground1); color: var(--colorPaletteRedForeground1); }

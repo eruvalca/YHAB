@@ -87,6 +87,12 @@ public sealed class PwaTests(ITestOutputHelper output)
         manifest.GetProperty("name").GetString().ShouldBe("YHAB");
         manifest.GetProperty("display").GetString().ShouldBe("standalone");
         manifest.GetProperty("start_url").GetString().ShouldBe("/plans");
+        manifest.GetProperty("background_color").GetString().ShouldBe("#FFFFFF");
+        manifest.GetProperty("orientation").GetString().ShouldBe("any");
+        manifest.GetProperty("display_override").EnumerateArray().Select(item => item.GetString()).ShouldContain(item => string.Equals(item, "standalone", StringComparison.Ordinal));
+        var shortcuts = manifest.GetProperty("shortcuts").EnumerateArray().ToArray();
+        shortcuts.Select(item => item.GetProperty("url").GetString()).ShouldContain(item => string.Equals(item, "/plans", StringComparison.Ordinal));
+        shortcuts.ShouldAllBe(item => item.GetProperty("name").GetString() != null);
         foreach (var icon in manifest.GetProperty("icons").EnumerateArray())
         {
             (await page.EvaluateAsync<bool>("async src => { const image = new Image(); image.src = src; await image.decode(); return image.naturalWidth >= 192; }", icon.GetProperty("src").GetString())).ShouldBeTrue();

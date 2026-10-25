@@ -389,7 +389,8 @@ public sealed class PlanSharingComponentTests
         error.GetAttribute("role").ShouldBe("alert");
         error.Closest("#join-plan-form").ShouldNotBeNull();
         component.Find("#join-code").GetAttribute("aria-invalid").ShouldBe("true");
-        component.Find("#join-code").GetAttribute("aria-describedby").ShouldBe("join-code-error");
+        component.Find("#join-code").GetAttribute("aria-describedby").ShouldBe("join-code-hint join-code-error");
+        component.Find("#join-code-hint").TextContent.ShouldContain("Dashes, spaces, and capitals do not matter");
         component.Find("#join-code").HasAttribute("data-validation-focus").ShouldBeTrue();
     }
 
@@ -435,6 +436,22 @@ public sealed class PlanSharingComponentTests
         error.TextContent.ShouldBe("Settings could not be saved.");
         error.GetAttribute("role").ShouldBe("alert");
         component.Find("#rename-payee-section").QuerySelectorAll(".notice").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task PlanSettingsGroupsPayeesUnderPlanDataAfterSharingAsync()
+    {
+        await using var context = CreateContext();
+        var budgets = Substitute.For<IBudgetClient>();
+        var plan = Plan(isOwner: true);
+        Configure(budgets, plan, new PlanShareSummary("Alice", true, []));
+        context.Services.AddSingleton(budgets);
+        var component = context.Render<PlanSettings>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+        await component.WaitForAssertionAsync(() => component.Find("#plan-settings-section").ShouldNotBeNull());
+
+        component.FindAll("#plan-settings-section, #sharing-section, #plan-data-section")
+            .Select(item => item.Id).ShouldBe(["plan-settings-section", "sharing-section", "plan-data-section"]);
+        component.Find("#plan-data-section #rename-payee-section").ShouldNotBeNull();
     }
 
     [Fact]

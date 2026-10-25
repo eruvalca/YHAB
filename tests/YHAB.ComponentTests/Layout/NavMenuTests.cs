@@ -46,8 +46,8 @@ public sealed class NavMenuTests
         }
         else
         {
-            component.Find("a[href='Account/Login']").TextContent.Trim().ShouldBe("Login");
-            component.Find("a[href='Account/Register']").TextContent.Trim().ShouldBe("Register");
+            component.Find("a[href='Account/Login']").TextContent.Trim().ShouldBe("Log in");
+            component.Find("a[href='Account/Register']").TextContent.Trim().ShouldBe("Create your account");
             component.FindAll("form[action='Account/Logout'], a[href='Account/Manage']").ShouldBeEmpty();
         }
     }

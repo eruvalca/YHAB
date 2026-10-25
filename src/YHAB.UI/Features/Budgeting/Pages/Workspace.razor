@@ -43,9 +43,19 @@
                 </BudgetBoard>
             }
             <details class="history-panel">
-                <summary>Recent changes & keyboard shortcuts</summary>
+                <summary>Recent changes</summary>
+                @if (plan.Changes.Count > 0)
+                {
+                    <ol>@foreach (var change in plan.Changes) { <li>@change.Description <small class="muted">@change.Timestamp.ToLocalTime().ToString("g", Culture)</small></li> }</ol>
+                }
+                else
+                {
+                    <p class="muted">No changes yet.</p>
+                }
+            </details>
+            <details class="history-panel">
+                <summary>Keyboard shortcuts</summary>
                 <p class="muted">Ctrl+Z undo · Ctrl+Shift+Z redo. Shortcuts leave text fields alone. Your latest 50 changes can be undone.</p>
-                <ol>@foreach (var change in plan.Changes) { <li>@change.Description <small class="muted">@change.Timestamp.ToLocalTime().ToString("g", Culture)</small></li> }</ol>
             </details>
         </PlanFrame>
     </div>
