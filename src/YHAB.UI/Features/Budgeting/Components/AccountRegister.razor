@@ -94,6 +94,10 @@ else if (_result.Rows.Count > 0)
         <FluentButton OnClick="NextPageAsync" Disabled="@(IsBusy || _result.Next is null)" Appearance="ButtonAppearance.Subtle">Next</FluentButton>
     </FluentStack>
 }
+else if (_error is null && IsBusy)
+{
+    <p role="status">Loading transactions…</p>
+}
 else if (_error is null)
 {
     <div class="empty-state"><h2>No transactions here yet</h2><p>Add a transaction or adjust your filters. Small habits bring a clearer picture.</p></div>
