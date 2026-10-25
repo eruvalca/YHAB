@@ -1,9 +1,19 @@
-<section class="editor-surface" aria-label="@Title">
+<section class="editor-surface" aria-label="@Title" @onkeydown="KeyDownAsync">
     <FluentStack Orientation="Orientation.Vertical" VerticalGap="var(--spacingVerticalL)" Width="100%">
         <FluentStack Class="editor-heading" VerticalAlignment="VerticalAlignment.Center" HorizontalAlignment="HorizontalAlignment.SpaceBetween" Width="100%">
             <h2 @ref="_heading" tabindex="-1">@Title</h2>
-            <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="CloseAsync" Size="ButtonSize.Large" aria-label="Close editor">Close</FluentButton>
+            <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="RequestCloseAsync" Size="ButtonSize.Large" aria-label="Close editor">Close</FluentButton>
         </FluentStack>
+        @if (_confirmingDiscard)
+        {
+            <div @ref="_discardPrompt" class="editor-discard notice" data-kind="warning" role="alertdialog" aria-labelledby="@_discardId" tabindex="-1">
+                <p id="@_discardId">Discard your unsaved changes?</p>
+                <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalS)">
+                    <FluentButton Appearance="ButtonAppearance.Primary" OnClick="RequestCloseAsync" Size="ButtonSize.Large">Discard changes</FluentButton>
+                    <FluentButton Appearance="ButtonAppearance.Subtle" OnClick="KeepEditingAsync" Size="ButtonSize.Large">Keep editing</FluentButton>
+                </FluentStack>
+            </div>
+        }
         @ChildContent
     </FluentStack>
 </section>

@@ -25,6 +25,7 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
     private Task? _poll;
     private bool _hasUpdates;
     private bool _busy;
+    private bool _externalRefresh;
     private long _requestGeneration;
     private bool IsBusy => _busy || !_operation.CanEdit || !RendererInfo.IsInteractive;
     private string? _error;
@@ -104,7 +105,7 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
             var (view, month) = await ReadWorkspaceAsync(planId, !IsRegister, token);
             token.ThrowIfCancellationRequested();
             if (generation != _requestGeneration) { return; }
-            ApplyView(view, month);
+            ApplyView(view, month, externalRefresh: true);
             _operation = _operation.Loaded();
             // Interactive reads can complete after the first render. Post only after
             // the snapshot arrives, and never mutate the plan during static SSR.
@@ -131,11 +132,13 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         }
         if (!token.IsCancellationRequested && postDue && generation == _requestGeneration && Snapshot is { } plan)
         {
-            await ExecuteAsync(new PostRecurring(plan.Version, plan.Today));
+            await ExecuteAsync(new PostRecurring(plan.Version, plan.Today), externalRefresh: true);
         }
     }
 
-    private async Task ExecuteAsync(PlanCommand command)
+    private Task ExecuteAsync(PlanCommand command) => ExecuteAsync(command, externalRefresh: false);
+
+    private async Task ExecuteAsync(PlanCommand command, bool externalRefresh)
     {
         if (_busy || (!_operation.CanEdit && !(_operation.CanRetry && ReferenceEquals(command, _operation.Pending))))
         {
@@ -157,7 +160,7 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
             var (view, month) = await ReadWorkspaceAsync(planId, !IsRegister, token);
             token.ThrowIfCancellationRequested();
             if (generation != _requestGeneration) { return; }
-            ApplyView(view, month);
+            ApplyView(view, month, externalRefresh);
             _operation = _operation.Loaded();
             if (command is SaveAccount)
             {
@@ -233,12 +236,13 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         }
     }
 
-    private void ApplyView(PlanView view, BudgetMonth? month)
+    private void ApplyView(PlanView view, BudgetMonth? month, bool externalRefresh)
     {
         _view = view;
         Snapshot = view.Catalog;
         _preparedMonth = month is null ? null : new(view.Catalog.Id, view.Catalog.Version, month);
         _hasUpdates = false;
+        _externalRefresh = externalRefresh;
     }
 
     private sealed record PreparedMonth(Guid PlanId, long Version, BudgetMonth Budget);

@@ -10,7 +10,11 @@ public sealed partial class BudgetBoard
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
     [Parameter] public EventCallback OnAddAccount { get; set; }
     [Parameter] public bool Busy { get; set; }
+    // A plain refresh keeps an open draft; a command closes it because the
+    // command consumed the values the draft was editing.
+    [Parameter] public bool ExternalRefresh { get; set; }
     [Parameter] public Func<DateOnly, CancellationToken, Task<BudgetMonth>>? LoadMonth { get; set; }
+    [Parameter] public RenderFragment? PlanActions { get; set; }
 
     private string? _error;
     private int _request;
@@ -75,7 +79,11 @@ public sealed partial class BudgetBoard
         if (_loadedPlan?.Id != Plan.Id || _version != Plan.Version || _budget is null || (_error is not null && !ReferenceEquals(_loadedPlan, Plan)))
         {
             if (_loadedPlan?.Id != Plan.Id) { _help = false; CloseEditors(); }
-            else { _move = false; _category = Plan.Categories.SingleOrDefault(item => item.Id == _category?.Id); }
+            else
+            {
+                if (!ExternalRefresh) { _move = false; }
+                _category = Plan.Categories.SingleOrDefault(item => item.Id == _category?.Id);
+            }
             _version = Plan.Version;
             _loadedPlan = Plan;
             await CalculateAsync();

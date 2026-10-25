@@ -21,6 +21,19 @@ function submitInlineName(event) {
     form.requestSubmit();
 }
 
+// Fluent's immediate text binding is debounced, so a key pressed straight after
+// typing would otherwise be handled against the previous value. Blur first: the
+// resulting change event reaches Blazor before the key event, so Enter saves and
+// Escape guards the text the user actually sees.
+function commitEditorField(event) {
+    if (event.defaultPrevented || (event.key !== 'Enter' && event.key !== 'Escape')) return;
+    const path = event.composedPath();
+    if (!path.some(element => element instanceof Element && element.matches('.editor-surface'))) return;
+    if (event.key === 'Enter' && !path.some(element => element instanceof Element && element.matches('[data-enter-saves]'))) return;
+    const field = path.find(element => element instanceof HTMLElement && element.matches('input, textarea'));
+    field?.blur();
+}
+
 function amountInput(event) {
     const path = event.composedPath();
     if (!path.some(element => element instanceof Element && element.matches('.amount-input'))) return;
@@ -32,6 +45,9 @@ function selectAmount(event) {
     // A sticky summary must not cover controls brought into view by Tab or
     // an editor's heading focus. This also handles Fluent's shadow inputs.
     const path = event.composedPath();
+    // The plan actions can sit directly under the summary; scrolling on their
+    // focus would move the button out from under the pointer during a click.
+    if (path.some(element => element instanceof Element && element.matches('.workspace-toolbar'))) return;
     const board = path.find(element => element instanceof Element && element.matches('.budget-board'));
     const summary = board?.querySelector('.budget-summary');
     if (!summary || path.includes(summary)) return;
@@ -71,6 +87,7 @@ export function connect(reference) {
     document.addEventListener('pointerup', finishPointerFocus);
     document.addEventListener('dragstart', startCatalogDrag);
     document.addEventListener('keydown', submitInlineName, true);
+    document.addEventListener('keydown', commitEditorField, true);
 }
 export function disconnect() {
     if (handler) document.removeEventListener('keydown', handler);
@@ -80,5 +97,6 @@ export function disconnect() {
     document.removeEventListener('pointerup', finishPointerFocus);
     document.removeEventListener('dragstart', startCatalogDrag);
     document.removeEventListener('keydown', submitInlineName, true);
+    document.removeEventListener('keydown', commitEditorField, true);
     pointerInput = undefined;
 }

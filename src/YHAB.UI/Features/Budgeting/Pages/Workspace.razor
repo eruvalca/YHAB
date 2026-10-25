@@ -22,25 +22,25 @@
     <div class="workspace" aria-busy="@(_busy ? "true" : "false")" data-interactive="@(RendererInfo.IsInteractive ? "true" : "false")" data-renderer="@RendererInfo.Name">
         <PlanFrame Plan="plan" Balances="_view?.Balances" OnAddAccount="AddAccount" Busy="IsBusy">
 
-            <div class="workspace-toolbar">
-                <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalS)" VerticalGap="var(--spacingVerticalS)" Class="workspace-tools">
-                    <FluentButton OnClick="UndoAsync" Disabled="@(IsBusy || !plan.CanUndo)" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle" title="Undo (Ctrl+Z)">Undo</FluentButton>
-                    <FluentButton OnClick="RedoAsync" Disabled="@(IsBusy || !plan.CanRedo)" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle" title="Redo (Ctrl+Shift+Z)">Redo</FluentButton>
-                    <FluentButton OnClick="RefreshAsync" Disabled="_busy" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle">Refresh</FluentButton>
-                    <span class="workspace-status muted" role="status">@(_error is null ? _operation.Message : "Action needed")</span>
-                </FluentStack>
-            </div>
             @if (_accountEditor)
             {
                 <AccountEditor @key="_editingAccount?.Id" Plan="plan" Account="_editingAccount" OnCommand="ExecuteAsync" OnClose="CloseAccount" Busy="IsBusy" />
             }
             @if (IsRegister)
             {
-                <AccountRegister @key="plan.Id" Plan="plan" Balances="_view?.Balances" LoadPage="LoadRegisterAsync" LoadPayees="LoadPayeesAsync" AccountId="AccountId" InitialCategoryId="ReportCategoryId" InitialFrom="ReportFrom" InitialThrough="ReportThrough" OnCommand="ExecuteAsync" OnEditAccount="EditAccount" Busy="IsBusy" />
+                <AccountRegister @key="plan.Id" Plan="plan" Balances="_view?.Balances" LoadPage="LoadRegisterAsync" LoadPayees="LoadPayeesAsync" AccountId="AccountId" InitialCategoryId="ReportCategoryId" InitialFrom="ReportFrom" InitialThrough="ReportThrough" OnCommand="ExecuteAsync" OnEditAccount="EditAccount" Busy="IsBusy" ExternalRefresh="_externalRefresh">
+                    <PlanActions>
+                        <WorkspaceActions CanUndo="plan.CanUndo" CanRedo="plan.CanRedo" Busy="IsBusy" RefreshBusy="_busy" Status="@(_error is null ? _operation.Message : "Action needed")" OnUndo="UndoAsync" OnRedo="RedoAsync" OnRefresh="RefreshAsync" />
+                    </PlanActions>
+                </AccountRegister>
             }
             else
             {
-                <BudgetBoard @key="plan.Id" Plan="plan" LoadMonth="LoadMonthAsync" OnAddAccount="AddAccount" OnCommand="ExecuteAsync" Busy="IsBusy" />
+                <BudgetBoard @key="plan.Id" Plan="plan" LoadMonth="LoadMonthAsync" OnAddAccount="AddAccount" OnCommand="ExecuteAsync" Busy="IsBusy" ExternalRefresh="_externalRefresh">
+                    <PlanActions>
+                        <WorkspaceActions CanUndo="plan.CanUndo" CanRedo="plan.CanRedo" Busy="IsBusy" RefreshBusy="_busy" Status="@(_error is null ? _operation.Message : "Action needed")" OnUndo="UndoAsync" OnRedo="RedoAsync" OnRefresh="RefreshAsync" />
+                    </PlanActions>
+                </BudgetBoard>
             }
             <details class="history-panel">
                 <summary>Recent changes & keyboard shortcuts</summary>

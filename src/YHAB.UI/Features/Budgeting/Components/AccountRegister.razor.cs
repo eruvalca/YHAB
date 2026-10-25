@@ -15,6 +15,10 @@ public sealed partial class AccountRegister
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
     [Parameter, EditorRequired] public EventCallback<AccountData> OnEditAccount { get; set; }
     [Parameter] public bool Busy { get; set; }
+    // A plain refresh keeps an open draft when its edit target still exists; a
+    // command closes it because the command consumed the draft's values.
+    [Parameter] public bool ExternalRefresh { get; set; }
+    [Parameter] public RenderFragment? PlanActions { get; set; }
     private static readonly string[] _filters = ["All posted", "Recurring"];
     private static readonly string[] _sorts = ["Newest first", "Oldest first", "Payee", "Amount"];
     private readonly HashSet<Guid> _selected = [];
@@ -64,7 +68,13 @@ public sealed partial class AccountRegister
         }
         if (_loadedPlan?.Id != Plan.Id || _version != Plan.Version || _previousAccount != AccountId || filterChanged || (_error is not null && !ReferenceEquals(_loadedPlan, Plan)))
         {
-            CloseEditors();
+            var planReplaced = _loadedPlan?.Id != Plan.Id;
+            var catalogChanged = _version != Plan.Version;
+            if (planReplaced || _previousAccount != AccountId || filterChanged || (catalogChanged && !KeepOpenDraft()) || (_error is not null && !ReferenceEquals(_loadedPlan, Plan)))
+            {
+                CloseEditors();
+            }
+
             // A changed catalog may no longer contain a category referenced by the old page.
             _result = null;
             _payees = null;
@@ -73,6 +83,30 @@ public sealed partial class AccountRegister
             _loadedPlan = Plan;
             await ResetPageAsync();
         }
+    }
+
+    // Refresh keeps an open editor only while its edit target survives; the
+    // editor rebuilds its catalog from the new plan and keeps the typed values.
+    private bool KeepOpenDraft()
+    {
+        if (!ExternalRefresh || !_editing)
+        {
+            return false;
+        }
+
+        if (_transaction is null)
+        {
+            return true;
+        }
+
+        var refreshed = Plan.Transactions.SingleOrDefault(item => item.Id == _transaction.Id);
+        if (refreshed is null)
+        {
+            return false;
+        }
+
+        _transaction = refreshed;
+        return true;
     }
 
     private async Task LoadAsync()

@@ -335,6 +335,95 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await VerifyAmountEditingAsync(page);
     }
 
+    // The keyboard flow and draft guard span Fluent's shadow DOM and a real
+    // plan refresh, so they need a browser rather than the headless component suite.
+    [Fact]
+    [Trait("Category", "BrowserSmoke")]
+    public async Task EditorKeepsDraftsAndSavesWithEnterAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(4));
+        await using var builder = await TestAppHost.CreateAsync(timeout.Token);
+        await using var app = await builder.BuildAsync(timeout.Token);
+        await app.StartAsync(timeout.Token);
+        await app.ResourceNotifications.WaitForResourceHealthyAsync("yhab", timeout.Token);
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync();
+        await using var context = await browser.NewContextAsync(new()
+        {
+            BaseURL = app.GetEndpoint("yhab", "https").ToString(),
+            IgnoreHTTPSErrors = true,
+            ViewportSize = new() { Width = 1440, Height = 960 },
+        });
+        var page = await context.NewPageAsync();
+        var errors = new ConcurrentQueue<string>();
+        page.PageError += (_, error) => errors.Enqueue(error);
+        try
+        {
+            await RegisterAndLoginAsync(page);
+            await CreatePlanAsync(page);
+            await AddAccountAsync(page);
+            await OpenPlanNavigationAsync(page);
+            await page.GetByRole(AriaRole.Link, new() { Name = "All transactions", Exact = true }).ClickAsync();
+            await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+
+            // Page actions follow the heading in DOM order for assistive technology.
+            (await page.EvaluateAsync<bool>("""
+                () => {
+                    const heading = document.querySelector('.workspace h1');
+                    const actions = document.querySelector('.workspace-toolbar');
+                    return Boolean(heading && actions && (heading.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING));
+                }
+                """)).ShouldBeTrue();
+
+            // Escape guards a dirty draft instead of discarding it.
+            await Button(page, "+ Add transaction").ClickAsync();
+            await Input(page, "Payee").PressSequentiallyAsync("Draft payee");
+            await page.Keyboard.PressAsync("Escape");
+            await page.Locator("[role='alertdialog']").Filter(new() { HasText = "Discard your unsaved changes?" }).WaitForAsync();
+            await Button(page, "Keep editing").ClickAsync();
+            await page.Locator("[role='alertdialog']").WaitForAsync(new() { State = WaitForSelectorState.Detached });
+            (await Input(page, "Payee").InputValueAsync()).ShouldBe("Draft payee");
+
+            // Refresh keeps the open draft, and Enter in the amount saves it.
+            await Button(page, "Refresh").ClickAsync();
+            await page.WaitForFunctionAsync("() => document.querySelector('.workspace')?.getAttribute('aria-busy') === 'false'");
+            (await Input(page, "Payee").InputValueAsync()).ShouldBe("Draft payee");
+            var direction = page.GetByRole(AriaRole.Combobox, new() { Name = "Money direction", Exact = true });
+            await direction.ClickAsync();
+            await page.Locator("fluent-option[text='Inflow']").ClickAsync();
+            await Input(page, "Amount").FillAsync("12.50");
+            await Input(page, "Amount").PressAsync("Enter");
+            await page.Locator(".register-table tbody tr").Filter(new()
+            {
+                Has = page.GetByRole(AriaRole.Button, new() { Name = "Draft payee", Exact = true }),
+            }).WaitForAsync();
+            await page.Locator(".editor-surface").WaitForAsync(new() { State = WaitForSelectorState.Detached });
+
+            // Discarding the guard finally closes a dirty draft.
+            await Button(page, "+ Add transaction").ClickAsync();
+            await Input(page, "Payee").PressSequentiallyAsync("Discarded payee");
+            await page.Keyboard.PressAsync("Escape");
+            await Button(page, "Discard changes").ClickAsync();
+            await page.Locator(".editor-surface").WaitForAsync(new() { State = WaitForSelectorState.Detached });
+            (await page.Locator(".register-table tbody tr").Filter(new()
+            {
+                Has = page.GetByRole(AriaRole.Button, new() { Name = "Discarded payee", Exact = true }),
+            }).CountAsync()).ShouldBe(0);
+            errors.ShouldBeEmpty();
+        }
+        finally
+        {
+            foreach (var error in errors)
+            {
+                output.WriteLine(error);
+            }
+
+            var artifacts = Path.Combine(AppContext.BaseDirectory, "TestResults", $"editor-drafts-{Guid.NewGuid():N}");
+            await BrowserArtifacts.CaptureAsync(page, context, artifacts, output.WriteLine);
+        }
+    }
+
     private static async Task PurchaseAsync(IPage page, int width)
     {
         await OpenPlanNavigationAsync(page);

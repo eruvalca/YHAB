@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 
 namespace YHAB.UI.Features.Budgeting.Components;
 
@@ -7,7 +8,25 @@ public sealed partial class EditorSurface
     [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
     [Parameter, EditorRequired] public RenderFragment ChildContent { get; set; } = default!;
     [Parameter, EditorRequired] public EventCallback OnClose { get; set; }
+    // Evaluated on demand: the keyboard path can ask before the change that made
+    // the draft dirty has re-rendered this parameter.
+    [Parameter] public Func<bool>? HasUnsavedChanges { get; set; }
+    private readonly string _discardId = $"editor-discard-{Guid.CreateVersion7():N}";
     private ElementReference _heading;
+    private ElementReference _discardPrompt;
+    private bool _confirmingDiscard;
+    private bool _focusDiscard;
+    private bool IsDirty => HasUnsavedChanges?.Invoke() == true;
+
+    protected override void OnParametersSet()
+    {
+        // A pending focus belongs to the render that showed the prompt; a later
+        // parameter update clears the prompt, and only then may it be dropped.
+        if (!IsDirty && !_focusDiscard)
+        {
+            _confirmingDiscard = false;
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -15,7 +34,41 @@ public sealed partial class EditorSurface
         {
             await _heading.FocusAsync();
         }
+        else if (_focusDiscard)
+        {
+            _focusDiscard = false;
+            if (_confirmingDiscard)
+            {
+                await _discardPrompt.FocusAsync();
+            }
+        }
     }
 
-    private Task CloseAsync() => OnClose.InvokeAsync();
+    private async Task RequestCloseAsync()
+    {
+        if (IsDirty && !_confirmingDiscard)
+        {
+            _confirmingDiscard = true;
+            _focusDiscard = true;
+            return;
+        }
+
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task KeepEditingAsync()
+    {
+        _confirmingDiscard = false;
+        await _heading.FocusAsync();
+    }
+
+    private async Task KeyDownAsync(KeyboardEventArgs args)
+    {
+        if (!string.Equals(args.Key, "Escape", StringComparison.Ordinal) || args.IsComposing)
+        {
+            return;
+        }
+
+        await RequestCloseAsync();
+    }
 }

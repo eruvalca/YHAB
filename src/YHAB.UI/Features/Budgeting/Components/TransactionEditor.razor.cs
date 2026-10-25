@@ -1,5 +1,8 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using YHAB.SharedKernel.Budgeting;
+
 namespace YHAB.UI.Features.Budgeting.Components;
 
 public sealed partial class TransactionEditor
@@ -36,6 +39,7 @@ public sealed partial class TransactionEditor
     private bool _saving;
     private RepeatFrequency _repeat;
     private decimal Amount { get; set; }
+    private string _initial = "";
     private AmountInput? _amountInput;
     private bool _focusCategory;
     private ElementReference _categoryError;
@@ -53,8 +57,10 @@ public sealed partial class TransactionEditor
             return source is not null && BudgetFacts.IsBudget(source.Kind) ? 1 : -1;
         }
     }
-    private bool CategoryMissing => NeedsCategory && !_split && BudgetOutflow && _category == Guid.Empty;
-    private bool SplitCategoryMissing(SplitInput split) => SplitNeedsCategory(split) && split.Category == Guid.Empty;
+    private bool CategoryMissing => NeedsCategory && !_split && BudgetOutflow && !_spendingCategories.Any(item => item.Id == _category);
+    // A refresh can retire a category this draft still references, so a saved
+    // split must point at a choice the editor can still offer.
+    private bool SplitCategoryMissing(SplitInput split) => SplitNeedsCategory(split) && !SplitCategoryOptions(split).Any(item => item.Id == split.Category);
     private bool SplitNeedsCategory(SplitInput split) => split.Amount * BudgetDirection < 0;
     private CategoryData[] SplitCategoryOptions(SplitInput split) => SplitNeedsCategory(split) ? _spendingCategories : _categories;
     private bool NeedsCategory
@@ -71,14 +77,15 @@ public sealed partial class TransactionEditor
         || (_repeat == RepeatFrequency.None && _date > Plan.Today)
         || CategoryMissing
         || (NeedsCategory && _split && (_splits.Count == 0 || _splits.Any(item => !item.Valid || SplitCategoryMissing(item)) || _splits.Sum(item => item.Amount) != SignedAmount));
+    // Amount text stays a draft until the editor saves, so the guard compares
+    // the committed values plus each field's uncommitted text.
+    private bool HasUnsavedChanges() => !string.Equals(Signature(), _initial, StringComparison.Ordinal)
+        || _amountInput?.HasDraft is true
+        || _splits.Any(item => item.AmountInput?.HasDraft is true);
 
     protected override void OnInitialized()
     {
-        _accounts = Plan.Accounts.Where(item => !item.Closed).ToArray();
-        _destinations = [new(Guid.Empty, "Not a transfer", AccountKind.Checking, 0, Plan.Today, false, ""), .. _accounts];
-        _spendingCategories = Plan.Categories.Where(item => item.CreditAccountId is null)
-            .OrderBy(item => item.Hidden).ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase).ToArray();
-        _categories = [_readyToAssign, .. _spendingCategories];
+        RebuildCatalog();
         _account = Transaction?.AccountId ?? AccountId ?? _accounts.FirstOrDefault()?.Id ?? Guid.Empty;
         _transfer = Transaction?.TransferAccountId ?? Guid.Empty;
         InitializeValues();
@@ -86,6 +93,39 @@ public sealed partial class TransactionEditor
         {
             _splits.AddRange(Transaction.Splits.Select(item => new SplitInput { Id = item.Id, Category = item.CategoryId ?? Guid.Empty, Amount = item.Amount, Memo = item.Memo }));
         }
+
+        _initial = Signature();
+    }
+
+    // A refresh can replace the catalog under an open draft. The typed values
+    // stay; only the choices they select from are rebuilt.
+    protected override void OnParametersSet() => RebuildCatalog();
+    private void RebuildCatalog()
+    {
+        _accounts = Plan.Accounts.Where(item => !item.Closed).ToArray();
+        _destinations = [new(Guid.Empty, "Not a transfer", AccountKind.Checking, 0, Plan.Today, false, ""), .. _accounts];
+        _spendingCategories = Plan.Categories.Where(item => item.CreditAccountId is null)
+            .OrderBy(item => item.Hidden).ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase).ToArray();
+        _categories = [_readyToAssign, .. _spendingCategories];
+    }
+    private string Signature()
+    {
+        string[] parts =
+        [
+            _payee,
+            _memo,
+            Amount.ToString(CultureInfo.InvariantCulture),
+            _direction,
+            _date.ToString("O", CultureInfo.InvariantCulture),
+            _flag,
+            _repeat.ToString(),
+            _account.ToString(),
+            _transfer.ToString(),
+            _category.ToString(),
+            _split.ToString(),
+            string.Join(";", _splits.Select(item => $"{item.Id:N},{item.Category:N},{item.Amount.ToString(CultureInfo.InvariantCulture)},{item.Memo}")),
+        ];
+        return string.Join("|", parts);
     }
     private SplitData? FirstSplit => Transaction is { Splits.Count: > 0 } ? Transaction.Splits[0] : null;
     private void InitializeValues()
@@ -124,6 +164,15 @@ public sealed partial class TransactionEditor
     private void StartSplit() { _split = true; if (_splits.Count == 0) { _splits.Add(new() { Category = _category, Amount = SignedAmount }); } }
     private void AddSplit() => _splits.Add(new() { Amount = SignedAmount - _splits.Sum(item => item.Amount) });
     private void RemoveSplit(SplitInput split) => _splits.Remove(split);
+    private async Task SaveOnEnterAsync(KeyboardEventArgs args)
+    {
+        if (!string.Equals(args.Key, "Enter", StringComparison.Ordinal) || args.IsComposing)
+        {
+            return;
+        }
+
+        await SaveAsync();
+    }
     private async Task SaveAsync()
     {
         if (CannotSave)

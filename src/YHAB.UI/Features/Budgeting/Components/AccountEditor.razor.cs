@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using YHAB.SharedKernel.Budgeting;
 
@@ -27,6 +28,11 @@ public sealed partial class AccountEditor
     private AmountInput? _balanceInput;
     private AmountInput? _interestInput;
     private AmountInput? _minimumInput;
+    private string _initial = "";
+    private bool HasUnsavedChanges() => !string.Equals(Signature(), _initial, StringComparison.Ordinal)
+        || _balanceInput?.HasDraft is true
+        || _interestInput?.HasDraft is true
+        || _minimumInput?.HasDraft is true;
 
     protected override void OnInitialized()
     {
@@ -39,6 +45,23 @@ public sealed partial class AccountEditor
         _closed = Account?.Closed ?? false;
         _interest = Account?.InterestRate ?? 0;
         _minimum = Account?.MinimumPayment ?? 0;
+        _initial = Signature();
+    }
+
+    private string Signature()
+    {
+        string[] parts =
+        [
+            _name,
+            _kind.ToString(),
+            _openedOn.ToString("O", CultureInfo.InvariantCulture),
+            _balance.ToString(CultureInfo.InvariantCulture),
+            _notes,
+            _closed.ToString(),
+            _interest.ToString(CultureInfo.InvariantCulture),
+            _minimum.ToString(CultureInfo.InvariantCulture),
+        ];
+        return string.Join("|", parts);
     }
 
     private async Task SaveAsync()

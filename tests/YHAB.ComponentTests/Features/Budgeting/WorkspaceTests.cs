@@ -129,6 +129,21 @@ public sealed class WorkspaceTests
         register.InitialThrough.ShouldBe(new DateOnly(2026, 10, 31));
     }
 
+    [Fact]
+    public void PlanActionsFollowThePageHeadingInDocumentOrder()
+    {
+        using var context = new BunitContext();
+        var (_, plan) = Configure(context);
+        var component = context.Render<Workspace>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+
+        var ordered = component.FindAll(".workspace h1, .workspace-toolbar");
+
+        ordered.Count.ShouldBe(2);
+        ordered[0].TagName.ShouldBe("H1");
+        ordered[1].ClassList.Contains("workspace-toolbar").ShouldBeTrue();
+        component.Find(".workspace-toolbar[aria-label='Plan actions']").ShouldNotBeNull();
+    }
+
     private static PlanView View(PlanSnapshot plan, bool due = false) => new(plan with { Transactions = [] },
         plan.Accounts.Select(account => BudgetFacts.Balance(plan, account, plan.Today)).ToArray(), due);
 

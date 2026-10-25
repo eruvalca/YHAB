@@ -1,4 +1,4 @@
-<EditorSurface Title="Move money" OnClose="OnClose">
+<EditorSurface Title="Move money" OnClose="OnClose" HasUnsavedChanges="HasUnsavedChanges">
     <p class="muted">Your priorities can change. Your plan can, too.</p>
     <FluentGrid Spacing="3">
         <FluentGridItem Xs="12" Md="4"><FluentSelect Margin="0" Size="ListSize.Large" TOption="CategoryData" TValue="Guid" Label="Move from" Items="_categories" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="_from" /></FluentGridItem>

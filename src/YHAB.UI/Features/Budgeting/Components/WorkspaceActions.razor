@@ -1,0 +1,8 @@
+<section class="workspace-toolbar" aria-label="Plan actions">
+    <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalS)" VerticalGap="var(--spacingVerticalS)" Class="workspace-tools">
+        <FluentButton OnClick="OnUndo" Disabled="@(Busy || !CanUndo)" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle" title="Undo (Ctrl+Z)">Undo</FluentButton>
+        <FluentButton OnClick="OnRedo" Disabled="@(Busy || !CanRedo)" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle" title="Redo (Ctrl+Shift+Z)">Redo</FluentButton>
+        <FluentButton OnClick="OnRefresh" Disabled="RefreshBusy" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle">Refresh</FluentButton>
+        <span class="workspace-status muted" role="status">@Status</span>
+    </FluentStack>
+</section>

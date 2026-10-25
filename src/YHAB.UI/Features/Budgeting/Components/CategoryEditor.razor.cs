@@ -1,5 +1,7 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using YHAB.SharedKernel.Budgeting;
+
 namespace YHAB.UI.Features.Budgeting.Components;
 
 public sealed partial class CategoryEditor
@@ -33,7 +35,9 @@ public sealed partial class CategoryEditor
     private int _repeat;
     private DayOfWeek _weekday = DayOfWeek.Friday;
     private Guid _replacement;
+    private string _initial = "";
     private string TargetDescription => BudgetGlossary.Definition(BudgetGlossary.For(_kind));
+    private bool HasUnsavedChanges() => !string.Equals(Signature(), _initial, StringComparison.Ordinal) || _amountInput?.HasDraft is true;
     protected override void OnInitialized()
     {
         _name = Category?.Name ?? "";
@@ -42,6 +46,25 @@ public sealed partial class CategoryEditor
         _order = Category?.SortOrder ?? Plan.Categories.Count;
         _hidden = Category?.Hidden ?? false;
         InitializeTarget();
+        _initial = Signature();
+    }
+    private string Signature()
+    {
+        string[] parts =
+        [
+            _name,
+            _notes,
+            _group.ToString(),
+            _hidden.ToString(),
+            _hasTarget.ToString(),
+            _kind.ToString(),
+            _cadence.ToString(),
+            _amount.ToString(CultureInfo.InvariantCulture),
+            _due.ToString("O", CultureInfo.InvariantCulture),
+            _repeat.ToString(CultureInfo.InvariantCulture),
+            _weekday.ToString(),
+        ];
+        return string.Join("|", parts);
     }
     private Guid DefaultGroup => Plan.Groups.Count > 0 ? Plan.Groups[0].Id : Guid.Empty;
     protected override void OnParametersSet()

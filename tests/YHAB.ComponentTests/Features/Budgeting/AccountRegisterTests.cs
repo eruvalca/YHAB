@@ -43,6 +43,71 @@ public sealed class AccountRegisterTests
     }
 
     [Fact]
+    public async Task RefreshKeepsAnOpenDraftAndACommandClosesItAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], false, false, []) { Today = today };
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(plan.Version, [], 0, null)))
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Add transaction", StringComparison.Ordinal)).ClickAsync();
+        var payee = component.FindAll("fluent-text-input")[0];
+        await payee.ChangeAsync(new() { Value = "Corner shop" });
+        component.FindAll(".editor-surface").Count.ShouldBe(1);
+
+        // A refresh applies a newer catalog without consuming the open draft.
+        component.Render(parameters => parameters
+            .Add(item => item.Plan, plan with { Version = 8 })
+            .Add(item => item.ExternalRefresh, true));
+
+        component.FindAll(".editor-surface").Count.ShouldBe(1);
+        component.FindAll("fluent-text-input")[0].GetAttribute("value").ShouldBe("Corner shop");
+        await component.Find("fluent-button[aria-label='Close editor']").ClickAsync();
+        component.Find("[role='alertdialog']").TextContent.ShouldContain("Discard your unsaved changes?");
+
+        // A saved command consumes the draft, so the editor closes.
+        component.Render(parameters => parameters
+            .Add(item => item.Plan, plan with { Version = 9 })
+            .Add(item => item.ExternalRefresh, false));
+
+        component.FindAll(".editor-surface").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task RefreshClosesADraftWhoseTransactionDisappearedAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var entry = new TransactionData(Guid.NewGuid(), account.Id, today, "Corner shop", "", -10, null, "", []);
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [entry], false, false, []) { Today = today };
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(plan.Version, [new(entry, 990)], 1, null)))
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        await component.WaitForAssertionAsync(() => component.FindAll(".register-table .category-link").Count.ShouldBe(1));
+        await component.Find(".register-table .category-link").ClickAsync();
+        component.FindAll(".editor-surface").Count.ShouldBe(1);
+
+        component.Render(parameters => parameters
+            .Add(item => item.Plan, plan with { Version = 8, Transactions = [] })
+            .Add(item => item.ExternalRefresh, true));
+
+        component.FindAll(".editor-surface").ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task UnknownCategoryFilterFallsBackAndCanBeClearedAsync()
     {
         await using var context = new BunitContext();

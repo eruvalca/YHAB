@@ -1,4 +1,4 @@
-<EditorSurface Title="@(_id == Guid.Empty ? "A place for your money" : "Account details")" OnClose="OnClose">
+<EditorSurface Title="@(_id == Guid.Empty ? "A place for your money" : "Account details")" OnClose="OnClose" HasUnsavedChanges="HasUnsavedChanges">
     <p class="muted">Enter the balance from your records. You can add transactions whenever you need.</p>
     <FluentGrid Spacing="3">
         <FluentGridItem Xs="12" Sm="6"><FluentTextInput Margin="0" Size="TextInputSize.Large" Label="Account name" @bind-Value="_name" MaxLength="100" Required="true" /></FluentGridItem>

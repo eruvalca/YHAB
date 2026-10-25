@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using AngleSharp.Dom;
 using Bunit;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Shouldly;
 using Xunit;
@@ -177,6 +178,70 @@ public sealed class TransactionEditorTests
         saved.Amount.ShouldBe(-20);
         saved.TransferAccountId.ShouldBe(destination.Id);
         saved.Payee.ShouldBe("Transfer");
+    }
+
+    [Fact]
+    public async Task EnterInTheAmountFieldSavesTheTransactionAsync()
+    {
+        await using var context = CreateContext();
+        var plan = CreatePlan();
+        var commands = new List<PlanCommand>();
+        var component = context.Render<TransactionEditor>(parameters => parameters.Add(item => item.Plan, plan)
+            .Add(item => item.Payees, []).Add(item => item.OnCommand, commands.Add)
+            .Add(item => item.OnClose, () => { }));
+
+        var direction = component.FindAll("fluent-dropdown")[0];
+        var inflow = direction.QuerySelector("fluent-option[text='Inflow']").ShouldNotBeNull();
+        await direction.TriggerEventAsync("ondropdownchange", new DropdownEventArgs { SelectedOptions = inflow.Id });
+        await component.FindAll("fluent-text-input")[1].ChangeAsync(new() { Value = "12.50" });
+
+        // The browser script uses the marker to commit typed text before Enter.
+        component.Find(".amount-entry").Closest("[data-enter-saves]").ShouldNotBeNull();
+        await component.Find(".amount-entry").KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
+
+        commands.Single().ShouldBeOfType<SaveTransaction>().Transaction.Amount.ShouldBe(12.50m);
+    }
+
+    [Fact]
+    public async Task EnterInThePayeeFieldSavesTheTypedPayeeAsync()
+    {
+        await using var context = CreateContext();
+        var plan = CreatePlan();
+        var commands = new List<PlanCommand>();
+        var component = context.Render<TransactionEditor>(parameters => parameters.Add(item => item.Plan, plan)
+            .Add(item => item.Payees, []).Add(item => item.OnCommand, commands.Add)
+            .Add(item => item.OnClose, () => { }));
+
+        var direction = component.FindAll("fluent-dropdown")[0];
+        var inflow = direction.QuerySelector("fluent-option[text='Inflow']").ShouldNotBeNull();
+        await direction.TriggerEventAsync("ondropdownchange", new DropdownEventArgs { SelectedOptions = inflow.Id });
+        await component.FindAll("fluent-text-input")[1].ChangeAsync(new() { Value = "12.50" });
+
+        var payee = component.FindAll("fluent-text-input")[0];
+        payee.Closest("[data-enter-saves]").ShouldNotBeNull();
+        await payee.ChangeAsync(new() { Value = "Corner shop" });
+        await payee.KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
+
+        commands.Single().ShouldBeOfType<SaveTransaction>().Transaction.Payee.ShouldBe("Corner shop");
+    }
+
+    [Fact]
+    public async Task EnterDoesNotSaveAnIncompleteTransactionAsync()
+    {
+        await using var context = CreateContext();
+        var plan = CreatePlan();
+        var commands = new List<PlanCommand>();
+        var component = context.Render<TransactionEditor>(parameters => parameters.Add(item => item.Plan, plan)
+            .Add(item => item.Payees, []).Add(item => item.OnCommand, commands.Add)
+            .Add(item => item.OnClose, () => { }));
+
+        await component.FindAll("fluent-text-input")[1].ChangeAsync(new() { Value = "12.50" });
+
+        // The outflow has no spending category yet, so Enter leaves the draft alone.
+        await component.Find(".amount-entry").KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
+
+        commands.ShouldBeEmpty();
+        SaveButton(component).HasAttribute("disabled").ShouldBeTrue();
     }
 
     private static BunitContext CreateContext()

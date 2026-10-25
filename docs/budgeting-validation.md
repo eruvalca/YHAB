@@ -1917,7 +1917,7 @@ runtime binary download until the first populated workspace works with the
 server renderer, releases the download, waits for Auto's resource-cache marker,
 and checks the WebAssembly renderer at the final checkpoint. The marker is read,
 never fabricated; .NET 10 writes it after loading the runtime, as shown in
-[the pinned framework source](https://github.com/dotnet/aspnetcore/blob/v10.0.12/src/Components/Web.JS/src/Services/WebRootComponentManager.ts#L144-L149).
+[the pinned framework source](https://github.com/dotnet/aspnetcore/blob/v10.0.14/src/Components/Web.JS/src/Services/WebRootComponentManager.ts#L537-L548).
 Waiting before navigation avoids canceling background downloads. The test retains
 all monetary/register/report/mobile assertions
 and fails on any uncaught browser error. Holding the bootstrap JavaScript in the
@@ -2129,3 +2129,82 @@ The formatter needed to run outside the agent sandbox because its build-host
 named pipe was inaccessible inside it. No analyzer settings, test settings,
 packages or production data were changed. Documentation review covered the
 usage guide, setup guide and test guide; agent/build conventions remain accurate.
+
+## Editor draft protection and keyboard save
+
+The October 25 pass covered closing, refreshing, and keyboard entry in the plan,
+transaction, account, category, and move-money editors. Findings came from the
+reported `EditorSurface`/`AccountRegister` close paths and from browser traces of
+Escape, Enter, and a refresh with an open draft. No persistence, accounting,
+migration, or Identity behavior changed.
+
+| Finding | Resolution / evidence |
+| --- | --- |
+| UI-16: closing an editor silently dropped a typed draft | `EditorSurface` asks **Discard your unsaved changes?** with **Discard changes** and **Keep editing**, moves focus to the prompt, and treats Escape the same as **Close**. Each editor reports its own draft through `HasUnsavedChanges`, read on demand because a key event can arrive before the change that made the draft dirty re-renders the editor. Component checks: `ClosingADirtyEditorAsksBeforeDiscardingAsync`, `ClosingACleanEditorClosesWithoutAskingAsync`, `EscapeAsksOnADirtyEditorAndClosesACleanOneAsync`, `OtherKeysDoNotCloseTheEditorAsync`. |
+| UI-17: a refresh closed the register editor and discarded the draft | A plain refresh keeps an open draft while its edit target still exists, and the editor rebuilds the accounts and categories it offers from the new plan; a retired category now blocks the save instead of pointing at a stale record. A command still closes the editor, as does a draft whose edited transaction disappeared. Component checks: `RefreshKeepsAnOpenDraftAndACommandClosesItAsync`, `RefreshClosesADraftWhoseTransactionDisappearedAsync`. |
+| UI-18: Enter did not save, and Escape discarded without asking | Enter saves from the payee or the amount, and Escape closes through the guard. Fluent's `Immediate` text binding is debounced, so a key pressed straight after typing acted on the previous value; `budget-workspace.js` now blurs the focused editor field first so its change reaches Blazor before the key event. Component checks: `EnterInTheAmountFieldSavesTheTransactionAsync`, `EnterInThePayeeFieldSavesTheTypedPayeeAsync`, `EnterDoesNotSaveAnIncompleteTransactionAsync`. |
+| UI-19: Undo/Redo/Refresh preceded the page `h1` | The actions moved into `WorkspaceActions`, rendered after the register heading and after the board's monthly summary. Keeping them above each table also preserved the first-visible-row density check and the sticky-summary check, which a footer placement broke in both directions. `PlanActionsFollowThePageHeadingInDocumentOrder` checks the document order; the browser check compares `compareDocumentPosition`. |
+| UI-20: focusing a plan action scrolled it away from the pointer | The actions now sit directly under the sticky monthly summary, where the shared sticky-summary scroll helper activated on their focus and moved the button between pointer down and click at 390 px. `budget-workspace.js` now skips that scroll for `.workspace-toolbar`; the phone workflow reproduced the miss before the guard and passes after it. |
+
+Validation used the full solution build with zero warnings and errors, the
+complete unit and component projects (574 and 391 passed, zero failed or skipped),
+and 30 browser cases across `BudgetWorkflowTests` (5), `PlanCatalogTests` (9),
+`LayoutAndSharingTests`, `AccessibilityTests`, `HouseholdBrowserTests`,
+`NavigationTests` (8), and `PwaTests`/`BrowserArtifactsTests`/
+`InspectorRetentionTests` (8), all passing. The new
+`EditorKeepsDraftsAndSavesWithEnterAsync` drives the real keyboard and refresh
+flow at 1440 px. `ProcessLoadTests` were not rerun: they measure process and HTTP
+load, and this change adds no request or server work beyond the existing save and
+refresh paths. Formatting application and `--verify-no-changes` both exited zero.
+
+Commands run from the repository root:
+
+```powershell
+dotnet format YHAB.slnx --severity warn
+dotnet build YHAB.slnx
+dotnet test --project tests/YHAB.UnitTests/YHAB.UnitTests.csproj --no-build
+dotnet test --project tests/YHAB.ComponentTests/YHAB.ComponentTests.csproj --no-build
+dotnet test --project tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj --no-build --filter-class '*BudgetWorkflowTests'
+dotnet test --project tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj --no-build --filter-class '*PlanCatalogTests'
+dotnet test --project tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj --no-build --filter-class '*LayoutAndSharingTests' --filter-class '*AccessibilityTests' --filter-class '*HouseholdBrowserTests' --filter-class '*NavigationTests'
+dotnet test --project tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj --no-build --filter-class '*PwaTests' --filter-class '*BrowserArtifactsTests' --filter-class '*InspectorRetentionTests'
+dotnet format YHAB.slnx --severity warn --verify-no-changes
+```
+
+These runs pinned the runtime pack patch (`-p:RuntimeFrameworkVersion=10.0.13`)
+because the machine had the 10.0.14 shared runtime while nuget.org published
+runtime packs only through 10.0.13. The later package update to ASP.NET Core and
+EF Core 10.0.14 removed that gap; a plain `dotnet build YHAB.slnx` now restores and
+builds, so the property is no longer needed and no project or package setting was
+changed for it.
+
+## Browser reorder flakiness
+
+`PlanCatalogTests.SortableCategoriesMoveByKeyboardAndTouchAsync` occasionally
+expired inside `SavedAsync` while waiting for `POST /categories/reorder` in
+full-suite runs, while passing when run alone. The first question was whether the
+suite had become load-bound.
+
+| Check | Result |
+| --- | --- |
+| Parallel browser stacks | None. `BrowserAppHostDefinition` sets `DisableParallelization = true`, so browser cases already run one at a time. |
+| Cumulative resource growth | None across a complete 25-minute run sampled every 15 s: app processes 0–2, container count flat, mean CPU 21% (first third 18%, last third 21%). The 10–11 containers were the agent host's MCP servers, not test resources. |
+| Per-case timings | No drift. 31 cases, 1518 s total, mean 49 s; the affected case took 46 s. Peak CPU of 71% came from unrelated processes on the machine. |
+
+The stall was a lost gesture, not a slow server. `sortable-lists.js` performs a
+Left/Right move only when the focused `.sortable-item` carries
+`aria-grabbed="true"`, and the test pressed Enter and then ArrowRight without
+confirming that grab; a render or the previous move's focus restoration can clear
+it in between. A missed synthetic drag fails earlier, in the 10-second placeholder
+wait, which pointed the stall at a keyboard move.
+
+The test now waits for `aria-grabbed` before the arrow key, presses Enter only when
+the grab is missing (including inside a repeated gesture), asserts the in-drag state
+for every synthetic drag, and lets `SavedAsync` repeat a gesture at most once, only
+while the observed plan revision is unchanged and the workspace is not saving. A
+stalled gesture reports its grab state, drag rows, status and focus instead of a
+bare 30-second timeout. Both failure modes were injected and recovered from before
+the injection was reverted: a gesture that produced no request at all, and a render
+that cleared the grab before every gesture. `PlanCatalogTests` passed 9/9, the
+complete browser suite passed 31/31 (28 minutes), and the affected case passed in
+isolation in 40 s and 42 s.

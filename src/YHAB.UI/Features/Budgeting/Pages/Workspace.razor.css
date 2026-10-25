@@ -1,15 +1,3 @@
-.workspace-toolbar {
-    padding-bottom: var(--spacingVerticalXS);
-    margin-bottom: var(--spacingVerticalXS);
-    border-bottom: 1px solid var(--colorNeutralStroke2);
-}
-
-.workspace-status {
-    min-width: 9rem;
-    margin-inline-start: var(--spacingHorizontalS);
-    font-size: var(--fontSizeBase200);
-}
-
 @media (max-width: 600px) {
     /* Fluent small controls are 24px; the budget workspace keeps 40px targets. */
     .workspace ::deep fluent-button { min-height: 2.5rem; }

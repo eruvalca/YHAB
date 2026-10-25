@@ -1,4 +1,4 @@
-<EditorSurface Title="@(Category is null ? "New category" : Category.Name)" OnClose="OnClose">
+<EditorSurface Title="@(Category is null ? "New category" : Category.Name)" OnClose="OnClose" HasUnsavedChanges="HasUnsavedChanges">
     <h3>Target</h3>
     <FluentCheckbox Margin="0" Label="Set a target" LabelPosition="LabelPosition.Before" @bind-Value="_hasTarget" />
     @if (_hasTarget)
