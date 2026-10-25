@@ -1,7 +1,28 @@
-.report-filter { margin-block: var(--spacingVerticalXXL); }
+.report-filter { margin-block: var(--spacingVerticalL) var(--spacingVerticalXXL); }
 .report-filter .form-field { max-width: 13rem; }
 .report-filter button { align-self: end; }
+.report-heading { display: flex; justify-content: space-between; align-items: start; gap: var(--spacingHorizontalL); }
+.report-presets, .report-actions { display: flex; flex-wrap: wrap; gap: var(--spacingHorizontalS); margin-block: var(--spacingVerticalM); }
+.report-presets a { padding: var(--spacingVerticalS) var(--spacingHorizontalM); border: 1px solid var(--colorNeutralStroke1); border-radius: var(--borderRadiusMedium); }
+.report-actions { justify-content: flex-end; }
+.report-empty { margin-block: var(--spacingVerticalXXL); }
+.stat small { display: block; margin-top: var(--spacingVerticalXS); color: var(--colorNeutralForeground3); }
 .spending-row { margin-block: var(--spacingVerticalL); }
-.spending-row strong { margin-inline-start: auto; }
+.spending-row .money { margin-inline-start: 0; }
 .spending-row meter { width: 100%; height: 1rem; accent-color: var(--colorBrandBackground); }
+.trend-chart svg { display: block; width: 100%; height: auto; max-height: 18rem; }
+.trend-chart polyline { stroke: var(--colorBrandBackground); stroke-width: 3; }
+.trend-chart circle { fill: var(--colorBrandBackground); }
+.trend-labels { display: flex; justify-content: space-between; color: var(--colorNeutralForeground3); }
+.cash-flow-row { display: grid; grid-template-columns: 5rem minmax(5rem, 1fr) 6rem; align-items: center; gap: var(--spacingHorizontalM); margin-block: var(--spacingVerticalM); }
+.cash-flow-bars { display: grid; gap: var(--spacingVerticalXS); }
+.cash-flow-bars span { display: block; min-width: 2px; height: .6rem; border-radius: var(--borderRadiusSmall); }
+.income-bar { background: var(--colorPaletteGreenBackground3); }
+.expense-bar { background: var(--colorPaletteRedBackground3); }
+@media (max-width: 40rem) { .report-heading { display: block; } .cash-flow-row { grid-template-columns: 4rem minmax(3rem, 1fr); } .cash-flow-row > .numeric { grid-column: 2; } }
+@media print {
+    .report-presets, .report-filter, .report-actions, .print-button, ::deep .plan-sidebar { display: none !important; }
+    .report-section, .stat { break-inside: avoid; }
+    .trend-chart svg { max-height: 12rem; }
+}
 

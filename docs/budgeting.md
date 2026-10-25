@@ -50,9 +50,12 @@ category.
    supplies both sides. Transfers within the budget have no spending category.
    Transfers across the budget and tracking boundary require categories when
    money leaves the budget.
-6. Review spending, income/expense, and net worth in **Reflect**. Reports include
-   the selected date range and exclude recurring templates and duplicate
-   within-budget transfers.
+6. Review spending, income/expense, and net worth in **Reflect**. Choose a
+   month or year-to-date preset, or enter a custom range. Reports compare the
+   previous equal-length period, chart trends and cash flow, and show category
+   shares and budgeted amounts. Select a spending category to open its filtered
+   transactions. Reports can be downloaded as CSV or printed; they exclude
+   recurring templates and duplicate within-budget transfers.
 
 ## Sharing a plan
 

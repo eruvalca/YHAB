@@ -36,7 +36,7 @@
             }
             @if (IsRegister)
             {
-                <AccountRegister @key="plan.Id" Plan="plan" Balances="_view?.Balances" LoadPage="LoadRegisterAsync" LoadPayees="LoadPayeesAsync" AccountId="AccountId" OnCommand="ExecuteAsync" OnEditAccount="EditAccount" Busy="IsBusy" />
+                <AccountRegister @key="plan.Id" Plan="plan" Balances="_view?.Balances" LoadPage="LoadRegisterAsync" LoadPayees="LoadPayeesAsync" AccountId="AccountId" InitialCategoryId="ReportCategoryId" InitialFrom="ReportFrom" InitialThrough="ReportThrough" OnCommand="ExecuteAsync" OnEditAccount="EditAccount" Busy="IsBusy" />
             }
             else
             {

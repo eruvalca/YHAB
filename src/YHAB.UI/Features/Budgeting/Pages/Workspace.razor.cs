@@ -10,6 +10,9 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
 {
     [Parameter] public Guid PlanId { get; set; }
     [Parameter] public Guid? AccountId { get; set; }
+    [SupplyParameterFromQuery(Name = "category")] public Guid? ReportCategoryId { get; set; }
+    [SupplyParameterFromQuery(Name = "from")] public DateOnly? ReportFrom { get; set; }
+    [SupplyParameterFromQuery(Name = "to")] public DateOnly? ReportThrough { get; set; }
     // Each renderer loads its owner-scoped catalog; ledger pages and month totals
     // are fetched separately instead of round-tripping a ledger in prerender state.
     private PlanSnapshot? Snapshot { get; set; }

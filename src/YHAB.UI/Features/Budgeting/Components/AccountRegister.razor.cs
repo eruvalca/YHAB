@@ -9,6 +9,9 @@ public sealed partial class AccountRegister
     private const int PageSize = 50;
     [Parameter, EditorRequired] public PlanSnapshot Plan { get; set; } = default!;
     [Parameter] public Guid? AccountId { get; set; }
+    [Parameter] public Guid? InitialCategoryId { get; set; }
+    [Parameter] public DateOnly? InitialFrom { get; set; }
+    [Parameter] public DateOnly? InitialThrough { get; set; }
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
     [Parameter, EditorRequired] public EventCallback<AccountData> OnEditAccount { get; set; }
     [Parameter] public bool Busy { get; set; }
@@ -21,6 +24,7 @@ public sealed partial class AccountRegister
     private string _sort = "Newest first";
     private DateOnly? _from;
     private DateOnly? _to;
+    private Guid? _categoryId;
     private AccountData? _account;
     private TransactionData? _transaction;
     private bool _editing;
@@ -29,6 +33,7 @@ public sealed partial class AccountRegister
     private long _version = -1;
     private PlanSnapshot? _loadedPlan;
     private Guid? _previousAccount;
+    private (Guid?, DateOnly?, DateOnly?)? _initialFilter;
     private int _page;
     private RegisterPage? _result;
     private IReadOnlyList<string>? _payees;
@@ -48,7 +53,16 @@ public sealed partial class AccountRegister
     protected override async Task OnParametersSetAsync()
     {
         _account = Plan.Accounts.SingleOrDefault(item => item.Id == AccountId);
-        if (_loadedPlan?.Id != Plan.Id || _version != Plan.Version || _previousAccount != AccountId || (_error is not null && !ReferenceEquals(_loadedPlan, Plan)))
+        var initialFilter = (InitialCategoryId, InitialFrom, InitialThrough);
+        var filterChanged = _initialFilter != initialFilter;
+        if (filterChanged)
+        {
+            _initialFilter = initialFilter;
+            _from = InitialFrom;
+            _to = InitialThrough;
+            _categoryId = InitialCategoryId;
+        }
+        if (_loadedPlan?.Id != Plan.Id || _version != Plan.Version || _previousAccount != AccountId || filterChanged || (_error is not null && !ReferenceEquals(_loadedPlan, Plan)))
         {
             CloseEditors();
             // A changed catalog may no longer contain a category referenced by the old page.
@@ -74,7 +88,7 @@ public sealed partial class AccountRegister
         {
             if (previous is not null) { await previous.CancelAsync(); }
             token.ThrowIfCancellationRequested();
-            var result = await LoadPage(new(AccountId, _search, _filter, _sort, _from, _to, _cursors[_page], PageSize, Plan.Version), token);
+            var result = await LoadPage(new(AccountId, _search, _filter, _sort, _from, _to, _cursors[_page], PageSize, Plan.Version, _categoryId), token);
             token.ThrowIfCancellationRequested();
             if (request != _request) { return; }
             var payees = _payees ?? await LoadPayees(token);
@@ -117,6 +131,7 @@ public sealed partial class AccountRegister
     private void SelectVisible(bool value) { foreach (var entry in VisibleEntries) { Select(entry.Id, value); } }
     private async Task PreviousPageAsync() { _page--; _selected.Clear(); await LoadAsync(); }
     private async Task ResetPageAsync() { _page = 0; _selected.Clear(); _cursors.Clear(); _cursors.Add(null); await LoadAsync(); }
+    private async Task ClearReportFiltersAsync() { _categoryId = null; _from = null; _to = null; await ResetPageAsync(); }
     private async Task NextPageAsync() { if (_result?.Next is not { } next) { return; } _page++; if (_cursors.Count <= _page) { _cursors.Add(next); } else { _cursors[_page] = next; } _selected.Clear(); await LoadAsync(); }
     private void RequestDelete() => _deleting = true;
     private void CancelDelete() => _deleting = false;
