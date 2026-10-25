@@ -54,7 +54,8 @@ category.
    month or year-to-date preset, or enter a custom range. Reports compare the
    previous equal-length period, chart trends and cash flow, and show category
    shares and budgeted amounts. Select a spending category to open its filtered
-   transactions. Reports can be downloaded as CSV or printed; they exclude
+   transactions. Reports can be downloaded as CSV or printed; CSV fields are
+   quoted and spreadsheet formula prefixes are neutralized. Reports exclude
    recurring templates and duplicate within-budget transfers.
 
 ## Sharing a plan

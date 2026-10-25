@@ -146,7 +146,12 @@ public sealed partial class Reports(IBudgetClient budgets)
         return csv.ToString();
     }
 
-    private static string CsvRow(params string[] values) => string.Join(',', values.Select(value => $"\"{value.Replace("\"", "\"\"", StringComparison.Ordinal)}\""));
+    private static string CsvRow(params string[] values) => string.Join(',', values.Select(CsvCell));
+    private static string CsvCell(string value)
+    {
+        if (value.Length > 0 && value[0] is '=' or '+' or '-' or '@' or '\t' or '\r' or '\n') { value = "'" + value; }
+        return $"\"{value.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
+    }
     private static string Amount(decimal value) => value.ToString("0.00", CultureInfo.InvariantCulture);
     private static string FormatCoordinate(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
     private static string FormatDate(DateOnly value) => value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);

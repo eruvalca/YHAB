@@ -84,6 +84,29 @@ public sealed class ReportsTests
         csv.ShouldContain("\"75.00\",\"100.0%\"");
     }
 
+    [Theory]
+    [InlineData("=1+1")]
+    [InlineData("+1+1")]
+    [InlineData("-1+1")]
+    [InlineData("@SUM(1)")]
+    [InlineData("\t=1+1")]
+    [InlineData("\r=1+1")]
+    [InlineData("\n=1+1")]
+    public void CsvExportNeutralizesSpreadsheetFormulaPrefixes(string categoryName)
+    {
+        ArgumentNullException.ThrowIfNull(categoryName);
+        using var context = CreateContext(out var budgets, out var plan);
+        var category = plan.Categories[0];
+        budgets.ReadReportsAsync(plan.Id, Arg.Any<DateOnly>(), Arg.Any<DateOnly>(), Arg.Any<CancellationToken>())
+            .Returns(new ReportView(plan.Version, [new(new DateOnly(2026, 10, 1), 0, 40, 1000, 200)], [new(category.Id, categoryName, 40)]));
+        var component = context.Render<Reports>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+
+        var export = component.Find(".report-actions a");
+        var csv = Encoding.UTF8.GetString(Convert.FromBase64String(export.GetAttribute("href")!.Split(',')[1]));
+        var expected = "\"'" + categoryName.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"";
+        csv.ShouldContain(expected);
+    }
+
     private static BunitContext CreateContext(out IBudgetClient budgets, out PlanSnapshot plan)
     {
         var context = new BunitContext();
