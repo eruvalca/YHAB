@@ -20,6 +20,10 @@ public sealed partial class CategoryEditor
     private string _name = "";
     private string _notes = "";
     private Guid _group;
+    private bool _groupEdited;
+    private bool _nameEdited;
+    private bool _notesEdited;
+    private bool _hiddenEdited;
     private int _order;
     private bool _hidden;
     private bool _hasTarget;
@@ -32,6 +36,7 @@ public sealed partial class CategoryEditor
     private TargetCadence _cadence = TargetCadence.Monthly;
     private DateOnly _due;
     private DateOnly _start;
+    private DateOnly _baselineMonth;
     private int _repeat;
     private DayOfWeek _weekday = DayOfWeek.Friday;
     private Guid _replacement;
@@ -40,6 +45,7 @@ public sealed partial class CategoryEditor
     private bool HasUnsavedChanges() => !string.Equals(Signature(), _initial, StringComparison.Ordinal) || _amountInput?.HasDraft is true;
     protected override void OnInitialized()
     {
+        _baselineMonth = Month;
         _name = Category?.Name ?? "";
         _notes = Category?.Notes ?? "";
         _group = Category?.GroupId ?? DefaultGroup;
@@ -60,14 +66,71 @@ public sealed partial class CategoryEditor
         _due.ToString("O", CultureInfo.InvariantCulture),
         _repeat,
         _weekday);
+    private void SetGroup(Guid group)
+    {
+        _group = group;
+        _groupEdited = true;
+    }
+    private void SetName(string name)
+    {
+        _name = name;
+        _nameEdited = true;
+    }
+    private void SetNotes(string notes)
+    {
+        _notes = notes;
+        _notesEdited = true;
+    }
+    private void SetHidden(bool hidden)
+    {
+        _hidden = hidden;
+        _hiddenEdited = true;
+    }
+    // The baseline is the signature the refreshed record itself produces. Fields the user has not
+    // touched follow that record, so they stay clean, while an edited field still differs from it.
+    private string Baseline()
+    {
+        var target = Category?.Target;
+        return DraftSignature.Of(
+            Category?.Name ?? "",
+            Category?.Notes ?? "",
+            Category?.GroupId ?? DefaultGroup,
+            Category?.Hidden ?? false,
+            target is not null,
+            target?.Kind ?? TargetKind.Refill,
+            target?.Cadence ?? TargetCadence.Monthly,
+            target?.Amount ?? 0,
+            (target?.DueDate ?? _baselineMonth.AddMonths(1).AddDays(-1)).ToString("O", CultureInfo.InvariantCulture),
+            target?.RepeatEveryMonths ?? 0,
+            target?.Weekday ?? DayOfWeek.Friday);
+    }
     private Guid DefaultGroup => Plan.Groups.Count > 0 ? Plan.Groups[0].Id : Guid.Empty;
     protected override void OnParametersSet()
     {
-        // A refresh can reorder categories under this editor. Its sort order is not editable here,
-        // so it follows the refreshed category while the typed fields stay as the user left them.
+        // A refresh can rename, reorder, or regroup categories under this editor. Fields the user has
+        // not touched here follow the refreshed record, and the baseline follows it too, so an
+        // untouched record change never looks like an edit while an edited field still does. The
+        // target draft is left alone either way.
         if (Category is not null)
         {
             _order = Category.SortOrder;
+            if (!_nameEdited)
+            {
+                _name = Category.Name;
+            }
+            if (!_notesEdited)
+            {
+                _notes = Category.Notes;
+            }
+            if (!_groupEdited)
+            {
+                _group = Category.GroupId;
+            }
+            if (!_hiddenEdited)
+            {
+                _hidden = Category.Hidden;
+            }
+            _initial = Baseline();
         }
 
         _snoozed = MonthState?.Snoozed ?? false;

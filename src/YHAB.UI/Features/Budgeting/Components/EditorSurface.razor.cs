@@ -37,7 +37,10 @@ public sealed partial class EditorSurface
         else if (_focusDiscard)
         {
             _focusDiscard = false;
-            if (_confirmingDiscard)
+            // A batch can clear the prompt before its reference was ever captured. Focusing that
+            // unconfigured reference throws and takes the circuit down with it, so the prompt only
+            // takes focus when this instance actually rendered it.
+            if (_confirmingDiscard && _discardPrompt.Id is not null)
             {
                 await _discardPrompt.FocusAsync();
             }

@@ -32,6 +32,7 @@ public sealed partial class BudgetBoard
     private PlanSnapshot? _loadedPlan;
     private bool _move;
     private long _editorEpoch;
+    private PlanCommand? _editorCommand;
     private bool _help;
     private bool _focusHelp;
     private ElementReference _helpPanel;
@@ -87,13 +88,14 @@ public sealed partial class BudgetBoard
             if (_loadedPlan?.Id != Plan.Id) { _help = false; CloseEditors(); }
             else
             {
-                // A command replaces the editor's baseline only when that command consumed its draft.
-                // An external refresh, an assignment, or a toolbar Undo/Redo elsewhere keeps the open
-                // draft mounted so the values the user typed are not recreated from the record.
+                // A command replaces the editor's baseline only when it consumed its draft, and only
+                // this editor's own submitted save or removal counts. An external refresh, an
+                // assignment, a toolbar Undo/Redo, or another category's create or inline rename
+                // keeps the open draft mounted so its typed values are not recreated.
                 if (!ExternalRefresh)
                 {
                     _move = false;
-                    if (AppliedCommand is SaveCategory or RemoveCategory) { _editorEpoch++; }
+                    if (ReferenceEquals(AppliedCommand, _editorCommand) && AppliedCommand is SaveCategory or RemoveCategory) { _editorEpoch++; }
                 }
                 _category = Plan.Categories.SingleOrDefault(item => item.Id == _category?.Id);
             }
@@ -140,6 +142,14 @@ public sealed partial class BudgetBoard
     private async Task NextAsync() { _month = _month.AddMonths(1); await CalculateAsync(); }
     private async Task CurrentAsync() { _month = BudgetFacts.Month(Plan.Today); await CalculateAsync(); }
     private Task AutoAssignAsync() => OnCommand.InvokeAsync(new AutoAssign(Plan.Version, _month));
+
+    // Remember the exact command the mounted target editor submitted, so the board can tell its own
+    // save apart from another category's create or inline rename that uses the same command type.
+    private Task SendCategoryCommandAsync(PlanCommand command)
+    {
+        _editorCommand = command;
+        return OnCommand.InvokeAsync(command);
+    }
     private Task AddAccountAsync() => OnAddAccount.InvokeAsync();
     private void ShowMove() { if (MoveMoneyHint is not null) { return; } CloseEditors(); _move = true; }
     private Task ShowHelpAsync()
