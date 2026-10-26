@@ -1,5 +1,7 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using YHAB.SharedKernel.Budgeting;
+
 namespace YHAB.UI.Features.Budgeting.Components;
 
 public sealed partial class MoveMoneyEditor
@@ -16,11 +18,29 @@ public sealed partial class MoveMoneyEditor
     private bool _valid = true;
     private bool _saving;
     private AmountInput? _amountInput;
+    private string _initial = "";
+    private bool HasUnsavedChanges() => !string.Equals(Signature(), _initial, StringComparison.Ordinal) || _amountInput?.HasDraft is true;
+
     protected override void OnInitialized()
     {
-        _categories = [new(Guid.Empty, Guid.Empty, "Ready to assign", "", 0, false, null, null), .. Plan.Categories];
+        _categories = BuildCategories();
         _to = Plan.Categories.Count > 0 ? Plan.Categories[0].Id : Guid.Empty;
+        _initial = Signature();
     }
+
+    // A refresh can replace the catalog under an open draft. The chosen categories are kept as they
+    // are: one the refresh removed stays visibly unavailable until the user picks a replacement,
+    // rather than silently changing the allocation the draft would move.
+    protected override void OnParametersSet()
+    {
+        _categories = BuildCategories();
+    }
+
+    private bool FromAvailable => _categories.Any(item => item.Id == _from);
+    private bool ToAvailable => _categories.Any(item => item.Id == _to);
+
+    private CategoryData[] BuildCategories() => [new(Guid.Empty, Guid.Empty, "Ready to assign", "", 0, false, null, null), .. Plan.Categories];
+    private string Signature() => string.Join("|", _from.ToString(), _to.ToString(), _amount.ToString(CultureInfo.InvariantCulture));
     private async Task SaveAsync()
     {
         if (_saving)

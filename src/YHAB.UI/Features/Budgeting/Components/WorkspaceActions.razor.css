@@ -1,0 +1,17 @@
+.workspace-toolbar {
+    padding-bottom: var(--spacingVerticalXS);
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--colorNeutralStroke2);
+}
+
+.workspace-status {
+    min-width: 9rem;
+    margin-inline-start: var(--spacingHorizontalS);
+    font-size: var(--fontSizeBase200);
+}
+
+@media (min-width: 601px) {
+    /* Dense workspace tools use the compact step; phones keep 40px targets. */
+    .workspace-toolbar ::deep fluent-button { min-height: var(--yh-control-compact); }
+    .workspace-toolbar ::deep fluent-button[icon-only] { min-width: var(--yh-control-compact); }
+}

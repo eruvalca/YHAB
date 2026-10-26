@@ -10,7 +10,7 @@ permissions:
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
-  ASPIRE_VERSION: 13.6.2
+  ASPIRE_VERSION: 13.6.4
 
 jobs:
   browser-full:

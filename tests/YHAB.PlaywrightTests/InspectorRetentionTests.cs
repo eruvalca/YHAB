@@ -78,6 +78,15 @@ public sealed class InspectorRetentionTests(ITestOutputHelper output)
 
         // Continue through real controls after reconnect and verify persistence
         // plus a literal independent cash total, not just a surviving screenshot.
+        // The plan drawer starts collapsed, where its links are hidden from the
+        // accessibility tree, so open it before navigating by role.
+        var drawer = page.Locator(".plan-drawer");
+        var drawerSummary = page.Locator(".plan-drawer > summary");
+        if (await drawerSummary.IsVisibleAsync() && await drawer.GetAttributeAsync("open") is null)
+        {
+            await drawerSummary.ClickAsync();
+        }
+
         await page.GetByRole(AriaRole.Link, new() { Name = "Plan your money", Exact = true }).ClickAsync();
         var amount = page.GetByRole(AriaRole.Textbox, new() { Name = "Assign to Editor 1", Exact = true });
         await amount.FillAsync((cycles + 1).ToString(CultureInfo.InvariantCulture));

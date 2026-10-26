@@ -414,9 +414,9 @@ on October 14, 2026:
 | Microsoft.Testing.Extensions.TrxReport | 2.5.1 |
 | Microsoft.Testing.Extensions.CodeCoverage | 18.12.0 |
 | xunit.analyzers | 2.2.0 |
-| Aspire.Hosting.Testing (matches AppHost) | 13.6.2 |
+| Aspire.Hosting.Testing (matches AppHost) | 13.6.4 |
 | Testcontainers.PostgreSql | 4.16.0 |
-| Microsoft.Playwright | 1.63.0 |
+| Microsoft.Playwright | 1.64.1 |
 | C# Dev Kit (stable baseline) | 3.40.210 |
 
 Package versions are centralized in `Directory.Packages.props`. Explicit MTP
@@ -610,7 +610,7 @@ these containers. This project does not verify AppHost wiring or browser behavio
 Use **Aspire integration tests** when the subject is the assembled application:
 resource references, connection injection, migrations before web startup, readiness,
 service discovery and HTTP contracts across process boundaries. These use
-`Aspire.Hosting.Testing` 13.6.2, matching the AppHost rather than independently
+`Aspire.Hosting.Testing` 13.6.4, matching the AppHost rather than independently
 upgrading its testing package. The initial test waits for the real web health
 check and migration completion, then checks health, liveness, Home and Login.
 Aspire starts actual processes, so test DI does not replace services in the web
@@ -620,7 +620,17 @@ Use **Playwright** for browser-observable behavior: Fluent web components and
 icons, responsive navigation, focus, forms, cookies and render-mode transitions.
 Navigation tests run Home → Register → Home at desktop and mobile widths, check
 that the drawer closes, verify theme persistence, check JavaScript errors/overflow,
-and assert unchanged `performance.timeOrigin`. Budget workflow tests register a
+and assert unchanged `performance.timeOrigin`.
+Role-based locators only match what the accessibility tree exposes, and the plan
+drawer renders its links inside a collapsed `<details>`. Open it first
+(`OpenPlanNavigationAsync` does) before looking up one of its links by role, or the
+lookup never resolves.
+Keyboard and synthetic-touch reorders are gestures, not requests: Fluent only moves
+a grabbed item, and a drag that misses leaves no drag row or placeholder. Wait for
+the app's own gesture state (`aria-grabbed`, `.sortable-drag`) before the follow-up
+action, and repeat a gesture at most once, only while the plan revision and the
+saving status prove that nothing was applied.
+Budget workflow tests register a
 disposable user, create a plan, evaluate amount expressions, assign money, enter a
 purchase, reload, undo with the keyboard, redo, and verify reports.
 They also check API session, antiforgery, and stale-revision rejection. These tests
@@ -714,7 +724,18 @@ SSR pages after selecting light, dark, and System preferences, verify the resolv
 color scheme, and emulate OS changes in System mode. A reload alone does not
 exercise Blazor's replacement of body attributes during enhanced navigation.
 Opening account and transaction editors must focus a visible
-heading; browser checks also reopen an entry from its register row.
+heading; browser checks also reopen an entry from its register row. Editor draft
+guards are checked headlessly through `EditorSurfaceTests` and the register, then
+again in the browser: closing a dirty editor asks **Keep editing** or **Discard
+changes**, Escape and Cancel follow the same guard, Enter saves from the payee or
+amount, and a refresh keeps the draft unless a command caused the change or it
+follows a save that committed without reloading. Those cases use
+`EditorKeepsDraftsAndSavesWithEnterAsync`, because Fluent's debounced text binding
+and the key event's DOM path are only exercised by a real browser. Wait for the
+editor's heading focus before typing, and let Tab commit the field before pressing
+Escape: a machine-speed escape can outrun the debounced binding that the guard
+reads, while a person's hands never do. The draft-guard assertion reports the
+editor, dialog, and focus state when the prompt never opens.
 
 Both Aspire and Playwright tests use `YHAB.Testing.TestAppHost`, a small shared
 library that removes container volume/bind mounts and enforces session lifetimes

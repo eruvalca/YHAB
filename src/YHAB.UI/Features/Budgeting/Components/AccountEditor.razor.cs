@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using YHAB.SharedKernel.Budgeting;
 
@@ -27,6 +28,12 @@ public sealed partial class AccountEditor
     private AmountInput? _balanceInput;
     private AmountInput? _interestInput;
     private AmountInput? _minimumInput;
+    private EditorSurface? _surface;
+    private string _initial = "";
+    private bool HasUnsavedChanges() => !string.Equals(Signature(), _initial, StringComparison.Ordinal)
+        || _balanceInput?.HasDraft is true
+        || _interestInput?.HasDraft is true
+        || _minimumInput?.HasDraft is true;
 
     protected override void OnInitialized()
     {
@@ -39,7 +46,18 @@ public sealed partial class AccountEditor
         _closed = Account?.Closed ?? false;
         _interest = Account?.InterestRate ?? 0;
         _minimum = Account?.MinimumPayment ?? 0;
+        _initial = Signature();
     }
+
+    private string Signature() => DraftSignature.Of(
+        _name,
+        _kind,
+        _openedOn.ToString("O", CultureInfo.InvariantCulture),
+        _balance,
+        _notes,
+        _closed,
+        _interest,
+        _minimum);
 
     private async Task SaveAsync()
     {
@@ -88,5 +106,6 @@ public sealed partial class AccountEditor
             _saving = false;
         }
     }
-    private Task CancelAsync() => OnClose.InvokeAsync();
+    // Cancel is a close action like the heading button, so it shares the draft guard.
+    private Task CancelAsync() => _surface is null ? OnClose.InvokeAsync() : _surface.RequestCloseAsync();
 }

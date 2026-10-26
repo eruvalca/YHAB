@@ -25,6 +25,8 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
     private Task? _poll;
     private bool _hasUpdates;
     private bool _busy;
+    private bool _externalRefresh;
+    private PlanCommand? _applied;
     private long _requestGeneration;
     private bool IsBusy => _busy || !_operation.CanEdit || !RendererInfo.IsInteractive;
     private string? _error;
@@ -96,6 +98,11 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         var generation = ++_requestGeneration;
         _busy = true;
         _error = null;
+        // A refresh recovers a save that already committed on a different path than it preserves a
+        // draft: the draft's values are already stored, so keeping it would let a second save insert
+        // a duplicate. Rejected or idle states leave the draft untouched, and a command that a
+        // refresh itself posted keeps whatever the draft state was, even while it is retried.
+        var preserveDraft = _operation.Phase == WorkspacePhase.Ready || _operation.PreservesDraft;
         var postDue = false;
         try
         {
@@ -104,7 +111,7 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
             var (view, month) = await ReadWorkspaceAsync(planId, !IsRegister, token);
             token.ThrowIfCancellationRequested();
             if (generation != _requestGeneration) { return; }
-            ApplyView(view, month);
+            ApplyView(view, month, externalRefresh: preserveDraft);
             _operation = _operation.Loaded();
             // Interactive reads can complete after the first render. Post only after
             // the snapshot arrives, and never mutate the plan during static SSR.
@@ -131,11 +138,17 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         }
         if (!token.IsCancellationRequested && postDue && generation == _requestGeneration && Snapshot is { } plan)
         {
-            await ExecuteAsync(new PostRecurring(plan.Version, plan.Today));
+            await ExecuteAsync(new PostRecurring(plan.Version, plan.Today), externalRefresh: preserveDraft);
         }
     }
 
-    private async Task ExecuteAsync(PlanCommand command)
+    /// <summary>
+    /// A retry repeats the pending command, so it carries the draft intent that command started with;
+    /// a new command from the editor is the draft's own save and never preserves it.
+    /// </summary>
+    private Task ExecuteAsync(PlanCommand command) => ExecuteAsync(command, _operation.PreservesDraft && ReferenceEquals(command, _operation.Pending));
+
+    private async Task ExecuteAsync(PlanCommand command, bool externalRefresh)
     {
         if (_busy || (!_operation.CanEdit && !(_operation.CanRetry && ReferenceEquals(command, _operation.Pending))))
         {
@@ -146,7 +159,8 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         var token = operation.Token;
         var planId = PlanId;
         var generation = ++_requestGeneration;
-        _operation = WorkspaceOperation.Start(command);
+        _applied = null;
+        _operation = WorkspaceOperation.Start(command, externalRefresh);
         _error = null;
         try
         {
@@ -154,10 +168,13 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
             token.ThrowIfCancellationRequested();
             if (generation != _requestGeneration) { return; }
             _operation = _operation.Saved();
+            // The write committed, so the views treat this command's result as applied even if the
+            // follow-up read fails; only that record can consume an editor's draft.
+            _applied = command;
             var (view, month) = await ReadWorkspaceAsync(planId, !IsRegister, token);
             token.ThrowIfCancellationRequested();
             if (generation != _requestGeneration) { return; }
-            ApplyView(view, month);
+            ApplyView(view, month, externalRefresh);
             _operation = _operation.Loaded();
             if (command is SaveAccount)
             {
@@ -233,12 +250,13 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         }
     }
 
-    private void ApplyView(PlanView view, BudgetMonth? month)
+    private void ApplyView(PlanView view, BudgetMonth? month, bool externalRefresh)
     {
         _view = view;
         Snapshot = view.Catalog;
         _preparedMonth = month is null ? null : new(view.Catalog.Id, view.Catalog.Version, month);
         _hasUpdates = false;
+        _externalRefresh = externalRefresh;
     }
 
     private sealed record PreparedMonth(Guid PlanId, long Version, BudgetMonth Budget);

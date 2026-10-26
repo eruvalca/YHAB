@@ -8,9 +8,18 @@ public sealed partial class BudgetBoard
 {
     [Parameter, EditorRequired] public PlanSnapshot Plan { get; set; } = default!;
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
+    /// <summary>
+    /// The command whose result the current plan reflects, and only that command can consume an
+    /// open editor's draft. Null while nothing has been applied since the last command started.
+    /// </summary>
+    [Parameter] public PlanCommand? AppliedCommand { get; set; }
     [Parameter] public EventCallback OnAddAccount { get; set; }
     [Parameter] public bool Busy { get; set; }
+    // A plain refresh keeps an open draft; a command closes it because the
+    // command consumed the values the draft was editing.
+    [Parameter] public bool ExternalRefresh { get; set; }
     [Parameter] public Func<DateOnly, CancellationToken, Task<BudgetMonth>>? LoadMonth { get; set; }
+    [Parameter] public RenderFragment? PlanActions { get; set; }
 
     private string? _error;
     private int _request;
@@ -22,6 +31,7 @@ public sealed partial class BudgetBoard
     private long _version = -1;
     private PlanSnapshot? _loadedPlan;
     private bool _move;
+    private long _editorEpoch;
     private bool _help;
     private bool _focusHelp;
     private ElementReference _helpPanel;
@@ -75,7 +85,18 @@ public sealed partial class BudgetBoard
         if (_loadedPlan?.Id != Plan.Id || _version != Plan.Version || _budget is null || (_error is not null && !ReferenceEquals(_loadedPlan, Plan)))
         {
             if (_loadedPlan?.Id != Plan.Id) { _help = false; CloseEditors(); }
-            else { _move = false; _category = Plan.Categories.SingleOrDefault(item => item.Id == _category?.Id); }
+            else
+            {
+                // A command replaces the editor's baseline only when that command consumed its draft.
+                // An external refresh, an assignment, or a toolbar Undo/Redo elsewhere keeps the open
+                // draft mounted so the values the user typed are not recreated from the record.
+                if (!ExternalRefresh)
+                {
+                    _move = false;
+                    if (AppliedCommand is SaveCategory or RemoveCategory) { _editorEpoch++; }
+                }
+                _category = Plan.Categories.SingleOrDefault(item => item.Id == _category?.Id);
+            }
             _version = Plan.Version;
             _loadedPlan = Plan;
             await CalculateAsync();

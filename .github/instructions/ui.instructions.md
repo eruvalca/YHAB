@@ -75,6 +75,15 @@ assets/provider setup and [build rules](../../build/README.md) for enforcement.
   Assigned field is positive-only: moving money out of a category is a transfer to
   Ready to assign or another category, offered by the row's Available pill
   (`AvailablePill`), not a signed assignment.
+- Keyboard actions that read a typed Fluent value must commit the field before
+  the component handles the key. Fluent's `Immediate` text binding is debounced,
+  so `budget-workspace.js` blurs the focused field on Enter/Escape first and
+  fields opt in with `data-enter-saves`; clear that marker and the key acts on the
+  previous value. That handler skips keys belonging to an active IME composition,
+  because the later C# `IsComposing` check cannot undo a blur that already ended
+  the composition. Editors report unsaved changes through the `HasUnsavedChanges`
+  callback rather than a rendered bool, because the key event can arrive before
+  the change that made the draft dirty has re-rendered the editor.
 - Static `FluentNavItem` links and `FluentButton` controls need `tabindex="0"`:
   interactive navigation initialization does not run, and enhanced navigation
   can remove a web component's browser-added tabindex. Keep enhanced navigation enabled

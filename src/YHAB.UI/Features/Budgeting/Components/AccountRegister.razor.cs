@@ -15,6 +15,10 @@ public sealed partial class AccountRegister
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
     [Parameter, EditorRequired] public EventCallback<AccountData> OnEditAccount { get; set; }
     [Parameter] public bool Busy { get; set; }
+    // A plain refresh keeps an open draft when its edit target still exists; a
+    // command closes it because the command consumed the draft's values.
+    [Parameter] public bool ExternalRefresh { get; set; }
+    [Parameter] public RenderFragment? PlanActions { get; set; }
     private static readonly string[] _filters = ["All posted", "Recurring"];
     private static readonly string[] _sorts = ["Newest first", "Oldest first", "Payee", "Amount"];
     private readonly HashSet<Guid> _selected = [];
@@ -64,7 +68,16 @@ public sealed partial class AccountRegister
         }
         if (_loadedPlan?.Id != Plan.Id || _version != Plan.Version || _previousAccount != AccountId || filterChanged || (_error is not null && !ReferenceEquals(_loadedPlan, Plan)))
         {
-            CloseEditors();
+            var planReplaced = _loadedPlan?.Id != Plan.Id;
+            var catalogChanged = _version != Plan.Version;
+            // Recovery after a failed read keeps a draft the refresh preserved, just as a catalog
+            // change does; only the plan, account, or filter identity discards it.
+            var readFailed = _error is not null && !ReferenceEquals(_loadedPlan, Plan);
+            if (planReplaced || _previousAccount != AccountId || filterChanged || ((catalogChanged || readFailed) && !KeepOpenDraft()))
+            {
+                CloseEditors();
+            }
+
             // A changed catalog may no longer contain a category referenced by the old page.
             _result = null;
             _payees = null;
@@ -74,6 +87,11 @@ public sealed partial class AccountRegister
             await ResetPageAsync();
         }
     }
+
+    // Refresh keeps an open transaction draft. The catalog deliberately omits the ledger, so the
+    // register cannot prove the edited entry still exists; the save reconciles it instead. A
+    // duplicated entry keeps no id and therefore stays a new draft either way.
+    private bool KeepOpenDraft() => ExternalRefresh && _editing;
 
     private async Task LoadAsync()
     {

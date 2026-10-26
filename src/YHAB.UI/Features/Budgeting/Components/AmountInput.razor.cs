@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.FluentUI.AspNetCore.Components;
 using YHAB.SharedKernel.Budgeting;
 
@@ -19,6 +20,8 @@ public sealed partial class AmountInput
     [Parameter] public bool CommitOnSave { get; set; }
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public bool ReadOnly { get; set; }
+    // Saving editors commit from Enter in their amount field, as in the manual entry flow.
+    [Parameter] public EventCallback OnEnter { get; set; }
     private const string ExpressionError = "Enter an amount or expression using + − * / and parentheses.";
     private const string NonNegativeError = "Enter an amount of zero or more.";
     private string _text = string.Empty;
@@ -107,6 +110,20 @@ public sealed partial class AmountInput
     }
 
     private void FocusIn() => _negateCommit = false;
+
+    // Unsaved text does not reach Value until the editor saves, so drafts are
+    // compared against the value the field would commit right now.
+    internal bool HasDraft => !TryGetAmount(_text, out var amount, out _) || amount != Value;
+
+    private async Task KeyDownAsync(KeyboardEventArgs args)
+    {
+        if (!string.Equals(args.Key, "Enter", StringComparison.Ordinal) || args.IsComposing || !OnEnter.HasDelegate)
+        {
+            return;
+        }
+
+        await OnEnter.InvokeAsync();
+    }
 
     private async Task EvaluateAsync(string? expression)
     {

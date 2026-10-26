@@ -1,5 +1,6 @@
 /* A signed field pairs its control with a sign toggle. The control keeps the
    remaining width so the toggle never crowds the digits it flips. */
 .amount-field--signed { display: flex; align-items: center; gap: var(--spacingHorizontalXS); }
-.amount-field--signed ::deep .amount-input { flex: 1 1 auto; min-width: 0; }
+.amount-entry { min-width: 0; }
+.amount-field--signed .amount-entry { flex: 1 1 auto; }
 .amount-field--signed ::deep .amount-sign { flex: 0 0 auto; }
