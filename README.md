@@ -541,36 +541,34 @@ on every PR and push to `main`. On pull requests,
 `scripts/Get-ValidationScope.ps1` classifies the changed paths: application
 changes select the Release build, unit/component tests, and PostgreSQL/Aspire
 checks; deployment inputs also select `aspire publish`; documentation-only
-changes skip that work. UI/rendering and Playwright changes select the complete
-Chromium suite, other application changes select `Category=BrowserSmoke`, and
-documentation-only changes select no browser run. Unknown paths and PR file
-listings that reach GitHub's 3,000-file cap conservatively select full validation.
-Applying `run-full-browser` requests an additional full run without rerunning
-unrelated jobs; while the label remains, new commits also request it. This
-additional run neither replaces nor delays the required path-selected tier's
-gate. Every `main` push and merge group runs all validation, including the full
-browser suite. The extended browser performance cases are excluded there and run
-in the separate [Performance validation](.github/workflows/performance.yml) workflow
-weekly and on manual dispatch. Heavy test projects run on separate runners, not
-concurrently on one constrained runner. Every successful run on `main` deploys to
-production, including documentation-only and test-only merges. Pull requests
-validate without deploying.
+changes skip that work. Browser jobs are never selected by changed paths and are
+not merge-blocking. Applying `run-full-browser` to a ready pull request requests
+the full non-performance Chromium suite without rerunning unrelated jobs; while
+the label remains, new commits also request it. Removing the label stops future
+requested runs. Every `main` push and merge group runs the non-browser validation
+only. The separate
+[Nightly browser and performance validation](.github/workflows/nightly-browser.yml)
+workflow runs both the full non-performance suite and `Category=Performance`
+daily at 06:17 UTC and on manual dispatch. A failed browser or performance run on
+`main` creates one rolling issue for its suite; repeat failures add comments
+instead of duplicates. Performance assertion failures, including detected
+regressions, use the performance issue. Heavy test projects run on separate
+runners, not concurrently on one constrained runner. Every successful run on
+`main` deploys to production, including documentation-only and test-only merges.
+Pull requests validate without deploying.
 
 New commits cancel obsolete PR runs. Main validation runs independently rather
 than queuing behind an older deployment; it is not canceled. The deploy job
-requires the `fast`, `tests`, `browser-full`, and `publish` jobs to succeed and
+requires the `fast`, `tests`, and `publish` jobs to succeed and
 runs only for a push to `main`. It deliberately has no job-level concurrency
 group: a group left occupied by a stuck deployment blocks every later deployment.
 The `main` ruleset requires `fast`, `Test YHAB.IntegrationTests`,
-`Test YHAB.AspireIntegrationTests`, `Browser smoke`, `Browser validation gate`,
-and `Validate deployment artifacts`, requires branches to be up to date before
-merging, and blocks force pushes and deletion. `Browser validation gate` passes
-only after the path-selected browser tier
-succeeds; skipped checks satisfy the ruleset when that tier is not selected.
-Native merge queue is unavailable for a public repository owned by a user
-account. The workflow runs the gate on `merge_group`, so moving the repository
-to an organization lets native merge queue use the same required check without
-further workflow changes. A successful main run signs into Azure with OIDC and
+`Test YHAB.AspireIntegrationTests`, and `Validate deployment artifacts`,
+requires branches to be up to date before merging, and blocks force pushes and
+deletion. Native merge queue is unavailable for a public repository owned by a
+user account. The workflow supports non-browser validation on `merge_group`, so
+moving the repository to an organization lets native merge queue use the same
+required checks without further workflow changes. A successful main run signs into Azure with OIDC and
 runs `aspire deploy --environment Production --non-interactive`, preserving
 migration-before-web ordering. `scripts/Get-ValidationScope.ps1` is shared by CI
 and local agent/validation hooks. SDK setup caches downloaded NuGet packages using SDK, central

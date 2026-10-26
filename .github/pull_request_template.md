@@ -25,9 +25,9 @@ Commands and results:
 
 ## Browser validation
 
-- [ ] `Browser validation gate` passed for the tier selected from the changed paths
+- [ ] Not requested, or `run-full-browser` was applied and its non-required run passed
 
-UI/rendering and Playwright changes require the full Chromium suite; other application changes require smoke. Documentation-only changes require neither. Apply `run-full-browser` to request additional full coverage without rerunning unrelated jobs; while present, it also requests full coverage on new commits. This extra run does not replace the required tier.
+Browser runs are opt-in and never merge-blocking. Apply `run-full-browser` to a ready pull request when UI, rendering, Playwright, or other high-risk changes warrant the full non-performance Chromium suite. While the label remains, new commits also request a run. The full suite and performance cases run daily in nightly CI, which reports failures and regressions through rolling issues.
 
 ## Deployment and data
 
