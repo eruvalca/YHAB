@@ -326,6 +326,38 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         }
     }
 
+    // Fluent's immediate binding is debounced, so typed text reaches the draft guard only after the
+    // field blurs. Tab commits it the way a person does, before the key that asks the guard to run.
+    private static async Task EscapeDirtyDraftAsync(IPage page, string payee)
+    {
+        await page.Keyboard.PressAsync("Tab");
+        var typed = await Input(page, "Payee").InputValueAsync();
+        await page.Keyboard.PressAsync("Escape");
+        var prompt = page.Locator("[role='alertdialog']").Filter(new() { HasText = "Discard your unsaved changes?" });
+        try
+        {
+            await prompt.WaitForAsync(new() { Timeout = 20_000 });
+        }
+        catch (TimeoutException exception)
+        {
+            throw new InvalidOperationException(await DescribeMissingDraftGuardAsync(page, payee, typed), exception);
+        }
+        catch (PlaywrightException exception) when (exception.Message.Contains("Timeout", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(await DescribeMissingDraftGuardAsync(page, payee, typed), exception);
+        }
+    }
+
+    private static async Task<string> DescribeMissingDraftGuardAsync(IPage page, string payee, string typed)
+        => string.Join(
+            " | ",
+            "Escape did not open the discard prompt",
+            $"expected='{payee}' committed='{typed}'",
+            $"editors={await page.Locator(".editor-surface").CountAsync()}",
+            $"dialogs='{string.Join('/', await page.Locator("[role='alertdialog']").AllInnerTextsAsync())}'",
+            $"status='{string.Join('/', await page.Locator(".workspace-status").AllInnerTextsAsync())}'",
+            $"focus='{await page.EvaluateAsync<string>("() => `${document.activeElement?.tagName}.${document.activeElement?.className}`")}'");
+
     private static async Task AddAccountAndAssignAsync(IPage page)
     {
         await AddAccountAsync(page);
@@ -378,9 +410,9 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
 
             // Escape guards a dirty draft instead of discarding it.
             await Button(page, "+ Add transaction").ClickAsync();
+            await VerifyEditorFocusAsync(page);
             await Input(page, "Payee").PressSequentiallyAsync("Draft payee");
-            await page.Keyboard.PressAsync("Escape");
-            await page.Locator("[role='alertdialog']").Filter(new() { HasText = "Discard your unsaved changes?" }).WaitForAsync();
+            await EscapeDirtyDraftAsync(page, "Draft payee");
             await Button(page, "Keep editing").ClickAsync();
             await page.Locator("[role='alertdialog']").WaitForAsync(new() { State = WaitForSelectorState.Detached });
             (await Input(page, "Payee").InputValueAsync()).ShouldBe("Draft payee");
@@ -402,8 +434,9 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
 
             // Discarding the guard finally closes a dirty draft.
             await Button(page, "+ Add transaction").ClickAsync();
+            await VerifyEditorFocusAsync(page);
             await Input(page, "Payee").PressSequentiallyAsync("Discarded payee");
-            await page.Keyboard.PressAsync("Escape");
+            await EscapeDirtyDraftAsync(page, "Discarded payee");
             await Button(page, "Discard changes").ClickAsync();
             await page.Locator(".editor-surface").WaitForAsync(new() { State = WaitForSelectorState.Detached });
             (await page.Locator(".register-table tbody tr").Filter(new()

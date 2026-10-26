@@ -731,7 +731,11 @@ changes**, Escape and Cancel follow the same guard, Enter saves from the payee o
 amount, and a refresh keeps the draft unless a command caused the change or it
 follows a save that committed without reloading. Those cases use
 `EditorKeepsDraftsAndSavesWithEnterAsync`, because Fluent's debounced text binding
-and the key event's DOM path are only exercised by a real browser.
+and the key event's DOM path are only exercised by a real browser. Wait for the
+editor's heading focus before typing, and let Tab commit the field before pressing
+Escape: a machine-speed escape can outrun the debounced binding that the guard
+reads, while a person's hands never do. The draft-guard assertion reports the
+editor, dialog, and focus state when the prompt never opens.
 
 Both Aspire and Playwright tests use `YHAB.Testing.TestAppHost`, a small shared
 library that removes container volume/bind mounts and enforces session lifetimes
