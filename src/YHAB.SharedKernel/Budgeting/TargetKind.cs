@@ -7,5 +7,5 @@ public enum TargetKind
 {
     Refill,
     SetAside,
-    Balance
+    Balance,
 }

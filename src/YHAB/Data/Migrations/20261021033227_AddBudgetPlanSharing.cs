@@ -16,7 +16,7 @@ internal sealed partial class AddBudgetPlanSharing : Migration
             columns: table => new
             {
                 PlanId = table.Column<Guid>(type: "uuid", nullable: false),
-                UserId = table.Column<string>(type: "text", nullable: false)
+                UserId = table.Column<string>(type: "text", nullable: false),
             },
             constraints: table =>
             {

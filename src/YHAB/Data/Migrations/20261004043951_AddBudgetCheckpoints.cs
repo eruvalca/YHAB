@@ -18,7 +18,7 @@ internal sealed partial class AddBudgetCheckpoints : Migration
                 PlanId = table.Column<Guid>(type: "uuid", nullable: false),
                 Month = table.Column<DateOnly>(type: "date", nullable: false),
                 FormatVersion = table.Column<int>(type: "integer", nullable: false),
-                State = table.Column<string>(type: "jsonb", nullable: false)
+                State = table.Column<string>(type: "jsonb", nullable: false),
             },
             constraints: table =>
             {

@@ -40,7 +40,7 @@ internal sealed partial class HardenLedgerOperations : Migration
                 PlanId = table.Column<Guid>(type: "uuid", nullable: false),
                 OperationId = table.Column<Guid>(type: "uuid", nullable: false),
                 RequestHash = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
-                Version = table.Column<long>(type: "bigint", nullable: false)
+                Version = table.Column<long>(type: "bigint", nullable: false),
             },
             constraints: table =>
             {

@@ -25,7 +25,7 @@ public sealed class BudgetCalculatorTests
         plan = plan with
         {
             Allocations = [.. plan.Allocations, new(plan.Categories[0].Id, January.AddMonths(1), 100)],
-            Transactions = [Entry(plan, 0, -120)]
+            Transactions = [Entry(plan, 0, -120)],
         };
         var january = BudgetCalculator.Calculate(plan, January, plan.Today);
         january.ReadyToAssign.ShouldBe(600);
@@ -156,7 +156,7 @@ public sealed class BudgetCalculatorTests
         {
             Accounts = [.. plan.Accounts, other],
             Categories = [.. plan.Categories, payment],
-            Transactions = [Entry(plan, 1, -100), transfer]
+            Transactions = [Entry(plan, 1, -100), transfer],
         };
         var month = BudgetCalculator.Calculate(plan, January, plan.Today);
         month.Categories[1].Available.ShouldBe(0);

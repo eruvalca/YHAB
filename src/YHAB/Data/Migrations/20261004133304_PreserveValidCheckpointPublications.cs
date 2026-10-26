@@ -17,7 +17,7 @@ internal sealed partial class PreserveValidCheckpointPublications : Migration
             {
                 PlanId = table.Column<Guid>(type: "uuid", nullable: false),
                 Version = table.Column<long>(type: "bigint", nullable: false),
-                FirstInvalidMonth = table.Column<DateOnly>(type: "date", nullable: false)
+                FirstInvalidMonth = table.Column<DateOnly>(type: "date", nullable: false),
             },
             constraints: table =>
             {

@@ -72,7 +72,7 @@ internal static partial class IdentityComponentsEndpointRouteBuilderExtensions
                 {
                     Id = userId,
                     Name = userName,
-                    DisplayName = userName
+                    DisplayName = userName,
                 });
                 return TypedResults.Content(optionsJson, contentType: "application/json");
             });

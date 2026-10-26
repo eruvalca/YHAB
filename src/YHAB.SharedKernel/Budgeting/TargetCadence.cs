@@ -8,5 +8,5 @@ public enum TargetCadence
     Weekly,
     Monthly,
     Yearly,
-    Custom
+    Custom,
 }

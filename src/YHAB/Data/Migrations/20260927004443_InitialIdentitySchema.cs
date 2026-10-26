@@ -19,7 +19,7 @@ internal sealed partial class InitialIdentitySchema : Migration
                 Id = table.Column<string>(type: "text", nullable: false),
                 Name = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                 NormalizedName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
-                ConcurrencyStamp = table.Column<string>(type: "text", nullable: true)
+                ConcurrencyStamp = table.Column<string>(type: "text", nullable: true),
             },
             constraints: table =>
             {
@@ -44,7 +44,7 @@ internal sealed partial class InitialIdentitySchema : Migration
                 TwoFactorEnabled = table.Column<bool>(type: "boolean", nullable: false),
                 LockoutEnd = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                 LockoutEnabled = table.Column<bool>(type: "boolean", nullable: false),
-                AccessFailedCount = table.Column<int>(type: "integer", nullable: false)
+                AccessFailedCount = table.Column<int>(type: "integer", nullable: false),
             },
             constraints: table =>
             {
@@ -59,7 +59,7 @@ internal sealed partial class InitialIdentitySchema : Migration
                     .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                 RoleId = table.Column<string>(type: "text", nullable: false),
                 ClaimType = table.Column<string>(type: "text", nullable: true),
-                ClaimValue = table.Column<string>(type: "text", nullable: true)
+                ClaimValue = table.Column<string>(type: "text", nullable: true),
             },
             constraints: table =>
             {
@@ -80,7 +80,7 @@ internal sealed partial class InitialIdentitySchema : Migration
                     .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                 UserId = table.Column<string>(type: "text", nullable: false),
                 ClaimType = table.Column<string>(type: "text", nullable: true),
-                ClaimValue = table.Column<string>(type: "text", nullable: true)
+                ClaimValue = table.Column<string>(type: "text", nullable: true),
             },
             constraints: table =>
             {
@@ -100,7 +100,7 @@ internal sealed partial class InitialIdentitySchema : Migration
                 LoginProvider = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
                 ProviderKey = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
                 ProviderDisplayName = table.Column<string>(type: "text", nullable: true),
-                UserId = table.Column<string>(type: "text", nullable: false)
+                UserId = table.Column<string>(type: "text", nullable: false),
             },
             constraints: table =>
             {
@@ -119,7 +119,7 @@ internal sealed partial class InitialIdentitySchema : Migration
             {
                 CredentialId = table.Column<byte[]>(type: "bytea", maxLength: 1024, nullable: false),
                 UserId = table.Column<string>(type: "text", nullable: false),
-                Data = table.Column<string>(type: "jsonb", nullable: false)
+                Data = table.Column<string>(type: "jsonb", nullable: false),
             },
             constraints: table =>
             {
@@ -137,7 +137,7 @@ internal sealed partial class InitialIdentitySchema : Migration
             columns: table => new
             {
                 UserId = table.Column<string>(type: "text", nullable: false),
-                RoleId = table.Column<string>(type: "text", nullable: false)
+                RoleId = table.Column<string>(type: "text", nullable: false),
             },
             constraints: table =>
             {
@@ -163,7 +163,7 @@ internal sealed partial class InitialIdentitySchema : Migration
                 UserId = table.Column<string>(type: "text", nullable: false),
                 LoginProvider = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
                 Name = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
-                Value = table.Column<string>(type: "text", nullable: true)
+                Value = table.Column<string>(type: "text", nullable: true),
             },
             constraints: table =>
             {

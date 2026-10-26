@@ -17,5 +17,5 @@ public enum AccountKind
     MedicalDebt,
     OtherDebt,
     Asset,
-    Liability
+    Liability,
 }

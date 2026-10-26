@@ -313,6 +313,18 @@ dotnet_diagnostic.MA0004.severity = none
 # IDE0130: Namespace does not match folder structure
 dotnet_diagnostic.IDE0130.severity = warning
 
+# RCS1205: Order named arguments according to the order of parameters
+dotnet_diagnostic.RCS1205.severity = warning
+
+# MA0007: Add a comma after the last value
+dotnet_diagnostic.MA0007.severity = warning
+
+# RCS1077: Optimize LINQ method call
+dotnet_diagnostic.RCS1077.severity = warning
+
+# IDE0120: Simplify LINQ expression
+dotnet_diagnostic.IDE0120.severity = warning
+
 [*.razor.cs]
 # Component accessibility must match Razor's generated public partial class.
 # Other C# rules continue to apply to code-behind.

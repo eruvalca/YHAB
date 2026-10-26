@@ -25,7 +25,7 @@ internal static class BudgetEndpoints
                 }
                 catch (AntiforgeryValidationException)
                 {
-                    return TypedResults.Problem(statusCode: 400, title: "Refresh this page and try again.", detail: "The request verification token is invalid.");
+                    return TypedResults.Problem(detail: "The request verification token is invalid.", statusCode: 400, title: "Refresh this page and try again.");
                 }
             }
 
@@ -35,7 +35,7 @@ internal static class BudgetEndpoints
             }
             catch (BudgetRequestException exception)
             {
-                return TypedResults.Problem(statusCode: exception.Status, title: "Unable to update plan", detail: exception.Message);
+                return TypedResults.Problem(detail: exception.Message, statusCode: exception.Status, title: "Unable to update plan");
             }
         });
         group.MapGet("/", async (HttpContext context, BudgetStore store, CancellationToken cancellationToken)
@@ -163,9 +163,9 @@ internal static class BudgetEndpoints
         var outcome = await store.ExecuteAsync(Owner(context), planId, request, cancellationToken);
         return outcome.Match<Results<Ok<RevisionRequest>, ProblemHttpResult>>(
             plan => TypedResults.Ok(new RevisionRequest(plan.Version)),
-            invalid => TypedResults.Problem(statusCode: 400, title: "Check your entry", detail: invalid.Message),
+            invalid => TypedResults.Problem(detail: invalid.Message, statusCode: 400, title: "Check your entry"),
             _ => TypedResults.Problem(statusCode: 404, title: "Plan not found"),
-            _ => TypedResults.Problem(statusCode: 409, title: "Plan changed", detail: "This plan changed in another tab. Refresh before trying again."));
+            _ => TypedResults.Problem(detail: "This plan changed in another tab. Refresh before trying again.", statusCode: 409, title: "Plan changed"));
     }
 
     private static string Owner(HttpContext context)
