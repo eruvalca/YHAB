@@ -1,9 +1,9 @@
-name: Performance validation
+name: Nightly browser and performance validation
 
 on:
   schedule:
-    # Weekly on Monday at 06:00 UTC.
-    - cron: '0 6 * * 1'
+    # Daily at 06:17 UTC, avoiding the busiest start-of-hour scheduling window.
+    - cron: '17 6 * * *'
   workflow_dispatch:
 
 permissions:
@@ -19,7 +19,16 @@ env:
   ASPIRE_VERSION: 13.6.4
 
 jobs:
+  browser-full:
+    name: Browser full suite
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: ./.github/actions/run-full-browser
+
   performance:
+    name: Performance validation
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
@@ -56,3 +65,32 @@ jobs:
             tests/YHAB.PlaywrightTests/bin/Release/net10.0/TestResults/**/*.png
           retention-days: 7
           if-no-files-found: warn
+
+  report-failures:
+    name: Report nightly failures
+    needs: [browser-full, performance]
+    if: >-
+      ${{
+        !cancelled() &&
+        github.ref == 'refs/heads/main' &&
+        (needs.browser-full.result == 'failure' || needs.performance.result == 'failure')
+      }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      COMMIT: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Report full browser failure
+        if: needs.browser-full.result == 'failure'
+        shell: pwsh
+        run: ./scripts/Publish-NightlyValidationIssue.ps1 -Suite Browser -RunUrl $env:RUN_URL -Commit $env:COMMIT
+      - name: Report performance failure or regression
+        if: needs.performance.result == 'failure'
+        shell: pwsh
+        run: ./scripts/Publish-NightlyValidationIssue.ps1 -Suite Performance -RunUrl $env:RUN_URL -Commit $env:COMMIT

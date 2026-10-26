@@ -17,12 +17,13 @@ isolated AppHost builders for the Aspire and Playwright projects.
 
 The deployment workflow checks formatting and tooling on every pull request and
 `main` push. Pull-request changed paths select application build/tests,
-PostgreSQL/Aspire checks, deployment validation, and browser coverage;
-documentation-only changes skip that expensive work. Every `main` push runs all
-validation and deploys to production; pull requests do not deploy. The extended
-browser performance cases run in the separate
-[Performance validation](../.github/workflows/performance.yml) workflow weekly
-and on demand. `scripts/Get-ValidationScope.ps1` is shared by CI and local hooks.
+PostgreSQL/Aspire checks, and deployment validation; documentation-only changes
+skip that expensive work. Browser jobs are never path-selected or required.
+Every `main` push runs non-browser validation and deploys to production; pull
+requests do not deploy. The full non-performance browser suite and extended
+performance cases run daily at 06:17 UTC and on demand in
+[Nightly browser and performance validation](../.github/workflows/nightly-browser.yml).
+`scripts/Get-ValidationScope.ps1` is shared by CI and local hooks.
 On its Ubuntu runner, it exports the test user's public HTTPS development
 certificate, adds it to the system CA store and Chromium's NSS database, and
 verifies both before testing. Only the public certificate is imported, using
@@ -46,38 +47,34 @@ their cookies and form data; keep them within the repository's artifact access
 controls. Do not upload development/production browser profiles or Aspire
 deployment/dashboard state. Local reports remain opt-in.
 
-### Browser validation tiers
+### Browser validation policy
 
 Every application PR/main run retains all unit/component tests, the entire
 PostgreSQL suite (including sustained competing-write/recurring-worker checks),
-and Aspire startup/deployment checks. Browser coverage is tiered:
+and Aspire startup/deployment checks. Browser coverage is deliberately opt-in:
 
-- `BrowserSmoke` is required for non-browser application changes: the household
-  money walkthrough, manual plan/purchase/undo/reports, inline catalog editing,
-  navigation and theme handoff, Home/Plans/Plan/Manage accessibility, PWA
-  install/offline behavior, and browser artifact capture.
-- The full Chromium suite is required for UI/rendering and Playwright changes and
-  runs on every `main` push and merge group. Applying `run-full-browser` requests
-  an additional full run for any ready pull request without rerunning unrelated
-  jobs; new commits also request it while the label remains. Removing the label
-  stops future requested runs.
-- Documentation-only changes require no browser job. Drafts defer browser work
-  until the pull request is ready. Unknown paths and PR file listings that reach
-  GitHub's 3,000-file cap conservatively select full validation.
-- `Category=Performance` runs weekly in the separate workflow.
-
-The `Browser validation gate` check requires the path-selected tier to pass on
-the pull request's exact commit. A label-requested full run is additional
-coverage; it neither replaces required smoke coverage nor delays its gate.
-Native GitHub merge queue is unavailable for a public repository owned by a
-personal account; the workflow already runs the gate on `merge_group`, so moving
-the repository to an organization lets native merge queue use the same required
-check without workflow changes.
+- Changed paths, drafts, pull-request commits, `main` pushes, and merge groups
+  never automatically select a browser job.
+- Applying `run-full-browser` to a ready pull request runs the full Chromium
+  suite excluding `Category=Performance`, without rerunning unrelated jobs. New
+  commits also request it while the label remains. Removing the label stops
+  future requested runs. The check is never required for merging.
+- The `BrowserSmoke` trait remains available for focused local runs, not as a CI
+  gate. Documentation-only changes skip application validation as before;
+  unknown paths and PR file listings that reach GitHub's 3,000-file cap still
+  conservatively select non-browser application validation.
+- The nightly workflow runs the full non-performance suite and all
+  `Category=Performance` cases daily. Failures on `main`, including failed
+  performance regression assertions, create or comment on one rolling issue per
+  suite. Issues link to the run and commit but do not copy diagnostic payloads;
+  traces, screenshots, cookies, and form data remain access-controlled artifacts.
+  Browser and performance test jobs have no issue-write permission.
 
 Money conservation, receipts, concurrency, history rollback, migrations, owner
 isolation, API guards, SSR-to-server-to-WASM handoff, PWA behavior,
 desktop/mobile workflows, large-register page bounds and wide-catalog totals
-remain merge-blocking through the smoke tier or the full suite.
+retain their browser coverage through requested and nightly runs rather than
+merge-blocking checks.
 
 Only three browser cases carry `Category=Performance`: `ProcessLoadTests`,
 `InspectorRetentionTests`, and
@@ -86,10 +83,12 @@ The ordinary household case still checks its three-month financial walkthrough,
 10k/50k/100k registers and wide catalog, but omits the 120-cycle editing measurement.
 The extended case repeats that correctness fixture and adds the original editing
 and memory assertions; no measurement deadline or assertion is relaxed.
-The deployment workflow excludes these three cases from every browser tier. The separate
-[Performance validation](../.github/workflows/performance.yml) workflow runs only
-these cases weekly and on manual dispatch. Unfiltered local solution runs still
-execute every test.
+The full-browser composite and opt-in PR workflow exclude these three cases. The
+[nightly workflow](../.github/workflows/nightly-browser.yml) runs only these cases
+in its performance job, daily and on manual dispatch. A failed regression or
+correctness assertion produces the same performance issue; the workflow does not
+maintain a separate statistical baseline or trend history. Unfiltered local
+solution runs still execute every test.
 
 ```powershell
 # Native MTP/xUnit filters, after a matching Release build:

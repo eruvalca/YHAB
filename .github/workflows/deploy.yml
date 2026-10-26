@@ -5,7 +5,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review, edited]
   push:
     branches: [main]
-  # The merge queue runs the full browser suite on the combined merge group.
+  # Browser validation is opt-in and runs only in the request workflow.
   merge_group:
 
 permissions:
@@ -33,8 +33,6 @@ jobs:
     outputs:
       application: ${{ steps.scope.outputs.application }}
       deploy: ${{ steps.scope.outputs.deploy }}
-      browser: ${{ steps.scope.outputs.browser }}
-      browser-requested: ${{ steps.scope.outputs.browser-requested }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: Classify changed paths
@@ -45,8 +43,6 @@ jobs:
           GH_REPO: ${{ github.repository }}
           EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          IS_DRAFT: ${{ github.event.pull_request.draft }}
-          FULL_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'run-full-browser') }}
         run: |
           if ($env:EVENT_NAME -ne 'pull_request') {
             $scope = ./scripts/Get-ValidationScope.ps1 -Full
@@ -62,15 +58,9 @@ jobs:
               $paths = @($files | ForEach-Object { $_.filename; $_.previous_filename } | Where-Object { $null -ne $_ })
               $scope = ./scripts/Get-ValidationScope.ps1 -Paths $paths
             }
-            if ($env:IS_DRAFT -eq 'true') {
-              $scope.browser = 'none'
-            }
           }
-          $requested = if ($env:FULL_LABEL -eq 'true') { 'full' } else { $scope.browser }
           "application=$($scope.application.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
           "deploy=$($scope.deploy.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          "browser=$($scope.browser)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          "browser-requested=$requested" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
   fast:
     needs: changes
@@ -85,7 +75,8 @@ jobs:
         shell: pwsh
         run: |
           ./scripts/Test-ValidationScope.ps1
-          ./scripts/Test-BrowserValidationGate.ps1
+          ./scripts/Test-BrowserWorkflowPolicy.ps1
+          ./scripts/Test-NightlyValidationIssue.ps1
           ./scripts/Test-DocumentationReviewHook.ps1
           ./scripts/Test-AgentValidationHook.ps1
       - name: Check project-reference policy
@@ -156,99 +147,6 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
-  browser-smoke:
-    name: Browser smoke
-    needs: changes
-    if: |
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.draft == false &&
-      needs.changes.outputs.browser == 'smoke'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - uses: ./.github/actions/setup-dotnet
-      - name: Create and trust test HTTPS certificate
-        uses: ./.github/actions/trust-test-cert
-      - name: Build test project
-        shell: pwsh
-        run: |
-          dotnet build "tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj" --configuration Release
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-      - uses: ./.github/actions/install-playwright-browser
-      - name: Run browser smoke cases
-        shell: pwsh
-        run: |
-          dotnet test --project "tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj" --configuration Release --no-build --max-parallel-test-modules 1 --output Detailed --filter-trait Category=BrowserSmoke --report-trx --results-directory "$env:RUNNER_TEMP/yhab-test-results"
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-      - name: Retain test results
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: test-results-browser-smoke
-          path: ${{ runner.temp }}/yhab-test-results/*.trx
-          retention-days: 7
-          if-no-files-found: warn
-      - name: Retain browser failure diagnostics
-        if: failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: browser-diagnostics-smoke
-          path: |
-            tests/YHAB.PlaywrightTests/bin/Release/net10.0/TestResults/**/trace.zip
-            tests/YHAB.PlaywrightTests/bin/Release/net10.0/TestResults/**/*.png
-          retention-days: 7
-          if-no-files-found: warn
-
-  browser-full:
-    name: Browser full suite
-    needs: changes
-    if: |
-      github.event_name == 'push' ||
-      github.event_name == 'merge_group' ||
-      (github.event_name == 'pull_request' &&
-       github.event.pull_request.draft == false &&
-       needs.changes.outputs.browser == 'full')
-    runs-on: ubuntu-24.04
-    timeout-minutes: 90
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - uses: ./.github/actions/run-full-browser
-
-  browser-requested:
-    name: Requested browser full suite
-    needs: changes
-    # Keep label-requested evidence off the required gate's dependency path.
-    if: |
-      github.event_name == 'pull_request' &&
-      github.event.pull_request.draft == false &&
-      needs.changes.outputs.browser-requested == 'full' &&
-      needs.changes.outputs.browser != 'full'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 90
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - uses: ./.github/actions/run-full-browser
-
-  browser-gate:
-    name: Browser validation gate
-    needs: [changes, browser-smoke, browser-full]
-    # The required gate follows the selected tier. A label-requested full run is
-    # additional evidence and does not replace a PR's required smoke coverage.
-    if: always() && (github.event_name == 'pull_request' || github.event_name == 'merge_group')
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-      - name: Confirm the selected browser validation passed
-        shell: pwsh
-        env:
-          BROWSER_SCOPE: ${{ needs.changes.outputs.browser }}
-          SMOKE_RESULT: ${{ needs.browser-smoke.result }}
-          FULL_RESULT: ${{ needs.browser-full.result }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: ./scripts/Confirm-BrowserValidation.ps1 -Scope $env:BROWSER_SCOPE -SmokeResult $env:SMOKE_RESULT -FullResult $env:FULL_RESULT -RunUrl $env:RUN_URL
-
   publish:
     name: Validate deployment artifacts
     needs: changes
@@ -262,7 +160,7 @@ jobs:
         run: aspire publish --environment Production --output-path "$RUNNER_TEMP/yhab-preview" --non-interactive
 
   deploy:
-    needs: [fast, tests, browser-full, publish]
+    needs: [fast, tests, publish]
     # Every successful main push deploys; pull requests never deploy.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
