@@ -2,14 +2,10 @@ name: Request browser validation
 
 on:
   pull_request:
-    types: [labeled]
+    types: [labeled, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
-
-concurrency:
-  group: yhab-browser-request-${{ github.ref }}-${{ github.event.label.name }}
-  cancel-in-progress: true
 
 env:
   DOTNET_NOLOGO: true
@@ -19,11 +15,14 @@ env:
 jobs:
   browser-full:
     name: Browser full suite
-    # This opt-in run is additional evidence; the required validation gate in
-    # the main workflow remains determined by the changed paths.
+    # This is the only automatic browser run on pull requests. It is never required.
     if: |
-      github.event.label.name == 'run-full-browser' &&
-      github.event.pull_request.draft == false
+      contains(github.event.pull_request.labels.*.name, 'run-full-browser') &&
+      github.event.pull_request.draft == false &&
+      (github.event.action != 'labeled' || github.event.label.name == 'run-full-browser')
+    concurrency:
+      group: yhab-browser-request-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
