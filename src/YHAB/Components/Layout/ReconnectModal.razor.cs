@@ -1,5 +1,3 @@
 namespace YHAB.Components.Layout;
 
-public sealed partial class ReconnectModal
-{
-}
+public sealed partial class ReconnectModal;

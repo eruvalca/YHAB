@@ -1,5 +1,3 @@
 namespace YHAB.UI.Features.Home.Pages;
 
-public sealed partial class Home
-{
-}
+public sealed partial class Home;

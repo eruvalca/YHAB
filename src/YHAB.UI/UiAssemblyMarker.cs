@@ -7,6 +7,4 @@ namespace YHAB.UI;
 /// </summary>
 [SuppressMessage("Major Code Smell", "S2094:Classes should not be empty",
     Justification = "Identifies the shared UI assembly for route discovery through typeof(UiAssemblyMarker).Assembly.")]
-public static class UiAssemblyMarker
-{
-}
+public static class UiAssemblyMarker;
