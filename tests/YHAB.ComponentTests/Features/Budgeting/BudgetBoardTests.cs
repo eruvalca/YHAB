@@ -346,6 +346,53 @@ public sealed class BudgetBoardTests
         component.Find("[role='alertdialog']").TextContent.ShouldContain("Discard your unsaved changes?");
     }
 
+    [Fact]
+    public async Task AHiddenRefreshFollowsTheRecordWithoutPromptingAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var current = CreatePlan();
+        var component = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, current)
+            .Add(item => item.LoadMonth, (month, _) => Task.FromResult(BudgetCalculator.Calculate(current, month, current.Today)))
+            .Add(item => item.OnCommand, _ => { }));
+
+        await component.Find(".category-row .category-link").ClickAsync();
+
+        // Another tab hides the category; nothing here was edited, so closing must not ask.
+        current = current with { Version = current.Version + 1, Categories = [current.Categories[0] with { Hidden = true }] };
+        component.Render(parameters => parameters.Add(item => item.Plan, current).Add(item => item.ExternalRefresh, true));
+
+        await component.Find("fluent-button[aria-label='Close editor']").ClickAsync();
+
+        component.FindAll(".editor-surface").ShouldBeEmpty();
+        component.FindAll("[role='alertdialog']").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task AHiddenRefreshIsSavedInsteadOfRevertedAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var commands = new List<PlanCommand>();
+        var current = CreatePlan();
+        var component = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, current)
+            .Add(item => item.LoadMonth, (month, _) => Task.FromResult(BudgetCalculator.Calculate(current, month, current.Today)))
+            .Add(item => item.OnCommand, commands.Add));
+
+        await component.Find(".category-row .category-link").ClickAsync();
+
+        current = current with { Version = current.Version + 1, Categories = [current.Categories[0] with { Hidden = true }] };
+        component.Render(parameters => parameters.Add(item => item.Plan, current).Add(item => item.ExternalRefresh, true));
+
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Save category", StringComparison.Ordinal)).ClickAsync();
+
+        commands.OfType<SaveCategory>().Single().Category.Hidden.ShouldBeTrue();
+    }
+
     private static PlanSnapshot CreatePlan()
     {
         var today = new DateOnly(2026, 10, 2);

@@ -23,6 +23,7 @@ public sealed partial class CategoryEditor
     private bool _groupEdited;
     private bool _nameEdited;
     private bool _notesEdited;
+    private bool _hiddenEdited;
     private int _order;
     private bool _hidden;
     private bool _hasTarget;
@@ -80,6 +81,11 @@ public sealed partial class CategoryEditor
         _notes = notes;
         _notesEdited = true;
     }
+    private void SetHidden(bool hidden)
+    {
+        _hidden = hidden;
+        _hiddenEdited = true;
+    }
     // The baseline is the signature the refreshed record itself produces. Fields the user has not
     // touched follow that record, so they stay clean, while an edited field still differs from it.
     private string Baseline()
@@ -119,6 +125,10 @@ public sealed partial class CategoryEditor
             if (!_groupEdited)
             {
                 _group = Category.GroupId;
+            }
+            if (!_hiddenEdited)
+            {
+                _hidden = Category.Hidden;
             }
             _initial = Baseline();
         }
