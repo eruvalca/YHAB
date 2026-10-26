@@ -26,6 +26,7 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
     private bool _hasUpdates;
     private bool _busy;
     private bool _externalRefresh;
+    private PlanCommand? _applied;
     private long _requestGeneration;
     private bool IsBusy => _busy || !_operation.CanEdit || !RendererInfo.IsInteractive;
     private string? _error;
@@ -158,6 +159,7 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         var token = operation.Token;
         var planId = PlanId;
         var generation = ++_requestGeneration;
+        _applied = null;
         _operation = WorkspaceOperation.Start(command, externalRefresh);
         _error = null;
         try
@@ -166,6 +168,9 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
             token.ThrowIfCancellationRequested();
             if (generation != _requestGeneration) { return; }
             _operation = _operation.Saved();
+            // The write committed, so the views treat this command's result as applied even if the
+            // follow-up read fails; only that record can consume an editor's draft.
+            _applied = command;
             var (view, month) = await ReadWorkspaceAsync(planId, !IsRegister, token);
             token.ThrowIfCancellationRequested();
             if (generation != _requestGeneration) { return; }

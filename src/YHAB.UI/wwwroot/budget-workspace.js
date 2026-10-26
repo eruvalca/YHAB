@@ -1,5 +1,6 @@
 let handler;
 let pointerInput;
+let pointerFocus;
 
 function startCatalogDrag(event) {
     const handle = event.target.closest('.budget-table .row-move[draggable="true"]');
@@ -47,9 +48,10 @@ function selectAmount(event) {
     // A sticky summary must not cover controls brought into view by Tab or
     // an editor's heading focus. This also handles Fluent's shadow inputs.
     const path = event.composedPath();
-    // The plan actions can sit directly under the summary; scrolling on their
-    // focus would move the button out from under the pointer during a click.
-    if (path.some(element => element instanceof Element && element.matches('.workspace-toolbar'))) return;
+    // A pointer press on a plan action must not scroll it out from under the pointer between
+    // press and click, but keyboard focus still needs the adjustment so Tab cannot leave the
+    // focus indicator behind the sticky summary.
+    if (pointerFocus && path.some(element => element instanceof Element && element.matches('.workspace-toolbar'))) return;
     const board = path.find(element => element instanceof Element && element.matches('.budget-board'));
     const summary = board?.querySelector('.budget-summary');
     if (!summary || path.includes(summary)) return;
@@ -66,6 +68,9 @@ function rememberPointerFocus(event) {
     // The first click selects everything; subsequent clicks can position the
     // caret to edit an expression. Keyboard focus selects synchronously too.
     pointerInput = input && input.getRootNode().activeElement !== input ? input : undefined;
+    // Only the focus change this press causes counts as pointer-initiated.
+    pointerFocus = true;
+    setTimeout(() => { pointerFocus = false; }, 0);
 }
 
 function finishPointerFocus(event) {

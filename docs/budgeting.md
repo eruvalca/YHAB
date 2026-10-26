@@ -208,8 +208,9 @@ while recovering keeps a preserved draft too. The dirty check compares
 length-prefixed field values, so a separator typed into a payee or memo counts as
 an edit, and a category editor kept open across a reorder saves the refreshed
 position rather than the one it opened with. Only that editor's own save or
-removal starts it over; an assignment or auto-assign applied elsewhere leaves an
-open target draft untouched.
+removal starts it over: the workspace reports which command the displayed plan
+reflects, so an assignment, an auto-assign, or a toolbar Undo or Redo leaves an
+open target draft untouched, and a rejected save cannot claim a later command.
 **Undo**, **Redo**, **Refresh**, and the plan status follow the page heading in
 document order, so assistive technology reaches the heading before the actions.
 Assignment saves preserve the existing inputs and keyboard focus. Amount fields

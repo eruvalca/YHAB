@@ -8,6 +8,11 @@ public sealed partial class BudgetBoard
 {
     [Parameter, EditorRequired] public PlanSnapshot Plan { get; set; } = default!;
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
+    /// <summary>
+    /// The command whose result the current plan reflects, and only that command can consume an
+    /// open editor's draft. Null while nothing has been applied since the last command started.
+    /// </summary>
+    [Parameter] public PlanCommand? AppliedCommand { get; set; }
     [Parameter] public EventCallback OnAddAccount { get; set; }
     [Parameter] public bool Busy { get; set; }
     // A plain refresh keeps an open draft; a command closes it because the
@@ -27,7 +32,6 @@ public sealed partial class BudgetBoard
     private PlanSnapshot? _loadedPlan;
     private bool _move;
     private long _editorEpoch;
-    private PlanCommand? _categoryCommand;
     private bool _help;
     private bool _focusHelp;
     private ElementReference _helpPanel;
@@ -83,14 +87,13 @@ public sealed partial class BudgetBoard
             if (_loadedPlan?.Id != Plan.Id) { _help = false; CloseEditors(); }
             else
             {
-                // A command replaces the editor's baseline only when it consumed that draft; an
-                // external refresh, an assignment, or an auto-assign elsewhere keeps the open
+                // A command replaces the editor's baseline only when that command consumed its draft.
+                // An external refresh, an assignment, or a toolbar Undo/Redo elsewhere keeps the open
                 // draft mounted so the values the user typed are not recreated from the record.
                 if (!ExternalRefresh)
                 {
                     _move = false;
-                    if (_categoryCommand is SaveCategory or RemoveCategory) { _editorEpoch++; }
-                    _categoryCommand = null;
+                    if (AppliedCommand is SaveCategory or RemoveCategory) { _editorEpoch++; }
                 }
                 _category = Plan.Categories.SingleOrDefault(item => item.Id == _category?.Id);
             }
@@ -136,21 +139,7 @@ public sealed partial class BudgetBoard
     private async Task PreviousAsync() { _month = _month.AddMonths(-1); await CalculateAsync(); }
     private async Task NextAsync() { _month = _month.AddMonths(1); await CalculateAsync(); }
     private async Task CurrentAsync() { _month = BudgetFacts.Month(Plan.Today); await CalculateAsync(); }
-    private Task AutoAssignAsync() => SendAsync(new AutoAssign(Plan.Version, _month));
-
-    // The board distinguishes a command that came from the open target editor from one raised
-    // elsewhere, because only the editor's own save or removal consumes its draft.
-    private Task SendAsync(PlanCommand command)
-    {
-        _categoryCommand = null;
-        return OnCommand.InvokeAsync(command);
-    }
-
-    private Task SendCategoryCommandAsync(PlanCommand command)
-    {
-        _categoryCommand = command;
-        return OnCommand.InvokeAsync(command);
-    }
+    private Task AutoAssignAsync() => OnCommand.InvokeAsync(new AutoAssign(Plan.Version, _month));
     private Task AddAccountAsync() => OnAddAccount.InvokeAsync();
     private void ShowMove() { if (MoveMoneyHint is not null) { return; } CloseEditors(); _move = true; }
     private Task ShowHelpAsync()

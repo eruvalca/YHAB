@@ -120,10 +120,11 @@ public sealed class BudgetBoardTests
         component.FindComponent<CategoryEditor>().Instance.ShouldBeSameAs(draft);
         component.FindAll("h1").Count.ShouldBe(1);
 
-        // The editor's own save consumes the draft, so its applied result starts the editor over.
-        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Save category", StringComparison.Ordinal)).ClickAsync();
+        // The editor's own applied save consumes the draft, so its result starts the editor over.
         current = current with { Version = current.Version + 1 };
-        component.Render(parameters => parameters.Add(item => item.Plan, current).Add(item => item.ExternalRefresh, false));
+        component.Render(parameters => parameters.Add(item => item.Plan, current)
+            .Add(item => item.ExternalRefresh, false)
+            .Add(item => item.AppliedCommand, new SaveCategory(current.Version - 1, current.Categories[0])));
 
         component.FindComponent<CategoryEditor>().Instance.ShouldNotBeSameAs(draft);
     }
@@ -151,6 +152,40 @@ public sealed class BudgetBoardTests
         await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Save category", StringComparison.Ordinal)).ClickAsync();
 
         commands.OfType<SaveCategory>().Single().Category.SortOrder.ShouldBe(4);
+    }
+
+    [Fact]
+    public async Task ARejectedSaveFollowedByAnUndoKeepsTheTargetDraftAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var commands = new List<PlanCommand>();
+        var basePlan = CreatePlan();
+        var target = new TargetData(TargetKind.Refill, TargetCadence.Monthly, 100, basePlan.Today, null, 0, DayOfWeek.Friday);
+        var current = basePlan with { Categories = [basePlan.Categories[0] with { Target = target }] };
+        var component = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, current)
+            .Add(item => item.LoadMonth, (month, _) => Task.FromResult(BudgetCalculator.Calculate(current, month, current.Today)))
+            .Add(item => item.OnCommand, commands.Add));
+
+        await component.Find(".category-row .category-link").ClickAsync();
+        var draft = component.FindComponent<CategoryEditor>().Instance;
+        await component.Find(".category-details .amount-input fluent-text-input").ChangeAsync(new() { Value = "250" });
+
+        // A rejected save never advances the plan, so a later toolbar Undo is not this editor's
+        // command: it must leave the typed target mounted instead of starting the editor over.
+        current = current with { Version = current.Version + 1 };
+        component.Render(parameters => parameters.Add(item => item.Plan, current)
+            .Add(item => item.ExternalRefresh, false)
+            .Add(item => item.AppliedCommand, new UndoChange(current.Version)));
+
+        component.FindComponent<CategoryEditor>().Instance.ShouldBeSameAs(draft);
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Save category", StringComparison.Ordinal)).ClickAsync();
+
+        var saved = commands.OfType<SaveCategory>().Single();
+        saved.Version.ShouldBe(current.Version);
+        saved.Category.Target.ShouldNotBeNull().Amount.ShouldBe(250);
     }
 
     private static PlanSnapshot CreatePlan()
