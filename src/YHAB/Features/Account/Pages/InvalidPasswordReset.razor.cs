@@ -1,5 +1,3 @@
 namespace YHAB.Features.Account.Pages;
 
-public sealed partial class InvalidPasswordReset
-{
-}
+public sealed partial class InvalidPasswordReset;

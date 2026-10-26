@@ -318,6 +318,9 @@ dotnet_diagnostic.IDE0130.severity = warning
 # Other C# rules continue to apply to code-behind.
 dotnet_diagnostic.CA1515.severity = none
 
+# MA0206: Remove unnecessary braces in type declaration
+dotnet_diagnostic.MA0206.severity = warning
+
 [src/YHAB.AppHost/AppHost.cs]
 # Aspire's conventional entry point contains the implicit top-level Program type.
 dotnet_diagnostic.MA0048.severity = none

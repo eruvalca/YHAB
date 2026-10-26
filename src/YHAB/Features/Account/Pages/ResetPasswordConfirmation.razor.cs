@@ -1,5 +1,3 @@
 namespace YHAB.Features.Account.Pages;
 
-public sealed partial class ResetPasswordConfirmation
-{
-}
+public sealed partial class ResetPasswordConfirmation;

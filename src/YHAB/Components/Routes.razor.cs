@@ -1,5 +1,3 @@
 namespace YHAB.Components;
 
-public sealed partial class Routes
-{
-}
+public sealed partial class Routes;
