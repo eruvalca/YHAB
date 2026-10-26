@@ -29,12 +29,12 @@ public sealed class CheckpointPolicyTests
                 Notes = "Category notes",
                 Hidden = true,
                 SortOrder = 9,
-                Target = new(TargetKind.Refill, TargetCadence.Yearly, 500, January, January.AddMonths(11))
+                Target = new(TargetKind.Refill, TargetCadence.Yearly, 500, January, January.AddMonths(11)),
             }).Reverse().ToArray(),
             Groups = [original.Groups[0] with { Name = "New group", SortOrder = 8, Hidden = true }],
             Allocations = [original.Allocations[0] with { Snoozed = true }],
             Transactions = [entry with { Payee = "Other payee", Memo = "Memo", Flag = "blue", SourceTemplateId = Guid.NewGuid(), ScheduledDate = January, AnchorDate = January, Occurrence = 4,
-                Splits = entry.Splits.Select(item => item with { Memo = "Split memo" }).Reverse().ToArray() }],
+                Splits = entry.Splits.Select(item => item with { Memo = "Split memo" }).Reverse().ToArray(), }],
         };
         var patch = LedgerPatch.Between(original, updated);
         var serialized = JsonSerializer.Serialize(patch);

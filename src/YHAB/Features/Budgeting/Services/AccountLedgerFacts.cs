@@ -10,6 +10,6 @@ internal sealed record AccountLedgerFacts(DateOnly? FirstTransaction, decimal Wo
         var entries = plan.Transactions.Where(item => item.AccountId == accountId || item.TransferAccountId == accountId).ToArray();
         var posted = entries.Where(item => item.Repeat == RepeatFrequency.None && item.Date <= through).ToArray();
         decimal Amount(TransactionData entry) => entry.AccountId == accountId ? entry.Amount : -entry.Amount;
-        return new(entries.Select(item => (DateOnly?)item.Date).Min(), posted.Sum(Amount));
+        return new(entries.Min(item => (DateOnly?)item.Date), posted.Sum(Amount));
     }
 }

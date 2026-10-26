@@ -34,7 +34,7 @@ internal static class BudgetMonthReplay
         if (missing.Length != 0)
         {
             var initial = await InitialAsync(database, catalog, month, token);
-            var replayFrom = missing.Where(item => item >= initial.Month).Select(item => (DateOnly?)item).Min();
+            var replayFrom = missing.Where(item => item >= initial.Month).Min(item => (DateOnly?)item);
             if (replayFrom.HasValue)
             {
                 saved = await checkpoints.Where(item => item.Month <= replayFrom.Value).OrderByDescending(item => item.Month).FirstOrDefaultAsync(token);

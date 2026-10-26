@@ -20,7 +20,7 @@ public sealed class AccountLedgerFactsTests
             Entry(plan, 1, -40) with { TransferAccountId = plan.Accounts[0].Id },
             Entry(plan, 0, -50) with { TransferAccountId = plan.Accounts[1].Id },
             Entry(plan, 1, -999), Entry(plan, 0, -888, date: January) with { Repeat = RepeatFrequency.Monthly },
-            Entry(plan, 0, 777, date: January.AddMonths(1))]
+            Entry(plan, 0, 777, date: January.AddMonths(1))],
         };
         AccountLedgerFacts.FromLedger(plan, plan.Accounts[0].Id, plan.Today).ShouldBe(new(January, -70));
         AccountLedgerFacts.FromLedger(plan, Guid.NewGuid(), plan.Today).ShouldBe(new(null, 0));

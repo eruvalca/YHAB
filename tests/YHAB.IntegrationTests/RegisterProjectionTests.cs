@@ -34,7 +34,7 @@ public sealed class RegisterProjectionTests
             do
             {
                 var page = await database.Queries.RegisterAsync("owner-a", plan.Id,
-                    new(checking.Id, Sort: sort, PageSize: 2, After: cursor, Version: plan.Version), token);
+                    new(checking.Id, Sort: sort, After: cursor, PageSize: 2, Version: plan.Version), token);
                 page.Total.ShouldBe(6);
                 rows.AddRange(page.Rows);
                 cursor = page.Next;

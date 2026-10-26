@@ -18,7 +18,7 @@ internal sealed partial class AddBudgetPlanShareCodeRedemptions : Migration
                 CodeHash = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
                 UserId = table.Column<string>(type: "text", nullable: false),
                 PlanId = table.Column<Guid>(type: "uuid", nullable: false),
-                RedeemedOn = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                RedeemedOn = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
             },
             constraints: table =>
             {

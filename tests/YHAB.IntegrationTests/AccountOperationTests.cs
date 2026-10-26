@@ -90,7 +90,7 @@ public sealed class AccountOperationTests
         (await database.Store.ExecuteAsync("owner-a", plan.Id, new SaveTransaction(version++, income with
         {
             Amount = income.Amount + 1,
-            Splits = [income.Splits[0] with { Amount = income.Amount + 1 }]
+            Splits = [income.Splits[0] with { Amount = income.Amount + 1 }],
         }), token)).IsT0.ShouldBeTrue();
         (await CheckpointsAsync(database, plan.Id, token)).ShouldBe(saved.Take(1));
         await VerifyMonthAsync(database, plan.Id, month, token);

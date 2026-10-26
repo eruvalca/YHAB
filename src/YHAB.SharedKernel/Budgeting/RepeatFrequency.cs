@@ -14,5 +14,5 @@ public enum RepeatFrequency
     EveryTwoMonths,
     Quarterly,
     EverySixMonths,
-    Yearly
+    Yearly,
 }

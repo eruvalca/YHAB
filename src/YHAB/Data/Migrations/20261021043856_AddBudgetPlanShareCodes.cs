@@ -18,7 +18,7 @@ internal sealed partial class AddBudgetPlanShareCodes : Migration
                 Id = table.Column<Guid>(type: "uuid", nullable: false),
                 PlanId = table.Column<Guid>(type: "uuid", nullable: false),
                 CodeHash = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
-                ExpiresOn = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                ExpiresOn = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
             },
             constraints: table =>
             {

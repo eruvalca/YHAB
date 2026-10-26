@@ -32,7 +32,7 @@ internal sealed partial class AddBudgeting : Migration
                 Notes = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: false),
                 CreatedOn = table.Column<DateOnly>(type: "date", nullable: false),
                 Version = table.Column<long>(type: "bigint", nullable: false),
-                HistoryCursor = table.Column<int>(type: "integer", nullable: false)
+                HistoryCursor = table.Column<int>(type: "integer", nullable: false),
             },
             constraints: table =>
             {
@@ -53,12 +53,12 @@ internal sealed partial class AddBudgeting : Migration
                 PlanId = table.Column<Guid>(type: "uuid", nullable: false),
                 Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                 Kind = table.Column<int>(type: "integer", nullable: false),
-                OpeningBalance = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                OpeningBalance = table.Column<decimal>(type: "numeric(18,2)", nullable: false, precision: 18, scale: 2),
                 OpenedOn = table.Column<DateOnly>(type: "date", nullable: false),
                 Closed = table.Column<bool>(type: "boolean", nullable: false),
                 Notes = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: false),
-                InterestRate = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                MinimumPayment = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false)
+                InterestRate = table.Column<decimal>(type: "numeric(18,2)", nullable: false, precision: 18, scale: 2),
+                MinimumPayment = table.Column<decimal>(type: "numeric(18,2)", nullable: false, precision: 18, scale: 2),
             },
             constraints: table =>
             {
@@ -79,7 +79,7 @@ internal sealed partial class AddBudgeting : Migration
                 PlanId = table.Column<Guid>(type: "uuid", nullable: false),
                 Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                 SortOrder = table.Column<int>(type: "integer", nullable: false),
-                Hidden = table.Column<bool>(type: "boolean", nullable: false)
+                Hidden = table.Column<bool>(type: "boolean", nullable: false),
             },
             constraints: table =>
             {
@@ -102,7 +102,7 @@ internal sealed partial class AddBudgeting : Migration
                 Description = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                 Timestamp = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                 Before = table.Column<string>(type: "jsonb", nullable: false),
-                After = table.Column<string>(type: "jsonb", nullable: false)
+                After = table.Column<string>(type: "jsonb", nullable: false),
             },
             constraints: table =>
             {
@@ -125,7 +125,7 @@ internal sealed partial class AddBudgeting : Migration
                 Date = table.Column<DateOnly>(type: "date", nullable: false),
                 Payee = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                 Memo = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: false),
-                Amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                Amount = table.Column<decimal>(type: "numeric(18,2)", nullable: false, precision: 18, scale: 2),
                 TransferAccountId = table.Column<Guid>(type: "uuid", nullable: true),
                 State = table.Column<int>(type: "integer", nullable: false),
                 TransferState = table.Column<int>(type: "integer", nullable: false),
@@ -134,7 +134,7 @@ internal sealed partial class AddBudgeting : Migration
                 Repeat = table.Column<int>(type: "integer", nullable: false),
                 AnchorDate = table.Column<DateOnly>(type: "date", nullable: true),
                 Occurrence = table.Column<int>(type: "integer", nullable: false),
-                SourceTemplateId = table.Column<Guid>(type: "uuid", nullable: true)
+                SourceTemplateId = table.Column<Guid>(type: "uuid", nullable: true),
             },
             constraints: table =>
             {
@@ -173,11 +173,11 @@ internal sealed partial class AddBudgeting : Migration
                 CreditAccountId = table.Column<Guid>(type: "uuid", nullable: true),
                 TargetKind = table.Column<int>(type: "integer", nullable: true),
                 TargetCadence = table.Column<int>(type: "integer", nullable: false),
-                TargetAmount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                TargetAmount = table.Column<decimal>(type: "numeric(18,2)", nullable: false, precision: 18, scale: 2),
                 TargetStartMonth = table.Column<DateOnly>(type: "date", nullable: false),
                 TargetDueDate = table.Column<DateOnly>(type: "date", nullable: true),
                 TargetRepeatMonths = table.Column<int>(type: "integer", nullable: false),
-                TargetWeekday = table.Column<int>(type: "integer", nullable: false)
+                TargetWeekday = table.Column<int>(type: "integer", nullable: false),
             },
             constraints: table =>
             {
@@ -209,8 +209,8 @@ internal sealed partial class AddBudgeting : Migration
                 PlanId = table.Column<Guid>(type: "uuid", nullable: false),
                 CategoryId = table.Column<Guid>(type: "uuid", nullable: false),
                 Month = table.Column<DateOnly>(type: "date", nullable: false),
-                Amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                Snoozed = table.Column<bool>(type: "boolean", nullable: false)
+                Amount = table.Column<decimal>(type: "numeric(18,2)", nullable: false, precision: 18, scale: 2),
+                Snoozed = table.Column<bool>(type: "boolean", nullable: false),
             },
             constraints: table =>
             {
@@ -237,8 +237,8 @@ internal sealed partial class AddBudgeting : Migration
                 PlanId = table.Column<Guid>(type: "uuid", nullable: false),
                 TransactionId = table.Column<Guid>(type: "uuid", nullable: false),
                 CategoryId = table.Column<Guid>(type: "uuid", nullable: true),
-                Amount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                Memo = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false)
+                Amount = table.Column<decimal>(type: "numeric(18,2)", nullable: false, precision: 18, scale: 2),
+                Memo = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
             },
             constraints: table =>
             {
