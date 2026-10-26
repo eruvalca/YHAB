@@ -14,6 +14,8 @@ Assert-True ($deploy -match '(?m)^    needs: \[fast, tests, publish\]$') 'Main d
 
 Assert-True ($request -match 'types: \[labeled, synchronize, reopened, ready_for_review\]') 'Opt-in browser runs must support labels and subsequent commits.'
 Assert-True ($request -match "contains\(github\.event\.pull_request\.labels\.\*\.name, 'run-full-browser'\)") 'The PR browser job must require the explicit opt-in label.'
+Assert-True ($request -match "github\.event\.action != 'labeled' \|\| github\.event\.label\.name == 'run-full-browser'") 'Unrelated label events must not start or replace a requested browser run.'
+Assert-True ($request -notmatch '(?m)^concurrency:' -and $request -match '(?m)^    concurrency:$') 'Only a job that passes the opt-in guard may acquire the browser concurrency group.'
 Assert-True ($request -match '(?m)^      - uses: \./\.github/actions/run-full-browser$') 'The request workflow must reuse the full-browser action.'
 Assert-True ($request -notmatch '(?m)^  (push|schedule):') 'The PR request workflow must not run on pushes or a schedule.'
 

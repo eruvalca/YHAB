@@ -7,10 +7,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: yhab-browser-request-${{ github.ref }}
-  cancel-in-progress: true
-
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
@@ -22,7 +18,11 @@ jobs:
     # This is the only automatic browser run on pull requests. It is never required.
     if: |
       contains(github.event.pull_request.labels.*.name, 'run-full-browser') &&
-      github.event.pull_request.draft == false
+      github.event.pull_request.draft == false &&
+      (github.event.action != 'labeled' || github.event.label.name == 'run-full-browser')
+    concurrency:
+      group: yhab-browser-request-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
