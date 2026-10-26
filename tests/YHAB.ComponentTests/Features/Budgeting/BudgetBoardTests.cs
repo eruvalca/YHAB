@@ -258,6 +258,94 @@ public sealed class BudgetBoardTests
         commands.OfType<SaveCategory>().Single().Category.Target.ShouldNotBeNull().Amount.ShouldBe(250);
     }
 
+    [Fact]
+    public async Task RenamingTheOpenCategoryKeepsItsTargetDraftAndNameAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var commands = new List<PlanCommand>();
+        var basePlan = CreatePlan();
+        var target = new TargetData(TargetKind.Refill, TargetCadence.Monthly, 100, basePlan.Today, null, 0, DayOfWeek.Friday);
+        var current = basePlan with { Categories = [basePlan.Categories[0] with { Target = target }] };
+        var component = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, current)
+            .Add(item => item.LoadMonth, (month, _) => Task.FromResult(BudgetCalculator.Calculate(current, month, current.Today)))
+            .Add(item => item.OnCommand, commands.Add));
+
+        await component.Find(".category-row .category-link").ClickAsync();
+        var draft = component.FindComponent<CategoryEditor>().Instance;
+        await component.Find(".category-details .amount-input fluent-text-input").ChangeAsync(new() { Value = "250" });
+
+        // The row's inline rename of this same category is another SaveCategory that keeps the draft
+        // mounted, so the editor has to take the new name instead of writing the old one back.
+        current = current with { Version = current.Version + 1, Categories = [current.Categories[0] with { Name = "Groceries renamed" }] };
+        component.Render(parameters => parameters.Add(item => item.Plan, current)
+            .Add(item => item.ExternalRefresh, false)
+            .Add(item => item.AppliedCommand, new SaveCategory(current.Version - 1, current.Categories[0])));
+        component.FindComponent<CategoryEditor>().Instance.ShouldBeSameAs(draft);
+
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Save category", StringComparison.Ordinal)).ClickAsync();
+
+        var saved = commands.OfType<SaveCategory>().Single();
+        saved.Category.Name.ShouldBe("Groceries renamed");
+        saved.Category.Target.ShouldNotBeNull().Amount.ShouldBe(250);
+    }
+
+    [Fact]
+    public async Task AnUntouchedGroupMoveDoesNotDirtyTheDraftAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var basePlan = CreatePlan();
+        var savings = new GroupData(Guid.CreateVersion7(), "Savings", 1);
+        var current = basePlan with { Groups = [.. basePlan.Groups, savings] };
+        var component = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, current)
+            .Add(item => item.LoadMonth, (month, _) => Task.FromResult(BudgetCalculator.Calculate(current, month, current.Today)))
+            .Add(item => item.OnCommand, _ => { }));
+
+        await component.Find(".category-row .category-link").ClickAsync();
+
+        // A refresh moves the category; nothing here was edited, so closing must not ask.
+        current = current with { Version = current.Version + 1, Categories = [current.Categories[0] with { GroupId = savings.Id }] };
+        component.Render(parameters => parameters.Add(item => item.Plan, current).Add(item => item.ExternalRefresh, true));
+
+        await component.Find("fluent-button[aria-label='Close editor']").ClickAsync();
+
+        component.FindAll(".editor-surface").ShouldBeEmpty();
+        component.FindAll("[role='alertdialog']").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ReselectingTheOpenedGroupKeepsTheDraftDirtyAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var basePlan = CreatePlan();
+        var original = basePlan.Groups[0];
+        var savings = new GroupData(Guid.CreateVersion7(), "Savings", 1);
+        var current = basePlan with { Groups = [.. basePlan.Groups, savings] };
+        var component = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, current)
+            .Add(item => item.LoadMonth, (month, _) => Task.FromResult(BudgetCalculator.Calculate(current, month, current.Today)))
+            .Add(item => item.OnCommand, _ => { }));
+
+        await component.Find(".category-row .category-link").ClickAsync();
+
+        // The refresh moved the category to Savings, so choosing the old group again is a real edit
+        // and closing must ask instead of matching a stale baseline.
+        current = current with { Version = current.Version + 1, Categories = [current.Categories[0] with { GroupId = savings.Id }] };
+        component.Render(parameters => parameters.Add(item => item.Plan, current).Add(item => item.ExternalRefresh, true));
+        await component.InvokeAsync(() => component.FindComponents<FluentSelect<GroupData, Guid>>()[0].Instance.ValueChanged.InvokeAsync(original.Id));
+
+        await component.Find("fluent-button[aria-label='Close editor']").ClickAsync();
+
+        component.Find("[role='alertdialog']").TextContent.ShouldContain("Discard your unsaved changes?");
+    }
+
     private static PlanSnapshot CreatePlan()
     {
         var today = new DateOnly(2026, 10, 2);

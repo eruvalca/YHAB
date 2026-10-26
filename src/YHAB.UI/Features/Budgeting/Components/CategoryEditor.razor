@@ -24,10 +24,10 @@
     }
     <details class="category-options"><summary>Category details</summary>
     <FluentGrid Spacing="3">
-        <FluentGridItem Xs="12"><FluentTextInput Margin="0" Size="TextInputSize.Large" Label="Category name" @bind-Value="_name" MaxLength="100" /></FluentGridItem>
+        <FluentGridItem Xs="12"><FluentTextInput Margin="0" Size="TextInputSize.Large" Label="Category name" Value="_name" ValueChanged="SetName" MaxLength="100" /></FluentGridItem>
         <FluentGridItem Xs="12"><FluentSelect Margin="0" Size="ListSize.Large" TOption="GroupData" TValue="Guid" Label="Category group" Items="Plan.Groups" OptionText="item => item.Name" OptionValue="item => item.Id" Value="_group" ValueChanged="SetGroup" /></FluentGridItem>
         <FluentGridItem Xs="12"><FluentCheckbox Margin="0" Label="Hide category" LabelPosition="LabelPosition.Before" @bind-Value="_hidden" /></FluentGridItem>
-        <FluentGridItem Xs="12"><FluentTextArea Margin="0" Size="TextAreaSize.Large" Label="Notes" @bind-Value="_notes" MaxLength="4000" /></FluentGridItem>
+        <FluentGridItem Xs="12"><FluentTextArea Margin="0" Size="TextAreaSize.Large" Label="Notes" Value="_notes" ValueChanged="SetNotes" MaxLength="4000" /></FluentGridItem>
     </FluentGrid>
     </details>
     <div class="editor-actions">
