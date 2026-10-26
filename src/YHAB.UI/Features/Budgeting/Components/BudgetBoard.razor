@@ -67,18 +67,18 @@
     }
     @if (_move)
     {
-        <MoveMoneyEditor Plan="Plan" Month="_month" OnCommand="OnCommand" OnClose="CloseEditors" Busy="IsBusy" />
+        <MoveMoneyEditor Plan="Plan" Month="_month" OnCommand="SendAsync" OnClose="CloseEditors" Busy="IsBusy" />
     }
     <div class="budget-workspace-scope">
         <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalM)" VerticalGap="var(--spacingVerticalM)" Class="budget-workspace">
             <FirstRunChecklist Plan="Plan" Budget="_budget" Hidden="@(_category is not null)" OnAddAccount="AddAccountAsync" OnAddCategory="AddCategoryAsync" OnShowHelp="ShowHelpAsync" Busy="IsBusy" />
             <div class="budget-categories">
-                <BudgetCategoryTable @ref="_categoryTable" Plan="Plan" Budget="_budget" OnCommand="OnCommand" OnSelect="EditCategory" Busy="IsBusy" SelectedCategoryId="_category?.Id" />
+                <BudgetCategoryTable @ref="_categoryTable" Plan="Plan" Budget="_budget" OnCommand="SendAsync" OnSelect="EditCategory" Busy="IsBusy" SelectedCategoryId="_category?.Id" />
             </div>
             @if (_category is not null)
             {
                 <aside class="category-details" aria-label="Category details">
-                    <CategoryEditor @key="(_category?.Id, _month, _editorEpoch)" Plan="Plan" Category="_category" MonthState="EditingMonth" Month="_month" OnCommand="OnCommand" OnClose="CloseEditors" Busy="IsBusy" />
+                    <CategoryEditor @key="(_category?.Id, _month, _editorEpoch)" Plan="Plan" Category="_category" MonthState="EditingMonth" Month="_month" OnCommand="SendCategoryCommandAsync" OnClose="CloseEditors" Busy="IsBusy" />
                 </aside>
             }
         </FluentStack>

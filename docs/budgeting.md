@@ -207,7 +207,9 @@ its failure, recovery, and retry keep the draft, and a register read that fails
 while recovering keeps a preserved draft too. The dirty check compares
 length-prefixed field values, so a separator typed into a payee or memo counts as
 an edit, and a category editor kept open across a reorder saves the refreshed
-position rather than the one it opened with.
+position rather than the one it opened with. Only that editor's own save or
+removal starts it over; an assignment or auto-assign applied elsewhere leaves an
+open target draft untouched.
 **Undo**, **Redo**, **Refresh**, and the plan status follow the page heading in
 document order, so assistive technology reaches the heading before the actions.
 Assignment saves preserve the existing inputs and keyboard focus. Amount fields

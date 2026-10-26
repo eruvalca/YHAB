@@ -120,7 +120,8 @@ public sealed class BudgetBoardTests
         component.FindComponent<CategoryEditor>().Instance.ShouldBeSameAs(draft);
         component.FindAll("h1").Count.ShouldBe(1);
 
-        // A command result is attributed to the same draft and resets its baseline, so it remounts.
+        // The editor's own save consumes the draft, so its applied result starts the editor over.
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Save category", StringComparison.Ordinal)).ClickAsync();
         current = current with { Version = current.Version + 1 };
         component.Render(parameters => parameters.Add(item => item.Plan, current).Add(item => item.ExternalRefresh, false));
 

@@ -228,12 +228,14 @@ public sealed class BudgetCatalogTests
         var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, commands.Add));
         await component.Find(".category-row").ClickAsync();
         await component.Find(".category-details .amount-input fluent-text-input").ChangeAsync(new() { Value = "250" });
+        // An assignment applied from a row is an ordinary command, so it arrives without the
+        // external-refresh flag and must still leave the open target draft alone.
         component.Render(p => p.Add(item => item.Plan, plan with
         {
             Version = 8,
             Categories = plan.Categories.Select(item => item with { }).ToArray(),
             Allocations = [new(plan.Categories[1].Id, plan.Today, 25, false)],
-        }).Add(item => item.ExternalRefresh, true));
+        }).Add(item => item.ExternalRefresh, false));
         await component.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Save category", StringComparison.Ordinal)).ClickAsync();
         var saved = commands.Single().ShouldBeOfType<SaveCategory>();
         saved.Version.ShouldBe(8);
