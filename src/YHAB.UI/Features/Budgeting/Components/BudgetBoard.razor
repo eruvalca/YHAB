@@ -78,7 +78,7 @@
             @if (_category is not null)
             {
                 <aside class="category-details" aria-label="Category details">
-                    <CategoryEditor @key="(_category?.Id, _month, _editorEpoch)" Plan="Plan" Category="_category" MonthState="EditingMonth" Month="_month" OnCommand="OnCommand" OnClose="CloseEditors" Busy="IsBusy" />
+                    <CategoryEditor @key="(_category?.Id, _month, _editorEpoch)" Plan="Plan" Category="_category" MonthState="EditingMonth" Month="_month" OnCommand="SendCategoryCommandAsync" OnClose="CloseEditors" Busy="IsBusy" />
                 </aside>
             }
         </FluentStack>

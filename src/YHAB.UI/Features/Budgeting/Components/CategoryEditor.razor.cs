@@ -20,6 +20,7 @@ public sealed partial class CategoryEditor
     private string _name = "";
     private string _notes = "";
     private Guid _group;
+    private bool _groupEdited;
     private int _order;
     private bool _hidden;
     private bool _hasTarget;
@@ -60,14 +61,24 @@ public sealed partial class CategoryEditor
         _due.ToString("O", CultureInfo.InvariantCulture),
         _repeat,
         _weekday);
+    private void SetGroup(Guid group)
+    {
+        _group = group;
+        _groupEdited = true;
+    }
     private Guid DefaultGroup => Plan.Groups.Count > 0 ? Plan.Groups[0].Id : Guid.Empty;
     protected override void OnParametersSet()
     {
-        // A refresh can reorder categories under this editor. Its sort order is not editable here,
-        // so it follows the refreshed category while the typed fields stay as the user left them.
+        // A refresh can reorder or regroup categories under this editor. Its sort order is not
+        // editable here, so it follows the refreshed category; the group follows too unless the user
+        // chose one, so a cross-group move is not written back with the target save.
         if (Category is not null)
         {
             _order = Category.SortOrder;
+            if (!_groupEdited)
+            {
+                _group = Category.GroupId;
+            }
         }
 
         _snoozed = MonthState?.Snoozed ?? false;
