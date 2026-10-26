@@ -281,6 +281,27 @@ public sealed class TransactionEditorTests
         SaveButton(component).HasAttribute("disabled").ShouldBeTrue();
     }
 
+    [Fact]
+    public async Task GuardTreatsSeparatorTextInFieldsAsAnEditAsync()
+    {
+        await using var context = CreateContext();
+        var plan = CreatePlan();
+        var transaction = new TransactionData(Guid.CreateVersion7(), plan.Accounts[0].Id, plan.Today, "Shop", "branch|note", -12.50m, null, "", []);
+        var closed = 0;
+        var component = context.Render<TransactionEditor>(parameters => parameters.Add(item => item.Plan, plan)
+            .Add(item => item.Payees, []).Add(item => item.Transaction, transaction)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnClose, () => closed++));
+
+        // Moving the separator between the payee and the memo is a real edit: joined fields used to
+        // make both drafts produce the same snapshot, so the guard discarded this one silently.
+        await component.FindAll("fluent-text-input")[0].ChangeAsync(new() { Value = "Shop|branch" });
+        await component.Find("fluent-textarea").ChangeAsync(new() { Value = "note" });
+        await component.Find(".editor-surface").KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
+
+        component.Find("[role='alertdialog']").TextContent.ShouldContain("Discard your unsaved changes?");
+        closed.ShouldBe(0);
+    }
+
     private static BunitContext CreateContext()
     {
         var context = new BunitContext();

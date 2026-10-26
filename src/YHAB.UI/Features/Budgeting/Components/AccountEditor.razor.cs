@@ -49,21 +49,15 @@ public sealed partial class AccountEditor
         _initial = Signature();
     }
 
-    private string Signature()
-    {
-        string[] parts =
-        [
-            _name,
-            _kind.ToString(),
-            _openedOn.ToString("O", CultureInfo.InvariantCulture),
-            _balance.ToString(CultureInfo.InvariantCulture),
-            _notes,
-            _closed.ToString(),
-            _interest.ToString(CultureInfo.InvariantCulture),
-            _minimum.ToString(CultureInfo.InvariantCulture),
-        ];
-        return string.Join("|", parts);
-    }
+    private string Signature() => DraftSignature.Of(
+        _name,
+        _kind,
+        _openedOn.ToString("O", CultureInfo.InvariantCulture),
+        _balance,
+        _notes,
+        _closed,
+        _interest,
+        _minimum);
 
     private async Task SaveAsync()
     {

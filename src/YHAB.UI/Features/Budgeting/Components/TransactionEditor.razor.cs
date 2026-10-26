@@ -112,25 +112,20 @@ public sealed partial class TransactionEditor
             .OrderBy(item => item.Hidden).ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase).ToArray();
         _categories = [_readyToAssign, .. _spendingCategories];
     }
-    private string Signature()
-    {
-        string[] parts =
-        [
-            _payee,
-            _memo,
-            Amount.ToString(CultureInfo.InvariantCulture),
-            _direction,
-            _date.ToString("O", CultureInfo.InvariantCulture),
-            _flag,
-            _repeat.ToString(),
-            _account.ToString(),
-            _transfer.ToString(),
-            _category.ToString(),
-            _split.ToString(),
-            string.Join(";", _splits.Select(item => $"{item.Id:N},{item.Category:N},{item.Amount.ToString(CultureInfo.InvariantCulture)},{item.Memo}")),
-        ];
-        return string.Join("|", parts);
-    }
+    private string Signature() => DraftSignature.Of(
+        _payee,
+        _memo,
+        Amount,
+        _direction,
+        _date.ToString("O", CultureInfo.InvariantCulture),
+        _flag,
+        _repeat.ToString(),
+        _account,
+        _transfer,
+        _category,
+        _split,
+        _splits.Count,
+        string.Concat(_splits.Select(item => DraftSignature.Of(item.Id, item.Category, item.Amount, item.Memo))));
     private SplitData? FirstSplit => Transaction is { Splits.Count: > 0 } ? Transaction.Splits[0] : null;
     private void InitializeValues()
     {

@@ -70,7 +70,10 @@ public sealed partial class AccountRegister
         {
             var planReplaced = _loadedPlan?.Id != Plan.Id;
             var catalogChanged = _version != Plan.Version;
-            if (planReplaced || _previousAccount != AccountId || filterChanged || (catalogChanged && !KeepOpenDraft()) || (_error is not null && !ReferenceEquals(_loadedPlan, Plan)))
+            // Recovery after a failed read keeps a draft the refresh preserved, just as a catalog
+            // change does; only the plan, account, or filter identity discards it.
+            var readFailed = _error is not null && !ReferenceEquals(_loadedPlan, Plan);
+            if (planReplaced || _previousAccount != AccountId || filterChanged || ((catalogChanged || readFailed) && !KeepOpenDraft()))
             {
                 CloseEditors();
             }

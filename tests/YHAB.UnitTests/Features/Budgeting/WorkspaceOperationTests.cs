@@ -56,4 +56,28 @@ public sealed class WorkspaceOperationTests
         rejected.CanEdit.ShouldBeTrue();
         rejected.CanRetry.ShouldBeFalse();
     }
+
+    [Fact]
+    public void RefreshPostedCommandKeepsItsDraftIntentThroughFailureAndRetry()
+    {
+        var command = new PostRecurring(7, new DateOnly(2026, 10, 3));
+        var saving = WorkspaceOperation.Start(command, preservesDraft: true);
+        saving.PreservesDraft.ShouldBeTrue();
+
+        // The write committed but its follow-up read failed: the draft it never consumed stays
+        // preserved, so the next refresh must not treat it as saved.
+        var interrupted = saving.Saved().Interrupted();
+        interrupted.Phase.ShouldBe(WorkspacePhase.SavedNeedsRefresh);
+        interrupted.PreservesDraft.ShouldBeTrue();
+        interrupted.CanRetry.ShouldBeFalse();
+        saving.Interrupted().PreservesDraft.ShouldBeTrue();
+
+        // A retry repeats the same command with the same intent, and a settled load clears it.
+        WorkspaceOperation.Start(interrupted.Pending!, interrupted.PreservesDraft).PreservesDraft.ShouldBeTrue();
+        interrupted.Loaded().PreservesDraft.ShouldBeFalse();
+
+        // The editor's own save consumes its draft, so it never preserves one.
+        WorkspaceOperation.Start(command).PreservesDraft.ShouldBeFalse();
+        WorkspaceOperation.Start(command).Saved().Interrupted().PreservesDraft.ShouldBeFalse();
+    }
 }

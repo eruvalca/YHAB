@@ -3,12 +3,17 @@ namespace YHAB.SharedKernel.Budgeting;
 
 
 /// <summary>Pure save/refresh state. A successful write and a successful display refresh are separate facts.</summary>
-public sealed record WorkspaceOperation(WorkspacePhase Phase = WorkspacePhase.Ready, PlanCommand? Pending = null, string Message = "All changes saved")
+/// <param name="PreservesDraft">
+/// The pending command came from a refresh rather than from the open draft, so a preserved editor
+/// stays untouched while it is retried or recovered. It survives failure and recovery gaps; only a
+/// successful load settles the draft.
+/// </param>
+public sealed record WorkspaceOperation(WorkspacePhase Phase = WorkspacePhase.Ready, PlanCommand? Pending = null, string Message = "All changes saved", bool PreservesDraft = false)
 {
     public bool IsBusy => Phase is WorkspacePhase.Saving or WorkspacePhase.Refreshing;
     public bool CanEdit => Phase == WorkspacePhase.Ready;
     public bool CanRetry => Phase == WorkspacePhase.Uncertain && Pending is not null;
-    public static WorkspaceOperation Start(PlanCommand command) => new(WorkspacePhase.Saving, command, "Saving…");
+    public static WorkspaceOperation Start(PlanCommand command, bool preservesDraft = false) => new(WorkspacePhase.Saving, command, "Saving…", preservesDraft);
     public WorkspaceOperation Saved() => this with { Phase = WorkspacePhase.Refreshing, Message = "Saved. Updating balances…" };
     public WorkspaceOperation Loaded() => new(Message: Pending switch { UndoChange => "Change undone", RedoChange => "Change restored", _ => "All changes saved" });
     public static WorkspaceOperation Rejected() => new(Message: "Change not saved.");

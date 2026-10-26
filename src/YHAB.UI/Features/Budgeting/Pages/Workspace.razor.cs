@@ -99,8 +99,9 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         _error = null;
         // A refresh recovers a save that already committed on a different path than it preserves a
         // draft: the draft's values are already stored, so keeping it would let a second save insert
-        // a duplicate. Rejected or idle states leave the draft untouched.
-        var preserveDraft = _operation.Phase == WorkspacePhase.Ready;
+        // a duplicate. Rejected or idle states leave the draft untouched, and a command that a
+        // refresh itself posted keeps whatever the draft state was, even while it is retried.
+        var preserveDraft = _operation.Phase == WorkspacePhase.Ready || _operation.PreservesDraft;
         var postDue = false;
         try
         {
@@ -140,7 +141,11 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         }
     }
 
-    private Task ExecuteAsync(PlanCommand command) => ExecuteAsync(command, externalRefresh: false);
+    /// <summary>
+    /// A retry repeats the pending command, so it carries the draft intent that command started with;
+    /// a new command from the editor is the draft's own save and never preserves it.
+    /// </summary>
+    private Task ExecuteAsync(PlanCommand command) => ExecuteAsync(command, _operation.PreservesDraft && ReferenceEquals(command, _operation.Pending));
 
     private async Task ExecuteAsync(PlanCommand command, bool externalRefresh)
     {
@@ -153,7 +158,7 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         var token = operation.Token;
         var planId = PlanId;
         var generation = ++_requestGeneration;
-        _operation = WorkspaceOperation.Start(command);
+        _operation = WorkspaceOperation.Start(command, externalRefresh);
         _error = null;
         try
         {

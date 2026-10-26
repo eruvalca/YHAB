@@ -48,27 +48,28 @@ public sealed partial class CategoryEditor
         InitializeTarget();
         _initial = Signature();
     }
-    private string Signature()
-    {
-        string[] parts =
-        [
-            _name,
-            _notes,
-            _group.ToString(),
-            _hidden.ToString(),
-            _hasTarget.ToString(),
-            _kind.ToString(),
-            _cadence.ToString(),
-            _amount.ToString(CultureInfo.InvariantCulture),
-            _due.ToString("O", CultureInfo.InvariantCulture),
-            _repeat.ToString(CultureInfo.InvariantCulture),
-            _weekday.ToString(),
-        ];
-        return string.Join("|", parts);
-    }
+    private string Signature() => DraftSignature.Of(
+        _name,
+        _notes,
+        _group,
+        _hidden,
+        _hasTarget,
+        _kind,
+        _cadence,
+        _amount,
+        _due.ToString("O", CultureInfo.InvariantCulture),
+        _repeat,
+        _weekday);
     private Guid DefaultGroup => Plan.Groups.Count > 0 ? Plan.Groups[0].Id : Guid.Empty;
     protected override void OnParametersSet()
     {
+        // A refresh can reorder categories under this editor. Its sort order is not editable here,
+        // so it follows the refreshed category while the typed fields stay as the user left them.
+        if (Category is not null)
+        {
+            _order = Category.SortOrder;
+        }
+
         _snoozed = MonthState?.Snoozed ?? false;
         _replacements = [new(Guid.Empty, Guid.Empty, "No history to move", "", 0, false, null, null),
             .. Plan.Categories.Where(item => item.Id != Category?.Id && item.CreditAccountId is null)];

@@ -127,6 +127,31 @@ public sealed class BudgetBoardTests
         component.FindComponent<CategoryEditor>().Instance.ShouldNotBeSameAs(draft);
     }
 
+    [Fact]
+    public async Task ARefreshedReorderKeepsThePositionWhenATargetSavesAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var commands = new List<PlanCommand>();
+        var current = CreatePlan();
+        var component = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, current)
+            .Add(item => item.LoadMonth, (month, _) => Task.FromResult(BudgetCalculator.Calculate(current, month, current.Today)))
+            .Add(item => item.OnCommand, commands.Add));
+
+        await component.Find(".category-row .category-link").ClickAsync();
+
+        // A reorder elsewhere moves this category while its draft stays open. The kept mount follows
+        // the refreshed position, so its target save cannot write the stale one back.
+        current = current with { Version = current.Version + 1, Categories = [current.Categories[0] with { SortOrder = 4 }] };
+        component.Render(parameters => parameters.Add(item => item.Plan, current).Add(item => item.ExternalRefresh, true));
+
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Save category", StringComparison.Ordinal)).ClickAsync();
+
+        commands.OfType<SaveCategory>().Single().Category.SortOrder.ShouldBe(4);
+    }
+
     private static PlanSnapshot CreatePlan()
     {
         var today = new DateOnly(2026, 10, 2);
