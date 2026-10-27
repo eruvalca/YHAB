@@ -6,15 +6,19 @@ using YHAB.SharedKernel.Budgeting;
 
 namespace YHAB.UI.Features.Budgeting.Pages;
 
-public sealed partial class Workspace(IBudgetClient budgets, NavigationManager navigation, IJSRuntime javascript)
+public sealed partial class Workspace(IBudgetClient budgets, NavigationManager navigation, IJSRuntime javascript, WorkspaceCache cache)
 {
     [Parameter] public Guid PlanId { get; set; }
     [Parameter] public Guid? AccountId { get; set; }
     [SupplyParameterFromQuery(Name = "category")] public Guid? ReportCategoryId { get; set; }
     [SupplyParameterFromQuery(Name = "from")] public DateOnly? ReportFrom { get; set; }
     [SupplyParameterFromQuery(Name = "to")] public DateOnly? ReportThrough { get; set; }
-    // Each renderer loads its owner-scoped catalog; ledger pages and month totals
-    // are fetched separately instead of round-tripping a ledger in prerender state.
+    // Prerendering already read the catalog and month. Carrying only the display
+    // data into the interactive renderer keeps the first interactive paint
+    // identical instead of flashing an empty loading state; the ledger and
+    // allocations stay server-owned and ledger pages are still read on demand.
+    [PersistentState] public PlanView? RestoredView { get; set; }
+    [PersistentState] public BudgetMonth? RestoredMonth { get; set; }
     private PlanSnapshot? Snapshot { get; set; }
     private PlanView? _view;
     private DateOnly? _month;
@@ -35,6 +39,12 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
     private IJSObjectReference? _module;
     private DotNetObjectReference<Workspace>? _reference;
     private bool IsRegister => AccountId.HasValue || new Uri(navigation.Uri).AbsolutePath.TrimEnd('/').EndsWith("/accounts", StringComparison.Ordinal);
+    private string ActionStatus()
+    {
+        if (_error is not null) { return "Action needed"; }
+        if (!RendererInfo.IsInteractive) { return "Connecting…"; }
+        return _busy && _operation.Phase == WorkspacePhase.Ready ? "Refreshing…" : _operation.Message;
+    }
 
     protected override void OnInitialized() => navigation.LocationChanged += LocationChanged;
 
@@ -64,6 +74,7 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
             _preparedMonth = null;
             CloseAccount();
             Snapshot = null;
+            RestoreDisplay();
             await RefreshAsync();
         }
     }
@@ -119,6 +130,14 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         }
         catch (BudgetRequestException exception) when (generation == _requestGeneration)
         {
+            if (exception.Status is 401 or 403 or 404)
+            {
+                // Do not keep displaying a plan the current user may no longer read.
+                cache.Remove(planId);
+                Snapshot = null;
+                _view = null;
+                _preparedMonth = null;
+            }
             _error = exception.Message;
         }
         catch (HttpRequestException) when (generation == _requestGeneration)
@@ -250,6 +269,28 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         }
     }
 
+    private void RestoreDisplay()
+    {
+        if (RestoredView is { } restored && restored.Catalog.Id == PlanId)
+        {
+            RestoreDisplay(restored, RestoredMonth);
+            RestoredView = null;
+            RestoredMonth = null;
+            return;
+        }
+
+        if (cache.TryGet(PlanId, out var cached, out var cachedMonth))
+        {
+            RestoreDisplay(cached, cachedMonth);
+        }
+    }
+
+    private void RestoreDisplay(PlanView view, BudgetMonth? month)
+    {
+        ApplyView(view, month, externalRefresh: false);
+        _operation = _operation.Loaded();
+    }
+
     private void ApplyView(PlanView view, BudgetMonth? month, bool externalRefresh)
     {
         _view = view;
@@ -257,7 +298,19 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         _preparedMonth = month is null ? null : new(view.Catalog.Id, view.Catalog.Version, month);
         _hasUpdates = false;
         _externalRefresh = externalRefresh;
+        // Persist and cache only what the page renders. The ledger and allocations
+        // are server-owned and are re-read by interactive ledger pages.
+        var display = DisplayView(view);
+        cache.Store(view.Catalog.Id, display, month);
+        if (!RendererInfo.IsInteractive)
+        {
+            RestoredView = display;
+            RestoredMonth = month;
+        }
     }
+
+    private static PlanView DisplayView(PlanView view) =>
+        new(view.Catalog with { Transactions = [], Allocations = [] }, view.Balances, view.HasDueRecurring);
 
     private sealed record PreparedMonth(Guid PlanId, long Version, BudgetMonth Budget);
     private async Task<RegisterPage> LoadRegisterAsync(RegisterQuery query, CancellationToken cancellationToken)

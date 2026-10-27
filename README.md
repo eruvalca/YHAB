@@ -284,6 +284,24 @@ Render boundaries are deliberate:
   so cookie changes refresh authentication state. Shared notices retain their
   `notice`/`data-kind` contract. The reconnect/error UI retains native controls
   because it must function while the Blazor circuit is unavailable.
+- `Workspace` keeps its first interactive paint identical to the prerendered page
+  by carrying a display-only copy of the plan through `[PersistentState]` and by
+  caching the last catalog and month per renderer. The persisted copy omits
+  transactions and allocations, which stay server-owned; the workspace still
+  refreshes immediately after restoring, and an authorization or not-found
+  response drops the cached copy. A plan never opened in the current renderer
+  paints a structural skeleton instead of collapsing to a loading line, and the
+  actions status reads **Connecting…** until the renderer can accept input.
+- Enhanced-navigation feedback is centralized in the shell. When a navigation is
+  still pending after 250 ms, `MainLayout` shows a slim progress bar and dims the
+  outgoing content until `enhancednavigationend`; fast navigations and
+  reduced-motion users see no change, and forced-colors uses the system highlight.
+  The same feedback covers enhanced form posts.
+- The Reflect date filter uses `data-enhance` so a GET report refresh stays inside
+  the enhanced-navigation document. Identity and logout POSTs keep normal
+  navigation.
+- Fluent resolves the theme on `body`; the shell mirrors the resolved mode onto
+  `<html>` so the document scrollbar and native controls follow dark mode.
 
 Shared styles live in `src/YHAB/wwwroot/app.css`: sizing, typography, forms
 (`account-form`, `form-field`, `checkbox-field`), action groups (`actions`),

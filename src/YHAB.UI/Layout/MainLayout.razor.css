@@ -2,6 +2,57 @@
     min-height: 100dvh;
 }
 
+/* Enhanced navigation keeps the destination request in flight while the old
+   page stays interactive. A slim bar acknowledges waits that are long enough
+   to notice, and the content dims so the pending page reads as stale. */
+.navigation-progress {
+    position: fixed;
+    inset-block-start: env(safe-area-inset-top, 0px);
+    inset-inline: 0;
+    z-index: 1200;
+    height: 0.125rem;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 120ms ease-out;
+}
+
+.navigation-progress::after {
+    content: "";
+    display: block;
+    height: 100%;
+    background: var(--colorBrandBackground);
+    transform: scaleX(var(--navigation-progress, 0));
+    transform-origin: left center;
+    transition: transform 200ms ease-out;
+}
+
+.navigation-progress[data-active="true"] {
+    opacity: 1;
+}
+
+.content-container[data-navigating="true"] {
+    opacity: 0.72;
+    transition: opacity 120ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .navigation-progress,
+    .navigation-progress::after {
+        transition: none;
+    }
+
+    .content-container[data-navigating="true"] {
+        opacity: 1;
+        transition: none;
+    }
+}
+
+@media (forced-colors: active) {
+    .navigation-progress::after {
+        background: Highlight;
+    }
+}
+
 .page ::deep .app-layout {
     /* Let enhanced navigation manage document scrolling and history restoration. */
     min-height: 100dvh;

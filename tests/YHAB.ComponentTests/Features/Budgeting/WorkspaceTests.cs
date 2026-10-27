@@ -7,6 +7,7 @@ using NSubstitute;
 using Shouldly;
 using Xunit;
 using YHAB.SharedKernel.Budgeting;
+using YHAB.UI.Features.Budgeting;
 using YHAB.UI.Features.Budgeting.Components;
 using YHAB.UI.Features.Budgeting.Pages;
 
@@ -94,10 +95,11 @@ public sealed class WorkspaceTests
             .Returns(call => BudgetCalculator.Calculate(call.Arg<long>() == 7 ? plan : posted, call.Arg<DateOnly>(), today));
         ConfigureWorkspaceRead(budgets);
         context.Services.AddSingleton(budgets);
+        context.Services.AddSingleton<WorkspaceCache>();
         context.Renderer.SetRendererInfo(new RendererInfo(renderer, interactive));
 
         var component = context.Render<Workspace>(parameters => parameters.Add(item => item.PlanId, plan.Id));
-        component.Find("[role='status']").TextContent.ShouldBe("Opening your plan…");
+        component.Find("[role='status']").TextContent.ShouldContain("Opening your plan");
         Commands(budgets).ShouldBeEmpty();
 
         pendingRead.SetResult(View(plan, true));
@@ -421,6 +423,25 @@ public sealed class WorkspaceTests
         Commands(budgets).Single().Version.ShouldBe(8);
     }
 
+    [Fact]
+    public async Task RemountPaintsTheCachedPlanBeforeTheFreshReadCompletesAsync()
+    {
+        await using var context = new BunitContext();
+        var (budgets, plan) = Configure(context);
+        var first = context.Render<Workspace>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+        await first.WaitForAssertionAsync(() => first.Find(".workspace").TextContent.ShouldContain("Plan"));
+
+        var pending = new TaskCompletionSource<PlanView>(TaskCreationOptions.RunContinuationsAsynchronously);
+        budgets.ReadViewAsync(plan.Id, Arg.Any<CancellationToken>()).Returns(pending.Task);
+        var second = context.Render<Workspace>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+
+        second.FindAll("[role='status']").ShouldNotContain(item => item.TextContent.Contains("Opening your plan", StringComparison.Ordinal));
+        second.Find(".workspace").TextContent.ShouldContain("Plan");
+
+        pending.SetResult(View(plan));
+        await second.WaitForAssertionAsync(() => second.FindAll("[role='status']").ShouldNotContain(item => item.TextContent.Contains("Opening your plan", StringComparison.Ordinal)));
+    }
+
     private static (IBudgetClient Budgets, PlanSnapshot Plan) Configure(BunitContext context)
     {
         context.Services.AddFluentUIComponents();
@@ -435,6 +456,7 @@ public sealed class WorkspaceTests
             .Returns(call => BudgetCalculator.Calculate(plan, call.Arg<DateOnly>(), today));
         ConfigureWorkspaceRead(budgets);
         context.Services.AddSingleton(budgets);
+        context.Services.AddSingleton<WorkspaceCache>();
         context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
         return (budgets, plan);
     }

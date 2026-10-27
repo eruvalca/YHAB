@@ -2,6 +2,10 @@
 
 <a class="skip-link" href="#main-content" data-enhance-nav="false">Skip to content</a>
 
+@* Enhanced navigation keeps the current page on screen until the next one is
+   ready. The bar acknowledges longer waits without flashing on fast ones. *@
+<div id="navigation-progress" class="navigation-progress" aria-hidden="true"></div>
+
 <div class="page">
     <FluentLayout Id="app-layout" Class="app-layout" GlobalScrollbar="true" Height="auto">
         <FluentLayoutItem Area="LayoutArea.Header" Class="header-area" Height="calc(3rem + env(safe-area-inset-top, 0px))" Padding="0">

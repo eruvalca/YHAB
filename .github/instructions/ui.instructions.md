@@ -101,6 +101,25 @@ assets/provider setup and [build rules](../../build/README.md) for enforcement.
 - Shared notices use `class="notice"` with `data-kind="success"`, `"error"`,
   `"warning"`, or `"information"`. Keep meaning in the message, not just color.
 
+## Navigation feedback and first paint
+
+- Keep enhanced-navigation feedback in the shell. The delayed
+  `#navigation-progress` bar and outgoing-content dimming live in `MainLayout`;
+  keep the delay so fast navigations do not flash, honor reduced motion, and keep
+  the forced-colors highlight. Do not add per-page spinners for enhanced
+  navigation.
+- An interactively rendered page must not replace prerendered content with an
+  empty loading state when its renderer starts. Persist display-only first-paint
+  state (`[PersistentState]` plus a renderer-scoped cache for in-circuit
+  remounts), trim server-owned ledger data, and use a structural skeleton when a
+  read really is pending rather than a single loading line.
+- Opt plain GET forms into enhanced handling with `data-enhance` when they target
+  a Blazor page. Keep Identity, logout, and other cookie-changing POSTs as normal
+  navigations.
+- Mirror a resolved client theme onto the root element when browser chrome
+  depends on it; a body-only theme leaves the document scrollbar in the other
+  scheme.
+
 ## Asynchronous component lifetime
 
 - Components owning asynchronous I/O use `CancellableComponentBase` and linked
