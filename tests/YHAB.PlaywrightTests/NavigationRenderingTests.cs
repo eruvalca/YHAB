@@ -117,10 +117,10 @@ public sealed class NavigationRenderingTests(ITestOutputHelper output)
 
     [Fact]
     [Trait("Category", "BrowserSmoke")]
-    public async Task ColdStartSucceedsWhenThePlanIsTooLargeToPersistAsync()
+    public async Task ServerCircuitStartsWithBoundedAndOversizedPayloadsAsync()
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        timeout.CancelAfter(TimeSpan.FromMinutes(4));
+        timeout.CancelAfter(TimeSpan.FromMinutes(5));
         await using var builder = await TestAppHost.CreateAsync(timeout.Token);
         await using var app = await builder.BuildAsync(timeout.Token);
         await app.StartAsync(timeout.Token);
@@ -136,35 +136,52 @@ public sealed class NavigationRenderingTests(ITestOutputHelper output)
         await context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = true });
         var page = await context.NewPageAsync();
         var errors = new ConcurrentQueue<string>();
+        page.PageError += (_, error) => errors.Enqueue(error);
+        // Hold the Auto runtime from the first request so every renderer in this test is
+        // the Server renderer, which is the one bound by SignalR's circuit-start limit.
+        var allowWebAssembly = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        await context.RouteAsync("**/_framework/dotnet.native.*.wasm", async route =>
+        {
+            await allowWebAssembly.Task.WaitAsync(timeout.Token);
+            await route.ContinueAsync();
+        });
         try
         {
             await BudgetWorkflowTests.RegisterAndLoginAsync(page);
             await page.GetByRole(AriaRole.Link, new() { Name = "Open your plans" }).ClickAsync();
             await page.GetByLabel("Plan name", new() { Exact = true }).FillAsync("Large notes plan");
             await page.GetByRole(AriaRole.Button, new() { Name = "Create your plan" }).ClickAsync();
-            await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+            await page.Locator(".workspace[data-renderer='Server'][data-interactive='true']").WaitForAsync();
             var planPath = new Uri(page.Url).AbsolutePath;
 
-            // Five 4,000-character notes are duplicated by the catalog and the month,
-            // which by itself exceeds the 32 KiB circuit-start message. The renderer
-            // must drop the persisted snapshot and still start.
-            var notes = new string('n', 4000);
-            var plan = await ReadPlanAsync(page, planPath);
-            var token = await ReadTokenAsync(page);
-            foreach (var category in plan.Categories.Take(5))
+            // A large but accepted snapshot must still be persisted, and the Server
+            // circuit must start from it on a cold load. Size the notes from the
+            // measured payload so the accepted case sits just inside the budget.
+            var baseline = await ReadServerStateLengthAsync(page, "/plans");
+            var fresh = await ReadServerStateLengthAsync(page, planPath);
+            const int TargetLength = 25 * 1024;
+            var notesLength = fresh >= TargetLength ? 0 : (TargetLength - fresh) / 18;
+            if (notesLength > 0)
             {
-                await using var saved = await page.APIRequest.PutAsync($"/api{planPath}/categories/{category.Id}", new()
-                {
-                    Headers = new Dictionary<string, string>(StringComparer.Ordinal) { ["X-CSRF-TOKEN"] = token, ["Content-Type"] = "application/json" },
-                    Data = JsonSerializer.Serialize(new SaveCategory(plan.Version, category with { Notes = notes }), JsonSerializerOptions.Web),
-                });
-                saved.Status.ShouldBe(200, await saved.TextAsync());
-                plan = await ReadPlanAsync(page, planPath);
+                await SeedNotesAsync(page, planPath, notesLength, categoryCount: 5);
             }
+            var accepted = await ReadServerStateLengthAsync(page, planPath);
+            output.WriteLine($"persisted state: baseline={baseline} fresh={fresh} notes={notesLength} accepted={accepted}");
+            accepted.ShouldBeLessThanOrEqualTo(32 * 1024);
+            accepted.ShouldBeGreaterThan(baseline + 8000);
 
-            page.PageError += (_, error) => errors.Enqueue(error);
             await page.GotoAsync(planPath);
-            await page.Locator(".workspace[data-interactive='true']").WaitForAsync(new() { Timeout = 60_000 });
+            await page.Locator(".workspace[data-renderer='Server'][data-interactive='true']").WaitForAsync(new() { Timeout = 60_000 });
+
+            // Notes duplicated by the catalog and the month push the payload past the
+            // transport budget. Persistence is skipped and the circuit must still start.
+            await SeedNotesAsync(page, planPath, notesLength: 4000, categoryCount: 13);
+            var oversized = await ReadServerStateLengthAsync(page, planPath);
+            output.WriteLine($"persisted state: oversized={oversized}");
+            oversized.ShouldBeLessThan(baseline + 2000);
+
+            await page.GotoAsync(planPath);
+            await page.Locator(".workspace[data-renderer='Server'][data-interactive='true']").WaitForAsync(new() { Timeout = 60_000 });
             await page.GetByRole(AriaRole.Heading, new() { Name = "Plan your money", Exact = true }).WaitForAsync();
 
             errors.ShouldBeEmpty();
@@ -176,8 +193,44 @@ public sealed class NavigationRenderingTests(ITestOutputHelper output)
                 output.WriteLine(error);
             }
 
+            allowWebAssembly.TrySetResult();
+            await context.UnrouteAsync("**/_framework/dotnet.native.*.wasm");
             var artifacts = Path.Combine(AppContext.BaseDirectory, "TestResults", $"large-plan-cold-start-{Guid.NewGuid():N}");
             await BrowserArtifacts.CaptureAsync(page, context, artifacts, output.WriteLine);
+        }
+    }
+
+    /// <summary>
+    /// The persisted state the client sends back in the circuit-start message, read from
+    /// the prerendered comment. Its Base64 length is the transport size this test bounds.
+    /// </summary>
+    private static async Task<int> ReadServerStateLengthAsync(IPage page, string path)
+    {
+        await using var response = await page.APIRequest.GetAsync(path);
+        response.Status.ShouldBe(200);
+        var html = await response.TextAsync();
+        const string Marker = "Blazor-Server-Component-State:";
+        var index = html.IndexOf(Marker, StringComparison.Ordinal);
+        if (index < 0) { return 0; }
+        var start = index + Marker.Length;
+        var end = html.IndexOf("-->", start, StringComparison.Ordinal);
+        return end < 0 ? 0 : end - start;
+    }
+
+    private static async Task SeedNotesAsync(IPage page, string planPath, int notesLength, int categoryCount)
+    {
+        var notes = new string('n', notesLength);
+        var plan = await ReadPlanAsync(page, planPath);
+        var token = await ReadTokenAsync(page);
+        foreach (var category in plan.Categories.Take(categoryCount))
+        {
+            await using var saved = await page.APIRequest.PutAsync($"/api{planPath}/categories/{category.Id}", new()
+            {
+                Headers = new Dictionary<string, string>(StringComparer.Ordinal) { ["X-CSRF-TOKEN"] = token, ["Content-Type"] = "application/json" },
+                Data = JsonSerializer.Serialize(new SaveCategory(plan.Version, category with { Notes = notes }), JsonSerializerOptions.Web),
+            });
+            saved.Status.ShouldBe(200, await saved.TextAsync());
+            plan = await ReadPlanAsync(page, planPath);
         }
     }
 

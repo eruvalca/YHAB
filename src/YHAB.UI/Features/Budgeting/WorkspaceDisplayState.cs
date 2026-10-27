@@ -10,8 +10,17 @@ namespace YHAB.UI.Features.Budgeting;
 /// </summary>
 internal static class WorkspaceDisplayState
 {
-    // Leaves headroom in the 32 KiB circuit-start message for the rest of the payload.
-    internal const int MaximumPersistedBytes = 20 * 1024;
+    /// <summary>The default maximum size of a client message.</summary>
+    internal const int CircuitStartLimitBytes = 32 * 1024;
+
+    /// <summary>Headroom for component descriptors and other circuit-start fields.</summary>
+    internal const int CircuitMetadataReserveBytes = 4 * 1024;
+
+    // ASP.NET Core data protection adds an IV, a MAC, and up to one block of padding.
+    private const int ProtectionOverheadBytes = 64;
+
+    // Quotes, key names, and separators for the persisted property dictionary.
+    private const int StateDictionaryOverheadBytes = 128;
 
     /// <summary>Drops the server-owned ledger and allocations the page does not render.</summary>
     public static PlanView Trim(PlanView view)
@@ -23,12 +32,26 @@ internal static class WorkspaceDisplayState
     /// </summary>
     public static bool Fits(PlanView display, BudgetMonth? month)
     {
-        var bytes = JsonSerializer.SerializeToUtf8Bytes(display, WorkspaceDisplayJsonContext.Default.PlanView).Length;
+        var rawBytes = JsonSerializer.SerializeToUtf8Bytes(display, WorkspaceDisplayJsonContext.Default.PlanView).Length;
         if (month is not null)
         {
-            bytes += JsonSerializer.SerializeToUtf8Bytes(month, WorkspaceDisplayJsonContext.Default.BudgetMonth).Length;
+            rawBytes += JsonSerializer.SerializeToUtf8Bytes(month, WorkspaceDisplayJsonContext.Default.BudgetMonth).Length;
         }
 
-        return bytes <= MaximumPersistedBytes;
+        return TransportBytes(rawBytes) <= CircuitStartLimitBytes - CircuitMetadataReserveBytes;
+    }
+
+    /// <summary>
+    /// The size the persisted state occupies in the circuit-start message: each value is
+    /// data-protected and Base64-encoded, the state dictionary is serialized to JSON, and
+    /// that JSON is Base64-encoded again before the client sends it back. Raw JSON is
+    /// therefore a poor proxy; 20 KiB of it becomes roughly 35 KiB on the wire.
+    /// </summary>
+    internal static int TransportBytes(int rawJsonBytes)
+    {
+        var protectedBytes = rawJsonBytes + ProtectionOverheadBytes;
+        var protectedBase64 = ((protectedBytes + 2) / 3) * 4;
+        var dictionaryJson = protectedBase64 + StateDictionaryOverheadBytes;
+        return ((dictionaryJson + 2) / 3) * 4;
     }
 }

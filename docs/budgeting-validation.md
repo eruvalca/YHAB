@@ -1903,11 +1903,11 @@ This matches Microsoft's documented
 [prerendered state size limitation](https://learn.microsoft.com/aspnet/core/blazor/fundamentals/signalr?view=aspnetcore-10.0#prerendered-state-size-and-signalr-message-size-limit).
 The workspace now reads a fresh owner-scoped snapshot when each renderer starts.
 It may additionally carry a display-only catalog and month into the interactive
-renderer, trimmed of the ledger and allocations, but only when that payload fits
-a 20 KiB budget inside the 32 KiB circuit-start message
-(`WorkspaceDisplayState`); an oversized plan falls back to the loading skeleton
-instead of failing to connect. SSR and InteractiveAuto remain enabled, and
-SignalR's default limit is unchanged. The interactive renderer still reads the
+renderer, trimmed of the ledger and allocations, but only when the protected,
+double-Base64 transport form fits a 28 KiB budget inside the 32 KiB circuit-start
+message (`WorkspaceDisplayState`); an oversized plan falls back to the loading
+skeleton instead of failing to connect. SSR and InteractiveAuto remain enabled,
+and SignalR's default limit is unchanged. The interactive renderer still reads the
 plan after it starts, so the persisted copy only covers the first paint.
 
 Due recurring entries are posted after the interactive snapshot read completes,

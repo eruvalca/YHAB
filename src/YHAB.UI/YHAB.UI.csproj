@@ -11,6 +11,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="YHAB.ComponentTests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\YHAB.SharedKernel\YHAB.SharedKernel.csproj" />
   </ItemGroup>
 

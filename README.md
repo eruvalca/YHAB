@@ -287,14 +287,14 @@ Render boundaries are deliberate:
 - `Workspace` keeps its first interactive paint identical to the prerendered page
   by carrying a display-only copy of the plan through `[PersistentState]` and by
   caching the last catalog and month per renderer. The persisted copy omits
-  transactions and allocations, which stay server-owned, and is dropped when it
-  would exceed a 20 KiB budget inside SignalR's 32 KiB circuit-start message; an
-  oversized plan paints the structural skeleton instead of failing to connect. The
-  cached month is restored into the board and the next read, and a register-only
-  read keeps it while the revision is unchanged. The workspace refreshes
-  immediately after restoring, and an authorization or not-found response drops
-  the cached copy. The actions status reads **Connecting…** until the renderer can
-  accept input.
+  transactions and allocations, which stay server-owned, and is dropped when its
+  protected, double-Base64 transport form would exceed a 28 KiB budget inside
+  SignalR's 32 KiB circuit-start message; an oversized plan paints the structural
+  skeleton instead of failing to connect. The cached month is restored into the
+  board and the next read, and a register-only read keeps it while the revision is
+  unchanged. The workspace refreshes immediately after restoring, and an
+  authorization or not-found response drops the cached copy. The actions status
+  reads **Connecting…** until the renderer can accept input.
 - Enhanced-navigation feedback is centralized in the shell. When a navigation is
   still pending after 250 ms, `MainLayout` shows a slim progress bar and dims the
   outgoing content until `enhancednavigationend`; fast navigations and
