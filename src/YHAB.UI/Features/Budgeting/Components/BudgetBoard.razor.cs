@@ -19,6 +19,11 @@ public sealed partial class BudgetBoard
     // command consumed the values the draft was editing.
     [Parameter] public bool ExternalRefresh { get; set; }
     [Parameter] public Func<DateOnly, CancellationToken, Task<BudgetMonth>>? LoadMonth { get; set; }
+    /// <summary>
+    /// The month a remounted board should show first, so a restored projection and the
+    /// board's selection agree instead of triggering a second month read.
+    /// </summary>
+    [Parameter] public DateOnly? InitialMonth { get; set; }
     [Parameter] public RenderFragment? PlanActions { get; set; }
 
     private string? _error;
@@ -82,7 +87,7 @@ public sealed partial class BudgetBoard
 
     protected override async Task OnParametersSetAsync()
     {
-        if (_month == default) { _month = BudgetFacts.Month(Plan.Today); }
+        if (_month == default) { _month = InitialMonth ?? BudgetFacts.Month(Plan.Today); }
         if (_loadedPlan?.Id != Plan.Id || _version != Plan.Version || _budget is null || (_error is not null && !ReferenceEquals(_loadedPlan, Plan)))
         {
             if (_loadedPlan?.Id != Plan.Id) { _help = false; CloseEditors(); }
