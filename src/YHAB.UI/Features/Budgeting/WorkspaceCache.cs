@@ -32,10 +32,19 @@ public sealed class WorkspaceCache
 
     public void Store(Guid planId, PlanView view, BudgetMonth? month)
     {
+        ArgumentNullException.ThrowIfNull(view);
         for (var node = _entries.First; node is not null; node = node.Next)
         {
             if (node.Value.PlanId != planId) { continue; }
-            node.Value = new(planId, view, month);
+            // A register-only read supplies no month. The same revision and budget
+            // date mean the previous projection is still current, so keep it for a
+            // remount instead of forcing another month read.
+            var preserved = month
+                ?? (node.Value.View.Catalog.Version == view.Catalog.Version
+                    && node.Value.View.Catalog.Today == view.Catalog.Today
+                    ? node.Value.Month
+                    : null);
+            node.Value = new(planId, view, preserved);
             _entries.Remove(node);
             _entries.AddFirst(node);
             return;

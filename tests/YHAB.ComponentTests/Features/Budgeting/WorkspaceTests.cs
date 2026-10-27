@@ -442,18 +442,84 @@ public sealed class WorkspaceTests
         await second.WaitForAssertionAsync(() => second.FindAll("[role='status']").ShouldNotContain(item => item.TextContent.Contains("Opening your plan", StringComparison.Ordinal)));
     }
 
+    [Theory]
+    [InlineData(1, true)]
+    [InlineData(5, false)]
+    public async Task PersistedDisplayStateIsOnlyKeptWhenItFitsTheCircuitStartMessageAsync(int categoryCount, bool fits)
+    {
+        // Five duplicated 4,000-character notes already exceed the 32 KiB circuit-start
+        // message, so an oversized snapshot must be omitted rather than sent.
+        await using var context = new BunitContext();
+        var today = new DateOnly(2026, 10, 3);
+        var group = new GroupData(Guid.NewGuid(), "Everyday", 0);
+        var notes = new string('n', 4000);
+        var categories = Enumerable.Range(0, categoryCount)
+            .Select(index => new CategoryData(Guid.NewGuid(), group.Id, $"Category {index}", notes, index, false, null, null))
+            .ToArray();
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Large plan", "", today, 7, [], [group], categories, [], [], false, false, []) { Today = today };
+        Configure(context, plan);
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", false));
+
+        var component = context.Render<Workspace>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+
+        await component.WaitForAssertionAsync(() => component.FindAll(".workspace").Count.ShouldBe(1));
+        if (fits)
+        {
+            var restored = component.Instance.RestoredView.ShouldNotBeNull();
+            restored.Catalog.Transactions.ShouldBeEmpty();
+        }
+        else
+        {
+            component.Instance.RestoredView.ShouldBeNull();
+            component.Instance.RestoredMonth.ShouldBeNull();
+        }
+    }
+
+    [Fact]
+    public async Task RemountRestoresTheSelectedMonthIntoTheBoardAsync()
+    {
+        await using var context = new BunitContext();
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], false, false, []) { Today = today };
+        var (budgets, _) = Configure(context, plan);
+        var selected = BudgetFacts.Month(today).AddMonths(-1);
+        var expected = selected.ToString("MMMM yyyy", BudgetFacts.Culture);
+
+        var first = context.Render<Workspace>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+        await first.WaitForAssertionAsync(() => first.Find(".month-label").TextContent.ShouldBe(BudgetFacts.Month(today).ToString("MMMM yyyy", BudgetFacts.Culture)));
+        await first.Find("[aria-label='Previous month']").ClickAsync();
+        await first.WaitForAssertionAsync(() => first.Find(".month-label").TextContent.ShouldBe(expected));
+        await Button(first, "Refresh").ClickAsync();
+        await first.WaitForAssertionAsync(() => Button(first, "Refresh").HasAttribute("disabled").ShouldBeFalse());
+
+        var pending = new TaskCompletionSource<PlanView>(TaskCreationOptions.RunContinuationsAsynchronously);
+        budgets.ReadViewAsync(plan.Id, Arg.Any<CancellationToken>()).Returns(pending.Task);
+        var second = context.Render<Workspace>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+
+        await second.WaitForAssertionAsync(() => second.Find(".month-label").TextContent.ShouldBe(expected));
+        second.Markup.ShouldNotContain("Loading month");
+
+        pending.SetResult(View(plan));
+    }
+
     private static (IBudgetClient Budgets, PlanSnapshot Plan) Configure(BunitContext context)
+    {
+        var today = new DateOnly(2026, 10, 3);
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [], [], [], [], [], true, false, []) { Today = today };
+        return Configure(context, plan);
+    }
+
+    private static (IBudgetClient Budgets, PlanSnapshot Plan) Configure(BunitContext context, PlanSnapshot plan)
     {
         context.Services.AddFluentUIComponents();
         context.ComponentFactories.AddStub<FluentProviders>();
         context.JSInterop.Mode = JSRuntimeMode.Loose;
         context.JSInterop.SetupModule("./_content/YHAB.UI/budget-workspace.js");
-        var today = new DateOnly(2026, 10, 3);
-        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [], [], [], [], [], true, false, []) { Today = today };
         var budgets = Substitute.For<IBudgetClient>();
         budgets.ReadViewAsync(plan.Id, Arg.Any<CancellationToken>()).Returns(View(plan));
         budgets.ReadMonthAsync(plan.Id, Arg.Any<DateOnly>(), Arg.Any<long>(), Arg.Any<CancellationToken>())
-            .Returns(call => BudgetCalculator.Calculate(plan, call.Arg<DateOnly>(), today));
+            .Returns(call => BudgetCalculator.Calculate(plan, call.Arg<DateOnly>(), plan.Today));
         ConfigureWorkspaceRead(budgets);
         context.Services.AddSingleton(budgets);
         context.Services.AddSingleton<WorkspaceCache>();

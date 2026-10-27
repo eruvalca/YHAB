@@ -113,6 +113,15 @@ assets/provider setup and [build rules](../../build/README.md) for enforcement.
   state (`[PersistentState]` plus a renderer-scoped cache for in-circuit
   remounts), trim server-owned ledger data, and use a structural skeleton when a
   read really is pending rather than a single loading line.
+- Prerendered state travels inside the circuit-start message, which has a 32 KiB
+  SignalR receive limit. Measure the payload before persisting it, keep a budget
+  with headroom, and fall back to the skeleton when it does not fit; an oversized
+  snapshot fails before the circuit can start. `docs/budgeting-validation.md`
+  records that failure for an earlier version of this page. Keep measurement
+  source-generated so it stays safe under WebAssembly trimming.
+- A cached projection is only useful when the board selects the same month. Pass
+  the restored month into both the board and the next read, and keep a cached
+  month across a read that supplies none while the revision is unchanged.
 - Opt plain GET forms into enhanced handling with `data-enhance` when they target
   a Blazor page. Keep Identity, logout, and other cookie-changing POSTs as normal
   navigations.

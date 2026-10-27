@@ -287,6 +287,8 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
 
     private void RestoreDisplay(PlanView view, BudgetMonth? month)
     {
+        // The board and the fresh read must agree with the projection being restored.
+        _month = month?.Month;
         ApplyView(view, month, externalRefresh: false);
         _operation = _operation.Loaded();
     }
@@ -298,19 +300,19 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         _preparedMonth = month is null ? null : new(view.Catalog.Id, view.Catalog.Version, month);
         _hasUpdates = false;
         _externalRefresh = externalRefresh;
-        // Persist and cache only what the page renders. The ledger and allocations
+        // Cache and persist only what the page renders. The ledger and allocations
         // are server-owned and are re-read by interactive ledger pages.
-        var display = DisplayView(view);
+        var display = WorkspaceDisplayState.Trim(view);
         cache.Store(view.Catalog.Id, display, month);
         if (!RendererInfo.IsInteractive)
         {
-            RestoredView = display;
-            RestoredMonth = month;
+            // A snapshot too large for the circuit-start message must not be persisted;
+            // the renderer paints the skeleton instead of failing to connect.
+            var fits = WorkspaceDisplayState.Fits(display, month);
+            RestoredView = fits ? display : null;
+            RestoredMonth = fits ? month : null;
         }
     }
-
-    private static PlanView DisplayView(PlanView view) =>
-        new(view.Catalog with { Transactions = [], Allocations = [] }, view.Balances, view.HasDueRecurring);
 
     private sealed record PreparedMonth(Guid PlanId, long Version, BudgetMonth Budget);
     private async Task<RegisterPage> LoadRegisterAsync(RegisterQuery query, CancellationToken cancellationToken)
