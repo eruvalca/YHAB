@@ -116,7 +116,8 @@ assets/provider setup and [build rules](../../build/README.md) for enforcement.
 - Prerendered state travels inside the circuit-start message, which has a 32 KiB
   SignalR receive limit. Each value is data-protected and Base64-encoded, the state
   dictionary is serialized, and that JSON is Base64-encoded again, so raw JSON is a
-  poor proxy for transport size. Measure the transport form, keep a budget with
+  poor proxy for transport size. Measure the transport form with the persistence
+  serializer's options, including null-valued properties, keep a budget with
   headroom, and fall back to the skeleton when it does not fit; an oversized
   snapshot fails before the circuit can start. `docs/budgeting-validation.md`
   records that failure for an earlier version of this page. Keep measurement
