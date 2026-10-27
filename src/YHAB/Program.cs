@@ -11,6 +11,7 @@ using YHAB.Features.Budgeting.Endpoints;
 using YHAB.Features.Budgeting.Services;
 using YHAB.ServiceDefaults;
 using YHAB.SharedKernel.Budgeting;
+using YHAB.UI.Features.Budgeting;
 
 var recoveryCommand = args.Length > 0 && string.Equals(args[0], "recover-account", StringComparison.Ordinal);
 if (recoveryCommand && args.Length < 3)
@@ -42,6 +43,7 @@ builder.Services.AddScoped<PlanSharingService>();
 builder.Services.AddScoped<RecurringProcessor>();
 builder.Services.AddHostedService<RecurringWorker>();
 builder.Services.AddScoped<IBudgetClient, ServerBudgetClient>();
+builder.Services.AddScoped<WorkspaceCache>();
 builder.Services.AddAntiforgery(options => options.HeaderName = "X-CSRF-TOKEN");
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();

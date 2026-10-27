@@ -30,7 +30,7 @@
             {
                 <AccountRegister @key="plan.Id" Plan="plan" Balances="_view?.Balances" LoadPage="LoadRegisterAsync" LoadPayees="LoadPayeesAsync" AccountId="AccountId" InitialCategoryId="ReportCategoryId" InitialFrom="ReportFrom" InitialThrough="ReportThrough" OnCommand="ExecuteAsync" OnEditAccount="EditAccount" Busy="IsBusy" ExternalRefresh="_externalRefresh">
                     <PlanActions>
-                        <WorkspaceActions CanUndo="plan.CanUndo" CanRedo="plan.CanRedo" Busy="IsBusy" RefreshBusy="_busy" Status="@(_error is null ? _operation.Message : "Action needed")" OnUndo="UndoAsync" OnRedo="RedoAsync" OnRefresh="RefreshAsync" />
+                        <WorkspaceActions CanUndo="plan.CanUndo" CanRedo="plan.CanRedo" Busy="IsBusy" RefreshBusy="_busy" Status="@ActionStatus()" OnUndo="UndoAsync" OnRedo="RedoAsync" OnRefresh="RefreshAsync" />
                     </PlanActions>
                 </AccountRegister>
             }
@@ -38,7 +38,7 @@
             {
                 <BudgetBoard @key="plan.Id" Plan="plan" LoadMonth="LoadMonthAsync" OnAddAccount="AddAccount" OnCommand="ExecuteAsync" Busy="IsBusy" ExternalRefresh="_externalRefresh" AppliedCommand="_applied">
                     <PlanActions>
-                        <WorkspaceActions CanUndo="plan.CanUndo" CanRedo="plan.CanRedo" Busy="IsBusy" RefreshBusy="_busy" Status="@(_error is null ? _operation.Message : "Action needed")" OnUndo="UndoAsync" OnRedo="RedoAsync" OnRefresh="RefreshAsync" />
+                        <WorkspaceActions CanUndo="plan.CanUndo" CanRedo="plan.CanRedo" Busy="IsBusy" RefreshBusy="_busy" Status="@ActionStatus()" OnUndo="UndoAsync" OnRedo="RedoAsync" OnRefresh="RefreshAsync" />
                     </PlanActions>
                 </BudgetBoard>
             }
@@ -62,5 +62,29 @@
 }
 else if (_error is null)
 {
-    <p role="status">Opening your plan…</p>
+    @* A workspace remounted by enhanced navigation paints this shape until its
+       first read completes, so the page bulges instead of collapsing. *@
+    <div class="workspace-loading" role="status">
+        <p class="visually-hidden">Opening your plan…</p>
+        <div class="workspace-loading-tabs" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+        <div class="workspace-loading-body" aria-hidden="true">
+            <div class="workspace-loading-sidebar">
+                <span class="workspace-loading-line loading-title"></span>
+                <span class="workspace-loading-line"></span>
+                <span class="workspace-loading-line loading-short"></span>
+                <span class="workspace-loading-line loading-short"></span>
+            </div>
+            <div class="workspace-loading-content">
+                <span class="workspace-loading-line loading-heading"></span>
+                <span class="workspace-loading-line"></span>
+                <span class="workspace-loading-line loading-short"></span>
+                <div class="workspace-loading-rows">
+                    @for (var row = 0; row < 5; row++)
+                    {
+                        <span class="workspace-loading-row"></span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
 }

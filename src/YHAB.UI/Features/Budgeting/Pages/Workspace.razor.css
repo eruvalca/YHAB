@@ -3,3 +3,103 @@
     .workspace ::deep fluent-button { min-height: 2.5rem; }
     .workspace ::deep fluent-button[icon-only] { min-width: 2.5rem; }
 }
+
+/* The pre-data shape mirrors PlanFrame so a remounted workspace keeps its
+   footprint instead of collapsing to a single loading line. */
+.workspace-loading {
+    display: grid;
+    gap: var(--spacingVerticalM);
+    min-height: 60vh;
+}
+
+.workspace-loading-tabs {
+    display: none;
+}
+
+.workspace-loading-body {
+    display: flex;
+    gap: var(--spacingHorizontalL);
+    align-items: flex-start;
+}
+
+.workspace-loading-sidebar {
+    display: grid;
+    flex: 0 0 14rem;
+    gap: var(--spacingVerticalM);
+    min-width: 0;
+    padding-block: var(--spacingVerticalS);
+}
+
+.workspace-loading-content {
+    display: grid;
+    flex: 1 1 35rem;
+    gap: var(--spacingVerticalM);
+    min-width: 0;
+}
+
+.workspace-loading-line,
+.workspace-loading-row {
+    display: block;
+    border-radius: var(--borderRadiusCircular);
+    background: var(--colorNeutralBackground3);
+}
+
+.workspace-loading-line {
+    height: 0.75rem;
+    max-width: 12rem;
+}
+
+.workspace-loading-line.loading-title {
+    height: 1rem;
+    max-width: 8rem;
+}
+
+.workspace-loading-line.loading-heading {
+    height: 1.5rem;
+    max-width: 12rem;
+}
+
+.workspace-loading-line.loading-short {
+    max-width: 6rem;
+}
+
+.workspace-loading-rows {
+    display: grid;
+    gap: var(--spacingVerticalS);
+    margin-block-start: var(--spacingVerticalL);
+}
+
+.workspace-loading-row {
+    height: 2.5rem;
+    border: 1px solid var(--colorNeutralStroke2);
+    border-radius: var(--borderRadiusMedium);
+    background: var(--colorNeutralBackground2);
+}
+
+@media (max-width: 999px) {
+    .workspace-loading-tabs {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: var(--spacingHorizontalXXS);
+        height: 2.5rem;
+        padding-block: var(--spacingVerticalXS);
+        border-block: 1px solid var(--colorNeutralStroke2);
+    }
+
+    .workspace-loading-tabs span {
+        border-radius: var(--borderRadiusMedium);
+        background: var(--colorNeutralBackground3);
+    }
+
+    .workspace-loading-sidebar {
+        display: none;
+    }
+}
+
+@media (forced-colors: active) {
+    .workspace-loading-line,
+    .workspace-loading-row,
+    .workspace-loading-tabs span {
+        border: 1px solid CanvasText;
+    }
+}

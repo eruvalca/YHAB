@@ -22,6 +22,12 @@
     --yh-font-display: clamp(2rem, 4.5vw, 3rem);
 }
 
+/* The document scrollbar and native controls follow the root scheme. Mirror
+   the resolved theme here so dark mode does not keep light browser chrome. */
+html[data-theme="dark"] {
+    color-scheme: dark;
+}
+
 *,
 *::before,
 *::after {

@@ -8,7 +8,7 @@
     <PlanFrame Plan="plan" Balances="_balances">
         <div class="report-heading"><div><p class="eyebrow">A STEP BACK. A CLEARER PICTURE.</p><h1>Reflect</h1><p class="lead">See where your money went, and how far you've come.</p></div><button class="secondary-action print-button" type="button" onclick="window.print()">Print report</button></div>
         <nav class="report-presets" aria-label="Report presets"><a href="@PresetUrl("this-month")">This month</a><a href="@PresetUrl("last-month")">Last month</a><a href="@PresetUrl("year-to-date")">Year to date</a></nav>
-        <form method="get" class="report-filter">
+        <form method="get" class="report-filter" data-enhance>
             <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalM)">
                 <div class="form-field"><label for="report-from">From</label><input id="report-from" name="from" type="date" value="@_fromText" aria-describedby="report-range-error" required /></div>
                 <div class="form-field"><label for="report-to">Through</label><input id="report-to" name="to" type="date" value="@_throughText" aria-describedby="report-range-error" required /></div>
