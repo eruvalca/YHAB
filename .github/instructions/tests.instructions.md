@@ -56,10 +56,11 @@ the [test README](../../tests/README.md).
 - `dotnet test` restores and builds by default. Use `--no-build` only after the
   relevant code and tests have been built with the same configuration and no
   subsequent source changes. Keep coverage and reports opt-in for routine runs.
-- For focused checks, use xUnit's MTP `--filter-class` or `--filter-method`
-  options directly, without a `--` separator. Do not use VSTest's `--filter`
-  expressions. Confirm that the selected test names and count match the intended
-  scope; zero discovered or executed tests do not establish successful validation.
+- For focused checks and diagnostics, pass native MTP options such as
+  `--filter-class`, `--filter-method`, and `--output Detailed` directly, without
+  a `--` separator or VSTest `--filter`/`--logger` arguments. Confirm that the
+  selected test names and count match the intended scope; zero discovered or
+  executed tests do not establish successful validation.
 - Preserve `all` / `conservative` / `1x` parallel settings. Give each test its own
   mutable state; bUnit tests create and dispose a fresh `BunitContext` with
   `await using`. Shared fixtures must support concurrent access, and any opt-out
