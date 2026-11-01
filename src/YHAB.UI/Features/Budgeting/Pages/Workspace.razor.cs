@@ -238,10 +238,19 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         using var operation = CancellationTokenSource.CreateLinkedTokenSource(LifetimeToken, cancellationToken, RequestAborted);
         var token = operation.Token;
         token.ThrowIfCancellationRequested();
-        _month = month;
-        return _preparedMonth is { } prepared && prepared.PlanId == PlanId && prepared.Version == Snapshot!.Version && prepared.Budget.Month == month
+        var planId = PlanId;
+        var version = Snapshot!.Version;
+        var result = _preparedMonth is { } prepared && prepared.PlanId == planId && prepared.Version == version && prepared.Budget.Month == month
             ? prepared.Budget
-            : await budgets.ReadMonthAsync(PlanId, month, Snapshot!.Version, token);
+            : await budgets.ReadMonthAsync(planId, month, version, token);
+        token.ThrowIfCancellationRequested();
+        if (PlanId == planId && Snapshot?.Version == version)
+        {
+            _month = month;
+            _preparedMonth = new(planId, version, result);
+            if (_view is { } view) { cache.Store(planId, WorkspaceDisplayState.Trim(view), result); }
+        }
+        return result;
     }
 
     private async Task<(PlanView View, BudgetMonth? Month)> ReadWorkspaceAsync(Guid planId, bool includeMonth, CancellationToken cancellationToken)

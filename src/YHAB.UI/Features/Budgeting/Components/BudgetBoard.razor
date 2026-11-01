@@ -2,14 +2,14 @@
 @if (_error is not null) { <div class="notice" data-kind="error" role="alert">@_error</div> }
 @if (_budget is not null)
 {
-<div class="budget-board">
+<div class="budget-board" aria-busy="@(IsBusy ? "true" : "false")">
     <section class="budget-summary" aria-label="Monthly budget summary" data-negative="@(_budget.ReadyToAssign < 0 ? "true" : "false")">
         <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalAlignment="HorizontalAlignment.SpaceBetween" HorizontalGap="var(--spacingHorizontalM)" VerticalGap="var(--spacingVerticalS)">
             <div>
                 <h1>Plan your money</h1>
                 <FluentStack Width="auto" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalXS)" Class="month-navigation">
                     <FluentButton OnClick="PreviousAsync" Disabled="@(_month.Year <= 2000)" Size="ButtonSize.Small" IconOnly="true" Appearance="ButtonAppearance.Subtle" aria-label="Previous month">←</FluentButton>
-                    <strong class="month-label">@_month.ToString("MMMM yyyy", Culture)</strong>
+                    <strong class="month-label">@_budget.Month.ToString("MMMM yyyy", Culture)</strong>
                     <FluentButton OnClick="NextAsync" Disabled="@(_month.Year >= 2100)" Size="ButtonSize.Small" IconOnly="true" Appearance="ButtonAppearance.Subtle" aria-label="Next month">→</FluentButton>
                     <FluentButton OnClick="CurrentAsync" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle">Today</FluentButton>
                 </FluentStack>
@@ -67,18 +67,18 @@
     }
     @if (_move)
     {
-        <MoveMoneyEditor Plan="Plan" Month="_month" OnCommand="OnCommand" OnClose="CloseEditors" Busy="IsBusy" />
+        <MoveMoneyEditor Plan="Plan" Month="_budget.Month" OnCommand="OnCommand" OnClose="CloseEditors" Busy="IsBusy" />
     }
     <div class="budget-workspace-scope">
         <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalM)" VerticalGap="var(--spacingVerticalM)" Class="budget-workspace">
-            <FirstRunChecklist Plan="Plan" Budget="_budget" Hidden="@(_category is not null)" OnAddAccount="AddAccountAsync" OnAddCategory="AddCategoryAsync" OnShowHelp="ShowHelpAsync" Busy="IsBusy" />
+            <FirstRunChecklist Plan="_budgetPlan!" Budget="_budget" Hidden="@(_category is not null)" OnAddAccount="AddAccountAsync" OnAddCategory="AddCategoryAsync" OnShowHelp="ShowHelpAsync" Busy="IsBusy" />
             <div class="budget-categories">
-                <BudgetCategoryTable @ref="_categoryTable" Plan="Plan" Budget="_budget" OnCommand="OnCommand" OnSelect="EditCategory" Busy="IsBusy" SelectedCategoryId="_category?.Id" />
+                <BudgetCategoryTable @ref="_categoryTable" Plan="_budgetPlan!" Budget="_budget" OnCommand="OnCommand" OnSelect="EditCategory" Busy="IsBusy" SelectedCategoryId="_category?.Id" />
             </div>
             @if (_category is not null)
             {
                 <aside class="category-details" aria-label="Category details">
-                    <CategoryEditor @key="(_category?.Id, _month, _editorEpoch)" Plan="Plan" Category="_category" MonthState="EditingMonth" Month="_month" OnCommand="SendCategoryCommandAsync" OnClose="CloseEditors" Busy="IsBusy" />
+                    <CategoryEditor @key="(_category?.Id, _budget.Month, _editorEpoch)" Plan="Plan" Category="_category" MonthState="EditingMonth" Month="_budget.Month" OnCommand="SendCategoryCommandAsync" OnClose="CloseEditors" Busy="IsBusy" />
                 </aside>
             }
         </FluentStack>
@@ -90,5 +90,12 @@ else
     @* The actions stay reachable when the month could not be read, and follow a heading here too. *@
     <h1>Plan your money</h1>
     @PlanActions
-    @if (_error is null) { <p role="status">Loading month…</p> }
+    @if (_error is null)
+    {
+        <div class="month-loading" role="status">
+            <span class="visually-hidden">Loading month…</span>
+            <span class="month-loading-summary" aria-hidden="true"></span>
+            @for (var row = 0; row < 5; row++) { <span class="month-loading-row" aria-hidden="true"></span> }
+        </div>
+    }
 }

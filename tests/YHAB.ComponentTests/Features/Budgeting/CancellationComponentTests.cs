@@ -140,6 +140,9 @@ public sealed class CancellationComponentTests
             .Add(item => item.OnCommand, _ => { }).Add(item => item.LoadMonth, LoadAsync));
         var november = component.Find("fluent-button[aria-label='Next month']").ClickAsync();
         await component.WaitForAssertionAsync(() => tokens.Count.ShouldBe(2));
+        component.Find(".month-label").TextContent.ShouldBe("October 2026");
+        component.Find(".hero-amount").TextContent.ShouldBe("$1,000.00");
+        component.Find(".budget-board").GetAttribute("aria-busy").ShouldBe("true");
         await component.Find("fluent-button[aria-label='Next month']").ClickAsync();
         tokens[1].IsCancellationRequested.ShouldBeTrue();
         tokens[2].IsCancellationRequested.ShouldBeFalse();

@@ -1,4 +1,6 @@
 .register-table { min-width: 53rem; font-size: var(--fontSizeBase200); }
+.register-loading { padding: var(--spacingVerticalM); border: 1px solid var(--colorNeutralStroke2); border-radius: var(--borderRadiusMedium); }
+.register-loading > span[aria-hidden] { display: block; height: 3.5rem; margin-block: var(--spacingVerticalS); border-radius: var(--borderRadiusMedium); background: var(--colorNeutralBackground3); }
 .register-table small { display: block; margin-top: var(--spacingVerticalXS); color: var(--colorNeutralForeground3); font-weight: var(--fontWeightRegular); }
 .register-table th, .register-table td { padding-block: var(--spacingVerticalM); }
 .register-table th.numeric { white-space: nowrap; }

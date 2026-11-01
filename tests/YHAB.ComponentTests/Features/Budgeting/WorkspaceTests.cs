@@ -476,7 +476,7 @@ public sealed class WorkspaceTests
     }
 
     [Fact]
-    public async Task RemountRestoresTheSelectedMonthIntoTheBoardAsync()
+    public async Task RemountRestoresTheCachedMonthWithoutAnExplicitRefreshAsync()
     {
         await using var context = new BunitContext();
         var today = new DateOnly(2026, 10, 3);
@@ -490,9 +490,6 @@ public sealed class WorkspaceTests
         await first.WaitForAssertionAsync(() => first.Find(".month-label").TextContent.ShouldBe(BudgetFacts.Month(today).ToString("MMMM yyyy", BudgetFacts.Culture)));
         await first.Find("[aria-label='Previous month']").ClickAsync();
         await first.WaitForAssertionAsync(() => first.Find(".month-label").TextContent.ShouldBe(expected));
-        await Button(first, "Refresh").ClickAsync();
-        await first.WaitForAssertionAsync(() => Button(first, "Refresh").HasAttribute("disabled").ShouldBeFalse());
-
         var pending = new TaskCompletionSource<PlanView>(TaskCreationOptions.RunContinuationsAsynchronously);
         budgets.ReadViewAsync(plan.Id, Arg.Any<CancellationToken>()).Returns(pending.Task);
         var second = context.Render<Workspace>(parameters => parameters.Add(item => item.PlanId, plan.Id));
@@ -501,6 +498,11 @@ public sealed class WorkspaceTests
         second.Markup.ShouldNotContain("Loading month");
 
         pending.SetResult(View(plan));
+        await second.WaitForAssertionAsync(() =>
+        {
+            second.Find(".month-label").TextContent.ShouldBe(expected);
+            second.Find(".workspace").GetAttribute("aria-busy").ShouldBe("false");
+        });
     }
 
     private static (IBudgetClient Budgets, PlanSnapshot Plan) Configure(BunitContext context)
