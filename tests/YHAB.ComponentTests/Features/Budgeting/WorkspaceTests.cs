@@ -17,6 +17,51 @@ namespace YHAB.ComponentTests.Features.Budgeting;
 public sealed class WorkspaceTests
 {
     [Theory]
+    [InlineData("reports")]
+    [InlineData("settings")]
+    [InlineData("/plans")]
+    [InlineData("/Account/Manage")]
+    public async Task LeavingAllTransactionsDoesNotMountTheBudgetAsync(string destination)
+    {
+        await using var context = new BunitContext();
+        var (budgets, plan) = Configure(context);
+        budgets.ReadRegisterAsync(plan.Id, Arg.Any<RegisterQuery>(), Arg.Any<CancellationToken>())
+            .Returns(call => new RegisterPage(call.Arg<RegisterQuery>().Version!.Value, [], 0, null));
+        budgets.ReadPayeesAsync(plan.Id, Arg.Any<CancellationToken>()).Returns([]);
+        var navigation = context.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo($"/plans/{plan.Id}/accounts");
+        var workspace = context.Render<Workspace>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+        await workspace.WaitForAssertionAsync(() => workspace.FindComponent<AccountRegister>().ShouldNotBeNull());
+        budgets.ClearReceivedCalls();
+
+        await workspace.InvokeAsync(() => navigation.NavigateTo(destination.StartsWith('/') ? destination : $"/plans/{plan.Id}/{destination}"));
+        workspace.Render(parameters => parameters.Add(item => item.PlanId, plan.Id));
+
+        workspace.FindComponents<BudgetBoard>().ShouldBeEmpty();
+        workspace.FindComponent<AccountRegister>().ShouldNotBeNull();
+        await budgets.DidNotReceive().ReadMonthAsync(Arg.Any<Guid>(), Arg.Any<DateOnly>(), Arg.Any<long>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task SamePlanRoutesSwitchBetweenTheBudgetAndAllTransactionsAsync()
+    {
+        await using var context = new BunitContext();
+        var (_, plan) = Configure(context);
+        var navigation = context.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo($"/plans/{plan.Id}");
+        var workspace = context.Render<Workspace>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+        await workspace.WaitForAssertionAsync(() => workspace.FindComponent<BudgetBoard>().ShouldNotBeNull());
+
+        await workspace.InvokeAsync(() => navigation.NavigateTo($"/plans/{plan.Id}/accounts"));
+        workspace.FindComponents<BudgetBoard>().ShouldBeEmpty();
+        workspace.FindComponent<AccountRegister>().ShouldNotBeNull();
+
+        await workspace.InvokeAsync(() => navigation.NavigateTo($"/plans/{plan.Id}"));
+        workspace.FindComponents<AccountRegister>().ShouldBeEmpty();
+        workspace.FindComponent<BudgetBoard>().ShouldNotBeNull();
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task TimeoutPreservesUncertainOrSavedStateWithoutResendingAsync(bool afterSave)

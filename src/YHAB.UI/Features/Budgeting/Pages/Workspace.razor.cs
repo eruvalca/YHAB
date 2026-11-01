@@ -38,7 +38,7 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
     private AccountData? _editingAccount;
     private IJSObjectReference? _module;
     private DotNetObjectReference<Workspace>? _reference;
-    private bool IsRegister => AccountId.HasValue || new Uri(navigation.Uri).AbsolutePath.TrimEnd('/').EndsWith("/accounts", StringComparison.Ordinal);
+    private bool IsRegister { get; set; }
     private string ActionStatus()
     {
         if (_error is not null) { return "Action needed"; }
@@ -54,7 +54,11 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
     {
         try
         {
-            await InvokeAsync(() => { if (!IsDisposed) { StateHasChanged(); } });
+            await InvokeAsync(() =>
+            {
+                if (IsDisposed || AccountId.HasValue) { return; }
+                if (UpdatePage(args.Location)) { StateHasChanged(); }
+            });
         }
         catch (Exception exception)
         {
@@ -64,6 +68,9 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
 
     protected override async Task OnParametersSetAsync()
     {
+        // A pending destination outside this workspace must not change the outgoing page.
+        if (AccountId.HasValue) { IsRegister = true; }
+        else { UpdatePage(navigation.Uri); }
         if (Snapshot?.Id != PlanId)
         {
             _requestGeneration++;
@@ -77,6 +84,15 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
             RestoreDisplay();
             await RefreshAsync();
         }
+    }
+
+    private bool UpdatePage(string location)
+    {
+        var path = new Uri(location).AbsolutePath.TrimEnd('/');
+        var planPath = $"/plans/{PlanId}";
+        if (string.Equals(path, planPath, StringComparison.OrdinalIgnoreCase)) { IsRegister = false; return true; }
+        if (string.Equals(path, $"{planPath}/accounts", StringComparison.OrdinalIgnoreCase)) { IsRegister = true; return true; }
+        return false;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

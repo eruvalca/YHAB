@@ -343,6 +343,9 @@ An initial read uses a structural placeholder; a loaded empty register stays
 painted during a workspace operation. Month changes likewise retain the displayed
 label and figures together until the requested month finishes loading, and each
 successful month read updates the renderer's remount cache.
+When leaving a register for a static page, the outgoing workspace retains its
+register view until the destination replaces it; the pending URL does not mount
+the budget board or trigger a month read.
 
 New application-generated identities use GUID v7. Financial order is explicitly
 `Date`, then a server-allocated per-plan `Sequence`, then `Id`; edits and undo/redo

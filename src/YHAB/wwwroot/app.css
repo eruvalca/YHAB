@@ -104,6 +104,20 @@ fluent-button[icon-only] {
     min-width: var(--yh-control-standard);
 }
 
+/* Enhanced navigation can paint a registered overlay before its shadow dialog
+   is attached. Keep providers out of flow and reveal only the initialized dialog. */
+.fluent-providers > .fluent-dialog-provider {
+    position: absolute;
+}
+
+fluent-overlay#global-overlay {
+    visibility: hidden;
+}
+
+fluent-overlay#global-overlay::part(dialog) {
+    visibility: visible;
+}
+
 /* Fluent dropdowns supply slotted native buttons. Their web component owns
    their border, spacing and typography; these rules style our native buttons. */
 button:where(:not([slot])) {
