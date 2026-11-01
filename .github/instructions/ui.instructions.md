@@ -104,10 +104,10 @@ assets/provider setup and [build rules](../../build/README.md) for enforcement.
 ## Navigation feedback and first paint
 
 - Keep enhanced-navigation feedback in the shell. The delayed
-  `#navigation-progress` bar and outgoing-content dimming live in `MainLayout`;
-  keep the delay so fast navigations do not flash, honor reduced motion, and keep
-  the forced-colors highlight. Do not add per-page spinners for enhanced
-  navigation.
+  `#navigation-progress` bar lives in `MainLayout` and survives DOM patches through
+  `data-permanent`; keep outgoing content at full opacity, the delay so fast
+  navigations do not flash, reduced-motion support, and the forced-colors
+  highlight. Do not add per-page spinners for enhanced navigation.
 - An interactively rendered page must not replace prerendered content with an
   empty loading state when its renderer starts. Persist display-only first-paint
   state (`[PersistentState]` plus a renderer-scoped cache for in-circuit

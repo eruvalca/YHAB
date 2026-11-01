@@ -336,6 +336,13 @@ up to three times; it never resends the saved command.
 Exhausted retries retain the saved status and offer manual refresh;
 authentication and connection failures do not trigger this conflict retry loop.
 Register views continue to load their pages separately without calculating a month.
+Refreshing a register revision retains its rows and their matching account/category
+labels until the replacement page arrives, with row actions disabled while busy.
+Authorization and not-found responses discard the retained rows.
+An initial read uses a structural placeholder; a loaded empty register stays
+painted during a workspace operation. Month changes likewise retain the displayed
+label and figures together until the requested month finishes loading, and each
+successful month read updates the renderer's remount cache.
 
 New application-generated identities use GUID v7. Financial order is explicitly
 `Date`, then a server-allocated per-plan `Sequence`, then `Id`; edits and undo/redo

@@ -12,6 +12,58 @@ namespace YHAB.ComponentTests.Features.Budgeting;
 [SuppressMessage("Maintainability", "CA1515:Consider making public types internal", Justification = "xUnit requires public test classes for discovery.")]
 public sealed class BudgetBoardTests
 {
+    [Fact]
+    public async Task InitialMonthReadReservesRowsUntilItsProjectionArrivesAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var plan = CreatePlan();
+        var pending = new TaskCompletionSource<BudgetMonth>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var component = context.Render<BudgetBoard>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.OnCommand, _ => { })
+            .Add(item => item.LoadMonth, (_, _) => pending.Task));
+
+        component.Find(".month-loading[role='status']").TextContent.ShouldContain("Loading month");
+        component.FindAll(".month-loading-row").Count.ShouldBe(5);
+        component.FindAll(".budget-board").ShouldBeEmpty();
+        pending.SetResult(BudgetCalculator.Calculate(plan, BudgetFacts.Month(plan.Today), plan.Today));
+        await component.WaitForAssertionAsync(() =>
+        {
+            component.FindAll(".month-loading").ShouldBeEmpty();
+            component.Find(".budget-board").GetAttribute("aria-busy").ShouldBe("false");
+        });
+    }
+
+    [Fact]
+    public async Task FailedMonthNavigationRetainsTheLabelAndRetriesFromTheDisplayedMonthAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var plan = CreatePlan();
+        var reads = new List<DateOnly>();
+        var component = context.Render<BudgetBoard>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.OnCommand, _ => { })
+            .Add(item => item.LoadMonth, (month, _) =>
+            {
+                reads.Add(month);
+                return reads.Count == 2
+                    ? Task.FromException<BudgetMonth>(new HttpRequestException("offline"))
+                    : Task.FromResult(BudgetCalculator.Calculate(plan, month, plan.Today));
+            }));
+
+        await component.Find("[aria-label='Next month']").ClickAsync();
+        component.Find("[role='alert']").TextContent.ShouldContain("Unable to load this month");
+        component.Find(".month-label").TextContent.ShouldBe("October 2026");
+        await component.Find("[aria-label='Next month']").ClickAsync();
+        component.Find(".month-label").TextContent.ShouldBe("November 2026");
+        reads.ShouldBe([new(2026, 10, 1), new(2026, 11, 1), new(2026, 11, 1)]);
+        component.FindAll("[role='alert']").ShouldBeEmpty();
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

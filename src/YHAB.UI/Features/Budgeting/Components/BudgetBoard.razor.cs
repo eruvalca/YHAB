@@ -33,6 +33,7 @@ public sealed partial class BudgetBoard
     private bool IsBusy { get => Busy || field || _error is not null; set; }
     private DateOnly _month;
     private BudgetMonth _budget = default!;
+    private PlanSnapshot? _budgetPlan;
     private long _version = -1;
     private PlanSnapshot? _loadedPlan;
     private bool _move;
@@ -131,7 +132,11 @@ public sealed partial class BudgetBoard
             token.ThrowIfCancellationRequested();
             var result = LoadMonth is null ? BudgetCalculator.Calculate(Plan, _month, Plan.Today) : await LoadMonth(_month, token);
             token.ThrowIfCancellationRequested();
-            if (request == _request) { _budget = result; }
+            if (request == _request)
+            {
+                _budget = result;
+                _budgetPlan = Plan;
+            }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { /* Disposed or superseded read. */ }
         catch (OperationCanceledException) { if (request == _request) { _error = "Loading this month timed out. Refresh your plan to try again."; } }
@@ -140,7 +145,11 @@ public sealed partial class BudgetBoard
         finally
         {
             if (ReferenceEquals(_loadCancellation, operation)) { _loadCancellation = null; }
-            if (!IsDisposed && request == _request) { IsBusy = false; }
+            if (!IsDisposed && request == _request)
+            {
+                if (_error is not null && _budget is not null) { _month = _budget.Month; }
+                IsBusy = false;
+            }
         }
     }
     private async Task PreviousAsync() { _month = _month.AddMonths(-1); await CalculateAsync(); }

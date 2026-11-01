@@ -18,6 +18,9 @@ h1 { margin: 0; font-size: var(--yh-font-title-compact); line-height: 1.25; }
 .category-details ::deep .editor-surface { margin-block: var(--spacingVerticalS); padding: var(--spacingVerticalM) var(--spacingHorizontalM); border-radius: var(--borderRadiusMedium); box-shadow: none; }
 .category-details ::deep h2 { font-size: var(--fontSizeBase400); overflow-wrap: anywhere; }
 .month-label { white-space: nowrap; }
+.month-loading > span[aria-hidden] { display: block; margin-block: var(--spacingVerticalS); border-radius: var(--borderRadiusMedium); background: var(--colorNeutralBackground3); }
+.month-loading-summary { height: 8rem; }
+.month-loading-row { height: 3rem; }
 .hero-amount[data-money-tone="positive"] { color: var(--colorPaletteGreenForeground1); }
 .hero-amount[data-money-tone="negative"] { color: var(--colorPaletteRedForeground1); }
 .budget-help { margin-block: var(--spacingVerticalM); padding: var(--spacingVerticalM) var(--spacingHorizontalM); border: 1px solid var(--colorNeutralStroke2); border-radius: var(--borderRadiusMedium); background: var(--colorNeutralBackground1); font-size: var(--fontSizeBase200); }

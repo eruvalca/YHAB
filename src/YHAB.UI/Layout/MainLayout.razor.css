@@ -2,9 +2,7 @@
     min-height: 100dvh;
 }
 
-/* Enhanced navigation keeps the destination request in flight while the old
-   page stays interactive. A slim bar acknowledges waits that are long enough
-   to notice, and the content dims so the pending page reads as stale. */
+/* A delayed bar acknowledges slow requests without fading the page itself. */
 .navigation-progress {
     position: fixed;
     inset-block-start: env(safe-area-inset-top, 0px);
@@ -30,19 +28,9 @@
     opacity: 1;
 }
 
-.content-container[data-navigating="true"] {
-    opacity: 0.72;
-    transition: opacity 120ms ease-out;
-}
-
 @media (prefers-reduced-motion: reduce) {
     .navigation-progress,
     .navigation-progress::after {
-        transition: none;
-    }
-
-    .content-container[data-navigating="true"] {
-        opacity: 1;
         transition: none;
     }
 }

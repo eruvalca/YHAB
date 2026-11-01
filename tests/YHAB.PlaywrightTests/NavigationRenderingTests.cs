@@ -49,6 +49,36 @@ public sealed class NavigationRenderingTests(ITestOutputHelper output)
             var planPath = new Uri(page.Url).AbsolutePath;
             var origin = await page.EvaluateAsync<double>("performance.timeOrigin");
 
+            await BudgetWorkflowTests.AddAccountAsync(page);
+            await SeedDepositAsync(page, planPath, "First deposit");
+            // API seeding is an external revision; adopt it before opening a
+            // version-bound register, then test the next revision's refresh.
+            await page.Locator(".workspace-toolbar fluent-button").Filter(new() { HasText = "Refresh" }).ClickAsync();
+            await page.Locator(".workspace[data-interactive='true'][aria-busy='false']").WaitForAsync();
+            await page.Locator(".plan-navigation").GetByRole(AriaRole.Link, new() { Name = "All transactions", Exact = true }).ClickAsync();
+            await page.Locator(".register-table").WaitForAsync();
+            await page.Locator(".register-results[aria-busy='false']").WaitForAsync();
+            (await page.Locator(".register-table").EvaluateAsync<string>("element => getComputedStyle(element).minWidth")).ShouldBe("848px");
+            await SeedDepositAsync(page, planPath, "Second deposit");
+            await page.EvaluateAsync("""
+                () => {
+                    window.yhabLostRegister = false;
+                    window.yhabWatchRegister = true;
+                    new MutationObserver(() => {
+                        if (window.yhabWatchRegister && !document.querySelector('.register-table')) {
+                            window.yhabLostRegister = true;
+                        }
+                    }).observe(document.getElementById('main-content'), { subtree: true, childList: true });
+                }
+                """);
+            await page.Locator(".workspace-toolbar fluent-button").Filter(new() { HasText = "Refresh" }).ClickAsync();
+            await page.GetByRole(AriaRole.Button, new() { Name = "Second deposit", Exact = true }).WaitForAsync();
+            await page.Locator(".register-results[aria-busy='false']").WaitForAsync();
+            (await page.EvaluateAsync<bool>("window.yhabLostRegister")).ShouldBeFalse();
+            await page.EvaluateAsync("() => window.yhabWatchRegister = false");
+            await page.Locator($".plan-navigation a[href='{planPath}']").ClickAsync();
+            await page.Locator(".workspace[data-interactive='true'][aria-busy='false']").WaitForAsync();
+
             await page.EvaluateAsync("""
                 () => {
                     window.yhabSawLoading = false;
@@ -90,10 +120,13 @@ public sealed class NavigationRenderingTests(ITestOutputHelper output)
             });
             try
             {
+                await page.EvaluateAsync("() => window.yhabProgressElement = document.getElementById('navigation-progress')");
                 var navigation = page.Locator(".plan-navigation").GetByRole(AriaRole.Link, new() { Name = "Plan settings", Exact = true }).ClickAsync();
                 await page.Locator("#navigation-progress[data-active='true']").WaitForAsync(new() { State = WaitForSelectorState.Attached, Timeout = 5000 });
+                (await page.Locator("#main-content").EvaluateAsync<string>("element => getComputedStyle(element).opacity")).ShouldBe("1");
                 await navigation;
                 await page.GetByRole(AriaRole.Heading, new() { Name = "Plan settings", Exact = true }).WaitForAsync();
+                (await page.EvaluateAsync<bool>("window.yhabProgressElement === document.getElementById('navigation-progress')")).ShouldBeTrue();
                 await page.WaitForFunctionAsync("() => !document.getElementById('navigation-progress')?.hasAttribute('data-active')");
             }
             finally
@@ -232,6 +265,20 @@ public sealed class NavigationRenderingTests(ITestOutputHelper output)
             saved.Status.ShouldBe(200, await saved.TextAsync());
             plan = await ReadPlanAsync(page, planPath);
         }
+    }
+
+    private static async Task SeedDepositAsync(IPage page, string planPath, string payee)
+    {
+        var plan = await ReadPlanAsync(page, planPath);
+        var token = await ReadTokenAsync(page);
+        var entry = new TransactionData(Guid.CreateVersion7(), plan.Accounts[0].Id, plan.Today, payee, "", 25, null, "",
+            [new(Guid.CreateVersion7(), null, 25, "")]);
+        await using var response = await page.APIRequest.PutAsync($"/api{planPath}/transactions/{entry.Id}", new()
+        {
+            Headers = new Dictionary<string, string>(StringComparer.Ordinal) { ["X-CSRF-TOKEN"] = token, ["Content-Type"] = "application/json" },
+            Data = JsonSerializer.Serialize(new SaveTransaction(plan.Version, entry), JsonSerializerOptions.Web),
+        });
+        response.Status.ShouldBe(200, await response.TextAsync());
     }
 
     private static async Task<PlanSnapshot> ReadPlanAsync(IPage page, string planPath)

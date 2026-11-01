@@ -7,7 +7,6 @@ export function initializeNavigation(blazor) {
     let progressFinish = 0;
     let progressSafety = 0;
     const progressElement = () => document.getElementById('navigation-progress');
-    const mainElement = () => document.getElementById('main-content');
     const resetProgress = () => {
         clearTimeout(progressTimer);
         clearInterval(progressInterval);
@@ -16,7 +15,6 @@ export function initializeNavigation(blazor) {
         const progress = progressElement();
         progress?.removeAttribute('data-active');
         progress?.style.setProperty('--navigation-progress', '0');
-        mainElement()?.removeAttribute('data-navigating');
     };
     const beginNavigation = () => {
         const sequence = ++navigationSequence;
@@ -32,14 +30,12 @@ export function initializeNavigation(blazor) {
             progress.setAttribute('data-active', 'true');
             let value = 0.08;
             progress.style.setProperty('--navigation-progress', String(value));
-            mainElement()?.setAttribute('data-navigating', 'true');
             progressInterval = setInterval(() => {
                 value += (0.9 - value) * 0.14;
                 progress.style.setProperty('--navigation-progress', value.toFixed(3));
             }, 180);
         }, progressDelay);
-        // A request aborted by the browser never reports completion, so release
-        // the old page instead of leaving it dimmed behind a stuck indicator.
+        // A request aborted by the browser may never report completion.
         progressSafety = setTimeout(resetProgress, 8000);
     };
     const endNavigation = () => {

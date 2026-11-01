@@ -40,6 +40,8 @@ public sealed partial class AccountRegister
     private (Guid?, DateOnly?, DateOnly?)? _initialFilter;
     private int _page;
     private RegisterPage? _result;
+    private PlanSnapshot? _rowPlan;
+    private int _displayPage;
     private IReadOnlyList<string>? _payees;
     private readonly List<RegisterCursor?> _cursors = [null];
     private string? _error;
@@ -78,8 +80,13 @@ public sealed partial class AccountRegister
                 CloseEditors();
             }
 
-            // A changed catalog may no longer contain a category referenced by the old page.
-            _result = null;
+            // Keep same-account rows painted while a revision refreshes. Their
+            // labels use the catalog they arrived with until replacement is ready.
+            if (planReplaced || _previousAccount != AccountId || filterChanged)
+            {
+                _result = null;
+                _rowPlan = null;
+            }
             _payees = null;
             _version = Plan.Version;
             _previousAccount = AccountId;
@@ -100,6 +107,8 @@ public sealed partial class AccountRegister
         var previous = _loadCancellation;
         _loadCancellation = operation;
         var request = ++_request;
+        var rowPlan = Plan;
+        var page = _page;
         IsBusy = true;
         _error = null;
         try
@@ -109,17 +118,32 @@ public sealed partial class AccountRegister
             var result = await LoadPage(new(AccountId, _search, _filter, _sort, _from, _to, _cursors[_page], PageSize, Plan.Version, _categoryId), token);
             token.ThrowIfCancellationRequested();
             if (request != _request) { return; }
-            var payees = _payees ?? await LoadPayees(token);
-            token.ThrowIfCancellationRequested();
-            if (request != _request) { return; }
             _result = result;
-            _payees = payees;
+            _rowPlan = rowPlan;
+            _displayPage = page;
             _running.Clear();
             foreach (var row in result.Rows) { _running[row.Transaction.Id] = row.RunningBalance; }
+            // Payee suggestions must not delay painting the register page.
+            StateHasChanged();
+            var payees = _payees ?? await LoadPayees(token);
+            token.ThrowIfCancellationRequested();
+            if (request == _request) { _payees = payees; }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { /* Disposed or superseded read. */ }
         catch (OperationCanceledException) { if (request == _request) { _error = "Loading transactions timed out. Refresh your plan to try again."; } }
-        catch (BudgetRequestException exception) { if (!token.IsCancellationRequested && request == _request) { _error = exception.Message; } }
+        catch (BudgetRequestException exception)
+        {
+            if (!token.IsCancellationRequested && request == _request)
+            {
+                if (exception.Status is 401 or 403 or 404)
+                {
+                    _result = null;
+                    _rowPlan = null;
+                    _running.Clear();
+                }
+                _error = exception.Message;
+            }
+        }
         catch (HttpRequestException) { if (!token.IsCancellationRequested && request == _request) { _error = "Unable to load transactions. Refresh your plan to try again."; } }
         finally
         {
@@ -128,7 +152,7 @@ public sealed partial class AccountRegister
         }
     }
     private decimal DisplayAmount(TransactionData entry) => AccountId == entry.TransferAccountId && AccountId.HasValue ? -entry.Amount : entry.Amount;
-    private string AccountName(Guid id) => Plan.Accounts.Single(item => item.Id == id).Name;
+    private string AccountName(Guid id) => (_rowPlan ?? Plan).Accounts.Single(item => item.Id == id).Name;
     private string PayeeLabel(TransactionData entry)
     {
         if (entry.TransferAccountId is { } target) { return $"Transfer: {AccountName(entry.AccountId)} ↔ {AccountName(target)}"; }
@@ -136,10 +160,12 @@ public sealed partial class AccountRegister
     }
     private string CategoryLabel(TransactionData entry)
     {
-        if (entry.Splits.Count > 1) { return string.Join(" · ", entry.Splits.Select(item => CategoryName(item.CategoryId)).Distinct(StringComparer.Ordinal)); }
-        return entry.Splits.Count == 1 ? CategoryName(entry.Splits[0].CategoryId) : "Transfer / adjustment";
+        var plan = _rowPlan ?? Plan;
+        if (entry.Splits.Count > 1) { return string.Join(" · ", entry.Splits.Select(item => CategoryName(plan, item.CategoryId)).Distinct(StringComparer.Ordinal)); }
+        return entry.Splits.Count == 1 ? CategoryName(plan, entry.Splits[0].CategoryId) : "Transfer / adjustment";
     }
-    private string CategoryName(Guid? id) => id.HasValue ? Plan.Categories.SingleOrDefault(item => item.Id == id)?.Name ?? "an unavailable category" : "Ready to assign";
+    private string CategoryName(Guid? id) => CategoryName(Plan, id);
+    private static string CategoryName(PlanSnapshot plan, Guid? id) => id.HasValue ? plan.Categories.SingleOrDefault(item => item.Id == id)?.Name ?? "an unavailable category" : "Ready to assign";
     private void Add() { CloseEditors(); _transaction = null; _editKey = Guid.CreateVersion7(); _editing = true; }
     private void Edit(TransactionData entry) { CloseEditors(); _transaction = entry; _editKey = Guid.CreateVersion7(); _editing = true; }
     private void Duplicate(TransactionData entry) => Edit(entry with { Id = Guid.Empty, Date = Plan.Today, Repeat = RepeatFrequency.None, Splits = entry.Splits.Select(item => item with { Id = Guid.CreateVersion7() }).ToArray() });

@@ -58,7 +58,7 @@ public sealed class AccountRegisterTests
     }
 
     [Fact]
-    public async Task EmptyStateIsHiddenWhileTheRegisterIsBusyAsync()
+    public async Task LoadedEmptyStateStaysPaintedWhileTheWorkspaceIsBusyAsync()
     {
         await using var context = new BunitContext();
         context.Services.AddFluentUIComponents();
@@ -80,8 +80,88 @@ public sealed class AccountRegisterTests
             .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(plan.Version, [], 0, null)))
             .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
 
-        component.FindAll(".empty-state").ShouldBeEmpty();
-        component.Find("[role='status']").TextContent.ShouldBe("Loading transactions…");
+        component.Find(".empty-state").TextContent.ShouldContain("No transactions here yet");
+        component.FindAll(".register-loading").ShouldBeEmpty();
+        component.Find(".register-results").GetAttribute("aria-busy").ShouldBe("true");
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(401)]
+    [InlineData(403)]
+    [InlineData(404)]
+    [InlineData(500)]
+    public async Task RevisionRefreshRetainsRowsUnlessAccessIsRevokedAsync(int status)
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Old account name", AccountKind.Checking, 1000, today, false, "");
+        var entry = new TransactionData(Guid.NewGuid(), account.Id, today, "Visible payee", "", -10, null, "", []);
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], false, false, []) { Today = today };
+        var pending = new TaskCompletionSource<RegisterPage>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (query, _) => query.Version == 7
+                ? Task.FromResult(new RegisterPage(7, [new(entry, 990)], 1, null))
+                : pending.Task)
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        component.Render(parameters => parameters.Add(item => item.Plan, plan with { Version = 8, Accounts = [] }));
+        component.Find(".register-table tbody").TextContent.ShouldContain("Old account name");
+        component.Find(".register-table .category-link").HasAttribute("disabled").ShouldBeTrue();
+        component.FindAll(".register-loading").ShouldBeEmpty();
+        component.Find(".register-results").GetAttribute("aria-busy").ShouldBe("true");
+
+        if (status == 500) { pending.SetException(new HttpRequestException("offline")); }
+        else if (status != 0) { pending.SetException(new BudgetRequestException(status, "Access denied")); }
+        else { pending.SetResult(new RegisterPage(8, [], 0, null)); }
+
+        await component.WaitForAssertionAsync(() =>
+        {
+            if (status == 500)
+            {
+                component.Find("[role='alert']").TextContent.ShouldContain("Unable to load transactions");
+                component.Find(".register-table tbody").TextContent.ShouldContain("Visible payee");
+            }
+            else if (status != 0)
+            {
+                component.Find("[role='alert']").TextContent.ShouldContain("Access denied");
+                component.FindAll(".register-table").ShouldBeEmpty();
+                component.FindAll(".empty-state").ShouldBeEmpty();
+            }
+            else
+            {
+                component.FindAll(".register-table").ShouldBeEmpty();
+                component.Find(".empty-state").ShouldNotBeNull();
+                component.Find(".register-results").GetAttribute("aria-busy").ShouldBe("false");
+            }
+        });
+    }
+
+    [Fact]
+    public async Task RowsPaintBeforeDelayedPayeeSuggestionsAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var entry = new TransactionData(Guid.NewGuid(), account.Id, today, "Visible payee", "", -10, null, "", []);
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], false, false, []) { Today = today };
+        var pending = new TaskCompletionSource<IReadOnlyList<string>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(7, [new(entry, 990)], 1, null)))
+            .Add(item => item.LoadPayees, _ => pending.Task));
+
+        component.Find(".register-table tbody").TextContent.ShouldContain("Visible payee");
+        component.FindAll(".register-loading").ShouldBeEmpty();
+        pending.SetResult(["Visible payee"]);
+        await component.WaitForAssertionAsync(() => component.Find(".register-results").GetAttribute("aria-busy").ShouldBe("false"));
     }
 
     [Fact]

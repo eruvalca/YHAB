@@ -292,19 +292,30 @@ Render boundaries are deliberate:
   SignalR's 32 KiB circuit-start message; an oversized plan paints the structural
   skeleton instead of failing to connect. The cached month is restored into the
   board and the next read, and a register-only read keeps it while the revision is
-  unchanged. The workspace refreshes immediately after restoring, and an
+  unchanged. Successful month changes update the cache without requiring a
+  separate refresh. A supplied prerendered snapshot still takes precedence so
+  the first interactive paint matches the server HTML. The workspace refreshes
+  immediately after restoring, and an
   authorization or not-found response drops the cached copy. The actions status
   reads **Connecting…** until the renderer can accept input.
 - Enhanced-navigation feedback is centralized in the shell. When a navigation is
-  still pending after 250 ms, `MainLayout` shows a slim progress bar and dims the
-  outgoing content until `enhancednavigationend`; fast navigations and
-  reduced-motion users see no change, and forced-colors uses the system highlight.
+  still pending after 250 ms, `MainLayout` shows a slim progress bar without fading
+  the content. The bar survives DOM patches and finishes at
+  `enhancednavigationend`; fast navigations do not flash an indicator.
+  Reduced motion disables its transitions, and forced-colors uses the system
+  highlight.
   The same feedback covers enhanced form posts.
 - The Reflect date filter uses `data-enhance` so a GET report refresh stays inside
   the enhanced-navigation document. Identity and logout POSTs keep normal
   navigation.
 - Fluent resolves the theme on `body`; the shell mirrors the resolved mode onto
   `<html>` so the document scrollbar and native controls follow dark mode.
+- Register revision refreshes keep the existing rows and their original labels
+  painted until replacement data arrives; pending results are marked busy and
+  row actions are disabled. Payee suggestions no longer delay painting rows.
+  Initial register reads use a static structural placeholder. Month navigation
+  keeps the displayed month label, figures, and category catalog together until
+  the requested projection arrives.
 
 Shared styles live in `src/YHAB/wwwroot/app.css`: sizing, typography, forms
 (`account-form`, `form-field`, `checkbox-field`), action groups (`actions`),
