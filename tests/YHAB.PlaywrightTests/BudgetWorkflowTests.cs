@@ -46,6 +46,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             await VerifyCategoryEditorLayoutAsync(page);
             await VerifyApiGuardsAsync(page);
             await AddAccountAndAssignAsync(page);
+            await VerifyPlanBoardAddTransactionAsync(page);
             await VerifyStickySummaryAsync(page, width);
             var planUrl = page.Url;
             await PurchaseAsync(page, width);
@@ -463,8 +464,15 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await page.GetByRole(AriaRole.Link, new() { Name = "All transactions", Exact = true }).ClickAsync();
         await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
         await VerifyRegisterAlignmentAsync(page);
+        var docked = await VerifyFloatingAddTransactionAsync(page, width);
         await Button(page, "+ Add transaction").ClickAsync();
         await VerifyEditorFocusAsync(page);
+        if (docked)
+        {
+            // An open editor owns the screen, so the docked shortcut steps aside
+            // instead of covering the form it opened.
+            (await Button(page, "+ Add transaction").IsVisibleAsync()).ShouldBeFalse();
+        }
         await VerifyMobileTransactionEntryAsync(page, width);
         await VerifyDropdownChromeAsync(page);
         await VerifyTextUndoOwnershipAsync(page);
@@ -707,6 +715,64 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await Button(page, "Undo").ClickAsync();
         await page.Locator(".hero-amount").Filter(new() { HasText = "$700.00" }).WaitForAsync();
         await page.SetViewportSizeAsync(width, 960);
+    }
+
+    // The register outgrows a phone screen, so its primary action docks to the
+    // viewport instead of scrolling away with the page heading. That is styling
+    // rather than state, so only a browser can check it.
+    private static async Task<bool> VerifyFloatingAddTransactionAsync(IPage page, int width)
+    {
+        if (width >= 1000)
+        {
+            return false;
+        }
+
+        var add = Button(page, "+ Add transaction");
+        await page.Locator(".register-results[aria-busy='false']").WaitForAsync();
+        (await page.Locator(".add-transaction-dock").EvaluateAsync<string>("dock => getComputedStyle(dock).position")).ShouldBe("fixed");
+        var docked = (await add.BoundingBoxAsync()).ShouldNotBeNull();
+        var viewport = await page.EvaluateAsync<int>("innerHeight");
+        docked.Y.ShouldBeGreaterThan(viewport / 2f);
+        (docked.Y + docked.Height).ShouldBeLessThanOrEqualTo(viewport);
+        // A floating primary action has to stay a touch target rather than fall
+        // back to the shared 40px standard button.
+        docked.Height.ShouldBeGreaterThanOrEqualTo(44);
+        await page.EvaluateAsync("() => window.scrollBy({ top: 600, behavior: 'instant' })");
+        var scrolled = (await add.BoundingBoxAsync()).ShouldNotBeNull();
+        Math.Abs(scrolled.Y - docked.Y).ShouldBeLessThan(1);
+        // At the very bottom of the page the site footer shares this band. A docked
+        // action painted under it still looks available while swallowing every tap.
+        await page.EvaluateAsync("() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' })");
+        (await add.EvaluateAsync<bool>("""
+            button => {
+                const box = button.getBoundingClientRect();
+                const top = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+                const dock = button.closest('.add-transaction-dock');
+                return !!top && !!dock && dock.contains(top);
+            }
+            """)).ShouldBe(true, "the docked action must be the tap target, even where the footer sits");
+        await page.EvaluateAsync("() => window.scrollTo({ top: 0, behavior: 'instant' })");
+        return true;
+    }
+
+    // The plan board is where a plan opens, so recording a transaction must not
+    // require a detour through the transactions page first.
+    private static async Task VerifyPlanBoardAddTransactionAsync(IPage page)
+    {
+        var add = Button(page, "Add transaction");
+        if (await page.EvaluateAsync<int>("innerWidth") < 1000)
+        {
+            // Docking keeps the sticky summary from growing a fourth action row.
+            (await add.EvaluateAsync<string>("button => getComputedStyle(button).position")).ShouldBe("fixed");
+        }
+        await add.ClickAsync();
+        await VerifyEditorFocusAsync(page);
+        (await page.Locator(".editor-surface h2").InnerTextAsync()).ShouldBe("Add transaction");
+        var summary = (await page.Locator(".budget-summary").BoundingBoxAsync()).ShouldNotBeNull();
+        var heading = (await page.Locator(".editor-surface h2").BoundingBoxAsync()).ShouldNotBeNull();
+        heading.Y.ShouldBeGreaterThanOrEqualTo(summary.Y + summary.Height);
+        await Button(page, "Close").ClickAsync();
+        await page.WaitForFunctionAsync("() => !document.querySelector('.editor-surface')");
     }
 
     private static async Task VerifyRegisterAlignmentAsync(IPage page)

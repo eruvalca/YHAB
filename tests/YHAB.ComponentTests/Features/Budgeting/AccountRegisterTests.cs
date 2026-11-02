@@ -320,4 +320,31 @@ public sealed class AccountRegisterTests
         queries[^1].CategoryId.ShouldBeNull();
         component.FindAll(".notice").ShouldBeEmpty();
     }
+
+    [Fact]
+    public async Task AddTransactionStaysInThumbReachWhileTheRegisterScrollsAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], false, false, []) { Today = today };
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(plan.Version, [], 0, null)))
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        // The narrow-screen rule docks this wrapper to the viewport edge, so the
+        // markup has to expose it and stop doing so once its editor is open.
+        var dock = component.Find(".add-transaction-dock");
+        dock.GetAttribute("data-editing").ShouldBe("false");
+        component.FindAll(".add-transaction-dock .add-transaction-action").Count.ShouldBe(1);
+
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Add transaction", StringComparison.Ordinal)).ClickAsync();
+
+        component.FindAll(".editor-surface").Count.ShouldBe(1);
+        component.Find(".add-transaction-dock").GetAttribute("data-editing").ShouldBe("true");
+    }
 }

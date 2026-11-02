@@ -20,6 +20,10 @@ public sealed partial class BudgetBoard
     [Parameter] public bool ExternalRefresh { get; set; }
     [Parameter] public Func<DateOnly, CancellationToken, Task<BudgetMonth>>? LoadMonth { get; set; }
     /// <summary>
+    /// Supplies payee suggestions to the transaction editor the board opens.
+    /// </summary>
+    [Parameter] public Func<CancellationToken, Task<IReadOnlyList<string>>>? LoadPayees { get; set; }
+    /// <summary>
     /// The month a remounted board should show first, so a restored projection and the
     /// board's selection agree instead of triggering a second month read.
     /// </summary>
@@ -37,6 +41,8 @@ public sealed partial class BudgetBoard
     private long _version = -1;
     private PlanSnapshot? _loadedPlan;
     private bool _move;
+    private bool _transaction;
+    private IReadOnlyList<string>? _payees;
     private long _editorEpoch;
     private PlanCommand? _editorCommand;
     private bool _help;
@@ -46,6 +52,10 @@ public sealed partial class BudgetBoard
     private CategoryData? _category;
     private CategoryMonth? EditingMonth => _budget.Categories.SingleOrDefault(item => item.Category.Id == _category?.Id);
     private bool HasAccounts => Plan.Accounts.Count > 0;
+    private bool HasOpenAccounts => Plan.Accounts.Any(item => !item.Closed);
+    // A phone keeps the sticky summary on screen, so this action docks to the
+    // viewport instead of adding a row that would shrink the category table.
+    private string AddTransactionClass => _transaction ? "board-add-transaction is-editing" : "board-add-transaction";
     private bool HasFundableNeed => _budget.Categories.Any(item =>
         !item.Snoozed && !item.Category.Hidden
         && !Plan.Groups.Any(group => group.Id == item.Category.GroupId && group.Hidden)
@@ -91,7 +101,7 @@ public sealed partial class BudgetBoard
         if (_month == default) { _month = InitialMonth ?? BudgetFacts.Month(Plan.Today); }
         if (_loadedPlan?.Id != Plan.Id || _version != Plan.Version || _budget is null || (_error is not null && !ReferenceEquals(_loadedPlan, Plan)))
         {
-            if (_loadedPlan?.Id != Plan.Id) { _help = false; CloseEditors(); }
+            if (_loadedPlan?.Id != Plan.Id) { _help = false; _payees = null; CloseEditors(); }
             else
             {
                 // A command replaces the editor's baseline only when it consumed its draft, and only
@@ -101,6 +111,7 @@ public sealed partial class BudgetBoard
                 if (!ExternalRefresh)
                 {
                     _move = false;
+                    _transaction = false;
                     if (ReferenceEquals(AppliedCommand, _editorCommand) && AppliedCommand is SaveCategory or RemoveCategory) { _editorEpoch++; }
                 }
                 _category = Plan.Categories.SingleOrDefault(item => item.Id == _category?.Id);
@@ -166,6 +177,29 @@ public sealed partial class BudgetBoard
     }
     private Task AddAccountAsync() => OnAddAccount.InvokeAsync();
     private void ShowMove() { if (MoveMoneyHint is not null) { return; } CloseEditors(); _move = true; }
+    // The board is the plan's landing page, so recording money is one action from here
+    // rather than a detour through the transactions page.
+    private async Task ShowTransactionAsync()
+    {
+        if (!HasOpenAccounts) { return; }
+        CloseEditors();
+        _transaction = true;
+        if (_payees is not null || LoadPayees is null) { return; }
+
+        using var operation = CreateOperation();
+        var token = operation.Token;
+        try
+        {
+            var payees = await LoadPayees(token);
+            token.ThrowIfCancellationRequested();
+            if (!IsDisposed) { _payees = payees; }
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { /* Disposed or superseded read. */ }
+        catch (OperationCanceledException) { /* Suggestions are optional; the editor still accepts any payee. */ }
+        catch (BudgetRequestException) { /* Suggestions are optional; the editor still accepts any payee. */ }
+        catch (HttpRequestException) { /* Suggestions are optional; the editor still accepts any payee. */ }
+    }
+    private void CloseTransaction() => _transaction = false;
     private Task ShowHelpAsync()
     {
         _help = true;
@@ -175,5 +209,5 @@ public sealed partial class BudgetBoard
     private void HideHelp() => _help = false;
     private Task AddCategoryAsync() { _help = false; _categoryTable?.BeginAddCategory(); return Task.CompletedTask; }
     private void EditCategory(CategoryData category) { _move = false; _category = category; }
-    private void CloseEditors() { _move = false; _category = null; }
+    private void CloseEditors() { _move = false; _transaction = false; _category = null; }
 }

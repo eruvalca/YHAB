@@ -445,6 +445,67 @@ public sealed class BudgetBoardTests
         commands.OfType<SaveCategory>().Single().Category.Hidden.ShouldBeTrue();
     }
 
+    [Fact]
+    public async Task PlanBoardAddsATransactionWithoutLeavingTheMonthAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var current = CreatePlan();
+        var commands = new List<PlanCommand>();
+        var payeeReads = 0;
+        var component = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, current)
+            .Add(item => item.OnCommand, commands.Add)
+            .Add(item => item.LoadPayees, _ => { payeeReads++; return Task.FromResult<IReadOnlyList<string>>(["Corner shop"]); }));
+
+        component.FindAll(".editor-surface").ShouldBeEmpty();
+        var add = component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Add transaction", StringComparison.Ordinal));
+        // Narrow screens dock this action to the viewport edge, so the sticky
+        // summary keeps its rows for the category table.
+        add.GetAttribute("class").ShouldBe("board-add-transaction");
+        await add.ClickAsync();
+
+        component.Find(".editor-surface h2").TextContent.ShouldBe("Add transaction");
+        component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Add transaction", StringComparison.Ordinal))
+            .GetAttribute("class").ShouldBe("board-add-transaction is-editing");
+        await component.WaitForAssertionAsync(() => component.FindAll("#known-payees option").Count.ShouldBe(1));
+        payeeReads.ShouldBe(1);
+
+        // The payee suggestions are read once, so reopening the editor does not ask again.
+        await component.Find("fluent-button[aria-label='Close editor']").ClickAsync();
+        component.FindAll(".editor-surface").ShouldBeEmpty();
+        await add.ClickAsync();
+        component.FindAll(".editor-surface").Count.ShouldBe(1);
+        payeeReads.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ATargetedCommandClosesTheBoardTransactionDraftAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var current = CreatePlan();
+        var component = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, current)
+            .Add(item => item.OnCommand, _ => { })
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Add transaction", StringComparison.Ordinal)).ClickAsync();
+        await component.FindAll("fluent-text-input")[0].ChangeAsync(new() { Value = "Corner shop" });
+        component.FindAll(".editor-surface").Count.ShouldBe(1);
+
+        // A refresh keeps the draft so typed values survive a background catalog read.
+        component.Render(parameters => parameters.Add(item => item.Plan, current with { Version = current.Version + 1 }).Add(item => item.ExternalRefresh, true));
+        component.FindAll(".editor-surface").Count.ShouldBe(1);
+        component.FindAll("fluent-text-input")[0].GetAttribute("value").ShouldBe("Corner shop");
+
+        // The command the draft submitted consumed it, so the editor closes.
+        component.Render(parameters => parameters.Add(item => item.Plan, current with { Version = current.Version + 2 }).Add(item => item.ExternalRefresh, false));
+        component.FindAll(".editor-surface").ShouldBeEmpty();
+    }
+
     private static PlanSnapshot CreatePlan()
     {
         var today = new DateOnly(2026, 10, 2);
