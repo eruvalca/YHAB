@@ -3,7 +3,7 @@
 @if (_budget is not null)
 {
 <div class="budget-board" aria-busy="@(IsBusy ? "true" : "false")">
-    <section class="budget-summary" aria-label="Monthly budget summary" data-negative="@(_budget.ReadyToAssign < 0 ? "true" : "false")">
+    <section class="budget-summary" aria-label="Monthly budget summary" data-editing="@(IsEditing ? "true" : "false")" data-negative="@(_budget.ReadyToAssign < 0 ? "true" : "false")">
         <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalAlignment="HorizontalAlignment.SpaceBetween" HorizontalGap="var(--spacingHorizontalM)" VerticalGap="var(--spacingVerticalS)">
             <div>
                 <h1>Plan your money</h1>
@@ -75,7 +75,7 @@
     }
     @if (_transaction)
     {
-        <TransactionEditor Plan="Plan" Payees="@(_payees ?? [])" OnCommand="OnCommand" OnClose="CloseTransaction" Busy="IsBusy" />
+        <TransactionEditor Plan="Plan" Payees="@(_payees ?? [])" OnCommand="SendTransactionCommandAsync" OnClose="CloseTransaction" Busy="IsBusy" />
     }
     <div class="budget-workspace-scope">
         <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalM)" VerticalGap="var(--spacingVerticalM)" Class="budget-workspace">
@@ -86,7 +86,7 @@
             @if (_category is not null)
             {
                 <aside class="category-details" aria-label="Category details">
-                    <CategoryEditor @key="(_category?.Id, _budget.Month, _editorEpoch)" Plan="Plan" Category="_category" MonthState="EditingMonth" Month="_budget.Month" OnCommand="SendCategoryCommandAsync" OnClose="CloseEditors" Busy="IsBusy" />
+                    <CategoryEditor @key="(_category?.Id, _budget.Month, _editorEpoch)" Plan="Plan" Category="_category" MonthState="EditingMonth" Month="_budget.Month" OnCommand="SendCategoryCommandAsync" OnClose="CloseCategory" Busy="IsBusy" />
                 </aside>
             }
         </FluentStack>

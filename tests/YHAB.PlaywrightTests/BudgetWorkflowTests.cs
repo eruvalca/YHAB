@@ -771,6 +771,30 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         var summary = (await page.Locator(".budget-summary").BoundingBoxAsync()).ShouldNotBeNull();
         var heading = (await page.Locator(".editor-surface h2").BoundingBoxAsync()).ShouldNotBeNull();
         heading.Y.ShouldBeGreaterThanOrEqualTo(summary.Y + summary.Height);
+        if (await page.EvaluateAsync<int>("innerWidth") < 1000)
+        {
+            // A phone pins the editor's heading and Close button to the top of the viewport.
+            // Shrink it so the form overflows, then confirm the sticky summary yields to them
+            // instead of covering the controls the form depends on.
+            var width = await page.EvaluateAsync<int>("innerWidth");
+            await page.SetViewportSizeAsync(width, 640);
+            await page.EvaluateAsync("() => window.scrollBy({ top: Math.round(innerHeight / 2), behavior: 'instant' })");
+            var tabs = (await page.Locator(".plan-page-tabs").BoundingBoxAsync()).ShouldNotBeNull();
+            var stuck = (await page.Locator(".editor-surface h2").BoundingBoxAsync()).ShouldNotBeNull();
+            stuck.Y.ShouldBeGreaterThanOrEqualTo(tabs.Y + tabs.Height - 1);
+            var close = (await Button(page, "Close").BoundingBoxAsync()).ShouldNotBeNull();
+            close.Y.ShouldBeGreaterThanOrEqualTo(0);
+            (close.Y + close.Height).ShouldBeLessThanOrEqualTo(640);
+            (await page.Locator(".editor-surface h2").EvaluateAsync<bool>("""
+                heading => {
+                    const box = heading.getBoundingClientRect();
+                    const top = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+                    return !!top && (top === heading || heading.contains(top));
+                }
+                """)).ShouldBe(true, "the sticky summary must not cover the editor heading");
+            await page.EvaluateAsync("() => window.scrollTo({ top: 0, behavior: 'instant' })");
+            await page.SetViewportSizeAsync(width, 960);
+        }
         await Button(page, "Close").ClickAsync();
         await page.WaitForFunctionAsync("() => !document.querySelector('.editor-surface')");
     }

@@ -42,7 +42,9 @@ public sealed partial class BudgetBoard
     private PlanSnapshot? _loadedPlan;
     private bool _move;
     private bool _transaction;
+    private PlanCommand? _transactionCommand;
     private IReadOnlyList<string>? _payees;
+    private long _payeesVersion = -1;
     private long _editorEpoch;
     private PlanCommand? _editorCommand;
     private bool _help;
@@ -53,6 +55,9 @@ public sealed partial class BudgetBoard
     private CategoryMonth? EditingMonth => _budget.Categories.SingleOrDefault(item => item.Category.Id == _category?.Id);
     private bool HasAccounts => Plan.Accounts.Count > 0;
     private bool HasOpenAccounts => Plan.Accounts.Any(item => !item.Closed);
+    // A phone's editor pins its own heading to the top of the viewport, so the
+    // sticky summary steps aside instead of covering it.
+    private bool IsEditing => _transaction || _move || _category is not null;
     // A phone keeps the sticky summary on screen, so this action docks to the
     // viewport instead of adding a row that would shrink the category table.
     private string AddTransactionClass => _transaction ? "board-add-transaction is-editing" : "board-add-transaction";
@@ -104,14 +109,14 @@ public sealed partial class BudgetBoard
             if (_loadedPlan?.Id != Plan.Id) { _help = false; _payees = null; CloseEditors(); }
             else
             {
-                // A command replaces the editor's baseline only when it consumed its draft, and only
-                // this editor's own submitted save or removal counts. An external refresh, an
+                // A command replaces an editor's baseline only when it consumed its draft, and only
+                // that editor's own submitted save or removal counts. An external refresh, an
                 // assignment, a toolbar Undo/Redo, or another category's create or inline rename
                 // keeps the open draft mounted so its typed values are not recreated.
                 if (!ExternalRefresh)
                 {
                     _move = false;
-                    _transaction = false;
+                    if (ReferenceEquals(AppliedCommand, _transactionCommand)) { CloseTransaction(); }
                     if (ReferenceEquals(AppliedCommand, _editorCommand) && AppliedCommand is SaveCategory or RemoveCategory) { _editorEpoch++; }
                 }
                 _category = Plan.Categories.SingleOrDefault(item => item.Id == _category?.Id);
@@ -184,22 +189,32 @@ public sealed partial class BudgetBoard
         if (!HasOpenAccounts) { return; }
         CloseEditors();
         _transaction = true;
-        if (_payees is not null || LoadPayees is null) { return; }
+        if (LoadPayees is null || (_payees is not null && _payeesVersion == Plan.Version)) { return; }
 
         using var operation = CreateOperation();
         var token = operation.Token;
+        var version = Plan.Version;
         try
         {
             var payees = await LoadPayees(token);
             token.ThrowIfCancellationRequested();
-            if (!IsDisposed) { _payees = payees; }
+            // A newer revision may already carry a payee this read could not see.
+            if (!IsDisposed && version == Plan.Version) { _payees = payees; _payeesVersion = version; }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { /* Disposed or superseded read. */ }
         catch (OperationCanceledException) { /* Suggestions are optional; the editor still accepts any payee. */ }
         catch (BudgetRequestException) { /* Suggestions are optional; the editor still accepts any payee. */ }
         catch (HttpRequestException) { /* Suggestions are optional; the editor still accepts any payee. */ }
     }
-    private void CloseTransaction() => _transaction = false;
+    // Track the exact command this editor submitted, so the board can tell its own
+    // save apart from an assignment, an undo, or a rename that must leave the draft alone.
+    private Task SendTransactionCommandAsync(PlanCommand command)
+    {
+        _transactionCommand = command;
+        return OnCommand.InvokeAsync(command);
+    }
+    private void CloseTransaction() { _transaction = false; _transactionCommand = null; }
+    private void CloseCategory() => _category = null;
     private Task ShowHelpAsync()
     {
         _help = true;
@@ -209,5 +224,5 @@ public sealed partial class BudgetBoard
     private void HideHelp() => _help = false;
     private Task AddCategoryAsync() { _help = false; _categoryTable?.BeginAddCategory(); return Task.CompletedTask; }
     private void EditCategory(CategoryData category) { _move = false; _category = category; }
-    private void CloseEditors() { _move = false; _transaction = false; _category = null; }
+    private void CloseEditors() { _move = false; _category = null; CloseTransaction(); }
 }

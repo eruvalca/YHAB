@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Bunit;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Shouldly;
 using Xunit;
@@ -452,12 +453,12 @@ public sealed class BudgetBoardTests
         context.Services.AddFluentUIComponents();
         context.JSInterop.Mode = JSRuntimeMode.Loose;
         context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
-        var current = CreatePlan();
-        var commands = new List<PlanCommand>();
+        var plan = CreatePlan();
+        var payees = new List<string> { "Corner shop" };
         var payeeReads = 0;
-        var component = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, current)
-            .Add(item => item.OnCommand, commands.Add)
-            .Add(item => item.LoadPayees, _ => { payeeReads++; return Task.FromResult<IReadOnlyList<string>>(["Corner shop"]); }));
+        var component = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, plan)
+            .Add(item => item.OnCommand, _ => { })
+            .Add(item => item.LoadPayees, _ => { payeeReads++; return Task.FromResult<IReadOnlyList<string>>([.. payees]); }));
 
         component.FindAll(".editor-surface").ShouldBeEmpty();
         var add = component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Add transaction", StringComparison.Ordinal));
@@ -472,38 +473,86 @@ public sealed class BudgetBoardTests
         await component.WaitForAssertionAsync(() => component.FindAll("#known-payees option").Count.ShouldBe(1));
         payeeReads.ShouldBe(1);
 
-        // The payee suggestions are read once, so reopening the editor does not ask again.
+        // Reopening inside the same revision reuses the suggestions instead of reading again.
         await component.Find("fluent-button[aria-label='Close editor']").ClickAsync();
         component.FindAll(".editor-surface").ShouldBeEmpty();
-        await add.ClickAsync();
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Add transaction", StringComparison.Ordinal)).ClickAsync();
         component.FindAll(".editor-surface").Count.ShouldBe(1);
         payeeReads.ShouldBe(1);
+
+        // A saved transaction adds a payee, so a newer revision reads the list again.
+        await component.Find("fluent-button[aria-label='Close editor']").ClickAsync();
+        payees.Add("New shop");
+        component.Render(parameters => parameters.Add(item => item.Plan, plan with { Version = plan.Version + 1 }));
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Add transaction", StringComparison.Ordinal)).ClickAsync();
+        await component.WaitForAssertionAsync(() => payeeReads.ShouldBe(2));
+        await component.WaitForAssertionAsync(() => component.FindAll("#known-payees option").Count.ShouldBe(2));
     }
 
     [Fact]
-    public async Task ATargetedCommandClosesTheBoardTransactionDraftAsync()
+    public async Task ABoardTransactionDraftOnlyClosesForItsOwnSaveAsync()
     {
         await using var context = new BunitContext();
         context.Services.AddFluentUIComponents();
         context.JSInterop.Mode = JSRuntimeMode.Loose;
         context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
-        var current = CreatePlan();
-        var component = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, current)
+        var plan = CreatePlan();
+        var month = BudgetFacts.Month(plan.Today);
+        var commands = new List<PlanCommand>();
+        var component = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, plan)
+            .Add(item => item.OnCommand, commands.Add)
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Add transaction", StringComparison.Ordinal)).ClickAsync();
+        var editor = component.Find(".editor-surface");
+        await editor.QuerySelectorAll("fluent-text-input")[0].ChangeAsync(new() { Value = "Corner shop" });
+        var category = editor.QuerySelectorAll("fluent-dropdown")[3];
+        await category.TriggerEventAsync("ondropdownchange",
+            new DropdownEventArgs { SelectedOptions = category.QuerySelector("fluent-option[text='Groceries']").ShouldNotBeNull().Id });
+        await editor.QuerySelectorAll("fluent-text-input")[1].ChangeAsync(new() { Value = "12.50" });
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Save transaction", StringComparison.Ordinal)).ClickAsync();
+        var submitted = commands.Single().ShouldBeOfType<SaveTransaction>();
+
+        // An assignment, an undo, or a rename did not consume the draft, so it stays mounted with
+        // the values the person typed instead of disappearing without a discard prompt.
+        component.Render(parameters => parameters
+            .Add(item => item.Plan, plan with { Version = plan.Version + 1 })
+            .Add(item => item.ExternalRefresh, false)
+            .Add(item => item.AppliedCommand, new AutoAssign(plan.Version, month)));
+        component.FindAll(".editor-surface").Count.ShouldBe(1);
+        component.FindAll(".editor-surface fluent-text-input")[0].GetAttribute("value").ShouldBe("Corner shop");
+
+        // The save this editor submitted is the one command that consumes it.
+        component.Render(parameters => parameters
+            .Add(item => item.Plan, plan with { Version = plan.Version + 2 })
+            .Add(item => item.ExternalRefresh, false)
+            .Add(item => item.AppliedCommand, submitted));
+        component.FindAll(".editor-surface").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ClosingTheCategoryPanelKeepsAnOpenTransactionDraftAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var plan = CreatePlan();
+        var component = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, plan)
             .Add(item => item.OnCommand, _ => { })
             .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
 
         await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Add transaction", StringComparison.Ordinal)).ClickAsync();
-        await component.FindAll("fluent-text-input")[0].ChangeAsync(new() { Value = "Corner shop" });
-        component.FindAll(".editor-surface").Count.ShouldBe(1);
+        await component.FindAll(".editor-surface fluent-text-input")[0].ChangeAsync(new() { Value = "Corner shop" });
 
-        // A refresh keeps the draft so typed values survive a background catalog read.
-        component.Render(parameters => parameters.Add(item => item.Plan, current with { Version = current.Version + 1 }).Add(item => item.ExternalRefresh, true));
-        component.FindAll(".editor-surface").Count.ShouldBe(1);
-        component.FindAll("fluent-text-input")[0].GetAttribute("value").ShouldBe("Corner shop");
+        // Looking at a category leaves the transaction draft open, and closing that untouched
+        // panel must not throw the draft away.
+        await component.Find(".category-row .category-link").ClickAsync();
+        component.FindAll(".editor-surface").Count.ShouldBe(2);
+        await component.Find("aside.category-details fluent-button[aria-label='Close editor']").ClickAsync();
 
-        // The command the draft submitted consumed it, so the editor closes.
-        component.Render(parameters => parameters.Add(item => item.Plan, current with { Version = current.Version + 2 }).Add(item => item.ExternalRefresh, false));
-        component.FindAll(".editor-surface").ShouldBeEmpty();
+        component.FindAll(".editor-surface").Count.ShouldBe(1);
+        component.FindAll(".editor-surface fluent-text-input")[0].GetAttribute("value").ShouldBe("Corner shop");
     }
 
     private static PlanSnapshot CreatePlan()

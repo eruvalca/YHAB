@@ -38,6 +38,13 @@ h1 { margin: 0; font-size: var(--yh-font-title-compact); line-height: 1.25; }
 @media (max-width: 1200px) { .category-details { flex-basis: 100%; position: static; max-height: none; overflow-y: visible; } }
 @media (max-width: 600px) { .summary-actions { align-items: flex-start; } .action-hint { text-align: start; } }
 
+/* Below 700px an editor pins its own heading to the same top offset as the
+   summary, so the summary stops sticking while one is open instead of covering
+   the heading and Close button that keep the form usable. */
+@media (max-width: 700px) {
+    .budget-summary[data-editing="true"] { position: static; }
+}
+
 /* The sticky summary is all a phone keeps on screen, and a fourth action there
    pushed the category table out of view. Dock the shortcut at the viewport edge
    instead, the way the register does, so recording money stays one tap away.
