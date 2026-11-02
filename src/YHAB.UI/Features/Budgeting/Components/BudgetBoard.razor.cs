@@ -15,6 +15,11 @@ public sealed partial class BudgetBoard
     [Parameter] public PlanCommand? AppliedCommand { get; set; }
     [Parameter] public EventCallback OnAddAccount { get; set; }
     [Parameter] public bool Busy { get; set; }
+    /// <summary>
+    /// The workspace's account editor is open, and it pins its own actions to the
+    /// bottom of a phone screen, so the docked shortcut has to step aside.
+    /// </summary>
+    [Parameter] public bool AccountEditing { get; set; }
     // A plain refresh keeps an open draft; a command closes it because the
     // command consumed the values the draft was editing.
     [Parameter] public bool ExternalRefresh { get; set; }
@@ -61,7 +66,7 @@ public sealed partial class BudgetBoard
     // A phone keeps the sticky summary on screen, so this action docks to the
     // viewport instead of adding a row that would shrink the category table, and
     // it steps aside for every board editor so it cannot cover their actions.
-    private string AddTransactionClass => IsEditing ? "board-add-transaction is-editing" : "board-add-transaction";
+    private string AddTransactionClass => IsEditing || AccountEditing ? "board-add-transaction is-editing" : "board-add-transaction";
     // Switching editors would drop the other editor's draft without its discard
     // prompt, so each entry point stays closed while one is already open.
     private string? TransactionHint => IsEditing ? "Finish or close the open editor first." : null;
@@ -122,7 +127,12 @@ public sealed partial class BudgetBoard
                 if (!ExternalRefresh)
                 {
                     _move = false;
-                    if (ReferenceEquals(AppliedCommand, _transactionCommand)) { CloseTransaction(); }
+                    // This editor's own save, or a refresh that preserved no draft, settles it. The
+                    // second case is a recovery refresh for a save whose response was lost: nothing
+                    // was applied, yet the values may already be stored, so leaving the draft open
+                    // would let it save again and record the spending twice. Only an unrelated
+                    // applied command leaves it mounted.
+                    if (AppliedCommand is null || ReferenceEquals(AppliedCommand, _transactionCommand)) { CloseTransaction(); }
                     if (ReferenceEquals(AppliedCommand, _editorCommand) && AppliedCommand is SaveCategory or RemoveCategory) { _editorEpoch++; }
                 }
                 _category = Plan.Categories.SingleOrDefault(item => item.Id == _category?.Id);

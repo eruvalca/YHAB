@@ -322,6 +322,29 @@ public sealed class AccountRegisterTests
     }
 
     [Fact]
+    public async Task TheDockStepsAsideForTheAccountEditorAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], false, false, []) { Today = today };
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(plan.Version, [], 0, null)))
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        component.Find(".add-transaction-dock").GetAttribute("data-editing").ShouldBe("false");
+
+        // The account editor pins its own actions to the bottom of a phone screen, so the dock
+        // steps aside instead of covering them.
+        component.Render(parameters => parameters.Add(item => item.AccountEditing, true));
+        component.Find(".add-transaction-dock").GetAttribute("data-editing").ShouldBe("true");
+    }
+
+    [Fact]
     public async Task AddTransactionStaysInThumbReachWhileTheRegisterScrollsAsync()
     {
         await using var context = new BunitContext();

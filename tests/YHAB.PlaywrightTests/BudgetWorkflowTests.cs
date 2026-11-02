@@ -48,6 +48,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             await AddAccountAndAssignAsync(page);
             await VerifyPlanBoardAddTransactionAsync(page);
             await VerifyStickySummaryAsync(page, width);
+            await VerifyAccountEditorClearsTheDockAsync(page);
             var planUrl = page.Url;
             await PurchaseAsync(page, width);
             await page.GotoAsync(planUrl);
@@ -796,6 +797,37 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             await page.SetViewportSizeAsync(width, 960);
         }
         await Button(page, "Close").ClickAsync();
+        await page.WaitForFunctionAsync("() => !document.querySelector('.editor-surface')");
+    }
+
+    // The account editor pins Save and Cancel to the bottom of a phone screen, which is
+    // exactly where the docked shortcut sits, so the dock has to step aside.
+    private static async Task VerifyAccountEditorClearsTheDockAsync(IPage page)
+    {
+        var width = await page.EvaluateAsync<int>("innerWidth");
+        if (width >= 1000)
+        {
+            return;
+        }
+
+        await OpenPlanNavigationAsync(page);
+        await page.Locator(".plan-navigation fluent-button")
+            .Filter(new() { HasTextRegex = new Regex("^\\s*Add account\\s*$", RegexOptions.None, TimeSpan.FromSeconds(1)) })
+            .ClickAsync();
+        await VerifyEditorFocusAsync(page);
+        (await page.Locator(".board-add-transaction").EvaluateAsync<string>("button => getComputedStyle(button).display")).ShouldBe("none");
+        await page.SetViewportSizeAsync(width, 640);
+        var cancel = Button(page, "Cancel");
+        await cancel.EvaluateAsync("button => button.scrollIntoView({ block: 'end' })");
+        (await cancel.EvaluateAsync<bool>("""
+            button => {
+                const box = button.getBoundingClientRect();
+                const top = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+                return !!top && (top === button || button.contains(top));
+            }
+            """)).ShouldBe(true, "the account editor's actions must stay tappable");
+        await page.SetViewportSizeAsync(width, 960);
+        await cancel.ClickAsync();
         await page.WaitForFunctionAsync("() => !document.querySelector('.editor-surface')");
     }
 

@@ -3,7 +3,7 @@
 <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalM)" Class="page-heading">
     <div><p class="eyebrow">THE LITTLE DETAILS, ALL TOGETHER</p><h1>@(_account?.Name ?? "All transactions")</h1><p class="muted">@(_account is null ? "Every account in your plan." : AccountLabel(_account.Kind))</p></div>
     <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalS)">
-        <div class="add-transaction-dock" data-editing="@(_editing ? "true" : "false")">
+        <div class="add-transaction-dock" data-editing="@DockEditingState">
             <FluentButton Class="add-transaction-action" OnClick="Add" Disabled="@(IsBusy || !Plan.Accounts.Any(item => !item.Closed))" Appearance="ButtonAppearance.Primary">+ Add transaction</FluentButton>
         </div>
         @if (_account is not null)
