@@ -3,7 +3,7 @@
 @if (_budget is not null)
 {
 <div class="budget-board" aria-busy="@(IsBusy ? "true" : "false")">
-    <section class="budget-summary" aria-label="Monthly budget summary" data-negative="@(_budget.ReadyToAssign < 0 ? "true" : "false")">
+    <section class="budget-summary" aria-label="Monthly budget summary" data-editing="@(IsEditing ? "true" : "false")" data-negative="@(_budget.ReadyToAssign < 0 ? "true" : "false")">
         <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalAlignment="HorizontalAlignment.SpaceBetween" HorizontalGap="var(--spacingHorizontalM)" VerticalGap="var(--spacingVerticalS)">
             <div>
                 <h1>Plan your money</h1>
@@ -25,10 +25,15 @@
                         <FluentButton OnClick="AutoAssignAsync" Disabled="@(IsBusy || FundTargetsHint is not null)" Size="ButtonSize.Small" Appearance="ButtonAppearance.Primary" title="@FundTargetsHint" aria-describedby="@(FundTargetsHint is null ? null : "fund-targets-hint")">Fund targets</FluentButton>
                         <FluentButton OnClick="ShowMove" Disabled="@(IsBusy || MoveMoneyHint is not null)" Size="ButtonSize.Small" Appearance="ButtonAppearance.Outline" title="@MoveMoneyHint" aria-describedby="@(MoveMoneyHint is null ? null : "move-money-hint")">Move money</FluentButton>
                     }
+                    @if (HasOpenAccounts)
+                    {
+                        <FluentButton Class="@AddTransactionClass" OnClick="ShowTransactionAsync" Disabled="@(IsBusy || TransactionHint is not null)" Size="ButtonSize.Small" Appearance="ButtonAppearance.Outline" title="@TransactionHint" aria-describedby="@(TransactionHint is null ? null : "add-transaction-hint")">Add transaction</FluentButton>
+                    }
                     <FluentButton OnClick="ShowHelpAsync" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle">How this works</FluentButton>
                 </FluentStack>
                 @if (HasAccounts && FundTargetsHint is not null) { <p class="action-hint muted" id="fund-targets-hint">@FundTargetsHint</p> }
                 @if (HasAccounts && MoveMoneyHint is not null) { <p class="action-hint muted" id="move-money-hint">@MoveMoneyHint</p> }
+                @if (HasOpenAccounts && TransactionHint is not null) { <p class="action-hint muted" id="add-transaction-hint">@TransactionHint</p> }
             </div>
         </FluentStack>
         <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalL)" VerticalGap="var(--spacingVerticalXS)" Class="budget-totals">
@@ -69,6 +74,10 @@
     {
         <MoveMoneyEditor Plan="Plan" Month="_budget.Month" OnCommand="OnCommand" OnClose="CloseEditors" Busy="IsBusy" />
     }
+    @if (_transaction)
+    {
+        <TransactionEditor Plan="Plan" Payees="@(_payees ?? [])" OnCommand="SendTransactionCommandAsync" OnClose="CloseTransaction" Busy="IsBusy" />
+    }
     <div class="budget-workspace-scope">
         <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalM)" VerticalGap="var(--spacingVerticalM)" Class="budget-workspace">
             <FirstRunChecklist Plan="_budgetPlan!" Budget="_budget" Hidden="@(_category is not null)" OnAddAccount="AddAccountAsync" OnAddCategory="AddCategoryAsync" OnShowHelp="ShowHelpAsync" Busy="IsBusy" />
@@ -78,7 +87,7 @@
             @if (_category is not null)
             {
                 <aside class="category-details" aria-label="Category details">
-                    <CategoryEditor @key="(_category?.Id, _budget.Month, _editorEpoch)" Plan="Plan" Category="_category" MonthState="EditingMonth" Month="_budget.Month" OnCommand="SendCategoryCommandAsync" OnClose="CloseEditors" Busy="IsBusy" />
+                    <CategoryEditor @key="(_category?.Id, _budget.Month, _editorEpoch)" Plan="Plan" Category="_category" MonthState="EditingMonth" Month="_budget.Month" OnCommand="SendCategoryCommandAsync" OnClose="CloseCategory" Busy="IsBusy" />
                 </aside>
             }
         </FluentStack>

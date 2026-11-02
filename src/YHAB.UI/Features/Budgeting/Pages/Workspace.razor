@@ -28,7 +28,7 @@
             }
             @if (IsRegister)
             {
-                <AccountRegister @key="plan.Id" Plan="plan" Balances="_view?.Balances" LoadPage="LoadRegisterAsync" LoadPayees="LoadPayeesAsync" AccountId="AccountId" InitialCategoryId="_registerCategoryId" InitialFrom="_registerFrom" InitialThrough="_registerThrough" OnCommand="ExecuteAsync" OnEditAccount="EditAccount" Busy="IsBusy" ExternalRefresh="_externalRefresh">
+                <AccountRegister @key="plan.Id" Plan="plan" Balances="_view?.Balances" LoadPage="LoadRegisterAsync" LoadPayees="LoadPayeesAsync" AccountId="AccountId" InitialCategoryId="_registerCategoryId" InitialFrom="_registerFrom" InitialThrough="_registerThrough" OnCommand="ExecuteAsync" OnEditAccount="EditAccount" Busy="IsBusy" AccountEditing="_accountEditor" ExternalRefresh="_externalRefresh">
                     <PlanActions>
                         <WorkspaceActions CanUndo="plan.CanUndo" CanRedo="plan.CanRedo" Busy="IsBusy" RefreshBusy="_busy" Status="@ActionStatus()" OnUndo="UndoAsync" OnRedo="RedoAsync" OnRefresh="RefreshAsync" />
                     </PlanActions>
@@ -36,7 +36,7 @@
             }
             else
             {
-                <BudgetBoard @key="plan.Id" Plan="plan" InitialMonth="_month" LoadMonth="LoadMonthAsync" OnAddAccount="AddAccount" OnCommand="ExecuteAsync" Busy="IsBusy" ExternalRefresh="_externalRefresh" AppliedCommand="_applied">
+                <BudgetBoard @key="plan.Id" Plan="plan" InitialMonth="_month" LoadMonth="LoadMonthAsync" LoadPayees="LoadPayeesAsync" OnAddAccount="AddAccount" OnCommand="ExecuteAsync" Busy="IsBusy" AccountEditing="_accountEditor" ExternalRefresh="_externalRefresh" AppliedCommand="_applied" RecoveredCommand="_recoveredCommand">
                     <PlanActions>
                         <WorkspaceActions CanUndo="plan.CanUndo" CanRedo="plan.CanRedo" Busy="IsBusy" RefreshBusy="_busy" Status="@ActionStatus()" OnUndo="UndoAsync" OnRedo="RedoAsync" OnRefresh="RefreshAsync" />
                     </PlanActions>

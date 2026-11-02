@@ -31,6 +31,9 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
     private bool _busy;
     private bool _externalRefresh;
     private PlanCommand? _applied;
+    // The command whose uncertain write a refresh recovered, so an editor can tell its own
+    // interrupted save from one it never submitted.
+    private PlanCommand? _recoveredCommand;
     private long _requestGeneration;
     private bool IsBusy => _busy || !_operation.CanEdit || !RendererInfo.IsInteractive;
     private string? _error;
@@ -151,6 +154,9 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
             var (view, month) = await ReadWorkspaceAsync(planId, !IsRegister, token);
             token.ThrowIfCancellationRequested();
             if (generation != _requestGeneration) { return; }
+            // Name the recovered command so an open editor can tell its own interrupted save
+            // from a write it never submitted.
+            _recoveredCommand = preserveDraft ? null : _operation.Pending;
             ApplyView(view, month, externalRefresh: preserveDraft);
             _operation = _operation.Loaded();
             // Interactive reads can complete after the first render. Post only after
@@ -186,7 +192,7 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         }
         if (!token.IsCancellationRequested && postDue && generation == _requestGeneration && Snapshot is { } plan)
         {
-            await ExecuteAsync(new PostRecurring(plan.Version, plan.Today), externalRefresh: preserveDraft);
+            await ExecuteAsync(new PostRecurring(plan.Version, plan.Today), externalRefresh: preserveDraft, recovered: _recoveredCommand);
         }
     }
 
@@ -196,7 +202,7 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
     /// </summary>
     private Task ExecuteAsync(PlanCommand command) => ExecuteAsync(command, _operation.PreservesDraft && ReferenceEquals(command, _operation.Pending));
 
-    private async Task ExecuteAsync(PlanCommand command, bool externalRefresh)
+    private async Task ExecuteAsync(PlanCommand command, bool externalRefresh, PlanCommand? recovered = null)
     {
         if (_busy || (!_operation.CanEdit && !(_operation.CanRetry && ReferenceEquals(command, _operation.Pending))))
         {
@@ -208,6 +214,9 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         var planId = PlanId;
         var generation = ++_requestGeneration;
         _applied = null;
+        // A command replaces the view, so the identity a refresh recovered is only carried
+        // forward by the automatic post that belongs to that same refresh.
+        _recoveredCommand = recovered;
         _operation = WorkspaceOperation.Start(command, externalRefresh);
         _error = null;
         try

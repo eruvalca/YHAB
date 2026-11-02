@@ -25,3 +25,26 @@
 .flag[data-flag="Yellow"] { border-color: var(--colorPaletteMarigoldForeground1); }
 .flag[data-flag="Green"] { border-color: var(--colorPaletteGreenForeground1); }
 .flag[data-flag="Purple"] { border-color: var(--colorPalettePurpleForeground1); }
+
+/* A phone screen holds only part of the register, so the primary action stays at
+   the edge of the viewport instead of scrolling away with the page heading.
+   Fluent components take no scope attribute, so the dock anchors on the plain
+   wrapper and reaches the button with ::deep. */
+@media (max-width: 999px) {
+    .add-transaction-dock {
+        position: fixed;
+        inset-block-end: calc(var(--spacingVerticalL) + env(safe-area-inset-bottom, 0px));
+        inset-inline-end: var(--spacingHorizontalL);
+        /* Above Fluent's layout areas (the footer sits at 85) but below the
+           shell's 1000 overlays, so a drawer or dialog still covers this. */
+        z-index: 900;
+    }
+    /* An open editor owns the screen; a floating quick add would cover its form. */
+    .add-transaction-dock[data-editing="true"] { display: none; }
+    .add-transaction-dock ::deep .add-transaction-action {
+        min-height: var(--yh-control-touch);
+        box-shadow: var(--shadow16);
+    }
+    /* Keep the last rows and the pager clear of the floating action. */
+    .register-results { padding-block-end: calc(var(--yh-control-touch) + var(--spacingVerticalL)); }
+}

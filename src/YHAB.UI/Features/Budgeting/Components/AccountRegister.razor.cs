@@ -15,6 +15,11 @@ public sealed partial class AccountRegister
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
     [Parameter, EditorRequired] public EventCallback<AccountData> OnEditAccount { get; set; }
     [Parameter] public bool Busy { get; set; }
+    /// <summary>
+    /// The workspace's account editor is open, and it pins its own actions to the
+    /// bottom of a phone screen, so the docked shortcut has to step aside.
+    /// </summary>
+    [Parameter] public bool AccountEditing { get; set; }
     // A plain refresh keeps an open draft when its edit target still exists; a
     // command closes it because the command consumed the draft's values.
     [Parameter] public bool ExternalRefresh { get; set; }
@@ -53,6 +58,9 @@ public sealed partial class AccountRegister
     [Parameter, EditorRequired] public Func<CancellationToken, Task<IReadOnlyList<string>>> LoadPayees { get; set; } = default!;
     [Parameter] public IReadOnlyList<AccountBalance>? Balances { get; set; }
     private IEnumerable<TransactionData> VisibleEntries => _result?.Rows.Select(item => item.Transaction) ?? [];
+    // The account editor pins its own actions to the bottom of a phone screen, so the
+    // docked shortcut steps aside while it is open.
+    private string DockEditingState => _editing || AccountEditing ? "true" : "false";
     private bool AllVisibleSelected => VisibleEntries.Any() && VisibleEntries.All(item => _selected.Contains(item.Id));
     private AccountBalance? SelectedBalance => _account is null ? null : Balances?.Single(item => item.AccountId == _account.Id) ?? BudgetFacts.Balance(Plan, _account, Plan.Today);
 

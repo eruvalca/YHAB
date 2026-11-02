@@ -44,11 +44,15 @@ one category.
    assignment. A positive balance offers **Move money** to Ready to assign or
    another category; an overspent balance offers to cover that shortfall from
    Ready to assign or a category that has money.
-4. Add transactions in an account or **All transactions**. The editor starts on
-   Outflow and asks for a spending category whenever money leaves the budget;
-   Ready to assign remains available for inflows, including transfers that put
-   money into a budget account. Split amounts are signed and must total the
-   transaction amount exactly. A transaction needs a non-zero amount.
+4. Add transactions from **Add transaction** in the monthly summary, in an
+   account, or in **All transactions**. The editor starts on Outflow and asks
+   for a spending category whenever money leaves the budget; Ready to assign
+   remains available for inflows, including transfers that put money into a
+   budget account. Split amounts are signed and must total the transaction amount
+   exactly. A transaction needs a non-zero amount. On a phone **Add transaction**
+   docks to the edge of the screen on the board and in the register, so neither a
+   long month nor a long transaction list carries it out of reach; opening the
+   editor hides it until the editor closes.
 5. Transfer between accounts using the transfer selector. One stored transfer
    supplies both sides. Transfers within the budget have no spending category.
    Transfers across the budget and tracking boundary require categories when
