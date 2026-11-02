@@ -31,6 +31,9 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
     private bool _busy;
     private bool _externalRefresh;
     private PlanCommand? _applied;
+    // The command whose uncertain write a refresh recovered, so an editor can tell its own
+    // interrupted save from one it never submitted.
+    private PlanCommand? _recoveredCommand;
     private long _requestGeneration;
     private bool IsBusy => _busy || !_operation.CanEdit || !RendererInfo.IsInteractive;
     private string? _error;
@@ -151,6 +154,9 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
             var (view, month) = await ReadWorkspaceAsync(planId, !IsRegister, token);
             token.ThrowIfCancellationRequested();
             if (generation != _requestGeneration) { return; }
+            // Name the recovered command so an open editor can tell its own interrupted save
+            // from a write it never submitted.
+            _recoveredCommand = preserveDraft ? null : _operation.Pending;
             ApplyView(view, month, externalRefresh: preserveDraft);
             _operation = _operation.Loaded();
             // Interactive reads can complete after the first render. Post only after
@@ -208,6 +214,7 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         var planId = PlanId;
         var generation = ++_requestGeneration;
         _applied = null;
+        _recoveredCommand = null;
         _operation = WorkspaceOperation.Start(command, externalRefresh);
         _error = null;
         try

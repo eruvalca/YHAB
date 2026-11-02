@@ -36,7 +36,7 @@
             }
             else
             {
-                <BudgetBoard @key="plan.Id" Plan="plan" InitialMonth="_month" LoadMonth="LoadMonthAsync" LoadPayees="LoadPayeesAsync" OnAddAccount="AddAccount" OnCommand="ExecuteAsync" Busy="IsBusy" AccountEditing="_accountEditor" ExternalRefresh="_externalRefresh" AppliedCommand="_applied">
+                <BudgetBoard @key="plan.Id" Plan="plan" InitialMonth="_month" LoadMonth="LoadMonthAsync" LoadPayees="LoadPayeesAsync" OnAddAccount="AddAccount" OnCommand="ExecuteAsync" Busy="IsBusy" AccountEditing="_accountEditor" ExternalRefresh="_externalRefresh" AppliedCommand="_applied" RecoveredCommand="_recoveredCommand">
                     <PlanActions>
                         <WorkspaceActions CanUndo="plan.CanUndo" CanRedo="plan.CanRedo" Busy="IsBusy" RefreshBusy="_busy" Status="@ActionStatus()" OnUndo="UndoAsync" OnRedo="RedoAsync" OnRefresh="RefreshAsync" />
                     </PlanActions>

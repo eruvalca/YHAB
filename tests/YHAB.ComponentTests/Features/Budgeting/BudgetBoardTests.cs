@@ -581,25 +581,37 @@ public sealed class BudgetBoardTests
     }
 
     [Fact]
-    public async Task ARecoveryRefreshClosesTheBoardTransactionDraftAsync()
+    public async Task ARecoveryRefreshClosesOnlyTheDraftItsOwnSaveRecoveredAsync()
     {
         await using var context = new BunitContext();
         context.Services.AddFluentUIComponents();
         context.JSInterop.Mode = JSRuntimeMode.Loose;
         context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
         var plan = CreatePlan();
+        var commands = new List<PlanCommand>();
         var component = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, plan)
-            .Add(item => item.OnCommand, _ => { })
+            .Add(item => item.OnCommand, commands.Add)
             .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
 
         await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Add transaction", StringComparison.Ordinal)).ClickAsync();
         await SubmitBoardTransactionAsync(component, "Corner shop");
+        var submitted = commands.Single();
 
-        // The save's response was lost and Refresh plan recovered it: nothing was applied, yet
-        // the values may already be stored, so the draft must not be able to save a second time.
+        // Undo committed but lost its response and Refresh plan recovered it. That write is not
+        // this draft's save, so the typed values stay even though a save was submitted earlier.
         component.Render(parameters => parameters
             .Add(item => item.Plan, plan with { Version = plan.Version + 1 })
-            .Add(item => item.ExternalRefresh, false));
+            .Add(item => item.ExternalRefresh, false)
+            .Add(item => item.RecoveredCommand, new UndoChange(plan.Version)));
+        component.FindAll(".editor-surface").Count.ShouldBe(1);
+        component.FindAll(".editor-surface fluent-text-input")[0].GetAttribute("value").ShouldBe("Corner shop");
+
+        // The save's own response was lost and Refresh plan recovered it: the values may already
+        // be stored, so the draft must not be able to record the spending a second time.
+        component.Render(parameters => parameters
+            .Add(item => item.Plan, plan with { Version = plan.Version + 2 })
+            .Add(item => item.ExternalRefresh, false)
+            .Add(item => item.RecoveredCommand, submitted));
         component.FindAll(".editor-surface").ShouldBeEmpty();
     }
 

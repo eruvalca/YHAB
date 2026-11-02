@@ -13,6 +13,12 @@ public sealed partial class BudgetBoard
     /// open editor's draft. Null while nothing has been applied since the last command started.
     /// </summary>
     [Parameter] public PlanCommand? AppliedCommand { get; set; }
+    /// <summary>
+    /// The command whose uncertain write a refresh recovered. An editor closes its draft only
+    /// when this is the save that draft submitted, so a recovered write it never sent leaves
+    /// the typed values alone.
+    /// </summary>
+    [Parameter] public PlanCommand? RecoveredCommand { get; set; }
     [Parameter] public EventCallback OnAddAccount { get; set; }
     [Parameter] public bool Busy { get; set; }
     /// <summary>
@@ -127,12 +133,13 @@ public sealed partial class BudgetBoard
                 if (!ExternalRefresh)
                 {
                     _move = false;
-                    // This editor's own save, or a refresh that preserved no draft, settles it. The
-                    // second case is a recovery refresh for a save whose response was lost: nothing
-                    // was applied, yet the values may already be stored, so leaving the draft open
-                    // would let it save again and record the spending twice. Only an unrelated
-                    // applied command leaves it mounted.
-                    if (AppliedCommand is null || ReferenceEquals(AppliedCommand, _transactionCommand)) { CloseTransaction(); }
+                    // Only a save this editor submitted settles its draft: either the command that
+                    // was applied, or the command a refresh recovered after its response was lost.
+                    // A recovered write it never submitted, and an unrelated applied command, both
+                    // leave the draft mounted with the values the person typed.
+                    var settled = _transactionCommand is not null
+                        && (ReferenceEquals(AppliedCommand, _transactionCommand) || ReferenceEquals(RecoveredCommand, _transactionCommand));
+                    if (settled) { CloseTransaction(); }
                     if (ReferenceEquals(AppliedCommand, _editorCommand) && AppliedCommand is SaveCategory or RemoveCategory) { _editorEpoch++; }
                 }
                 _category = Plan.Categories.SingleOrDefault(item => item.Id == _category?.Id);
