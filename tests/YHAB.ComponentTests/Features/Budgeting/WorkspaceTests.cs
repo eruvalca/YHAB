@@ -164,8 +164,11 @@ public sealed class WorkspaceTests
         await component.WaitForAssertionAsync(() => component.Find(".hero-amount").TextContent.ShouldBe(interactive ? "$3,000.00" : "$1,000.00"));
     }
 
-    [Fact]
-    public void CategoryReportNavigationKeepsTheRegisterAndFiltersActive()
+    [Theory]
+    [InlineData("D")]
+    [InlineData("N")]
+    [InlineData("B")]
+    public void CategoryReportNavigationKeepsTheRegisterAndFiltersActive(string format)
     {
         using var context = new BunitContext();
         var (budgets, empty) = Configure(context);
@@ -178,7 +181,7 @@ public sealed class WorkspaceTests
             .Returns(call => new RegisterPage(call.Arg<RegisterQuery>().Version!.Value, [], 0, null));
         budgets.ReadPayeesAsync(plan.Id, Arg.Any<CancellationToken>()).Returns([]);
         context.Services.GetRequiredService<NavigationManager>().NavigateTo(
-            $"/plans/{plan.Id}/accounts?category={category.Id}&from=2026-10-01&to=2026-10-31");
+            $"/plans/{Uri.EscapeDataString(plan.Id.ToString(format))}/accounts?category={category.Id}&from=2026-10-01&to=2026-10-31");
 
         var workspace = context.Render<Workspace>(parameters => parameters.Add(item => item.PlanId, plan.Id));
 
@@ -187,6 +190,55 @@ public sealed class WorkspaceTests
         register.InitialCategoryId.ShouldBe(category.Id);
         register.InitialFrom.ShouldBe(new DateOnly(2026, 10, 1));
         register.InitialThrough.ShouldBe(new DateOnly(2026, 10, 31));
+    }
+
+    [Theory]
+    [InlineData("reports?from=2026-09-01&to=2026-09-30")]
+    [InlineData("settings")]
+    public async Task LeavingAReportRegisterRetainsFiltersRowsAndDraftAsync(string destination)
+    {
+        await using var context = new BunitContext();
+        var (budgets, empty) = Configure(context);
+        var group = new GroupData(Guid.NewGuid(), "Everyday", 0);
+        var category = new CategoryData(Guid.NewGuid(), group.Id, "Groceries", "", 0, false, null, null);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, empty.Today, false, "");
+        var plan = empty with { Accounts = [account], Groups = [group], Categories = [category] };
+        var entry = new TransactionData(Guid.NewGuid(), account.Id, plan.Today, "Shop", "", -10, null, "",
+            [new SplitData(Guid.NewGuid(), category.Id, -10, "")]);
+        budgets.ReadViewAsync(plan.Id, Arg.Any<CancellationToken>()).Returns(View(plan));
+        budgets.ReadRegisterAsync(plan.Id, Arg.Any<RegisterQuery>(), Arg.Any<CancellationToken>())
+            .Returns(call => new RegisterPage(call.Arg<RegisterQuery>().Version!.Value, [new(entry, 990)], 1, null));
+        budgets.ReadPayeesAsync(plan.Id, Arg.Any<CancellationToken>()).Returns([]);
+        var navigation = context.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo($"/plans/{plan.Id}/accounts?category={category.Id}&from=2026-10-01&to=2026-10-31");
+        var workspace = context.Render<Workspace>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+        await workspace.Find(".register-table .category-link").ClickAsync();
+        var editor = workspace.FindComponent<TransactionEditor>().Instance;
+        budgets.ClearReceivedCalls();
+
+        await workspace.InvokeAsync(() => navigation.NavigateTo($"/plans/{plan.Id}/{destination}"));
+        workspace.Render(parameters => parameters.Add(item => item.PlanId, plan.Id));
+
+        workspace.FindComponent<TransactionEditor>().Instance.ShouldBeSameAs(editor);
+        workspace.FindAll(".register-table tbody tr").Count.ShouldBe(1);
+        var row = workspace.Find(".register-table tbody tr");
+        row.TextContent.ShouldContain("Shop");
+        row.TextContent.ShouldContain("Checking");
+        row.TextContent.ShouldContain("Groceries");
+        row.TextContent.ShouldContain("$10.00");
+        var register = workspace.FindComponent<AccountRegister>().Instance;
+        register.InitialCategoryId.ShouldBe(category.Id);
+        register.InitialFrom.ShouldBe(new DateOnly(2026, 10, 1));
+        register.InitialThrough.ShouldBe(new DateOnly(2026, 10, 31));
+        await budgets.DidNotReceive().ReadRegisterAsync(Arg.Any<Guid>(), Arg.Any<RegisterQuery>(), Arg.Any<CancellationToken>());
+
+        await workspace.InvokeAsync(() => navigation.NavigateTo($"/plans/{plan.Id}/accounts"));
+        workspace.Render(parameters => parameters.Add(item => item.PlanId, plan.Id));
+        register.InitialCategoryId.ShouldBeNull();
+        register.InitialFrom.ShouldBeNull();
+        register.InitialThrough.ShouldBeNull();
+        workspace.FindComponents<TransactionEditor>().ShouldBeEmpty();
+        await budgets.Received().ReadRegisterAsync(plan.Id, Arg.Any<RegisterQuery>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
