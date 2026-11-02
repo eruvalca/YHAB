@@ -130,6 +130,13 @@ public sealed class NavigationRenderingTests(ITestOutputHelper output)
                 : new[] { $"{planPath}/reports", $"{planPath}/settings", "/plans", "/Account/Manage" };
             foreach (var destination in destinations)
             {
+                var destinationHeading = destination switch
+                {
+                    "/plans" => "Make room for what matters.",
+                    "/Account/Manage" => "Profile",
+                    _ when destination.EndsWith("/reports", StringComparison.Ordinal) => "Reflect",
+                    _ => "Plan settings",
+                };
                 await page.Locator($".plan-frame a[href='{planPath}/accounts']:visible").First.ClickAsync();
                 await page.GetByRole(AriaRole.Heading, new() { Name = "All transactions", Exact = true }).WaitForAsync();
                 await page.Locator(".register-results[aria-busy='false']").WaitForAsync();
@@ -171,6 +178,7 @@ public sealed class NavigationRenderingTests(ITestOutputHelper output)
                     release.TrySetResult();
                 }
                 await page.WaitForURLAsync($"**{destination}");
+                await page.GetByRole(AriaRole.Heading, new() { Name = destinationHeading, Exact = true }).WaitForAsync();
                 await page.WaitForFunctionAsync("() => !document.querySelector('.register-results')");
                 (await page.EvaluateAsync<bool>("window.yhabWrongBoard")).ShouldBeFalse(destination);
                 await context.UnrouteAsync($"**{destination}");
@@ -181,6 +189,7 @@ public sealed class NavigationRenderingTests(ITestOutputHelper output)
                     await page.Locator(".register-results[aria-busy='false']").WaitForAsync();
                     (await page.EvaluateAsync<bool>("window.yhabWrongBoard")).ShouldBeFalse("history must restore transactions without painting the budget");
                     await page.GoForwardAsync();
+                    await page.GetByRole(AriaRole.Heading, new() { Name = destinationHeading, Exact = true }).WaitForAsync();
                     await page.WaitForFunctionAsync("() => !document.querySelector('.register-results')");
                     (await page.EvaluateAsync<bool>("window.yhabWrongBoard")).ShouldBeFalse("forward navigation must not paint the budget");
                 }
