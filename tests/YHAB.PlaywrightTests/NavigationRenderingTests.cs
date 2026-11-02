@@ -79,18 +79,24 @@ public sealed class NavigationRenderingTests(ITestOutputHelper output)
                 () => {
                     window.yhabPaints = [];
                     window.yhabRecording = true;
+                    window.yhabOverlayPainted = false;
+                    window.yhabBoardDisappeared = false;
+                    let boardAppeared = false;
                     const sample = () => {
                         const row = document.querySelector('.category-row');
                         const summary = document.querySelector('.budget-summary');
+                        const overlayVisible = [...document.querySelectorAll('#global-overlay .fluent-overlay-global')]
+                            .some(e => e.getBoundingClientRect().height > 0 && getComputedStyle(e).visibility === 'visible');
+                        window.yhabOverlayPainted ||= overlayVisible;
+                        if (boardAppeared && (!row || !summary)) window.yhabBoardDisappeared = true;
                         if (row && summary) {
+                            boardAppeared = true;
                             window.yhabPaints.push({
                                 x: row.getBoundingClientRect().x,
                                 y: row.getBoundingClientRect().y,
                                 height: row.getBoundingClientRect().height,
                                 summaryHeight: summary.getBoundingClientRect().height,
-                                rows: document.querySelectorAll('.category-row').length,
-                                overlayVisible: [...document.querySelectorAll('#global-overlay .fluent-overlay-global')]
-                                    .some(e => e.getBoundingClientRect().height > 0 && getComputedStyle(e).visibility === 'visible')
+                                rows: document.querySelectorAll('.category-row').length
                             });
                         }
                         if (window.yhabRecording) requestAnimationFrame(sample);
@@ -105,9 +111,11 @@ public sealed class NavigationRenderingTests(ITestOutputHelper output)
             var paints = await page.EvaluateAsync<double[][]>("() => { window.yhabRecording = false; return window.yhabPaints.map(p => [p.x, p.y, p.height, p.summaryHeight, p.rows]); }");
             (await page.EvaluateAsync<double>("performance.timeOrigin")).ShouldBe(origin);
             paints.Length.ShouldBeGreaterThan(1);
-            (await page.EvaluateAsync<bool>("window.yhabPaints.some(p => p.overlayVisible)")).ShouldBeFalse("the inactive provider spinner must never paint");
+            (await page.EvaluateAsync<bool>("window.yhabOverlayPainted")).ShouldBeFalse("the inactive provider spinner must never paint, including before the board appears");
+            (await page.EvaluateAsync<bool>("window.yhabBoardDisappeared")).ShouldBeFalse("the board must remain painted after its first appearance");
+            paints.Select(paint => paint[4]).Distinct().Count().ShouldBe(1, "category row counts must match exactly across all board frames");
             output.WriteLine(JsonSerializer.Serialize(paints));
-            for (var column = 0; column < 5; column++)
+            for (var column = 0; column < 4; column++)
             {
                 var values = paints.Select(paint => paint[column]).ToArray();
                 (values.Max() - values.Min()).ShouldBeLessThanOrEqualTo(1, $"first-paint geometry column {column} must remain stable");
@@ -137,7 +145,9 @@ public sealed class NavigationRenderingTests(ITestOutputHelper output)
                     () => {
                         window.yhabWrongBoard = false;
                         window.yhabOutgoingObserver = new MutationObserver(() => {
-                            if (document.querySelector('.budget-board')) window.yhabWrongBoard = true;
+                            if (document.querySelector('.budget-board') ||
+                                [...document.querySelectorAll('#main-content h1')].some(e => e.textContent.trim() === 'Plan your money'))
+                                window.yhabWrongBoard = true;
                         });
                         window.yhabOutgoingObserver.observe(document.getElementById('main-content'), { subtree: true, childList: true });
                     }
