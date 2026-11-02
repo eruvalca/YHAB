@@ -95,6 +95,41 @@ public sealed class WorkspaceTests
         }
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RecoveryRefreshNamesTheRecoveredCommandAfterAnAutomaticPostAsync(bool postFails)
+    {
+        await using var context = new BunitContext();
+        var (budgets, plan) = Configure(context);
+        var recovered = plan with { Version = 8 };
+        budgets.ReadViewAsync(plan.Id, Arg.Any<CancellationToken>())
+            .Returns(View(plan), View(recovered, due: true), View(recovered with { Version = 9 }));
+        budgets.ExecuteAsync(plan.Id, Arg.Any<PlanCommand>(), Arg.Any<CancellationToken>()).Returns(call =>
+            call.Arg<PlanCommand>() is PostRecurring && !postFails
+                ? Task.CompletedTask
+                : Task.FromException(new TaskCanceledException("HTTP timeout")));
+        var workspace = context.Render<Workspace>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+
+        // The Undo response is lost, leaving an uncertain write for Refresh plan to recover.
+        await Button(workspace, "Undo").ClickAsync();
+        workspace.Find("[role='alert']").TextContent.ShouldContain("Save status unknown");
+        await Button(workspace, "Refresh plan").ClickAsync();
+
+        // The recovered identity has to survive the automatic recurring post that belongs to
+        // the same refresh, or the board leaves an already-saved transaction draft open.
+        var undo = Commands(budgets).OfType<UndoChange>().Single();
+        await workspace.WaitForAssertionAsync(() =>
+            workspace.FindComponent<BudgetBoard>().Instance.RecoveredCommand.ShouldBeSameAs(undo));
+        if (postFails)
+        {
+            await Button(workspace, "Retry save safely").ClickAsync();
+            var posts = Commands(budgets).OfType<PostRecurring>().ToArray();
+            posts.Length.ShouldBe(2);
+            posts[1].ShouldBeSameAs(posts[0]);
+        }
+    }
+
     [Fact]
     public async Task HistoryAndShortcutsRenderAsSeparatePanelsAsync()
     {

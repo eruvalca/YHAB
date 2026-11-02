@@ -192,7 +192,7 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         }
         if (!token.IsCancellationRequested && postDue && generation == _requestGeneration && Snapshot is { } plan)
         {
-            await ExecuteAsync(new PostRecurring(plan.Version, plan.Today), externalRefresh: preserveDraft);
+            await ExecuteAsync(new PostRecurring(plan.Version, plan.Today), externalRefresh: preserveDraft, recovered: _recoveredCommand);
         }
     }
 
@@ -202,7 +202,7 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
     /// </summary>
     private Task ExecuteAsync(PlanCommand command) => ExecuteAsync(command, _operation.PreservesDraft && ReferenceEquals(command, _operation.Pending));
 
-    private async Task ExecuteAsync(PlanCommand command, bool externalRefresh)
+    private async Task ExecuteAsync(PlanCommand command, bool externalRefresh, PlanCommand? recovered = null)
     {
         if (_busy || (!_operation.CanEdit && !(_operation.CanRetry && ReferenceEquals(command, _operation.Pending))))
         {
@@ -214,7 +214,9 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
         var planId = PlanId;
         var generation = ++_requestGeneration;
         _applied = null;
-        _recoveredCommand = null;
+        // A command replaces the view, so the identity a refresh recovered is only carried
+        // forward by the automatic post that belongs to that same refresh.
+        _recoveredCommand = recovered;
         _operation = WorkspaceOperation.Start(command, externalRefresh);
         _error = null;
         try
