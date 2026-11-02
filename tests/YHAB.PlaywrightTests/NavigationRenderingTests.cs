@@ -14,6 +14,200 @@ namespace YHAB.PlaywrightTests;
 [Collection<BrowserAppHostDefinition>]
 public sealed class NavigationRenderingTests(ITestOutputHelper output)
 {
+    [Theory]
+    [InlineData("Server", 1280)]
+    [InlineData("WebAssembly", 1280)]
+    [InlineData("Server", 390)]
+    [InlineData("WebAssembly", 390)]
+    [Trait("Category", "BrowserSmoke")]
+    public async Task LeavingTransactionsNeverPaintsTheBudgetAndReturningFromSettingsKeepsGeometryAsync(string renderer, int width)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(5));
+        await using var builder = await TestAppHost.CreateAsync(timeout.Token);
+        await using var app = await builder.BuildAsync(timeout.Token);
+        await app.StartAsync(timeout.Token);
+        await app.ResourceNotifications.WaitForResourceHealthyAsync("yhab", timeout.Token);
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync();
+        await using var context = await browser.NewContextAsync(new()
+        {
+            BaseURL = app.GetEndpoint("yhab", "https").ToString(),
+            IgnoreHTTPSErrors = true,
+            ViewportSize = new() { Width = 1280, Height = 960 },
+            ServiceWorkers = ServiceWorkerPolicy.Block,
+        });
+        var runtime = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (string.Equals(renderer, "Server", StringComparison.Ordinal))
+        {
+            await context.RouteAsync("**/_framework/dotnet.native.*.wasm", async route =>
+            {
+                await runtime.Task.WaitAsync(timeout.Token);
+                await route.ContinueAsync();
+            });
+        }
+        await context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = true });
+        var page = await context.NewPageAsync();
+        var errors = new ConcurrentQueue<string>();
+        page.PageError += (_, error) => errors.Enqueue(error);
+        try
+        {
+            await BudgetWorkflowTests.RegisterAndLoginAsync(page);
+            await page.GetByRole(AriaRole.Link, new() { Name = "Open your plans" }).ClickAsync();
+            await page.GetByLabel("Plan name", new() { Exact = true }).FillAsync("Route handoff probe");
+            await page.GetByRole(AriaRole.Button, new() { Name = "Create your plan" }).ClickAsync();
+            await page.Locator(".workspace[data-interactive='true'][aria-busy='false']").WaitForAsync();
+            var planPath = new Uri(page.Url).AbsolutePath;
+            var origin = await page.EvaluateAsync<double>("performance.timeOrigin");
+            await BudgetWorkflowTests.AddAccountAsync(page);
+            if (string.Equals(renderer, "WebAssembly", StringComparison.Ordinal))
+            {
+                await page.WaitForFunctionAsync("() => Object.keys(localStorage).some(key => key.startsWith('blazor-resource-hash:'))");
+                // Auto selects the downloaded runtime on the next workspace mount.
+                await page.Locator(".plan-navigation").GetByRole(AriaRole.Link, new() { Name = "Reflect", Exact = true }).ClickAsync();
+                await page.GetByRole(AriaRole.Heading, new() { Name = "Reflect", Exact = true }).WaitForAsync();
+                await page.Locator($".plan-navigation a[href='{planPath}']").ClickAsync();
+            }
+            await page.Locator($".workspace[data-renderer='{renderer}'][data-interactive='true'][aria-busy='false']").WaitForAsync();
+            // Do not let a previously hidden onboarding panel masquerade as a route layout change.
+            var dismiss = page.Locator("fluent-button[aria-label='Dismiss getting started checklist']");
+            if (await dismiss.CountAsync() > 0) { await dismiss.ClickAsync(); }
+            await page.SetViewportSizeAsync(width, 960);
+            await page.Locator($".plan-frame a[href='{planPath}/settings']:visible").First.ClickAsync();
+            await page.GetByRole(AriaRole.Heading, new() { Name = "Plan settings", Exact = true }).WaitForAsync();
+            await page.EvaluateAsync("""
+                () => {
+                    window.yhabPaints = [];
+                    window.yhabRecording = true;
+                    window.yhabOverlayPainted = false;
+                    window.yhabBoardDisappeared = false;
+                    let boardAppeared = false;
+                    const sample = () => {
+                        const row = document.querySelector('.category-row');
+                        const summary = document.querySelector('.budget-summary');
+                        const overlayVisible = [...document.querySelectorAll('#global-overlay .fluent-overlay-global')]
+                            .some(e => e.getBoundingClientRect().height > 0 && getComputedStyle(e).visibility === 'visible');
+                        window.yhabOverlayPainted ||= overlayVisible;
+                        if (boardAppeared && (!row || !summary)) window.yhabBoardDisappeared = true;
+                        if (row && summary) {
+                            boardAppeared = true;
+                            window.yhabPaints.push({
+                                x: row.getBoundingClientRect().x,
+                                y: row.getBoundingClientRect().y,
+                                height: row.getBoundingClientRect().height,
+                                summaryHeight: summary.getBoundingClientRect().height,
+                                rows: document.querySelectorAll('.category-row').length
+                            });
+                        }
+                        if (window.yhabRecording) requestAnimationFrame(sample);
+                    };
+                    requestAnimationFrame(sample);
+                }
+                """);
+            await page.Locator($".plan-frame a[href='{planPath}']:visible").First.ClickAsync();
+            await page.Locator($".workspace[data-renderer='{renderer}'][data-interactive='true'][aria-busy='false']").WaitForAsync();
+            await page.Locator(".category-row").First.WaitForAsync();
+            await page.EvaluateAsync("() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))");
+            var paints = await page.EvaluateAsync<double[][]>("() => { window.yhabRecording = false; return window.yhabPaints.map(p => [p.x, p.y, p.height, p.summaryHeight, p.rows]); }");
+            (await page.EvaluateAsync<double>("performance.timeOrigin")).ShouldBe(origin);
+            paints.Length.ShouldBeGreaterThan(1);
+            (await page.EvaluateAsync<bool>("window.yhabOverlayPainted")).ShouldBeFalse("the inactive provider spinner must never paint, including before the board appears");
+            (await page.EvaluateAsync<bool>("window.yhabBoardDisappeared")).ShouldBeFalse("the board must remain painted after its first appearance");
+            paints.Select(paint => paint[4]).Distinct().Count().ShouldBe(1, "category row counts must match exactly across all board frames");
+            output.WriteLine(JsonSerializer.Serialize(paints));
+            for (var column = 0; column < 4; column++)
+            {
+                var values = paints.Select(paint => paint[column]).ToArray();
+                (values.Max() - values.Min()).ShouldBeLessThanOrEqualTo(1, $"first-paint geometry column {column} must remain stable");
+            }
+            // The pre-upgrade guard must not hide the provider's actual loading overlay.
+            await page.EvaluateAsync("document.querySelector('#global-overlay').shadowRoot.querySelector('dialog').showModal()");
+            (await page.Locator("#global-overlay fluent-spinner").IsVisibleAsync()).ShouldBeTrue();
+            await page.EvaluateAsync("document.querySelector('#global-overlay').shadowRoot.querySelector('dialog').close()");
+
+            var destinations = width < 1000
+                ? new[] { $"{planPath}/reports", $"{planPath}/settings" }
+                : new[] { $"{planPath}/reports", $"{planPath}/settings", "/plans", "/Account/Manage" };
+            foreach (var destination in destinations)
+            {
+                var destinationHeading = destination switch
+                {
+                    "/plans" => "Make room for what matters.",
+                    "/Account/Manage" => "Profile",
+                    _ when destination.EndsWith("/reports", StringComparison.Ordinal) => "Reflect",
+                    _ => "Plan settings",
+                };
+                await page.Locator($".plan-frame a[href='{planPath}/accounts']:visible").First.ClickAsync();
+                await page.GetByRole(AriaRole.Heading, new() { Name = "All transactions", Exact = true }).WaitForAsync();
+                await page.Locator(".register-results[aria-busy='false']").WaitForAsync();
+                var requested = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                await context.RouteAsync($"**{destination}", async route =>
+                {
+                    requested.TrySetResult();
+                    await release.Task.WaitAsync(timeout.Token);
+                    await route.ContinueAsync();
+                });
+                await page.EvaluateAsync("""
+                    () => {
+                        window.yhabWrongBoard = false;
+                        window.yhabOutgoingObserver = new MutationObserver(() => {
+                            if (document.querySelector('.budget-board') ||
+                                [...document.querySelectorAll('#main-content h1')].some(e => e.textContent.trim() === 'Plan your money'))
+                                window.yhabWrongBoard = true;
+                        });
+                        window.yhabOutgoingObserver.observe(document.getElementById('main-content'), { subtree: true, childList: true });
+                    }
+                    """);
+                try
+                {
+                    var link = page.Locator($".plan-frame a[href='{destination}']:visible").First;
+                    if (string.Equals(destination, "/Account/Manage", StringComparison.Ordinal))
+                    {
+                        await page.Locator("[data-navigation-toggle]").ClickAsync();
+                        link = page.GetByRole(AriaRole.Link, new() { Name = "Your account", Exact = true });
+                    }
+                    await link.ClickAsync();
+                    await requested.Task.WaitAsync(timeout.Token);
+                    await page.Locator("#navigation-progress[data-active='true']").WaitForAsync();
+                    (await page.Locator("#main-content h1").InnerTextAsync()).ShouldBe("All transactions");
+                    (await page.EvaluateAsync<bool>("window.yhabWrongBoard")).ShouldBeFalse(destination);
+                }
+                finally
+                {
+                    release.TrySetResult();
+                }
+                await page.WaitForURLAsync($"**{destination}");
+                await page.GetByRole(AriaRole.Heading, new() { Name = destinationHeading, Exact = true }).WaitForAsync();
+                await page.WaitForFunctionAsync("() => !document.querySelector('.register-results')");
+                (await page.EvaluateAsync<bool>("window.yhabWrongBoard")).ShouldBeFalse(destination);
+                await context.UnrouteAsync($"**{destination}");
+                if (destination.StartsWith(planPath, StringComparison.Ordinal))
+                {
+                    await page.GoBackAsync();
+                    await page.GetByRole(AriaRole.Heading, new() { Name = "All transactions", Exact = true }).WaitForAsync();
+                    await page.Locator(".register-results[aria-busy='false']").WaitForAsync();
+                    (await page.EvaluateAsync<bool>("window.yhabWrongBoard")).ShouldBeFalse("history must restore transactions without painting the budget");
+                    await page.GoForwardAsync();
+                    await page.GetByRole(AriaRole.Heading, new() { Name = destinationHeading, Exact = true }).WaitForAsync();
+                    await page.WaitForFunctionAsync("() => !document.querySelector('.register-results')");
+                    (await page.EvaluateAsync<bool>("window.yhabWrongBoard")).ShouldBeFalse("forward navigation must not paint the budget");
+                }
+                await page.EvaluateAsync("() => window.yhabOutgoingObserver.disconnect()");
+                await page.GotoAsync(planPath);
+                await page.Locator(".workspace[data-interactive='true'][aria-busy='false']").WaitForAsync();
+            }
+            errors.ShouldBeEmpty();
+        }
+        finally
+        {
+            runtime.TrySetResult();
+            await context.UnrouteAsync("**/_framework/dotnet.native.*.wasm");
+            var artifacts = Path.Combine(AppContext.BaseDirectory, "TestResults", $"route-handoff-{renderer}-{width}-{Guid.NewGuid():N}");
+            await BrowserArtifacts.CaptureAsync(page, context, artifacts, output.WriteLine);
+        }
+    }
+
     [Fact]
     [Trait("Category", "BrowserSmoke")]
     public async Task WorkspaceRemountPaintsImmediatelyAndSlowNavigationShowsProgressAsync()

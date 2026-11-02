@@ -257,7 +257,11 @@ Render boundaries are deliberate:
   inherit its renderer and scoped services for dialogs, toasts, tooltips, and key
   handling. Add providers inside other interactive pages/subtrees when needed,
   once per active renderer/service scope. The layout's `Body` never crosses an
-  interactive boundary.
+  interactive boundary. Shared CSS keeps dialog providers out of document flow
+  and the global overlay hidden until its shadow dialog exists. Enhanced
+  navigation can paint a registered custom element before that dialog is attached;
+  its inactive spinner must not flash or shift the page. The initialized dialog
+  remains visible when opened.
 - Static navigation has ordinary `Href` links with `tabindex="0"`, since Fluent's
   interactive roving-tabindex setup does not run in SSR. Shell links use Blazor's
   enhanced navigation: the server renders the destination and Blazor updates the
@@ -298,6 +302,12 @@ Render boundaries are deliberate:
   immediately after restoring, and an
   authorization or not-found response drops the cached copy. The actions status
   reads **Connecting…** until the renderer can accept input.
+  Its budget/register selection belongs to the current workspace route: an
+  outgoing transactions page stays a transactions page while reports, settings,
+  plan selection, or account management is being fetched. Report-derived register
+  filters remain attached to that outgoing view, preserving its rows and draft
+  until another workspace route is accepted. Route matching compares parsed plan
+  IDs so valid GUID URL formats select the same page.
 - Enhanced-navigation feedback is centralized in the shell. When a navigation is
   still pending after 250 ms, `MainLayout` shows a slim progress bar without fading
   the content. The bar survives DOM patches and finishes at

@@ -38,7 +38,10 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
     private AccountData? _editingAccount;
     private IJSObjectReference? _module;
     private DotNetObjectReference<Workspace>? _reference;
-    private bool IsRegister => AccountId.HasValue || new Uri(navigation.Uri).AbsolutePath.TrimEnd('/').EndsWith("/accounts", StringComparison.Ordinal);
+    private bool IsRegister { get; set; }
+    private Guid? _registerCategoryId;
+    private DateOnly? _registerFrom;
+    private DateOnly? _registerThrough;
     private string ActionStatus()
     {
         if (_error is not null) { return "Action needed"; }
@@ -54,7 +57,11 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
     {
         try
         {
-            await InvokeAsync(() => { if (!IsDisposed) { StateHasChanged(); } });
+            await InvokeAsync(() =>
+            {
+                if (IsDisposed || AccountId.HasValue) { return; }
+                if (UpdatePage(args.Location)) { StateHasChanged(); }
+            });
         }
         catch (Exception exception)
         {
@@ -64,6 +71,14 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
 
     protected override async Task OnParametersSetAsync()
     {
+        // A pending destination outside this workspace must not change the outgoing page.
+        if (UpdatePage(navigation.Uri))
+        {
+            _registerCategoryId = ReportCategoryId;
+            _registerFrom = ReportFrom;
+            _registerThrough = ReportThrough;
+        }
+        if (AccountId.HasValue) { IsRegister = true; }
         if (Snapshot?.Id != PlanId)
         {
             _requestGeneration++;
@@ -77,6 +92,20 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
             RestoreDisplay();
             await RefreshAsync();
         }
+    }
+
+    private bool UpdatePage(string location)
+    {
+        var segments = new Uri(location).AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (segments.Length is < 2 or > 4 ||
+            !string.Equals(segments[0], "plans", StringComparison.OrdinalIgnoreCase) ||
+            !Guid.TryParse(Uri.UnescapeDataString(segments[1]), out var planId) || planId != PlanId) { return false; }
+        if (segments.Length == 2) { IsRegister = false; return true; }
+        if (!string.Equals(segments[2], "accounts", StringComparison.OrdinalIgnoreCase)) { return false; }
+        if (segments.Length == 4 &&
+            (!Guid.TryParse(Uri.UnescapeDataString(segments[3]), out var accountId) || accountId != AccountId)) { return false; }
+        IsRegister = true;
+        return true;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
