@@ -731,6 +731,8 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         var add = Button(page, "+ Add transaction");
         await page.Locator(".register-results[aria-busy='false']").WaitForAsync();
         (await page.Locator(".add-transaction-dock").EvaluateAsync<string>("dock => getComputedStyle(dock).position")).ShouldBe("fixed");
+        // Both screens dock the same action, so the shortcut keeps the same appearance on each.
+        (await add.EvaluateAsync<string?>("button => button.getAttribute('appearance')")).ShouldBe("primary");
         var docked = (await add.BoundingBoxAsync()).ShouldNotBeNull();
         var viewport = await page.EvaluateAsync<int>("innerHeight");
         docked.Y.ShouldBeGreaterThan(viewport / 2f);
@@ -738,6 +740,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         // A floating primary action has to stay a touch target rather than fall
         // back to the shared 40px standard button.
         docked.Height.ShouldBeGreaterThanOrEqualTo(44);
+        (await HasOpaqueFillAsync(add)).ShouldBeTrue("the docked shortcut must have an opaque fill");
         await page.EvaluateAsync("() => window.scrollBy({ top: 600, behavior: 'instant' })");
         var scrolled = (await add.BoundingBoxAsync()).ShouldNotBeNull();
         Math.Abs(scrolled.Y - docked.Y).ShouldBeLessThan(1);
@@ -760,23 +763,15 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
     // require a detour through the transactions page first.
     private static async Task VerifyPlanBoardAddTransactionAsync(IPage page)
     {
-        var add = Button(page, "Add transaction");
+        var add = Button(page, "+ Add transaction");
         if (await page.EvaluateAsync<int>("innerWidth") < 1000)
         {
-            // Docking keeps the sticky summary from growing a fourth action row.
+            // Docking keeps the sticky summary from growing a fourth action row, and the
+            // shortcut has to match the one the transactions page docks.
             (await add.EvaluateAsync<string>("button => getComputedStyle(button).position")).ShouldBe("fixed");
-            // A floating action must read as a surface, not a window onto the rows it covers.
-            (await add.EvaluateAsync<string>("button => getComputedStyle(button).backgroundColor"))
-                .ShouldBe(await page.EvaluateAsync<string>("""
-                    () => {
-                        const probe = document.createElement('div');
-                        probe.style.background = 'var(--colorNeutralBackground1)';
-                        document.body.append(probe);
-                        const fill = getComputedStyle(probe).backgroundColor;
-                        probe.remove();
-                        return fill;
-                    }
-                    """));
+            (await add.EvaluateAsync<string?>("button => button.getAttribute('appearance')")).ShouldBe("primary");
+            // Both screens dock the same action, so the shortcut must look the same on each.
+            (await HasOpaqueFillAsync(add)).ShouldBeTrue("the docked shortcut must have an opaque fill");
         }
         await add.ClickAsync();
         await VerifyEditorFocusAsync(page);
@@ -842,6 +837,19 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await cancel.ClickAsync();
         await page.WaitForFunctionAsync("() => !document.querySelector('.editor-surface')");
     }
+
+    // Fluent paints the button face inside its shadow root, so read the control a
+    // person actually sees rather than the host element. Only a fully opaque alpha
+    // proves the list behind the dock cannot show through it.
+    private static Task<bool> HasOpaqueFillAsync(ILocator button) =>
+        button.EvaluateAsync<bool>("""
+            button => {
+                const control = button.shadowRoot?.querySelector('[part="control"]') ?? button;
+                const fill = getComputedStyle(control).backgroundColor;
+                const alpha = fill.startsWith('rgb(') ? 1 : Number.parseFloat(fill.slice(fill.lastIndexOf(',') + 1));
+                return alpha === 1;
+            }
+            """);
 
     private static async Task VerifyRegisterAlignmentAsync(IPage page)
     {
