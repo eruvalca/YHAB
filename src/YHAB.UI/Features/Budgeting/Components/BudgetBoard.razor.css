@@ -58,6 +58,10 @@ h1 { margin: 0; font-size: var(--yh-font-title-compact); line-height: 1.25; }
            shell's 1000 overlays, so a drawer or dialog still covers this. */
         z-index: 900;
         min-height: var(--yh-control-touch);
+        /* An outline button has no fill, so a floating one shows the rows it covers
+           through its face. Dock it on an opaque surface rounded to its corners. */
+        background: var(--colorNeutralBackground1);
+        border-radius: var(--borderRadiusMedium);
         box-shadow: var(--shadow16);
     }
     /* The open editor owns the screen; a floating quick add would cover its form. */

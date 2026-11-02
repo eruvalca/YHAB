@@ -765,6 +765,18 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         {
             // Docking keeps the sticky summary from growing a fourth action row.
             (await add.EvaluateAsync<string>("button => getComputedStyle(button).position")).ShouldBe("fixed");
+            // A floating action must read as a surface, not a window onto the rows it covers.
+            (await add.EvaluateAsync<string>("button => getComputedStyle(button).backgroundColor"))
+                .ShouldBe(await page.EvaluateAsync<string>("""
+                    () => {
+                        const probe = document.createElement('div');
+                        probe.style.background = 'var(--colorNeutralBackground1)';
+                        document.body.append(probe);
+                        const fill = getComputedStyle(probe).backgroundColor;
+                        probe.remove();
+                        return fill;
+                    }
+                    """));
         }
         await add.ClickAsync();
         await VerifyEditorFocusAsync(page);
