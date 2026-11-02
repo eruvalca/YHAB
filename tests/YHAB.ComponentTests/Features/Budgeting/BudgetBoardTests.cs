@@ -555,6 +555,41 @@ public sealed class BudgetBoardTests
         component.FindAll(".editor-surface fluent-text-input")[0].GetAttribute("value").ShouldBe("Corner shop");
     }
 
+    [Fact]
+    public async Task BoardEditorsCloseEachOthersEntryPointsAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var plan = CreatePlan();
+        var component = context.Render<BudgetBoard>(parameters => parameters.Add(item => item.Plan, plan)
+            .Add(item => item.OnCommand, _ => { })
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Add transaction", StringComparison.Ordinal)).ClickAsync();
+
+        // Switching editors would drop the open draft without its discard prompt, so the
+        // other entry point closes instead. The dock steps aside for any board editor, so
+        // it cannot cover that editor's own save actions on a phone.
+        SummaryButton(component, "Move money").HasAttribute("disabled").ShouldBeTrue();
+        SummaryButton(component, "Add transaction").HasAttribute("disabled").ShouldBeTrue();
+        component.Find("#move-money-hint").TextContent.ShouldBe("Finish or close the open editor first.");
+        component.Find(".board-add-transaction").GetAttribute("class").ShouldBe("board-add-transaction is-editing");
+
+        await component.Find("fluent-button[aria-label='Close editor']").ClickAsync();
+        SummaryButton(component, "Move money").HasAttribute("disabled").ShouldBeFalse();
+
+        // The same holds in the other direction for a category draft.
+        await component.Find(".category-row .category-link").ClickAsync();
+        SummaryButton(component, "Add transaction").HasAttribute("disabled").ShouldBeTrue();
+        component.Find(".board-add-transaction").GetAttribute("class").ShouldBe("board-add-transaction is-editing");
+    }
+
+    private static AngleSharp.Dom.IElement SummaryButton(IRenderedComponent<BudgetBoard> component, string label) =>
+        component.Find(".summary-actions").QuerySelectorAll("fluent-button")
+            .First(item => item.TextContent.Contains(label, StringComparison.Ordinal));
+
     private static PlanSnapshot CreatePlan()
     {
         var today = new DateOnly(2026, 10, 2);

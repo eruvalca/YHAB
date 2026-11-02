@@ -59,8 +59,12 @@ public sealed partial class BudgetBoard
     // sticky summary steps aside instead of covering it.
     private bool IsEditing => _transaction || _move || _category is not null;
     // A phone keeps the sticky summary on screen, so this action docks to the
-    // viewport instead of adding a row that would shrink the category table.
-    private string AddTransactionClass => _transaction ? "board-add-transaction is-editing" : "board-add-transaction";
+    // viewport instead of adding a row that would shrink the category table, and
+    // it steps aside for every board editor so it cannot cover their actions.
+    private string AddTransactionClass => IsEditing ? "board-add-transaction is-editing" : "board-add-transaction";
+    // Switching editors would drop the other editor's draft without its discard
+    // prompt, so each entry point stays closed while one is already open.
+    private string? TransactionHint => IsEditing ? "Finish or close the open editor first." : null;
     private bool HasFundableNeed => _budget.Categories.Any(item =>
         !item.Snoozed && !item.Category.Hidden
         && !Plan.Groups.Any(group => group.Id == item.Category.GroupId && group.Hidden)
@@ -99,7 +103,9 @@ public sealed partial class BudgetBoard
             return HasFundableNeed ? null : "Every target is funded, hidden, or snoozed. Nothing to fund this month.";
         }
     }
-    private string? MoveMoneyHint => Plan.Categories.Count == 0 ? "Add at least one category before moving money." : null;
+    private string? MoveMoneyHint => Plan.Categories.Count == 0
+        ? "Add at least one category before moving money."
+        : TransactionHint;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -186,8 +192,8 @@ public sealed partial class BudgetBoard
     // rather than a detour through the transactions page.
     private async Task ShowTransactionAsync()
     {
-        if (!HasOpenAccounts) { return; }
-        CloseEditors();
+        // Opening a second editor would discard the open draft without its discard prompt.
+        if (!HasOpenAccounts || IsEditing) { return; }
         _transaction = true;
         if (LoadPayees is null || (_payees is not null && _payeesVersion == Plan.Version)) { return; }
 

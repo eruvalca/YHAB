@@ -27,12 +27,13 @@
                     }
                     @if (HasOpenAccounts)
                     {
-                        <FluentButton Class="@AddTransactionClass" OnClick="ShowTransactionAsync" Disabled="IsBusy" Size="ButtonSize.Small" Appearance="ButtonAppearance.Outline">Add transaction</FluentButton>
+                        <FluentButton Class="@AddTransactionClass" OnClick="ShowTransactionAsync" Disabled="@(IsBusy || TransactionHint is not null)" Size="ButtonSize.Small" Appearance="ButtonAppearance.Outline" title="@TransactionHint" aria-describedby="@(TransactionHint is null ? null : "add-transaction-hint")">Add transaction</FluentButton>
                     }
                     <FluentButton OnClick="ShowHelpAsync" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle">How this works</FluentButton>
                 </FluentStack>
                 @if (HasAccounts && FundTargetsHint is not null) { <p class="action-hint muted" id="fund-targets-hint">@FundTargetsHint</p> }
                 @if (HasAccounts && MoveMoneyHint is not null) { <p class="action-hint muted" id="move-money-hint">@MoveMoneyHint</p> }
+                @if (HasOpenAccounts && TransactionHint is not null) { <p class="action-hint muted" id="add-transaction-hint">@TransactionHint</p> }
             </div>
         </FluentStack>
         <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalL)" VerticalGap="var(--spacingVerticalXS)" Class="budget-totals">
