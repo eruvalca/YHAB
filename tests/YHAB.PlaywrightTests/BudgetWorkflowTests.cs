@@ -839,13 +839,15 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
     }
 
     // Fluent paints the button face inside its shadow root, so read the control a
-    // person actually sees rather than the host element.
+    // person actually sees rather than the host element. Only a fully opaque alpha
+    // proves the list behind the dock cannot show through it.
     private static Task<bool> HasOpaqueFillAsync(ILocator button) =>
         button.EvaluateAsync<bool>("""
             button => {
                 const control = button.shadowRoot?.querySelector('[part="control"]') ?? button;
                 const fill = getComputedStyle(control).backgroundColor;
-                return fill !== 'transparent' && !fill.startsWith('rgba(0, 0, 0, 0');
+                const alpha = fill.startsWith('rgb(') ? 1 : Number.parseFloat(fill.slice(fill.lastIndexOf(',') + 1));
+                return alpha === 1;
             }
             """);
 
