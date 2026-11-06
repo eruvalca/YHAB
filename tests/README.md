@@ -398,20 +398,20 @@ SSR-to-interactive handoff or SignalR transport.
 Existing stack selected September 26, 2026; infrastructure/browser additions
 verified October 2, 2026; all versions re-verified against the repository
 manifests (`Directory.Packages.props`, `global.json`) and the extension baseline
-on October 14, 2026:
+on November 5, 2026:
 
 | Component | Version |
 | --- | --- |
 | .NET SDK | 10.0.401 |
-| bunit (component project only) | 2.11.3 |
+| bunit (component project only) | 2.13.3 |
 | xunit.v3.core.mtp-v2 | 4.0.2 |
 | Shouldly | 4.3.0 |
-| TngTech.ArchUnitNET (unit project only) | 0.13.4 |
+| TngTech.ArchUnitNET (unit project only) | 0.13.5 |
 | NSubstitute (account tests) | 6.2.0 |
 | NSubstitute.Analyzers.CSharp | 1.0.17 |
 | Bogus (locally seeded fake data) | 35.6.5 |
-| Microsoft.Testing.Platform / Platform.MSBuild | 2.5.1 |
-| Microsoft.Testing.Extensions.TrxReport | 2.5.1 |
+| Microsoft.Testing.Platform / Platform.MSBuild | 2.5.2 |
+| Microsoft.Testing.Extensions.TrxReport | 2.5.2 |
 | Microsoft.Testing.Extensions.CodeCoverage | 18.12.0 |
 | xunit.analyzers | 2.2.0 |
 | Aspire.Hosting.Testing (matches AppHost) | 13.6.4 |
@@ -420,8 +420,8 @@ on October 14, 2026:
 | C# Dev Kit (stable baseline) | 3.40.210 |
 
 Package versions are centralized in `Directory.Packages.props`. Explicit MTP
-runtime and MSBuild references advance xUnit's transitive 2.4.0 dependencies to
-2.4.1. Test package references use `PrivateAssets="all"`. All test projects
+runtime and MSBuild references advance xUnit's transitive 2.5.1 dependencies to
+2.5.2. Test package references use `PrivateAssets="all"`. All test projects
 reference xUnit's core MTP package, which supplies the framework and runner
 without `xunit.v3.assert`; xUnit analyzers remain included by the root build props.
 NSubstitute usage is also checked by a test-only analyzer reference in the shared
