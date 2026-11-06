@@ -28,7 +28,10 @@ internal static class DeploymentMigrations
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromMinutes(15));
 
-        var start = await job.StartAsync(WaitUntil.Completed, cancellationToken: timeout.Token);
+        // Passing no execution template keeps this a plain trigger of the deployed job definition.
+        // Azure requires Microsoft.App/jobs/write for starts that override containers or initContainers,
+        // and an empty override array still counts as an override.
+        var start = await job.StartAsync(WaitUntil.Completed, template: null, cancellationToken: timeout.Token);
         var executionName = start.Value.Name;
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
         do
