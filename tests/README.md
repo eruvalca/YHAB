@@ -768,6 +768,11 @@ Playwright uses `Microsoft.Playwright` directly with our xUnit core MTP runner a
 Shouldly. Do not add a runner integration that brings VSTest or xUnit assertions
 back into the solution. Locator actions auto-wait; await observable readiness
 with locators before asserting values with Shouldly. Do not use `WaitForTimeout`.
+Plan links use enhanced navigation, so the outgoing page keeps its interactive
+workspace, including shared actions such as "+ Add transaction", while the
+replacement loads, and clicks are dropped until `enhancedload` fires. Wait for
+that event (through `Blazor.addEventListener`) plus a destination-only locator
+before interacting, rather than a bare `.workspace[data-interactive='true']`.
 Each navigation case attempts to retain `page.png` and `trace.zip` independently
 in a unique `bin/<configuration>/net10.0/TestResults/navigation-*` directory.
 Artifact capture is best effort: failures are reported through xUnit test output
