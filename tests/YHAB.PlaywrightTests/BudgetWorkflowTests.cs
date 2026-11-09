@@ -389,6 +389,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             IgnoreHTTPSErrors = true,
             ViewportSize = new() { Width = 1440, Height = 960 },
         });
+        await context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = true });
         var page = await context.NewPageAsync();
         var errors = new ConcurrentQueue<string>();
         page.PageError += (_, error) => errors.Enqueue(error);
@@ -398,8 +399,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             await CreatePlanAsync(page);
             await AddAccountAsync(page);
             await OpenPlanNavigationAsync(page);
-            await page.GetByRole(AriaRole.Link, new() { Name = "All transactions", Exact = true }).ClickAsync();
-            await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+            await NavigateToRegisterAsync(page);
 
             // Page actions follow the heading in DOM order for assistive technology.
             (await page.EvaluateAsync<bool>("""
@@ -462,8 +462,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
     private static async Task PurchaseAsync(IPage page, int width)
     {
         await OpenPlanNavigationAsync(page);
-        await page.GetByRole(AriaRole.Link, new() { Name = "All transactions", Exact = true }).ClickAsync();
-        await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+        await NavigateToRegisterAsync(page);
         await VerifyRegisterAlignmentAsync(page);
         var docked = await VerifyFloatingAddTransactionAsync(page, width);
         await Button(page, "+ Add transaction").ClickAsync();
@@ -589,6 +588,26 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         {
             await summary.ClickAsync();
         }
+    }
+
+    // Plan links use enhanced navigation, so the outgoing page stays interactive until the
+    // replacement is patched in, and the board renders the same "+ Add transaction" action.
+    // enhancedload marks that patch as complete; clicking before it arrives is dropped along
+    // with the page it landed on. The register's own heading then proves the new page is live.
+    private static async Task NavigateToRegisterAsync(IPage page)
+    {
+        await page.EvaluateAsync<string>("""
+            () => {
+                window.yhabEnhancedLoads = 0;
+                Blazor.addEventListener('enhancedload', () => { window.yhabEnhancedLoads++; });
+                return 'armed';
+            }
+            """);
+        await page.GetByRole(AriaRole.Link, new() { Name = "All transactions", Exact = true }).ClickAsync();
+        await page.WaitForFunctionAsync("() => window.yhabEnhancedLoads > 0");
+        await page.Locator(".workspace[data-interactive='true']")
+            .GetByRole(AriaRole.Heading, new() { Name = "All transactions", Exact = true })
+            .WaitForAsync();
     }
 
     private static async Task VerifyWheelScrollingAsync(IPage page)
