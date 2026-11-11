@@ -20,13 +20,13 @@ runs:
       run: |
         # The runner image often already provides these; only run apt when the
         # dry run reports a missing package.
-        pwsh -NoProfile -File ./tests/YHAB.PlaywrightTests/bin/Release/net10.0/playwright.ps1 install-deps --dry-run chromium
+        pwsh -NoProfile -File ./tests/YHAB.PlaywrightTests/bin/Release/net11.0/playwright.ps1 install-deps --dry-run chromium
         if ($LASTEXITCODE -eq 0) { 'missing=false' >> $env:GITHUB_OUTPUT } else { 'missing=true' >> $env:GITHUB_OUTPUT }
         exit 0
     - name: Install Chromium OS dependencies
       if: steps.chromium-dependencies.outputs.missing == 'true'
       shell: pwsh
-      run: ./tests/YHAB.PlaywrightTests/bin/Release/net10.0/playwright.ps1 install-deps chromium
+      run: ./tests/YHAB.PlaywrightTests/bin/Release/net11.0/playwright.ps1 install-deps chromium
     - name: Install Chromium
       shell: pwsh
-      run: ./tests/YHAB.PlaywrightTests/bin/Release/net10.0/playwright.ps1 install chromium
+      run: ./tests/YHAB.PlaywrightTests/bin/Release/net11.0/playwright.ps1 install chromium

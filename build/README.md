@@ -2,9 +2,9 @@
 
 ## .NET SDK
 
-`global.json` selects the highest installed stable .NET 10.0 SDK at or above
-10.0.401 (`rollForward: latestFeature`, `allowPrerelease: false`). Later feature
-bands within 10.0 are allowed; a compatible SDK must be installed separately.
+`global.json` selects the highest installed stable .NET 11.0 SDK at or above
+11.0.100 (`rollForward: latestFeature`, `allowPrerelease: false`). Later feature
+bands within 11.0 are allowed; a compatible SDK must be installed separately.
 This selects build tooling rather than changing the projects' target framework.
 SDK updates also update the compiler, built-in analyzers, and Razor parser used by
 the code-behind validator. Run the solution build and Razor policy checks after
@@ -652,15 +652,12 @@ receive the accessibility check. Other required public contracts use a type-leve
 `SuppressMessage` with a specific `Justification`: `PasskeyOperation` stays public
 because it is the type of the public `PasskeySubmit.Operation` parameter.
 
-The .NET 10.0.401 SDK analyzer misidentifies C# 14 extension blocks as public
-types and reports CA1515 without a source location. Type-level suppressions cannot
-attach to those diagnostics. `AnalyzerCompatibility.globalconfig`, included by
-`Directory.Build.props`, disables the fallback severity: the existing
-`.editorconfig` source-file CA1515 warning takes precedence, so ordinary public
-types still fail the build. Isolated compiler probes verified both cases.
-This approved workaround suppresses all unlocated CA1515 diagnostics, not just
-extension-block false positives. Recheck it after SDK updates and remove it once
-extension-block analysis is fixed. See Microsoft's
+The .NET 10.0.401 SDK analyzer misidentified C# 14 extension blocks as public
+types and reported CA1515 without a source location, so a global fallback in
+`AnalyzerCompatibility.globalconfig` suppressed unlocated CA1515 diagnostics. The
+.NET 11 SDK resolves that false positive: a full solution build without the
+fallback reports no CA1515 diagnostics, so the fallback and its include were
+removed and `.editorconfig` severity is the only authority. See Microsoft's
 [analyzer configuration precedence](https://learn.microsoft.com/dotnet/fundamentals/code-analysis/configuration-files#precedence).
 
 The public service-defaults `Extensions` container has a justified CA1034

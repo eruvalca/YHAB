@@ -71,7 +71,9 @@ internal sealed class ServerBudgetClient(BudgetStore store, BudgetQueries querie
     private async Task<string> OwnerAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+#pragma warning disable BL0013 // This per-operation service reads the circuit's current state and caches nothing; RevalidatingServerAuthenticationStateProvider refreshes that shared state on revalidation.
         var state = await authentication.GetAuthenticationStateAsync();
+#pragma warning restore BL0013
         cancellationToken.ThrowIfCancellationRequested();
         return state.User.Identity?.IsAuthenticated == true
             ? state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new BudgetRequestException(401, "Please sign in again.")

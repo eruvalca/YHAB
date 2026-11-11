@@ -45,7 +45,7 @@ public sealed class IdentityEndpointExtensionsTests
             endpoint.Metadata.GetMetadata<HttpMethodMetadata>().ShouldNotBeNull().HttpMethods.ShouldBe([HttpMethods.Post]);
             endpoint.Metadata.ShouldContain(marker);
             var requiresAuthorization = endpoint.RoutePattern.RawText!.StartsWith("/Account/Manage/", StringComparison.Ordinal);
-            endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Any().ShouldBe(requiresAuthorization);
+            (endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Count > 0).ShouldBe(requiresAuthorization);
         }
     }
 

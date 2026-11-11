@@ -74,8 +74,9 @@ internal static class BrowserMemory
                 {
                     var chunk = (await session.SendAsync("IO.read", new(StringComparer.Ordinal) { ["handle"] = stream }).WaitAsync(TimeSpan.FromSeconds(30), Xunit.TestContext.Current.CancellationToken)).ShouldNotBeNull();
                     var data = chunk.GetProperty("data").GetString().ShouldNotBeNull();
-                    await writer.WriteAsync(chunk.TryGetProperty("base64Encoded", out var encoded) && encoded.GetBoolean()
-                        ? System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(data)) : data);
+                    var text = chunk.TryGetProperty("base64Encoded", out var encoded) && encoded.GetBoolean()
+                        ? System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(data)) : data;
+                    await writer.WriteAsync(text.AsMemory(), Xunit.TestContext.Current.CancellationToken);
                     if (chunk.GetProperty("eof").GetBoolean()) { break; }
                 }
             }

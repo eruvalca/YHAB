@@ -118,7 +118,6 @@ app.Use(async (context, next) =>
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.UseWebAssemblyDebugging();
     app.UseMigrationsEndPoint();
     app.MapOpenApi().RequireAuthorization();
 }

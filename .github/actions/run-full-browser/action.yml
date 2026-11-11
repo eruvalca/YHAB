@@ -31,7 +31,7 @@ runs:
       with:
         name: browser-diagnostics-full
         path: |
-          tests/YHAB.PlaywrightTests/bin/Release/net10.0/TestResults/**/trace.zip
-          tests/YHAB.PlaywrightTests/bin/Release/net10.0/TestResults/**/*.png
+          tests/YHAB.PlaywrightTests/bin/Release/net11.0/TestResults/**/trace.zip
+          tests/YHAB.PlaywrightTests/bin/Release/net11.0/TestResults/**/*.png
         retention-days: 7
         if-no-files-found: warn

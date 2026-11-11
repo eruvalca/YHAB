@@ -1,6 +1,6 @@
 # Testing
 
-All five test projects target .NET 10 and use xUnit with native
+All five test projects target .NET 11 and use xUnit with native
 Microsoft.Testing.Platform (MTP) integration. Open the repository root so both
 the CLI and editor find `global.json` and `YHAB.slnx`.
 
@@ -398,11 +398,11 @@ SSR-to-interactive handoff or SignalR transport.
 Existing stack selected September 26, 2026; infrastructure/browser additions
 verified October 2, 2026; all versions re-verified against the repository
 manifests (`Directory.Packages.props`, `global.json`) and the extension baseline
-on November 5, 2026:
+on November 5, 2026; stack updated for the .NET 11 migration on November 11, 2026:
 
 | Component | Version |
 | --- | --- |
-| .NET SDK | 10.0.401 |
+| .NET SDK | 11.0.100 |
 | bunit (component project only) | 2.13.3 |
 | xunit.v3.core.mtp-v2 | 4.0.2 |
 | Shouldly | 4.3.0 |
@@ -414,7 +414,7 @@ on November 5, 2026:
 | Microsoft.Testing.Extensions.TrxReport | 2.5.2 |
 | Microsoft.Testing.Extensions.CodeCoverage | 18.12.0 |
 | xunit.analyzers | 2.2.0 |
-| Aspire.Hosting.Testing (matches AppHost) | 13.6.4 |
+| Aspire.Hosting.Testing (matches AppHost) | 13.6.5 |
 | Testcontainers.PostgreSql | 4.16.0 |
 | Microsoft.Playwright | 1.64.1 |
 | C# Dev Kit (stable baseline) | 3.40.210 |
@@ -438,7 +438,7 @@ server project. The server also grants `DynamicProxyGenAssembly2` internal acces
 so NSubstitute can proxy Identity dependencies closed over the internal
 `ApplicationUser` type.
 
-`global.json` selects native .NET 10 MTP mode. Do not add VSTest packages
+`global.json` selects native MTP mode. Do not add VSTest packages
 (`Microsoft.NET.Test.Sdk`, `xunit.runner.visualstudio`) or the legacy
 `TestingPlatformDotnetTestSupport` bridge to these projects. bUnit provides the
 component renderer and comparison tools; xUnit and MTP provide discovery and
@@ -468,7 +468,7 @@ dotnet test --project tests/YHAB.UnitTests/YHAB.UnitTests.csproj
 dotnet test --project tests/YHAB.ComponentTests/YHAB.ComponentTests.csproj
 
 # Install after building; repeat after updating Microsoft.Playwright.
-pwsh ./tests/YHAB.PlaywrightTests/bin/Debug/net10.0/playwright.ps1 install chromium
+pwsh ./tests/YHAB.PlaywrightTests/bin/Debug/net11.0/playwright.ps1 install chromium
 dotnet test --project tests/YHAB.IntegrationTests/YHAB.IntegrationTests.csproj
 dotnet test --project tests/YHAB.AspireIntegrationTests/YHAB.AspireIntegrationTests.csproj
 dotnet test --project tests/YHAB.PlaywrightTests/YHAB.PlaywrightTests.csproj
@@ -610,7 +610,7 @@ these containers. This project does not verify AppHost wiring or browser behavio
 Use **Aspire integration tests** when the subject is the assembled application:
 resource references, connection injection, migrations before web startup, readiness,
 service discovery and HTTP contracts across process boundaries. These use
-`Aspire.Hosting.Testing` 13.6.4, matching the AppHost rather than independently
+`Aspire.Hosting.Testing` 13.6.5, matching the AppHost rather than independently
 upgrading its testing package. The initial test waits for the real web health
 check and migration completion, then checks health, liveness, Home and Login.
 Aspire starts actual processes, so test DI does not replace services in the web
@@ -774,7 +774,7 @@ replacement loads, and clicks are dropped until `enhancedload` fires. Wait for
 that event (through `Blazor.addEventListener`) plus a destination-only locator
 before interacting, rather than a bare `.workspace[data-interactive='true']`.
 Each navigation case attempts to retain `page.png` and `trace.zip` independently
-in a unique `bin/<configuration>/net10.0/TestResults/navigation-*` directory.
+in a unique `bin/<configuration>/net11.0/TestResults/navigation-*` directory.
 Artifact capture is best effort: failures are reported through xUnit test output
 and do not replace the original test failure or prevent the other capture attempt.
 `BrowserArtifactsTests` checks closed-page and unwritable-directory failures;
@@ -885,6 +885,12 @@ repository's matching code-behind policy.
 bUnit tests run in process without starting Aspire, a web server, or a browser.
 They verify component behavior, not browser layout, real JavaScript execution, or
 server/WebAssembly render-mode transitions; those need browser-level tests.
+
+In ASP.NET Core 11, `ValidationSummary` and `ValidationMessage` emit client-side
+validation placeholder containers (`data-valmsg-summary`/`data-valmsg-for`) with a
+`hidden` attribute even when no messages exist. Assert absence with `:not([hidden])`
+(for example `.validation-message:not([hidden])`) rather than matching the class
+alone.
 
 Tests rendering Fluent components register `AddFluentUIComponents()` in their
 own context. `ConfigureAccount` also registers these services and strictly stubs

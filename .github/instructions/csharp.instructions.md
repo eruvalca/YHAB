@@ -94,4 +94,5 @@ distinguishes complete success from partial completion.
   and factories on types we own; do not convert every static helper.
 - Follow the [C# extension members skill](../../.agents/skills/csharp-extension-members/SKILL.md)
   for receiver/generic rules, migration checks, and compiled examples. Keep this
-  repository on C# 14; do not copy preview extension indexers or SDK settings.
+  repository on the language version its target framework selects (C# 15 for
+  `net11.0`); do not copy preview-only features or SDK settings.

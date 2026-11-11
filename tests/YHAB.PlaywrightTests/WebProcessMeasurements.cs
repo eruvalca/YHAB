@@ -38,7 +38,7 @@ internal sealed class WebProcessMeasurements(Process[] processes, string[] resou
                 var arguments = JsonSerializer.SerializeToElement(resource.Snapshot.Properties.Single(item => string.Equals(item.Name, "executable.args", StringComparison.Ordinal)).Value);
                 arguments.EnumerateArray().Select(item => item.GetString()).ShouldContain(value => string.Equals(value, configuration, StringComparison.Ordinal));
                 var ids = await ChildIdsAsync(parent, token);
-                var expected = Path.Combine(Path.GetDirectoryName(projectPath)!, "bin", configuration, "net10.0", OperatingSystem.IsWindows() ? "YHAB.exe" : "YHAB");
+                var expected = Path.Combine(Path.GetDirectoryName(projectPath)!, "bin", configuration, "net11.0", OperatingSystem.IsWindows() ? "YHAB.exe" : "YHAB");
                 var matches = new List<int>();
                 foreach (var id in ids)
                 {
