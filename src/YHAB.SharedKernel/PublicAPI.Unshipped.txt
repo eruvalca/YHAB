@@ -1,0 +1,1116 @@
+#nullable enable
+abstract YHAB.SharedKernel.Budgeting.PlanCommand.<Clone>$() -> YHAB.SharedKernel.Budgeting.PlanCommand!
+const YHAB.SharedKernel.Budgeting.AmountExpression.MaximumAmount = 999999999.99 -> decimal
+const YHAB.SharedKernel.Budgeting.HistoryPolicy.Capacity = 50 -> int
+const YHAB.SharedKernel.Budgeting.RecurrencePlanner.BatchSize = 128 -> int
+override sealed YHAB.SharedKernel.Budgeting.AssignMoney.Equals(YHAB.SharedKernel.Budgeting.PlanCommand? other) -> bool
+override sealed YHAB.SharedKernel.Budgeting.AutoAssign.Equals(YHAB.SharedKernel.Budgeting.PlanCommand? other) -> bool
+override sealed YHAB.SharedKernel.Budgeting.DeleteTransactions.Equals(YHAB.SharedKernel.Budgeting.PlanCommand? other) -> bool
+override sealed YHAB.SharedKernel.Budgeting.MoveMoney.Equals(YHAB.SharedKernel.Budgeting.PlanCommand? other) -> bool
+override sealed YHAB.SharedKernel.Budgeting.PostRecurring.Equals(YHAB.SharedKernel.Budgeting.PlanCommand? other) -> bool
+override sealed YHAB.SharedKernel.Budgeting.RedoChange.Equals(YHAB.SharedKernel.Budgeting.PlanCommand? other) -> bool
+override sealed YHAB.SharedKernel.Budgeting.RemoveCategory.Equals(YHAB.SharedKernel.Budgeting.PlanCommand? other) -> bool
+override sealed YHAB.SharedKernel.Budgeting.RenamePayee.Equals(YHAB.SharedKernel.Budgeting.PlanCommand? other) -> bool
+override sealed YHAB.SharedKernel.Budgeting.ReorderCategory.Equals(YHAB.SharedKernel.Budgeting.PlanCommand? other) -> bool
+override sealed YHAB.SharedKernel.Budgeting.ReorderGroup.Equals(YHAB.SharedKernel.Budgeting.PlanCommand? other) -> bool
+override sealed YHAB.SharedKernel.Budgeting.SaveAccount.Equals(YHAB.SharedKernel.Budgeting.PlanCommand? other) -> bool
+override sealed YHAB.SharedKernel.Budgeting.SaveCategory.Equals(YHAB.SharedKernel.Budgeting.PlanCommand? other) -> bool
+override sealed YHAB.SharedKernel.Budgeting.SaveGroup.Equals(YHAB.SharedKernel.Budgeting.PlanCommand? other) -> bool
+override sealed YHAB.SharedKernel.Budgeting.SaveTransaction.Equals(YHAB.SharedKernel.Budgeting.PlanCommand? other) -> bool
+override sealed YHAB.SharedKernel.Budgeting.UndoChange.Equals(YHAB.SharedKernel.Budgeting.PlanCommand? other) -> bool
+override sealed YHAB.SharedKernel.Budgeting.UpdatePlan.Equals(YHAB.SharedKernel.Budgeting.PlanCommand? other) -> bool
+override YHAB.SharedKernel.Budgeting.AccountBalance.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.AccountBalance.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.AccountBalance.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.AccountData.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.AccountData.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.AccountData.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.AllocationData.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.AllocationData.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.AllocationData.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.AssignMoney.<Clone>$() -> YHAB.SharedKernel.Budgeting.AssignMoney!
+override YHAB.SharedKernel.Budgeting.AssignMoney.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.AssignMoney.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.AssignMoney.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.AutoAssign.<Clone>$() -> YHAB.SharedKernel.Budgeting.AutoAssign!
+override YHAB.SharedKernel.Budgeting.AutoAssign.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.AutoAssign.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.AutoAssign.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.BudgetError.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.BudgetError.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.BudgetError.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.BudgetMonth.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.BudgetMonth.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.BudgetMonth.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.BudgetMonthFunding.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.BudgetMonthFunding.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.BudgetMonthFunding.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.BudgetMonthState.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.BudgetMonthState.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.BudgetMonthState.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.BudgetMonthTransition.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.BudgetMonthTransition.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.BudgetMonthTransition.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.CategoryData.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.CategoryData.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.CategoryData.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.CategoryMonth.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.CategoryMonth.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.CategoryMonth.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.CategorySpending.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.CategorySpending.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.CategorySpending.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.ChangeData.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.ChangeData.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.ChangeData.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.CreatePlanRequest.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.CreatePlanRequest.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.CreatePlanRequest.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.DeleteTransactions.<Clone>$() -> YHAB.SharedKernel.Budgeting.DeleteTransactions!
+override YHAB.SharedKernel.Budgeting.DeleteTransactions.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.DeleteTransactions.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.DeleteTransactions.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.GroupData.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.GroupData.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.GroupData.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.JoinPlanRequest.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.JoinPlanRequest.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.JoinPlanRequest.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.LedgerPatch.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.LedgerPatch.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.LedgerPatch.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.MonthReport.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.MonthReport.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.MonthReport.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.MoveMoney.<Clone>$() -> YHAB.SharedKernel.Budgeting.MoveMoney!
+override YHAB.SharedKernel.Budgeting.MoveMoney.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.MoveMoney.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.MoveMoney.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.PlanCollaborator.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.PlanCollaborator.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.PlanCollaborator.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.PlanCommand.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.PlanCommand.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.PlanCommand.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.PlanMonthView.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.PlanMonthView.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.PlanMonthView.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.PlanShareCode.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.PlanShareCode.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.PlanShareCode.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.PlanShareSummary.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.PlanShareSummary.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.PlanShareSummary.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.PlanSnapshot.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.PlanSnapshot.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.PlanSnapshot.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.PlanSummary.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.PlanSummary.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.PlanSummary.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.PlanView.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.PlanView.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.PlanView.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.PostRecurring.<Clone>$() -> YHAB.SharedKernel.Budgeting.PostRecurring!
+override YHAB.SharedKernel.Budgeting.PostRecurring.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.PostRecurring.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.PostRecurring.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.RecurrenceBatch.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.RecurrenceBatch.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.RecurrenceBatch.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.RedoChange.<Clone>$() -> YHAB.SharedKernel.Budgeting.RedoChange!
+override YHAB.SharedKernel.Budgeting.RedoChange.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.RedoChange.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.RedoChange.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.RegisterCursor.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.RegisterCursor.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.RegisterCursor.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.RegisterPage.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.RegisterPage.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.RegisterPage.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.RegisterQuery.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.RegisterQuery.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.RegisterQuery.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.RegisterRow.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.RegisterRow.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.RegisterRow.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.RemoveCategory.<Clone>$() -> YHAB.SharedKernel.Budgeting.RemoveCategory!
+override YHAB.SharedKernel.Budgeting.RemoveCategory.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.RemoveCategory.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.RemoveCategory.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.RenamePayee.<Clone>$() -> YHAB.SharedKernel.Budgeting.RenamePayee!
+override YHAB.SharedKernel.Budgeting.RenamePayee.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.RenamePayee.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.RenamePayee.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.ReorderCategory.<Clone>$() -> YHAB.SharedKernel.Budgeting.ReorderCategory!
+override YHAB.SharedKernel.Budgeting.ReorderCategory.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.ReorderCategory.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.ReorderCategory.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.ReorderGroup.<Clone>$() -> YHAB.SharedKernel.Budgeting.ReorderGroup!
+override YHAB.SharedKernel.Budgeting.ReorderGroup.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.ReorderGroup.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.ReorderGroup.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.ReportAccountMonth.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.ReportAccountMonth.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.ReportAccountMonth.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.ReportCategoryMonth.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.ReportCategoryMonth.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.ReportCategoryMonth.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.ReportTotals.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.ReportTotals.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.ReportTotals.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.ReportView.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.ReportView.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.ReportView.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.RequestToken.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.RequestToken.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.RequestToken.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.RevisionRequest.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.RevisionRequest.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.RevisionRequest.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.SaveAccount.<Clone>$() -> YHAB.SharedKernel.Budgeting.SaveAccount!
+override YHAB.SharedKernel.Budgeting.SaveAccount.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.SaveAccount.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.SaveAccount.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.SaveCategory.<Clone>$() -> YHAB.SharedKernel.Budgeting.SaveCategory!
+override YHAB.SharedKernel.Budgeting.SaveCategory.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.SaveCategory.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.SaveCategory.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.SaveGroup.<Clone>$() -> YHAB.SharedKernel.Budgeting.SaveGroup!
+override YHAB.SharedKernel.Budgeting.SaveGroup.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.SaveGroup.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.SaveGroup.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.SaveTransaction.<Clone>$() -> YHAB.SharedKernel.Budgeting.SaveTransaction!
+override YHAB.SharedKernel.Budgeting.SaveTransaction.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.SaveTransaction.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.SaveTransaction.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.SplitData.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.SplitData.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.SplitData.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.TargetData.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.TargetData.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.TargetData.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.TargetPeriod.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.TargetPeriod.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.TargetPeriod.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.TransactionData.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.TransactionData.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.TransactionData.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.UndoChange.<Clone>$() -> YHAB.SharedKernel.Budgeting.UndoChange!
+override YHAB.SharedKernel.Budgeting.UndoChange.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.UndoChange.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.UndoChange.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.UpdatePlan.<Clone>$() -> YHAB.SharedKernel.Budgeting.UpdatePlan!
+override YHAB.SharedKernel.Budgeting.UpdatePlan.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.UpdatePlan.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.UpdatePlan.ToString() -> string!
+override YHAB.SharedKernel.Budgeting.WorkspaceOperation.Equals(object? obj) -> bool
+override YHAB.SharedKernel.Budgeting.WorkspaceOperation.GetHashCode() -> int
+override YHAB.SharedKernel.Budgeting.WorkspaceOperation.ToString() -> string!
+static YHAB.SharedKernel.Budgeting.AccountBalance.operator !=(YHAB.SharedKernel.Budgeting.AccountBalance? left, YHAB.SharedKernel.Budgeting.AccountBalance? right) -> bool
+static YHAB.SharedKernel.Budgeting.AccountBalance.operator ==(YHAB.SharedKernel.Budgeting.AccountBalance? left, YHAB.SharedKernel.Budgeting.AccountBalance? right) -> bool
+static YHAB.SharedKernel.Budgeting.AccountData.operator !=(YHAB.SharedKernel.Budgeting.AccountData? left, YHAB.SharedKernel.Budgeting.AccountData? right) -> bool
+static YHAB.SharedKernel.Budgeting.AccountData.operator ==(YHAB.SharedKernel.Budgeting.AccountData? left, YHAB.SharedKernel.Budgeting.AccountData? right) -> bool
+static YHAB.SharedKernel.Budgeting.AllocationData.operator !=(YHAB.SharedKernel.Budgeting.AllocationData? left, YHAB.SharedKernel.Budgeting.AllocationData? right) -> bool
+static YHAB.SharedKernel.Budgeting.AllocationData.operator ==(YHAB.SharedKernel.Budgeting.AllocationData? left, YHAB.SharedKernel.Budgeting.AllocationData? right) -> bool
+static YHAB.SharedKernel.Budgeting.AmountExpression.TryEvaluate(string? expression, out decimal amount) -> bool
+static YHAB.SharedKernel.Budgeting.AssignMoney.operator !=(YHAB.SharedKernel.Budgeting.AssignMoney? left, YHAB.SharedKernel.Budgeting.AssignMoney? right) -> bool
+static YHAB.SharedKernel.Budgeting.AssignMoney.operator ==(YHAB.SharedKernel.Budgeting.AssignMoney? left, YHAB.SharedKernel.Budgeting.AssignMoney? right) -> bool
+static YHAB.SharedKernel.Budgeting.AutoAssign.operator !=(YHAB.SharedKernel.Budgeting.AutoAssign? left, YHAB.SharedKernel.Budgeting.AutoAssign? right) -> bool
+static YHAB.SharedKernel.Budgeting.AutoAssign.operator ==(YHAB.SharedKernel.Budgeting.AutoAssign? left, YHAB.SharedKernel.Budgeting.AutoAssign? right) -> bool
+static YHAB.SharedKernel.Budgeting.BudgetCalculator.Advance(YHAB.SharedKernel.Budgeting.PlanSnapshot! plan, YHAB.SharedKernel.Budgeting.BudgetMonthState! opening, System.DateOnly today, System.Collections.Generic.IReadOnlyDictionary<System.DateOnly, YHAB.SharedKernel.Budgeting.BudgetMonthState!>! priorOpenings, YHAB.SharedKernel.Budgeting.BudgetMonthFunding? funding = null, bool includeTargets = true) -> YHAB.SharedKernel.Budgeting.BudgetMonthTransition!
+static YHAB.SharedKernel.Budgeting.BudgetCalculator.Calculate(YHAB.SharedKernel.Budgeting.PlanSnapshot! plan, System.DateOnly month, System.DateOnly today) -> YHAB.SharedKernel.Budgeting.BudgetMonth!
+static YHAB.SharedKernel.Budgeting.BudgetCalculator.Start(YHAB.SharedKernel.Budgeting.PlanSnapshot! plan, System.DateOnly through) -> YHAB.SharedKernel.Budgeting.BudgetMonthState!
+static YHAB.SharedKernel.Budgeting.BudgetError.operator !=(YHAB.SharedKernel.Budgeting.BudgetError? left, YHAB.SharedKernel.Budgeting.BudgetError? right) -> bool
+static YHAB.SharedKernel.Budgeting.BudgetError.operator ==(YHAB.SharedKernel.Budgeting.BudgetError? left, YHAB.SharedKernel.Budgeting.BudgetError? right) -> bool
+static YHAB.SharedKernel.Budgeting.BudgetFacts.AccountLabel(YHAB.SharedKernel.Budgeting.AccountKind kind) -> string!
+static YHAB.SharedKernel.Budgeting.BudgetFacts.Balance(YHAB.SharedKernel.Budgeting.PlanSnapshot! plan, YHAB.SharedKernel.Budgeting.AccountData! account, System.DateOnly through) -> YHAB.SharedKernel.Budgeting.AccountBalance!
+static YHAB.SharedKernel.Budgeting.BudgetFacts.Culture.get -> System.Globalization.CultureInfo!
+static YHAB.SharedKernel.Budgeting.BudgetFacts.IsBudget(YHAB.SharedKernel.Budgeting.AccountKind kind) -> bool
+static YHAB.SharedKernel.Budgeting.BudgetFacts.IsCash(YHAB.SharedKernel.Budgeting.AccountKind kind) -> bool
+static YHAB.SharedKernel.Budgeting.BudgetFacts.IsCredit(YHAB.SharedKernel.Budgeting.AccountKind kind) -> bool
+static YHAB.SharedKernel.Budgeting.BudgetFacts.IsLoan(YHAB.SharedKernel.Budgeting.AccountKind kind) -> bool
+static YHAB.SharedKernel.Budgeting.BudgetFacts.Money(decimal value) -> string!
+static YHAB.SharedKernel.Budgeting.BudgetFacts.Month(System.DateOnly date) -> System.DateOnly
+static YHAB.SharedKernel.Budgeting.BudgetMonth.operator !=(YHAB.SharedKernel.Budgeting.BudgetMonth? left, YHAB.SharedKernel.Budgeting.BudgetMonth? right) -> bool
+static YHAB.SharedKernel.Budgeting.BudgetMonth.operator ==(YHAB.SharedKernel.Budgeting.BudgetMonth? left, YHAB.SharedKernel.Budgeting.BudgetMonth? right) -> bool
+static YHAB.SharedKernel.Budgeting.BudgetMonthFunding.operator !=(YHAB.SharedKernel.Budgeting.BudgetMonthFunding? left, YHAB.SharedKernel.Budgeting.BudgetMonthFunding? right) -> bool
+static YHAB.SharedKernel.Budgeting.BudgetMonthFunding.operator ==(YHAB.SharedKernel.Budgeting.BudgetMonthFunding? left, YHAB.SharedKernel.Budgeting.BudgetMonthFunding? right) -> bool
+static YHAB.SharedKernel.Budgeting.BudgetMonthState.operator !=(YHAB.SharedKernel.Budgeting.BudgetMonthState? left, YHAB.SharedKernel.Budgeting.BudgetMonthState? right) -> bool
+static YHAB.SharedKernel.Budgeting.BudgetMonthState.operator ==(YHAB.SharedKernel.Budgeting.BudgetMonthState? left, YHAB.SharedKernel.Budgeting.BudgetMonthState? right) -> bool
+static YHAB.SharedKernel.Budgeting.BudgetMonthTransition.operator !=(YHAB.SharedKernel.Budgeting.BudgetMonthTransition? left, YHAB.SharedKernel.Budgeting.BudgetMonthTransition? right) -> bool
+static YHAB.SharedKernel.Budgeting.BudgetMonthTransition.operator ==(YHAB.SharedKernel.Budgeting.BudgetMonthTransition? left, YHAB.SharedKernel.Budgeting.BudgetMonthTransition? right) -> bool
+static YHAB.SharedKernel.Budgeting.CategoryData.operator !=(YHAB.SharedKernel.Budgeting.CategoryData? left, YHAB.SharedKernel.Budgeting.CategoryData? right) -> bool
+static YHAB.SharedKernel.Budgeting.CategoryData.operator ==(YHAB.SharedKernel.Budgeting.CategoryData? left, YHAB.SharedKernel.Budgeting.CategoryData? right) -> bool
+static YHAB.SharedKernel.Budgeting.CategoryMonth.operator !=(YHAB.SharedKernel.Budgeting.CategoryMonth? left, YHAB.SharedKernel.Budgeting.CategoryMonth? right) -> bool
+static YHAB.SharedKernel.Budgeting.CategoryMonth.operator ==(YHAB.SharedKernel.Budgeting.CategoryMonth? left, YHAB.SharedKernel.Budgeting.CategoryMonth? right) -> bool
+static YHAB.SharedKernel.Budgeting.CategorySpending.operator !=(YHAB.SharedKernel.Budgeting.CategorySpending? left, YHAB.SharedKernel.Budgeting.CategorySpending? right) -> bool
+static YHAB.SharedKernel.Budgeting.CategorySpending.operator ==(YHAB.SharedKernel.Budgeting.CategorySpending? left, YHAB.SharedKernel.Budgeting.CategorySpending? right) -> bool
+static YHAB.SharedKernel.Budgeting.ChangeData.operator !=(YHAB.SharedKernel.Budgeting.ChangeData? left, YHAB.SharedKernel.Budgeting.ChangeData? right) -> bool
+static YHAB.SharedKernel.Budgeting.ChangeData.operator ==(YHAB.SharedKernel.Budgeting.ChangeData? left, YHAB.SharedKernel.Budgeting.ChangeData? right) -> bool
+static YHAB.SharedKernel.Budgeting.CreatePlanRequest.operator !=(YHAB.SharedKernel.Budgeting.CreatePlanRequest? left, YHAB.SharedKernel.Budgeting.CreatePlanRequest? right) -> bool
+static YHAB.SharedKernel.Budgeting.CreatePlanRequest.operator ==(YHAB.SharedKernel.Budgeting.CreatePlanRequest? left, YHAB.SharedKernel.Budgeting.CreatePlanRequest? right) -> bool
+static YHAB.SharedKernel.Budgeting.DeleteTransactions.operator !=(YHAB.SharedKernel.Budgeting.DeleteTransactions? left, YHAB.SharedKernel.Budgeting.DeleteTransactions? right) -> bool
+static YHAB.SharedKernel.Budgeting.DeleteTransactions.operator ==(YHAB.SharedKernel.Budgeting.DeleteTransactions? left, YHAB.SharedKernel.Budgeting.DeleteTransactions? right) -> bool
+static YHAB.SharedKernel.Budgeting.GroupData.operator !=(YHAB.SharedKernel.Budgeting.GroupData? left, YHAB.SharedKernel.Budgeting.GroupData? right) -> bool
+static YHAB.SharedKernel.Budgeting.GroupData.operator ==(YHAB.SharedKernel.Budgeting.GroupData? left, YHAB.SharedKernel.Budgeting.GroupData? right) -> bool
+static YHAB.SharedKernel.Budgeting.HistoryPolicy.DiscardOnAppend(long position, long cursor) -> bool
+static YHAB.SharedKernel.Budgeting.HistoryPolicy.RequestedPosition(int cursor, bool redo) -> int
+static YHAB.SharedKernel.Budgeting.HistoryPolicy.RestoredCursor(int cursor, bool redo) -> int
+static YHAB.SharedKernel.Budgeting.JoinPlanRequest.operator !=(YHAB.SharedKernel.Budgeting.JoinPlanRequest? left, YHAB.SharedKernel.Budgeting.JoinPlanRequest? right) -> bool
+static YHAB.SharedKernel.Budgeting.JoinPlanRequest.operator ==(YHAB.SharedKernel.Budgeting.JoinPlanRequest? left, YHAB.SharedKernel.Budgeting.JoinPlanRequest? right) -> bool
+static YHAB.SharedKernel.Budgeting.LedgerPatch.Between(YHAB.SharedKernel.Budgeting.PlanSnapshot! before, YHAB.SharedKernel.Budgeting.PlanSnapshot! after) -> YHAB.SharedKernel.Budgeting.LedgerPatch!
+static YHAB.SharedKernel.Budgeting.LedgerPatch.operator !=(YHAB.SharedKernel.Budgeting.LedgerPatch? left, YHAB.SharedKernel.Budgeting.LedgerPatch? right) -> bool
+static YHAB.SharedKernel.Budgeting.LedgerPatch.operator ==(YHAB.SharedKernel.Budgeting.LedgerPatch? left, YHAB.SharedKernel.Budgeting.LedgerPatch? right) -> bool
+static YHAB.SharedKernel.Budgeting.MonthReport.operator !=(YHAB.SharedKernel.Budgeting.MonthReport? left, YHAB.SharedKernel.Budgeting.MonthReport? right) -> bool
+static YHAB.SharedKernel.Budgeting.MonthReport.operator ==(YHAB.SharedKernel.Budgeting.MonthReport? left, YHAB.SharedKernel.Budgeting.MonthReport? right) -> bool
+static YHAB.SharedKernel.Budgeting.MoveMoney.operator !=(YHAB.SharedKernel.Budgeting.MoveMoney? left, YHAB.SharedKernel.Budgeting.MoveMoney? right) -> bool
+static YHAB.SharedKernel.Budgeting.MoveMoney.operator ==(YHAB.SharedKernel.Budgeting.MoveMoney? left, YHAB.SharedKernel.Budgeting.MoveMoney? right) -> bool
+static YHAB.SharedKernel.Budgeting.PlanCollaborator.operator !=(YHAB.SharedKernel.Budgeting.PlanCollaborator? left, YHAB.SharedKernel.Budgeting.PlanCollaborator? right) -> bool
+static YHAB.SharedKernel.Budgeting.PlanCollaborator.operator ==(YHAB.SharedKernel.Budgeting.PlanCollaborator? left, YHAB.SharedKernel.Budgeting.PlanCollaborator? right) -> bool
+static YHAB.SharedKernel.Budgeting.PlanCommand.operator !=(YHAB.SharedKernel.Budgeting.PlanCommand? left, YHAB.SharedKernel.Budgeting.PlanCommand? right) -> bool
+static YHAB.SharedKernel.Budgeting.PlanCommand.operator ==(YHAB.SharedKernel.Budgeting.PlanCommand? left, YHAB.SharedKernel.Budgeting.PlanCommand? right) -> bool
+static YHAB.SharedKernel.Budgeting.PlanMonthView.operator !=(YHAB.SharedKernel.Budgeting.PlanMonthView? left, YHAB.SharedKernel.Budgeting.PlanMonthView? right) -> bool
+static YHAB.SharedKernel.Budgeting.PlanMonthView.operator ==(YHAB.SharedKernel.Budgeting.PlanMonthView? left, YHAB.SharedKernel.Budgeting.PlanMonthView? right) -> bool
+static YHAB.SharedKernel.Budgeting.PlanShareCode.operator !=(YHAB.SharedKernel.Budgeting.PlanShareCode? left, YHAB.SharedKernel.Budgeting.PlanShareCode? right) -> bool
+static YHAB.SharedKernel.Budgeting.PlanShareCode.operator ==(YHAB.SharedKernel.Budgeting.PlanShareCode? left, YHAB.SharedKernel.Budgeting.PlanShareCode? right) -> bool
+static YHAB.SharedKernel.Budgeting.PlanShareSummary.operator !=(YHAB.SharedKernel.Budgeting.PlanShareSummary? left, YHAB.SharedKernel.Budgeting.PlanShareSummary? right) -> bool
+static YHAB.SharedKernel.Budgeting.PlanShareSummary.operator ==(YHAB.SharedKernel.Budgeting.PlanShareSummary? left, YHAB.SharedKernel.Budgeting.PlanShareSummary? right) -> bool
+static YHAB.SharedKernel.Budgeting.PlanSnapshot.operator !=(YHAB.SharedKernel.Budgeting.PlanSnapshot? left, YHAB.SharedKernel.Budgeting.PlanSnapshot? right) -> bool
+static YHAB.SharedKernel.Budgeting.PlanSnapshot.operator ==(YHAB.SharedKernel.Budgeting.PlanSnapshot? left, YHAB.SharedKernel.Budgeting.PlanSnapshot? right) -> bool
+static YHAB.SharedKernel.Budgeting.PlanSummary.operator !=(YHAB.SharedKernel.Budgeting.PlanSummary? left, YHAB.SharedKernel.Budgeting.PlanSummary? right) -> bool
+static YHAB.SharedKernel.Budgeting.PlanSummary.operator ==(YHAB.SharedKernel.Budgeting.PlanSummary? left, YHAB.SharedKernel.Budgeting.PlanSummary? right) -> bool
+static YHAB.SharedKernel.Budgeting.PlanView.operator !=(YHAB.SharedKernel.Budgeting.PlanView? left, YHAB.SharedKernel.Budgeting.PlanView? right) -> bool
+static YHAB.SharedKernel.Budgeting.PlanView.operator ==(YHAB.SharedKernel.Budgeting.PlanView? left, YHAB.SharedKernel.Budgeting.PlanView? right) -> bool
+static YHAB.SharedKernel.Budgeting.PostRecurring.operator !=(YHAB.SharedKernel.Budgeting.PostRecurring? left, YHAB.SharedKernel.Budgeting.PostRecurring? right) -> bool
+static YHAB.SharedKernel.Budgeting.PostRecurring.operator ==(YHAB.SharedKernel.Budgeting.PostRecurring? left, YHAB.SharedKernel.Budgeting.PostRecurring? right) -> bool
+static YHAB.SharedKernel.Budgeting.RecurrenceBatch.operator !=(YHAB.SharedKernel.Budgeting.RecurrenceBatch? left, YHAB.SharedKernel.Budgeting.RecurrenceBatch? right) -> bool
+static YHAB.SharedKernel.Budgeting.RecurrenceBatch.operator ==(YHAB.SharedKernel.Budgeting.RecurrenceBatch? left, YHAB.SharedKernel.Budgeting.RecurrenceBatch? right) -> bool
+static YHAB.SharedKernel.Budgeting.RecurrenceCalendar.DateAt(System.DateOnly anchor, YHAB.SharedKernel.Budgeting.RepeatFrequency frequency, int occurrence) -> System.DateOnly
+static YHAB.SharedKernel.Budgeting.RecurrencePlanner.Due(YHAB.SharedKernel.Budgeting.TransactionData! template, System.DateOnly through, int limit = 128) -> YHAB.SharedKernel.Budgeting.RecurrenceBatch!
+static YHAB.SharedKernel.Budgeting.RedoChange.operator !=(YHAB.SharedKernel.Budgeting.RedoChange? left, YHAB.SharedKernel.Budgeting.RedoChange? right) -> bool
+static YHAB.SharedKernel.Budgeting.RedoChange.operator ==(YHAB.SharedKernel.Budgeting.RedoChange? left, YHAB.SharedKernel.Budgeting.RedoChange? right) -> bool
+static YHAB.SharedKernel.Budgeting.RegisterCursor.operator !=(YHAB.SharedKernel.Budgeting.RegisterCursor? left, YHAB.SharedKernel.Budgeting.RegisterCursor? right) -> bool
+static YHAB.SharedKernel.Budgeting.RegisterCursor.operator ==(YHAB.SharedKernel.Budgeting.RegisterCursor? left, YHAB.SharedKernel.Budgeting.RegisterCursor? right) -> bool
+static YHAB.SharedKernel.Budgeting.RegisterPage.operator !=(YHAB.SharedKernel.Budgeting.RegisterPage? left, YHAB.SharedKernel.Budgeting.RegisterPage? right) -> bool
+static YHAB.SharedKernel.Budgeting.RegisterPage.operator ==(YHAB.SharedKernel.Budgeting.RegisterPage? left, YHAB.SharedKernel.Budgeting.RegisterPage? right) -> bool
+static YHAB.SharedKernel.Budgeting.RegisterPolicy.Validate(YHAB.SharedKernel.Budgeting.RegisterQuery! query) -> void
+static YHAB.SharedKernel.Budgeting.RegisterQuery.operator !=(YHAB.SharedKernel.Budgeting.RegisterQuery? left, YHAB.SharedKernel.Budgeting.RegisterQuery? right) -> bool
+static YHAB.SharedKernel.Budgeting.RegisterQuery.operator ==(YHAB.SharedKernel.Budgeting.RegisterQuery? left, YHAB.SharedKernel.Budgeting.RegisterQuery? right) -> bool
+static YHAB.SharedKernel.Budgeting.RegisterRow.operator !=(YHAB.SharedKernel.Budgeting.RegisterRow? left, YHAB.SharedKernel.Budgeting.RegisterRow? right) -> bool
+static YHAB.SharedKernel.Budgeting.RegisterRow.operator ==(YHAB.SharedKernel.Budgeting.RegisterRow? left, YHAB.SharedKernel.Budgeting.RegisterRow? right) -> bool
+static YHAB.SharedKernel.Budgeting.RemoveCategory.operator !=(YHAB.SharedKernel.Budgeting.RemoveCategory? left, YHAB.SharedKernel.Budgeting.RemoveCategory? right) -> bool
+static YHAB.SharedKernel.Budgeting.RemoveCategory.operator ==(YHAB.SharedKernel.Budgeting.RemoveCategory? left, YHAB.SharedKernel.Budgeting.RemoveCategory? right) -> bool
+static YHAB.SharedKernel.Budgeting.RenamePayee.operator !=(YHAB.SharedKernel.Budgeting.RenamePayee? left, YHAB.SharedKernel.Budgeting.RenamePayee? right) -> bool
+static YHAB.SharedKernel.Budgeting.RenamePayee.operator ==(YHAB.SharedKernel.Budgeting.RenamePayee? left, YHAB.SharedKernel.Budgeting.RenamePayee? right) -> bool
+static YHAB.SharedKernel.Budgeting.ReorderCategory.operator !=(YHAB.SharedKernel.Budgeting.ReorderCategory? left, YHAB.SharedKernel.Budgeting.ReorderCategory? right) -> bool
+static YHAB.SharedKernel.Budgeting.ReorderCategory.operator ==(YHAB.SharedKernel.Budgeting.ReorderCategory? left, YHAB.SharedKernel.Budgeting.ReorderCategory? right) -> bool
+static YHAB.SharedKernel.Budgeting.ReorderGroup.operator !=(YHAB.SharedKernel.Budgeting.ReorderGroup? left, YHAB.SharedKernel.Budgeting.ReorderGroup? right) -> bool
+static YHAB.SharedKernel.Budgeting.ReorderGroup.operator ==(YHAB.SharedKernel.Budgeting.ReorderGroup? left, YHAB.SharedKernel.Budgeting.ReorderGroup? right) -> bool
+static YHAB.SharedKernel.Budgeting.ReportAccountMonth.operator !=(YHAB.SharedKernel.Budgeting.ReportAccountMonth? left, YHAB.SharedKernel.Budgeting.ReportAccountMonth? right) -> bool
+static YHAB.SharedKernel.Budgeting.ReportAccountMonth.operator ==(YHAB.SharedKernel.Budgeting.ReportAccountMonth? left, YHAB.SharedKernel.Budgeting.ReportAccountMonth? right) -> bool
+static YHAB.SharedKernel.Budgeting.ReportCalculator.FromTotals(YHAB.SharedKernel.Budgeting.PlanSnapshot! catalog, System.DateOnly from, System.DateOnly through, YHAB.SharedKernel.Budgeting.ReportTotals! totals) -> YHAB.SharedKernel.Budgeting.ReportView!
+static YHAB.SharedKernel.Budgeting.ReportCalculator.Months(YHAB.SharedKernel.Budgeting.PlanSnapshot! plan, System.DateOnly from, System.DateOnly through) -> System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.MonthReport!>!
+static YHAB.SharedKernel.Budgeting.ReportCalculator.Spending(YHAB.SharedKernel.Budgeting.PlanSnapshot! plan, System.DateOnly from, System.DateOnly through) -> System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.CategorySpending!>!
+static YHAB.SharedKernel.Budgeting.ReportCategoryMonth.operator !=(YHAB.SharedKernel.Budgeting.ReportCategoryMonth? left, YHAB.SharedKernel.Budgeting.ReportCategoryMonth? right) -> bool
+static YHAB.SharedKernel.Budgeting.ReportCategoryMonth.operator ==(YHAB.SharedKernel.Budgeting.ReportCategoryMonth? left, YHAB.SharedKernel.Budgeting.ReportCategoryMonth? right) -> bool
+static YHAB.SharedKernel.Budgeting.ReportTotals.operator !=(YHAB.SharedKernel.Budgeting.ReportTotals? left, YHAB.SharedKernel.Budgeting.ReportTotals? right) -> bool
+static YHAB.SharedKernel.Budgeting.ReportTotals.operator ==(YHAB.SharedKernel.Budgeting.ReportTotals? left, YHAB.SharedKernel.Budgeting.ReportTotals? right) -> bool
+static YHAB.SharedKernel.Budgeting.ReportView.operator !=(YHAB.SharedKernel.Budgeting.ReportView? left, YHAB.SharedKernel.Budgeting.ReportView? right) -> bool
+static YHAB.SharedKernel.Budgeting.ReportView.operator ==(YHAB.SharedKernel.Budgeting.ReportView? left, YHAB.SharedKernel.Budgeting.ReportView? right) -> bool
+static YHAB.SharedKernel.Budgeting.RequestToken.operator !=(YHAB.SharedKernel.Budgeting.RequestToken? left, YHAB.SharedKernel.Budgeting.RequestToken? right) -> bool
+static YHAB.SharedKernel.Budgeting.RequestToken.operator ==(YHAB.SharedKernel.Budgeting.RequestToken? left, YHAB.SharedKernel.Budgeting.RequestToken? right) -> bool
+static YHAB.SharedKernel.Budgeting.RevisionRequest.operator !=(YHAB.SharedKernel.Budgeting.RevisionRequest? left, YHAB.SharedKernel.Budgeting.RevisionRequest? right) -> bool
+static YHAB.SharedKernel.Budgeting.RevisionRequest.operator ==(YHAB.SharedKernel.Budgeting.RevisionRequest? left, YHAB.SharedKernel.Budgeting.RevisionRequest? right) -> bool
+static YHAB.SharedKernel.Budgeting.SaveAccount.operator !=(YHAB.SharedKernel.Budgeting.SaveAccount? left, YHAB.SharedKernel.Budgeting.SaveAccount? right) -> bool
+static YHAB.SharedKernel.Budgeting.SaveAccount.operator ==(YHAB.SharedKernel.Budgeting.SaveAccount? left, YHAB.SharedKernel.Budgeting.SaveAccount? right) -> bool
+static YHAB.SharedKernel.Budgeting.SaveCategory.operator !=(YHAB.SharedKernel.Budgeting.SaveCategory? left, YHAB.SharedKernel.Budgeting.SaveCategory? right) -> bool
+static YHAB.SharedKernel.Budgeting.SaveCategory.operator ==(YHAB.SharedKernel.Budgeting.SaveCategory? left, YHAB.SharedKernel.Budgeting.SaveCategory? right) -> bool
+static YHAB.SharedKernel.Budgeting.SaveGroup.operator !=(YHAB.SharedKernel.Budgeting.SaveGroup? left, YHAB.SharedKernel.Budgeting.SaveGroup? right) -> bool
+static YHAB.SharedKernel.Budgeting.SaveGroup.operator ==(YHAB.SharedKernel.Budgeting.SaveGroup? left, YHAB.SharedKernel.Budgeting.SaveGroup? right) -> bool
+static YHAB.SharedKernel.Budgeting.SaveTransaction.operator !=(YHAB.SharedKernel.Budgeting.SaveTransaction? left, YHAB.SharedKernel.Budgeting.SaveTransaction? right) -> bool
+static YHAB.SharedKernel.Budgeting.SaveTransaction.operator ==(YHAB.SharedKernel.Budgeting.SaveTransaction? left, YHAB.SharedKernel.Budgeting.SaveTransaction? right) -> bool
+static YHAB.SharedKernel.Budgeting.SplitData.operator !=(YHAB.SharedKernel.Budgeting.SplitData? left, YHAB.SharedKernel.Budgeting.SplitData? right) -> bool
+static YHAB.SharedKernel.Budgeting.SplitData.operator ==(YHAB.SharedKernel.Budgeting.SplitData? left, YHAB.SharedKernel.Budgeting.SplitData? right) -> bool
+static YHAB.SharedKernel.Budgeting.TargetCalculator.Needed(YHAB.SharedKernel.Budgeting.PlanSnapshot! plan, YHAB.SharedKernel.Budgeting.CategoryData! category, System.DateOnly month, System.DateOnly today, decimal assigned, decimal available, decimal carried) -> decimal
+static YHAB.SharedKernel.Budgeting.TargetCalculator.PeriodFor(YHAB.SharedKernel.Budgeting.TargetData? target, System.DateOnly month) -> YHAB.SharedKernel.Budgeting.TargetPeriod?
+static YHAB.SharedKernel.Budgeting.TargetData.operator !=(YHAB.SharedKernel.Budgeting.TargetData? left, YHAB.SharedKernel.Budgeting.TargetData? right) -> bool
+static YHAB.SharedKernel.Budgeting.TargetData.operator ==(YHAB.SharedKernel.Budgeting.TargetData? left, YHAB.SharedKernel.Budgeting.TargetData? right) -> bool
+static YHAB.SharedKernel.Budgeting.TargetPeriod.operator !=(YHAB.SharedKernel.Budgeting.TargetPeriod? left, YHAB.SharedKernel.Budgeting.TargetPeriod? right) -> bool
+static YHAB.SharedKernel.Budgeting.TargetPeriod.operator ==(YHAB.SharedKernel.Budgeting.TargetPeriod? left, YHAB.SharedKernel.Budgeting.TargetPeriod? right) -> bool
+static YHAB.SharedKernel.Budgeting.TransactionData.operator !=(YHAB.SharedKernel.Budgeting.TransactionData? left, YHAB.SharedKernel.Budgeting.TransactionData? right) -> bool
+static YHAB.SharedKernel.Budgeting.TransactionData.operator ==(YHAB.SharedKernel.Budgeting.TransactionData? left, YHAB.SharedKernel.Budgeting.TransactionData? right) -> bool
+static YHAB.SharedKernel.Budgeting.TransactionOrdering.Assign(System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.TransactionData!>! before, System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.TransactionData!>! after, long lastSequence, bool restoring) -> (System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.TransactionData!>! Transactions, long LastSequence)
+static YHAB.SharedKernel.Budgeting.UndoChange.operator !=(YHAB.SharedKernel.Budgeting.UndoChange? left, YHAB.SharedKernel.Budgeting.UndoChange? right) -> bool
+static YHAB.SharedKernel.Budgeting.UndoChange.operator ==(YHAB.SharedKernel.Budgeting.UndoChange? left, YHAB.SharedKernel.Budgeting.UndoChange? right) -> bool
+static YHAB.SharedKernel.Budgeting.UpdatePlan.operator !=(YHAB.SharedKernel.Budgeting.UpdatePlan? left, YHAB.SharedKernel.Budgeting.UpdatePlan? right) -> bool
+static YHAB.SharedKernel.Budgeting.UpdatePlan.operator ==(YHAB.SharedKernel.Budgeting.UpdatePlan? left, YHAB.SharedKernel.Budgeting.UpdatePlan? right) -> bool
+static YHAB.SharedKernel.Budgeting.WorkspaceOperation.operator !=(YHAB.SharedKernel.Budgeting.WorkspaceOperation? left, YHAB.SharedKernel.Budgeting.WorkspaceOperation? right) -> bool
+static YHAB.SharedKernel.Budgeting.WorkspaceOperation.operator ==(YHAB.SharedKernel.Budgeting.WorkspaceOperation? left, YHAB.SharedKernel.Budgeting.WorkspaceOperation? right) -> bool
+static YHAB.SharedKernel.Budgeting.WorkspaceOperation.Rejected() -> YHAB.SharedKernel.Budgeting.WorkspaceOperation!
+static YHAB.SharedKernel.Budgeting.WorkspaceOperation.Start(YHAB.SharedKernel.Budgeting.PlanCommand! command, bool preservesDraft = false) -> YHAB.SharedKernel.Budgeting.WorkspaceOperation!
+virtual YHAB.SharedKernel.Budgeting.PlanCommand.EqualityContract.get -> System.Type!
+virtual YHAB.SharedKernel.Budgeting.PlanCommand.Equals(YHAB.SharedKernel.Budgeting.PlanCommand? other) -> bool
+virtual YHAB.SharedKernel.Budgeting.PlanCommand.PrintMembers(System.Text.StringBuilder! builder) -> bool
+YHAB.SharedKernel.Budgeting.AccountBalance
+YHAB.SharedKernel.Budgeting.AccountBalance.<Clone>$() -> YHAB.SharedKernel.Budgeting.AccountBalance!
+YHAB.SharedKernel.Budgeting.AccountBalance.AccountBalance(System.Guid AccountId, decimal Working) -> void
+YHAB.SharedKernel.Budgeting.AccountBalance.AccountId.get -> System.Guid
+YHAB.SharedKernel.Budgeting.AccountBalance.AccountId.init -> void
+YHAB.SharedKernel.Budgeting.AccountBalance.Deconstruct(out System.Guid AccountId, out decimal Working) -> void
+YHAB.SharedKernel.Budgeting.AccountBalance.Equals(YHAB.SharedKernel.Budgeting.AccountBalance? other) -> bool
+YHAB.SharedKernel.Budgeting.AccountBalance.Working.get -> decimal
+YHAB.SharedKernel.Budgeting.AccountBalance.Working.init -> void
+YHAB.SharedKernel.Budgeting.AccountData
+YHAB.SharedKernel.Budgeting.AccountData.<Clone>$() -> YHAB.SharedKernel.Budgeting.AccountData!
+YHAB.SharedKernel.Budgeting.AccountData.AccountData(System.Guid Id, string! Name, YHAB.SharedKernel.Budgeting.AccountKind Kind, decimal OpeningBalance, System.DateOnly OpenedOn, bool Closed, string! Notes, decimal InterestRate = 0, decimal MinimumPayment = 0) -> void
+YHAB.SharedKernel.Budgeting.AccountData.Closed.get -> bool
+YHAB.SharedKernel.Budgeting.AccountData.Closed.init -> void
+YHAB.SharedKernel.Budgeting.AccountData.Deconstruct(out System.Guid Id, out string! Name, out YHAB.SharedKernel.Budgeting.AccountKind Kind, out decimal OpeningBalance, out System.DateOnly OpenedOn, out bool Closed, out string! Notes, out decimal InterestRate, out decimal MinimumPayment) -> void
+YHAB.SharedKernel.Budgeting.AccountData.Equals(YHAB.SharedKernel.Budgeting.AccountData? other) -> bool
+YHAB.SharedKernel.Budgeting.AccountData.Id.get -> System.Guid
+YHAB.SharedKernel.Budgeting.AccountData.Id.init -> void
+YHAB.SharedKernel.Budgeting.AccountData.InterestRate.get -> decimal
+YHAB.SharedKernel.Budgeting.AccountData.InterestRate.init -> void
+YHAB.SharedKernel.Budgeting.AccountData.Kind.get -> YHAB.SharedKernel.Budgeting.AccountKind
+YHAB.SharedKernel.Budgeting.AccountData.Kind.init -> void
+YHAB.SharedKernel.Budgeting.AccountData.MinimumPayment.get -> decimal
+YHAB.SharedKernel.Budgeting.AccountData.MinimumPayment.init -> void
+YHAB.SharedKernel.Budgeting.AccountData.Name.get -> string!
+YHAB.SharedKernel.Budgeting.AccountData.Name.init -> void
+YHAB.SharedKernel.Budgeting.AccountData.Notes.get -> string!
+YHAB.SharedKernel.Budgeting.AccountData.Notes.init -> void
+YHAB.SharedKernel.Budgeting.AccountData.OpenedOn.get -> System.DateOnly
+YHAB.SharedKernel.Budgeting.AccountData.OpenedOn.init -> void
+YHAB.SharedKernel.Budgeting.AccountData.OpeningBalance.get -> decimal
+YHAB.SharedKernel.Budgeting.AccountData.OpeningBalance.init -> void
+YHAB.SharedKernel.Budgeting.AccountKind
+YHAB.SharedKernel.Budgeting.AccountKind.Asset = 11 -> YHAB.SharedKernel.Budgeting.AccountKind
+YHAB.SharedKernel.Budgeting.AccountKind.AutoLoan = 6 -> YHAB.SharedKernel.Budgeting.AccountKind
+YHAB.SharedKernel.Budgeting.AccountKind.Cash = 2 -> YHAB.SharedKernel.Budgeting.AccountKind
+YHAB.SharedKernel.Budgeting.AccountKind.Checking = 0 -> YHAB.SharedKernel.Budgeting.AccountKind
+YHAB.SharedKernel.Budgeting.AccountKind.CreditCard = 3 -> YHAB.SharedKernel.Budgeting.AccountKind
+YHAB.SharedKernel.Budgeting.AccountKind.Liability = 12 -> YHAB.SharedKernel.Budgeting.AccountKind
+YHAB.SharedKernel.Budgeting.AccountKind.LineOfCredit = 4 -> YHAB.SharedKernel.Budgeting.AccountKind
+YHAB.SharedKernel.Budgeting.AccountKind.MedicalDebt = 9 -> YHAB.SharedKernel.Budgeting.AccountKind
+YHAB.SharedKernel.Budgeting.AccountKind.Mortgage = 5 -> YHAB.SharedKernel.Budgeting.AccountKind
+YHAB.SharedKernel.Budgeting.AccountKind.OtherDebt = 10 -> YHAB.SharedKernel.Budgeting.AccountKind
+YHAB.SharedKernel.Budgeting.AccountKind.PersonalLoan = 8 -> YHAB.SharedKernel.Budgeting.AccountKind
+YHAB.SharedKernel.Budgeting.AccountKind.Savings = 1 -> YHAB.SharedKernel.Budgeting.AccountKind
+YHAB.SharedKernel.Budgeting.AccountKind.StudentLoan = 7 -> YHAB.SharedKernel.Budgeting.AccountKind
+YHAB.SharedKernel.Budgeting.AllocationData
+YHAB.SharedKernel.Budgeting.AllocationData.<Clone>$() -> YHAB.SharedKernel.Budgeting.AllocationData!
+YHAB.SharedKernel.Budgeting.AllocationData.AllocationData(System.Guid CategoryId, System.DateOnly Month, decimal Amount, bool Snoozed = false) -> void
+YHAB.SharedKernel.Budgeting.AllocationData.Amount.get -> decimal
+YHAB.SharedKernel.Budgeting.AllocationData.Amount.init -> void
+YHAB.SharedKernel.Budgeting.AllocationData.CategoryId.get -> System.Guid
+YHAB.SharedKernel.Budgeting.AllocationData.CategoryId.init -> void
+YHAB.SharedKernel.Budgeting.AllocationData.Deconstruct(out System.Guid CategoryId, out System.DateOnly Month, out decimal Amount, out bool Snoozed) -> void
+YHAB.SharedKernel.Budgeting.AllocationData.Equals(YHAB.SharedKernel.Budgeting.AllocationData? other) -> bool
+YHAB.SharedKernel.Budgeting.AllocationData.Month.get -> System.DateOnly
+YHAB.SharedKernel.Budgeting.AllocationData.Month.init -> void
+YHAB.SharedKernel.Budgeting.AllocationData.Snoozed.get -> bool
+YHAB.SharedKernel.Budgeting.AllocationData.Snoozed.init -> void
+YHAB.SharedKernel.Budgeting.AmountExpression
+YHAB.SharedKernel.Budgeting.AssignMoney
+YHAB.SharedKernel.Budgeting.AssignMoney.Amount.get -> decimal
+YHAB.SharedKernel.Budgeting.AssignMoney.Amount.init -> void
+YHAB.SharedKernel.Budgeting.AssignMoney.AssignMoney(long Version, System.Guid CategoryId, System.DateOnly Month, decimal Amount, bool Snoozed = false) -> void
+YHAB.SharedKernel.Budgeting.AssignMoney.CategoryId.get -> System.Guid
+YHAB.SharedKernel.Budgeting.AssignMoney.CategoryId.init -> void
+YHAB.SharedKernel.Budgeting.AssignMoney.Deconstruct(out long Version, out System.Guid CategoryId, out System.DateOnly Month, out decimal Amount, out bool Snoozed) -> void
+YHAB.SharedKernel.Budgeting.AssignMoney.Equals(YHAB.SharedKernel.Budgeting.AssignMoney? other) -> bool
+YHAB.SharedKernel.Budgeting.AssignMoney.Month.get -> System.DateOnly
+YHAB.SharedKernel.Budgeting.AssignMoney.Month.init -> void
+YHAB.SharedKernel.Budgeting.AssignMoney.Snoozed.get -> bool
+YHAB.SharedKernel.Budgeting.AssignMoney.Snoozed.init -> void
+YHAB.SharedKernel.Budgeting.AutoAssign
+YHAB.SharedKernel.Budgeting.AutoAssign.AutoAssign(long Version, System.DateOnly Month) -> void
+YHAB.SharedKernel.Budgeting.AutoAssign.Deconstruct(out long Version, out System.DateOnly Month) -> void
+YHAB.SharedKernel.Budgeting.AutoAssign.Equals(YHAB.SharedKernel.Budgeting.AutoAssign? other) -> bool
+YHAB.SharedKernel.Budgeting.AutoAssign.Month.get -> System.DateOnly
+YHAB.SharedKernel.Budgeting.AutoAssign.Month.init -> void
+YHAB.SharedKernel.Budgeting.BudgetCalculator
+YHAB.SharedKernel.Budgeting.BudgetError
+YHAB.SharedKernel.Budgeting.BudgetError.<Clone>$() -> YHAB.SharedKernel.Budgeting.BudgetError!
+YHAB.SharedKernel.Budgeting.BudgetError.BudgetError(int Status, string! Title, string! Detail) -> void
+YHAB.SharedKernel.Budgeting.BudgetError.Deconstruct(out int Status, out string! Title, out string! Detail) -> void
+YHAB.SharedKernel.Budgeting.BudgetError.Detail.get -> string!
+YHAB.SharedKernel.Budgeting.BudgetError.Detail.init -> void
+YHAB.SharedKernel.Budgeting.BudgetError.Equals(YHAB.SharedKernel.Budgeting.BudgetError? other) -> bool
+YHAB.SharedKernel.Budgeting.BudgetError.Status.get -> int
+YHAB.SharedKernel.Budgeting.BudgetError.Status.init -> void
+YHAB.SharedKernel.Budgeting.BudgetError.Title.get -> string!
+YHAB.SharedKernel.Budgeting.BudgetError.Title.init -> void
+YHAB.SharedKernel.Budgeting.BudgetFacts
+YHAB.SharedKernel.Budgeting.BudgetMonth
+YHAB.SharedKernel.Budgeting.BudgetMonth.<Clone>$() -> YHAB.SharedKernel.Budgeting.BudgetMonth!
+YHAB.SharedKernel.Budgeting.BudgetMonth.Activity.get -> decimal
+YHAB.SharedKernel.Budgeting.BudgetMonth.Activity.init -> void
+YHAB.SharedKernel.Budgeting.BudgetMonth.Assigned.get -> decimal
+YHAB.SharedKernel.Budgeting.BudgetMonth.Assigned.init -> void
+YHAB.SharedKernel.Budgeting.BudgetMonth.AssignedInFuture.get -> decimal
+YHAB.SharedKernel.Budgeting.BudgetMonth.AssignedInFuture.init -> void
+YHAB.SharedKernel.Budgeting.BudgetMonth.Available.get -> decimal
+YHAB.SharedKernel.Budgeting.BudgetMonth.Available.init -> void
+YHAB.SharedKernel.Budgeting.BudgetMonth.BudgetMonth(System.DateOnly Month, decimal ReadyToAssign, decimal Assigned, decimal Activity, decimal Available, decimal CashOverspending, decimal CreditOverspending, decimal AssignedInFuture, System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.CategoryMonth!>! Categories) -> void
+YHAB.SharedKernel.Budgeting.BudgetMonth.CashOverspending.get -> decimal
+YHAB.SharedKernel.Budgeting.BudgetMonth.CashOverspending.init -> void
+YHAB.SharedKernel.Budgeting.BudgetMonth.Categories.get -> System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.CategoryMonth!>!
+YHAB.SharedKernel.Budgeting.BudgetMonth.Categories.init -> void
+YHAB.SharedKernel.Budgeting.BudgetMonth.CreditOverspending.get -> decimal
+YHAB.SharedKernel.Budgeting.BudgetMonth.CreditOverspending.init -> void
+YHAB.SharedKernel.Budgeting.BudgetMonth.Deconstruct(out System.DateOnly Month, out decimal ReadyToAssign, out decimal Assigned, out decimal Activity, out decimal Available, out decimal CashOverspending, out decimal CreditOverspending, out decimal AssignedInFuture, out System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.CategoryMonth!>! Categories) -> void
+YHAB.SharedKernel.Budgeting.BudgetMonth.Equals(YHAB.SharedKernel.Budgeting.BudgetMonth? other) -> bool
+YHAB.SharedKernel.Budgeting.BudgetMonth.Month.get -> System.DateOnly
+YHAB.SharedKernel.Budgeting.BudgetMonth.Month.init -> void
+YHAB.SharedKernel.Budgeting.BudgetMonth.ReadyToAssign.get -> decimal
+YHAB.SharedKernel.Budgeting.BudgetMonth.ReadyToAssign.init -> void
+YHAB.SharedKernel.Budgeting.BudgetMonthFunding
+YHAB.SharedKernel.Budgeting.BudgetMonthFunding.<Clone>$() -> YHAB.SharedKernel.Budgeting.BudgetMonthFunding!
+YHAB.SharedKernel.Budgeting.BudgetMonthFunding.BudgetMonthFunding(decimal FutureAssigned, System.Collections.Immutable.ImmutableDictionary<System.Guid, decimal>! PriorAssigned) -> void
+YHAB.SharedKernel.Budgeting.BudgetMonthFunding.Deconstruct(out decimal FutureAssigned, out System.Collections.Immutable.ImmutableDictionary<System.Guid, decimal>! PriorAssigned) -> void
+YHAB.SharedKernel.Budgeting.BudgetMonthFunding.Equals(YHAB.SharedKernel.Budgeting.BudgetMonthFunding? other) -> bool
+YHAB.SharedKernel.Budgeting.BudgetMonthFunding.FutureAssigned.get -> decimal
+YHAB.SharedKernel.Budgeting.BudgetMonthFunding.FutureAssigned.init -> void
+YHAB.SharedKernel.Budgeting.BudgetMonthFunding.PriorAssigned.get -> System.Collections.Immutable.ImmutableDictionary<System.Guid, decimal>!
+YHAB.SharedKernel.Budgeting.BudgetMonthFunding.PriorAssigned.init -> void
+YHAB.SharedKernel.Budgeting.BudgetMonthState
+YHAB.SharedKernel.Budgeting.BudgetMonthState.<Clone>$() -> YHAB.SharedKernel.Budgeting.BudgetMonthState!
+YHAB.SharedKernel.Budgeting.BudgetMonthState.Balances.get -> System.Collections.Immutable.ImmutableDictionary<System.Guid, decimal>!
+YHAB.SharedKernel.Budgeting.BudgetMonthState.Balances.init -> void
+YHAB.SharedKernel.Budgeting.BudgetMonthState.BudgetMonthState(System.DateOnly Month, System.Collections.Immutable.ImmutableDictionary<System.Guid, decimal>! Carry, System.Collections.Immutable.ImmutableDictionary<System.Guid, decimal>! Balances) -> void
+YHAB.SharedKernel.Budgeting.BudgetMonthState.Carry.get -> System.Collections.Immutable.ImmutableDictionary<System.Guid, decimal>!
+YHAB.SharedKernel.Budgeting.BudgetMonthState.Carry.init -> void
+YHAB.SharedKernel.Budgeting.BudgetMonthState.Deconstruct(out System.DateOnly Month, out System.Collections.Immutable.ImmutableDictionary<System.Guid, decimal>! Carry, out System.Collections.Immutable.ImmutableDictionary<System.Guid, decimal>! Balances) -> void
+YHAB.SharedKernel.Budgeting.BudgetMonthState.Equals(YHAB.SharedKernel.Budgeting.BudgetMonthState? other) -> bool
+YHAB.SharedKernel.Budgeting.BudgetMonthState.Month.get -> System.DateOnly
+YHAB.SharedKernel.Budgeting.BudgetMonthState.Month.init -> void
+YHAB.SharedKernel.Budgeting.BudgetMonthTransition
+YHAB.SharedKernel.Budgeting.BudgetMonthTransition.<Clone>$() -> YHAB.SharedKernel.Budgeting.BudgetMonthTransition!
+YHAB.SharedKernel.Budgeting.BudgetMonthTransition.Budget.get -> YHAB.SharedKernel.Budgeting.BudgetMonth!
+YHAB.SharedKernel.Budgeting.BudgetMonthTransition.Budget.init -> void
+YHAB.SharedKernel.Budgeting.BudgetMonthTransition.BudgetMonthTransition(YHAB.SharedKernel.Budgeting.BudgetMonth! Budget, YHAB.SharedKernel.Budgeting.BudgetMonthState! Next) -> void
+YHAB.SharedKernel.Budgeting.BudgetMonthTransition.Deconstruct(out YHAB.SharedKernel.Budgeting.BudgetMonth! Budget, out YHAB.SharedKernel.Budgeting.BudgetMonthState! Next) -> void
+YHAB.SharedKernel.Budgeting.BudgetMonthTransition.Equals(YHAB.SharedKernel.Budgeting.BudgetMonthTransition? other) -> bool
+YHAB.SharedKernel.Budgeting.BudgetMonthTransition.Next.get -> YHAB.SharedKernel.Budgeting.BudgetMonthState!
+YHAB.SharedKernel.Budgeting.BudgetMonthTransition.Next.init -> void
+YHAB.SharedKernel.Budgeting.BudgetRequestException
+YHAB.SharedKernel.Budgeting.BudgetRequestException.BudgetRequestException() -> void
+YHAB.SharedKernel.Budgeting.BudgetRequestException.BudgetRequestException(int status, string? message, System.Exception? innerException = null) -> void
+YHAB.SharedKernel.Budgeting.BudgetRequestException.BudgetRequestException(string! message, System.Exception! innerException) -> void
+YHAB.SharedKernel.Budgeting.BudgetRequestException.BudgetRequestException(string! message) -> void
+YHAB.SharedKernel.Budgeting.BudgetRequestException.Status.get -> int
+YHAB.SharedKernel.Budgeting.CategoryData
+YHAB.SharedKernel.Budgeting.CategoryData.<Clone>$() -> YHAB.SharedKernel.Budgeting.CategoryData!
+YHAB.SharedKernel.Budgeting.CategoryData.CategoryData(System.Guid Id, System.Guid GroupId, string! Name, string! Notes, int SortOrder, bool Hidden, System.Guid? CreditAccountId, YHAB.SharedKernel.Budgeting.TargetData? Target) -> void
+YHAB.SharedKernel.Budgeting.CategoryData.CreditAccountId.get -> System.Guid?
+YHAB.SharedKernel.Budgeting.CategoryData.CreditAccountId.init -> void
+YHAB.SharedKernel.Budgeting.CategoryData.Deconstruct(out System.Guid Id, out System.Guid GroupId, out string! Name, out string! Notes, out int SortOrder, out bool Hidden, out System.Guid? CreditAccountId, out YHAB.SharedKernel.Budgeting.TargetData? Target) -> void
+YHAB.SharedKernel.Budgeting.CategoryData.Equals(YHAB.SharedKernel.Budgeting.CategoryData? other) -> bool
+YHAB.SharedKernel.Budgeting.CategoryData.GroupId.get -> System.Guid
+YHAB.SharedKernel.Budgeting.CategoryData.GroupId.init -> void
+YHAB.SharedKernel.Budgeting.CategoryData.Hidden.get -> bool
+YHAB.SharedKernel.Budgeting.CategoryData.Hidden.init -> void
+YHAB.SharedKernel.Budgeting.CategoryData.Id.get -> System.Guid
+YHAB.SharedKernel.Budgeting.CategoryData.Id.init -> void
+YHAB.SharedKernel.Budgeting.CategoryData.Name.get -> string!
+YHAB.SharedKernel.Budgeting.CategoryData.Name.init -> void
+YHAB.SharedKernel.Budgeting.CategoryData.Notes.get -> string!
+YHAB.SharedKernel.Budgeting.CategoryData.Notes.init -> void
+YHAB.SharedKernel.Budgeting.CategoryData.SortOrder.get -> int
+YHAB.SharedKernel.Budgeting.CategoryData.SortOrder.init -> void
+YHAB.SharedKernel.Budgeting.CategoryData.Target.get -> YHAB.SharedKernel.Budgeting.TargetData?
+YHAB.SharedKernel.Budgeting.CategoryData.Target.init -> void
+YHAB.SharedKernel.Budgeting.CategoryMonth
+YHAB.SharedKernel.Budgeting.CategoryMonth.<Clone>$() -> YHAB.SharedKernel.Budgeting.CategoryMonth!
+YHAB.SharedKernel.Budgeting.CategoryMonth.Activity.get -> decimal
+YHAB.SharedKernel.Budgeting.CategoryMonth.Activity.init -> void
+YHAB.SharedKernel.Budgeting.CategoryMonth.Assigned.get -> decimal
+YHAB.SharedKernel.Budgeting.CategoryMonth.Assigned.init -> void
+YHAB.SharedKernel.Budgeting.CategoryMonth.Available.get -> decimal
+YHAB.SharedKernel.Budgeting.CategoryMonth.Available.init -> void
+YHAB.SharedKernel.Budgeting.CategoryMonth.CashOverspending.get -> decimal
+YHAB.SharedKernel.Budgeting.CategoryMonth.CashOverspending.init -> void
+YHAB.SharedKernel.Budgeting.CategoryMonth.Category.get -> YHAB.SharedKernel.Budgeting.CategoryData!
+YHAB.SharedKernel.Budgeting.CategoryMonth.Category.init -> void
+YHAB.SharedKernel.Budgeting.CategoryMonth.CategoryMonth(YHAB.SharedKernel.Budgeting.CategoryData! Category, decimal Assigned, decimal Activity, decimal Available, decimal CashOverspending, decimal CreditOverspending, decimal TargetNeeded, decimal TargetTotal, bool Snoozed) -> void
+YHAB.SharedKernel.Budgeting.CategoryMonth.CreditOverspending.get -> decimal
+YHAB.SharedKernel.Budgeting.CategoryMonth.CreditOverspending.init -> void
+YHAB.SharedKernel.Budgeting.CategoryMonth.Deconstruct(out YHAB.SharedKernel.Budgeting.CategoryData! Category, out decimal Assigned, out decimal Activity, out decimal Available, out decimal CashOverspending, out decimal CreditOverspending, out decimal TargetNeeded, out decimal TargetTotal, out bool Snoozed) -> void
+YHAB.SharedKernel.Budgeting.CategoryMonth.Equals(YHAB.SharedKernel.Budgeting.CategoryMonth? other) -> bool
+YHAB.SharedKernel.Budgeting.CategoryMonth.Snoozed.get -> bool
+YHAB.SharedKernel.Budgeting.CategoryMonth.Snoozed.init -> void
+YHAB.SharedKernel.Budgeting.CategoryMonth.TargetNeeded.get -> decimal
+YHAB.SharedKernel.Budgeting.CategoryMonth.TargetNeeded.init -> void
+YHAB.SharedKernel.Budgeting.CategoryMonth.TargetTotal.get -> decimal
+YHAB.SharedKernel.Budgeting.CategoryMonth.TargetTotal.init -> void
+YHAB.SharedKernel.Budgeting.CategorySpending
+YHAB.SharedKernel.Budgeting.CategorySpending.<Clone>$() -> YHAB.SharedKernel.Budgeting.CategorySpending!
+YHAB.SharedKernel.Budgeting.CategorySpending.Amount.get -> decimal
+YHAB.SharedKernel.Budgeting.CategorySpending.Amount.init -> void
+YHAB.SharedKernel.Budgeting.CategorySpending.CategoryId.get -> System.Guid
+YHAB.SharedKernel.Budgeting.CategorySpending.CategoryId.init -> void
+YHAB.SharedKernel.Budgeting.CategorySpending.CategorySpending(System.Guid CategoryId, string! Name, decimal Amount) -> void
+YHAB.SharedKernel.Budgeting.CategorySpending.Deconstruct(out System.Guid CategoryId, out string! Name, out decimal Amount) -> void
+YHAB.SharedKernel.Budgeting.CategorySpending.Equals(YHAB.SharedKernel.Budgeting.CategorySpending? other) -> bool
+YHAB.SharedKernel.Budgeting.CategorySpending.Name.get -> string!
+YHAB.SharedKernel.Budgeting.CategorySpending.Name.init -> void
+YHAB.SharedKernel.Budgeting.ChangeData
+YHAB.SharedKernel.Budgeting.ChangeData.<Clone>$() -> YHAB.SharedKernel.Budgeting.ChangeData!
+YHAB.SharedKernel.Budgeting.ChangeData.ChangeData(string! Description, System.DateTimeOffset Timestamp) -> void
+YHAB.SharedKernel.Budgeting.ChangeData.Deconstruct(out string! Description, out System.DateTimeOffset Timestamp) -> void
+YHAB.SharedKernel.Budgeting.ChangeData.Description.get -> string!
+YHAB.SharedKernel.Budgeting.ChangeData.Description.init -> void
+YHAB.SharedKernel.Budgeting.ChangeData.Equals(YHAB.SharedKernel.Budgeting.ChangeData? other) -> bool
+YHAB.SharedKernel.Budgeting.ChangeData.Timestamp.get -> System.DateTimeOffset
+YHAB.SharedKernel.Budgeting.ChangeData.Timestamp.init -> void
+YHAB.SharedKernel.Budgeting.CreatePlanRequest
+YHAB.SharedKernel.Budgeting.CreatePlanRequest.<Clone>$() -> YHAB.SharedKernel.Budgeting.CreatePlanRequest!
+YHAB.SharedKernel.Budgeting.CreatePlanRequest.CreatePlanRequest(string! Name, bool StarterCategories = true) -> void
+YHAB.SharedKernel.Budgeting.CreatePlanRequest.Deconstruct(out string! Name, out bool StarterCategories) -> void
+YHAB.SharedKernel.Budgeting.CreatePlanRequest.Equals(YHAB.SharedKernel.Budgeting.CreatePlanRequest? other) -> bool
+YHAB.SharedKernel.Budgeting.CreatePlanRequest.Name.get -> string!
+YHAB.SharedKernel.Budgeting.CreatePlanRequest.Name.init -> void
+YHAB.SharedKernel.Budgeting.CreatePlanRequest.StarterCategories.get -> bool
+YHAB.SharedKernel.Budgeting.CreatePlanRequest.StarterCategories.init -> void
+YHAB.SharedKernel.Budgeting.DeleteTransactions
+YHAB.SharedKernel.Budgeting.DeleteTransactions.Deconstruct(out long Version, out System.Collections.Generic.IReadOnlyList<System.Guid>! TransactionIds) -> void
+YHAB.SharedKernel.Budgeting.DeleteTransactions.DeleteTransactions(long Version, System.Collections.Generic.IReadOnlyList<System.Guid>! TransactionIds) -> void
+YHAB.SharedKernel.Budgeting.DeleteTransactions.Equals(YHAB.SharedKernel.Budgeting.DeleteTransactions? other) -> bool
+YHAB.SharedKernel.Budgeting.DeleteTransactions.TransactionIds.get -> System.Collections.Generic.IReadOnlyList<System.Guid>!
+YHAB.SharedKernel.Budgeting.DeleteTransactions.TransactionIds.init -> void
+YHAB.SharedKernel.Budgeting.GroupData
+YHAB.SharedKernel.Budgeting.GroupData.<Clone>$() -> YHAB.SharedKernel.Budgeting.GroupData!
+YHAB.SharedKernel.Budgeting.GroupData.Deconstruct(out System.Guid Id, out string! Name, out int SortOrder, out bool Hidden) -> void
+YHAB.SharedKernel.Budgeting.GroupData.Equals(YHAB.SharedKernel.Budgeting.GroupData? other) -> bool
+YHAB.SharedKernel.Budgeting.GroupData.GroupData(System.Guid Id, string! Name, int SortOrder, bool Hidden = false) -> void
+YHAB.SharedKernel.Budgeting.GroupData.Hidden.get -> bool
+YHAB.SharedKernel.Budgeting.GroupData.Hidden.init -> void
+YHAB.SharedKernel.Budgeting.GroupData.Id.get -> System.Guid
+YHAB.SharedKernel.Budgeting.GroupData.Id.init -> void
+YHAB.SharedKernel.Budgeting.GroupData.Name.get -> string!
+YHAB.SharedKernel.Budgeting.GroupData.Name.init -> void
+YHAB.SharedKernel.Budgeting.GroupData.SortOrder.get -> int
+YHAB.SharedKernel.Budgeting.GroupData.SortOrder.init -> void
+YHAB.SharedKernel.Budgeting.HistoryPolicy
+YHAB.SharedKernel.Budgeting.IBudgetClient
+YHAB.SharedKernel.Budgeting.IBudgetClient.CreateAsync(YHAB.SharedKernel.Budgeting.CreatePlanRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Guid>!
+YHAB.SharedKernel.Budgeting.IBudgetClient.CreateShareCodeAsync(System.Guid planId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<YHAB.SharedKernel.Budgeting.PlanShareCode!>!
+YHAB.SharedKernel.Budgeting.IBudgetClient.DeleteAsync(System.Guid planId, string! planName, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+YHAB.SharedKernel.Budgeting.IBudgetClient.ExecuteAsync(System.Guid planId, YHAB.SharedKernel.Budgeting.PlanCommand! command, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+YHAB.SharedKernel.Budgeting.IBudgetClient.JoinAsync(string! code, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Guid>!
+YHAB.SharedKernel.Budgeting.IBudgetClient.LeaveAsync(System.Guid planId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+YHAB.SharedKernel.Budgeting.IBudgetClient.ListAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.PlanSummary!>!>!
+YHAB.SharedKernel.Budgeting.IBudgetClient.ReadAsync(System.Guid planId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<YHAB.SharedKernel.Budgeting.PlanSnapshot!>!
+YHAB.SharedKernel.Budgeting.IBudgetClient.ReadMonthAsync(System.Guid planId, System.DateOnly month, long version, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<YHAB.SharedKernel.Budgeting.BudgetMonth!>!
+YHAB.SharedKernel.Budgeting.IBudgetClient.ReadPayeesAsync(System.Guid planId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
+YHAB.SharedKernel.Budgeting.IBudgetClient.ReadRegisterAsync(System.Guid planId, YHAB.SharedKernel.Budgeting.RegisterQuery! query, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<YHAB.SharedKernel.Budgeting.RegisterPage!>!
+YHAB.SharedKernel.Budgeting.IBudgetClient.ReadReportsAsync(System.Guid planId, System.DateOnly from, System.DateOnly through, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<YHAB.SharedKernel.Budgeting.ReportView!>!
+YHAB.SharedKernel.Budgeting.IBudgetClient.ReadRevisionAsync(System.Guid planId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<long>!
+YHAB.SharedKernel.Budgeting.IBudgetClient.ReadSharingAsync(System.Guid planId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<YHAB.SharedKernel.Budgeting.PlanShareSummary!>!
+YHAB.SharedKernel.Budgeting.IBudgetClient.ReadViewAsync(System.Guid planId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<YHAB.SharedKernel.Budgeting.PlanView!>!
+YHAB.SharedKernel.Budgeting.IBudgetClient.ReadWorkspaceAsync(System.Guid planId, System.DateOnly? month, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<YHAB.SharedKernel.Budgeting.PlanMonthView!>!
+YHAB.SharedKernel.Budgeting.IBudgetClient.TransferOwnershipAsync(System.Guid planId, string! memberId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<YHAB.SharedKernel.Budgeting.PlanShareSummary!>!
+YHAB.SharedKernel.Budgeting.IBudgetClient.UnshareAsync(System.Guid planId, string! memberId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<YHAB.SharedKernel.Budgeting.PlanShareSummary!>!
+YHAB.SharedKernel.Budgeting.JoinPlanRequest
+YHAB.SharedKernel.Budgeting.JoinPlanRequest.<Clone>$() -> YHAB.SharedKernel.Budgeting.JoinPlanRequest!
+YHAB.SharedKernel.Budgeting.JoinPlanRequest.Code.get -> string!
+YHAB.SharedKernel.Budgeting.JoinPlanRequest.Code.init -> void
+YHAB.SharedKernel.Budgeting.JoinPlanRequest.Deconstruct(out string! Code) -> void
+YHAB.SharedKernel.Budgeting.JoinPlanRequest.Equals(YHAB.SharedKernel.Budgeting.JoinPlanRequest? other) -> bool
+YHAB.SharedKernel.Budgeting.JoinPlanRequest.JoinPlanRequest(string! Code) -> void
+YHAB.SharedKernel.Budgeting.LedgerPatch
+YHAB.SharedKernel.Budgeting.LedgerPatch.<Clone>$() -> YHAB.SharedKernel.Budgeting.LedgerPatch!
+YHAB.SharedKernel.Budgeting.LedgerPatch.After.get -> YHAB.SharedKernel.Budgeting.PlanSnapshot!
+YHAB.SharedKernel.Budgeting.LedgerPatch.After.init -> void
+YHAB.SharedKernel.Budgeting.LedgerPatch.Before.get -> YHAB.SharedKernel.Budgeting.PlanSnapshot!
+YHAB.SharedKernel.Budgeting.LedgerPatch.Before.init -> void
+YHAB.SharedKernel.Budgeting.LedgerPatch.Deconstruct(out YHAB.SharedKernel.Budgeting.PlanSnapshot! Before, out YHAB.SharedKernel.Budgeting.PlanSnapshot! After) -> void
+YHAB.SharedKernel.Budgeting.LedgerPatch.Equals(YHAB.SharedKernel.Budgeting.LedgerPatch? other) -> bool
+YHAB.SharedKernel.Budgeting.LedgerPatch.IsEmpty.get -> bool
+YHAB.SharedKernel.Budgeting.LedgerPatch.LedgerPatch(YHAB.SharedKernel.Budgeting.PlanSnapshot! Before, YHAB.SharedKernel.Budgeting.PlanSnapshot! After) -> void
+YHAB.SharedKernel.Budgeting.LedgerPatch.TryApply(YHAB.SharedKernel.Budgeting.PlanSnapshot! current, bool reverse, out YHAB.SharedKernel.Budgeting.PlanSnapshot! result) -> bool
+YHAB.SharedKernel.Budgeting.MonthReport
+YHAB.SharedKernel.Budgeting.MonthReport.<Clone>$() -> YHAB.SharedKernel.Budgeting.MonthReport!
+YHAB.SharedKernel.Budgeting.MonthReport.Assets.get -> decimal
+YHAB.SharedKernel.Budgeting.MonthReport.Assets.init -> void
+YHAB.SharedKernel.Budgeting.MonthReport.Debt.get -> decimal
+YHAB.SharedKernel.Budgeting.MonthReport.Debt.init -> void
+YHAB.SharedKernel.Budgeting.MonthReport.Deconstruct(out System.DateOnly Month, out decimal Income, out decimal Expense, out decimal Assets, out decimal Debt) -> void
+YHAB.SharedKernel.Budgeting.MonthReport.Equals(YHAB.SharedKernel.Budgeting.MonthReport? other) -> bool
+YHAB.SharedKernel.Budgeting.MonthReport.Expense.get -> decimal
+YHAB.SharedKernel.Budgeting.MonthReport.Expense.init -> void
+YHAB.SharedKernel.Budgeting.MonthReport.Income.get -> decimal
+YHAB.SharedKernel.Budgeting.MonthReport.Income.init -> void
+YHAB.SharedKernel.Budgeting.MonthReport.Month.get -> System.DateOnly
+YHAB.SharedKernel.Budgeting.MonthReport.Month.init -> void
+YHAB.SharedKernel.Budgeting.MonthReport.MonthReport(System.DateOnly Month, decimal Income, decimal Expense, decimal Assets, decimal Debt) -> void
+YHAB.SharedKernel.Budgeting.MonthReport.NetIncome.get -> decimal
+YHAB.SharedKernel.Budgeting.MonthReport.NetWorth.get -> decimal
+YHAB.SharedKernel.Budgeting.MoveMoney
+YHAB.SharedKernel.Budgeting.MoveMoney.Amount.get -> decimal
+YHAB.SharedKernel.Budgeting.MoveMoney.Amount.init -> void
+YHAB.SharedKernel.Budgeting.MoveMoney.Deconstruct(out long Version, out System.Guid? FromCategoryId, out System.Guid? ToCategoryId, out System.DateOnly Month, out decimal Amount) -> void
+YHAB.SharedKernel.Budgeting.MoveMoney.Equals(YHAB.SharedKernel.Budgeting.MoveMoney? other) -> bool
+YHAB.SharedKernel.Budgeting.MoveMoney.FromCategoryId.get -> System.Guid?
+YHAB.SharedKernel.Budgeting.MoveMoney.FromCategoryId.init -> void
+YHAB.SharedKernel.Budgeting.MoveMoney.Month.get -> System.DateOnly
+YHAB.SharedKernel.Budgeting.MoveMoney.Month.init -> void
+YHAB.SharedKernel.Budgeting.MoveMoney.MoveMoney(long Version, System.Guid? FromCategoryId, System.Guid? ToCategoryId, System.DateOnly Month, decimal Amount) -> void
+YHAB.SharedKernel.Budgeting.MoveMoney.ToCategoryId.get -> System.Guid?
+YHAB.SharedKernel.Budgeting.MoveMoney.ToCategoryId.init -> void
+YHAB.SharedKernel.Budgeting.PlanCollaborator
+YHAB.SharedKernel.Budgeting.PlanCollaborator.<Clone>$() -> YHAB.SharedKernel.Budgeting.PlanCollaborator!
+YHAB.SharedKernel.Budgeting.PlanCollaborator.Deconstruct(out string! UserId, out string! Name) -> void
+YHAB.SharedKernel.Budgeting.PlanCollaborator.Equals(YHAB.SharedKernel.Budgeting.PlanCollaborator? other) -> bool
+YHAB.SharedKernel.Budgeting.PlanCollaborator.Name.get -> string!
+YHAB.SharedKernel.Budgeting.PlanCollaborator.Name.init -> void
+YHAB.SharedKernel.Budgeting.PlanCollaborator.PlanCollaborator(string! UserId, string! Name) -> void
+YHAB.SharedKernel.Budgeting.PlanCollaborator.UserId.get -> string!
+YHAB.SharedKernel.Budgeting.PlanCollaborator.UserId.init -> void
+YHAB.SharedKernel.Budgeting.PlanCommand
+YHAB.SharedKernel.Budgeting.PlanCommand.Deconstruct(out long Version) -> void
+YHAB.SharedKernel.Budgeting.PlanCommand.OperationId.get -> System.Guid
+YHAB.SharedKernel.Budgeting.PlanCommand.OperationId.init -> void
+YHAB.SharedKernel.Budgeting.PlanCommand.PlanCommand(long Version) -> void
+YHAB.SharedKernel.Budgeting.PlanCommand.PlanCommand(YHAB.SharedKernel.Budgeting.PlanCommand! original) -> void
+YHAB.SharedKernel.Budgeting.PlanCommand.Version.get -> long
+YHAB.SharedKernel.Budgeting.PlanCommand.Version.init -> void
+YHAB.SharedKernel.Budgeting.PlanMonthView
+YHAB.SharedKernel.Budgeting.PlanMonthView.<Clone>$() -> YHAB.SharedKernel.Budgeting.PlanMonthView!
+YHAB.SharedKernel.Budgeting.PlanMonthView.Deconstruct(out YHAB.SharedKernel.Budgeting.PlanView! View, out YHAB.SharedKernel.Budgeting.BudgetMonth! Month) -> void
+YHAB.SharedKernel.Budgeting.PlanMonthView.Equals(YHAB.SharedKernel.Budgeting.PlanMonthView? other) -> bool
+YHAB.SharedKernel.Budgeting.PlanMonthView.Month.get -> YHAB.SharedKernel.Budgeting.BudgetMonth!
+YHAB.SharedKernel.Budgeting.PlanMonthView.Month.init -> void
+YHAB.SharedKernel.Budgeting.PlanMonthView.PlanMonthView(YHAB.SharedKernel.Budgeting.PlanView! View, YHAB.SharedKernel.Budgeting.BudgetMonth! Month) -> void
+YHAB.SharedKernel.Budgeting.PlanMonthView.View.get -> YHAB.SharedKernel.Budgeting.PlanView!
+YHAB.SharedKernel.Budgeting.PlanMonthView.View.init -> void
+YHAB.SharedKernel.Budgeting.PlanShareCode
+YHAB.SharedKernel.Budgeting.PlanShareCode.<Clone>$() -> YHAB.SharedKernel.Budgeting.PlanShareCode!
+YHAB.SharedKernel.Budgeting.PlanShareCode.Code.get -> string!
+YHAB.SharedKernel.Budgeting.PlanShareCode.Code.init -> void
+YHAB.SharedKernel.Budgeting.PlanShareCode.Deconstruct(out System.Guid PlanId, out string! Code, out System.DateTimeOffset ExpiresOn) -> void
+YHAB.SharedKernel.Budgeting.PlanShareCode.Equals(YHAB.SharedKernel.Budgeting.PlanShareCode? other) -> bool
+YHAB.SharedKernel.Budgeting.PlanShareCode.ExpiresOn.get -> System.DateTimeOffset
+YHAB.SharedKernel.Budgeting.PlanShareCode.ExpiresOn.init -> void
+YHAB.SharedKernel.Budgeting.PlanShareCode.PlanId.get -> System.Guid
+YHAB.SharedKernel.Budgeting.PlanShareCode.PlanId.init -> void
+YHAB.SharedKernel.Budgeting.PlanShareCode.PlanShareCode(System.Guid PlanId, string! Code, System.DateTimeOffset ExpiresOn) -> void
+YHAB.SharedKernel.Budgeting.PlanShareSummary
+YHAB.SharedKernel.Budgeting.PlanShareSummary.<Clone>$() -> YHAB.SharedKernel.Budgeting.PlanShareSummary!
+YHAB.SharedKernel.Budgeting.PlanShareSummary.Collaborators.get -> System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.PlanCollaborator!>!
+YHAB.SharedKernel.Budgeting.PlanShareSummary.Collaborators.init -> void
+YHAB.SharedKernel.Budgeting.PlanShareSummary.Deconstruct(out string! OwnerName, out bool IsOwner, out System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.PlanCollaborator!>! Collaborators) -> void
+YHAB.SharedKernel.Budgeting.PlanShareSummary.Equals(YHAB.SharedKernel.Budgeting.PlanShareSummary? other) -> bool
+YHAB.SharedKernel.Budgeting.PlanShareSummary.IsOwner.get -> bool
+YHAB.SharedKernel.Budgeting.PlanShareSummary.IsOwner.init -> void
+YHAB.SharedKernel.Budgeting.PlanShareSummary.OwnerName.get -> string!
+YHAB.SharedKernel.Budgeting.PlanShareSummary.OwnerName.init -> void
+YHAB.SharedKernel.Budgeting.PlanShareSummary.PlanShareSummary(string! OwnerName, bool IsOwner, System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.PlanCollaborator!>! Collaborators) -> void
+YHAB.SharedKernel.Budgeting.PlanSnapshot
+YHAB.SharedKernel.Budgeting.PlanSnapshot.<Clone>$() -> YHAB.SharedKernel.Budgeting.PlanSnapshot!
+YHAB.SharedKernel.Budgeting.PlanSnapshot.Accounts.get -> System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.AccountData!>!
+YHAB.SharedKernel.Budgeting.PlanSnapshot.Accounts.init -> void
+YHAB.SharedKernel.Budgeting.PlanSnapshot.Allocations.get -> System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.AllocationData!>!
+YHAB.SharedKernel.Budgeting.PlanSnapshot.Allocations.init -> void
+YHAB.SharedKernel.Budgeting.PlanSnapshot.CanRedo.get -> bool
+YHAB.SharedKernel.Budgeting.PlanSnapshot.CanRedo.init -> void
+YHAB.SharedKernel.Budgeting.PlanSnapshot.CanUndo.get -> bool
+YHAB.SharedKernel.Budgeting.PlanSnapshot.CanUndo.init -> void
+YHAB.SharedKernel.Budgeting.PlanSnapshot.Categories.get -> System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.CategoryData!>!
+YHAB.SharedKernel.Budgeting.PlanSnapshot.Categories.init -> void
+YHAB.SharedKernel.Budgeting.PlanSnapshot.Changes.get -> System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.ChangeData!>!
+YHAB.SharedKernel.Budgeting.PlanSnapshot.Changes.init -> void
+YHAB.SharedKernel.Budgeting.PlanSnapshot.CreatedOn.get -> System.DateOnly
+YHAB.SharedKernel.Budgeting.PlanSnapshot.CreatedOn.init -> void
+YHAB.SharedKernel.Budgeting.PlanSnapshot.Deconstruct(out System.Guid Id, out string! Name, out string! Notes, out System.DateOnly CreatedOn, out long Version, out System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.AccountData!>! Accounts, out System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.GroupData!>! Groups, out System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.CategoryData!>! Categories, out System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.AllocationData!>! Allocations, out System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.TransactionData!>! Transactions, out bool CanUndo, out bool CanRedo, out System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.ChangeData!>! Changes) -> void
+YHAB.SharedKernel.Budgeting.PlanSnapshot.Equals(YHAB.SharedKernel.Budgeting.PlanSnapshot? other) -> bool
+YHAB.SharedKernel.Budgeting.PlanSnapshot.Groups.get -> System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.GroupData!>!
+YHAB.SharedKernel.Budgeting.PlanSnapshot.Groups.init -> void
+YHAB.SharedKernel.Budgeting.PlanSnapshot.Id.get -> System.Guid
+YHAB.SharedKernel.Budgeting.PlanSnapshot.Id.init -> void
+YHAB.SharedKernel.Budgeting.PlanSnapshot.IsOwner.get -> bool
+YHAB.SharedKernel.Budgeting.PlanSnapshot.IsOwner.init -> void
+YHAB.SharedKernel.Budgeting.PlanSnapshot.Name.get -> string!
+YHAB.SharedKernel.Budgeting.PlanSnapshot.Name.init -> void
+YHAB.SharedKernel.Budgeting.PlanSnapshot.Notes.get -> string!
+YHAB.SharedKernel.Budgeting.PlanSnapshot.Notes.init -> void
+YHAB.SharedKernel.Budgeting.PlanSnapshot.OwnerName.get -> string?
+YHAB.SharedKernel.Budgeting.PlanSnapshot.OwnerName.init -> void
+YHAB.SharedKernel.Budgeting.PlanSnapshot.PlanSnapshot(System.Guid Id, string! Name, string! Notes, System.DateOnly CreatedOn, long Version, System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.AccountData!>! Accounts, System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.GroupData!>! Groups, System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.CategoryData!>! Categories, System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.AllocationData!>! Allocations, System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.TransactionData!>! Transactions, bool CanUndo, bool CanRedo, System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.ChangeData!>! Changes) -> void
+YHAB.SharedKernel.Budgeting.PlanSnapshot.Today.get -> System.DateOnly
+YHAB.SharedKernel.Budgeting.PlanSnapshot.Today.init -> void
+YHAB.SharedKernel.Budgeting.PlanSnapshot.Transactions.get -> System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.TransactionData!>!
+YHAB.SharedKernel.Budgeting.PlanSnapshot.Transactions.init -> void
+YHAB.SharedKernel.Budgeting.PlanSnapshot.Version.get -> long
+YHAB.SharedKernel.Budgeting.PlanSnapshot.Version.init -> void
+YHAB.SharedKernel.Budgeting.PlanSummary
+YHAB.SharedKernel.Budgeting.PlanSummary.<Clone>$() -> YHAB.SharedKernel.Budgeting.PlanSummary!
+YHAB.SharedKernel.Budgeting.PlanSummary.Deconstruct(out System.Guid Id, out string! Name, out string! Notes, out long Version) -> void
+YHAB.SharedKernel.Budgeting.PlanSummary.Equals(YHAB.SharedKernel.Budgeting.PlanSummary? other) -> bool
+YHAB.SharedKernel.Budgeting.PlanSummary.Id.get -> System.Guid
+YHAB.SharedKernel.Budgeting.PlanSummary.Id.init -> void
+YHAB.SharedKernel.Budgeting.PlanSummary.IsOwner.get -> bool
+YHAB.SharedKernel.Budgeting.PlanSummary.IsOwner.init -> void
+YHAB.SharedKernel.Budgeting.PlanSummary.Name.get -> string!
+YHAB.SharedKernel.Budgeting.PlanSummary.Name.init -> void
+YHAB.SharedKernel.Budgeting.PlanSummary.Notes.get -> string!
+YHAB.SharedKernel.Budgeting.PlanSummary.Notes.init -> void
+YHAB.SharedKernel.Budgeting.PlanSummary.PlanSummary(System.Guid Id, string! Name, string! Notes, long Version) -> void
+YHAB.SharedKernel.Budgeting.PlanSummary.SharedBy.get -> string?
+YHAB.SharedKernel.Budgeting.PlanSummary.SharedBy.init -> void
+YHAB.SharedKernel.Budgeting.PlanSummary.Version.get -> long
+YHAB.SharedKernel.Budgeting.PlanSummary.Version.init -> void
+YHAB.SharedKernel.Budgeting.PlanView
+YHAB.SharedKernel.Budgeting.PlanView.<Clone>$() -> YHAB.SharedKernel.Budgeting.PlanView!
+YHAB.SharedKernel.Budgeting.PlanView.Balances.get -> System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.AccountBalance!>!
+YHAB.SharedKernel.Budgeting.PlanView.Balances.init -> void
+YHAB.SharedKernel.Budgeting.PlanView.Catalog.get -> YHAB.SharedKernel.Budgeting.PlanSnapshot!
+YHAB.SharedKernel.Budgeting.PlanView.Catalog.init -> void
+YHAB.SharedKernel.Budgeting.PlanView.Deconstruct(out YHAB.SharedKernel.Budgeting.PlanSnapshot! Catalog, out System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.AccountBalance!>! Balances, out bool HasDueRecurring) -> void
+YHAB.SharedKernel.Budgeting.PlanView.Equals(YHAB.SharedKernel.Budgeting.PlanView? other) -> bool
+YHAB.SharedKernel.Budgeting.PlanView.HasDueRecurring.get -> bool
+YHAB.SharedKernel.Budgeting.PlanView.HasDueRecurring.init -> void
+YHAB.SharedKernel.Budgeting.PlanView.PlanView(YHAB.SharedKernel.Budgeting.PlanSnapshot! Catalog, System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.AccountBalance!>! Balances, bool HasDueRecurring) -> void
+YHAB.SharedKernel.Budgeting.PostRecurring
+YHAB.SharedKernel.Budgeting.PostRecurring.Deconstruct(out long Version, out System.DateOnly ThroughDate) -> void
+YHAB.SharedKernel.Budgeting.PostRecurring.Equals(YHAB.SharedKernel.Budgeting.PostRecurring? other) -> bool
+YHAB.SharedKernel.Budgeting.PostRecurring.PostRecurring(long Version, System.DateOnly ThroughDate) -> void
+YHAB.SharedKernel.Budgeting.PostRecurring.ThroughDate.get -> System.DateOnly
+YHAB.SharedKernel.Budgeting.PostRecurring.ThroughDate.init -> void
+YHAB.SharedKernel.Budgeting.RecurrenceBatch
+YHAB.SharedKernel.Budgeting.RecurrenceBatch.<Clone>$() -> YHAB.SharedKernel.Budgeting.RecurrenceBatch!
+YHAB.SharedKernel.Budgeting.RecurrenceBatch.Dates.get -> System.Collections.Generic.IReadOnlyList<System.DateOnly>!
+YHAB.SharedKernel.Budgeting.RecurrenceBatch.Dates.init -> void
+YHAB.SharedKernel.Budgeting.RecurrenceBatch.Deconstruct(out System.Collections.Generic.IReadOnlyList<System.DateOnly>! Dates, out System.DateOnly NextDate, out int NextOccurrence, out bool HasMore) -> void
+YHAB.SharedKernel.Budgeting.RecurrenceBatch.Equals(YHAB.SharedKernel.Budgeting.RecurrenceBatch? other) -> bool
+YHAB.SharedKernel.Budgeting.RecurrenceBatch.HasMore.get -> bool
+YHAB.SharedKernel.Budgeting.RecurrenceBatch.HasMore.init -> void
+YHAB.SharedKernel.Budgeting.RecurrenceBatch.NextDate.get -> System.DateOnly
+YHAB.SharedKernel.Budgeting.RecurrenceBatch.NextDate.init -> void
+YHAB.SharedKernel.Budgeting.RecurrenceBatch.NextOccurrence.get -> int
+YHAB.SharedKernel.Budgeting.RecurrenceBatch.NextOccurrence.init -> void
+YHAB.SharedKernel.Budgeting.RecurrenceBatch.RecurrenceBatch(System.Collections.Generic.IReadOnlyList<System.DateOnly>! Dates, System.DateOnly NextDate, int NextOccurrence, bool HasMore) -> void
+YHAB.SharedKernel.Budgeting.RecurrenceCalendar
+YHAB.SharedKernel.Budgeting.RecurrencePlanner
+YHAB.SharedKernel.Budgeting.RedoChange
+YHAB.SharedKernel.Budgeting.RedoChange.Deconstruct(out long Version) -> void
+YHAB.SharedKernel.Budgeting.RedoChange.Equals(YHAB.SharedKernel.Budgeting.RedoChange? other) -> bool
+YHAB.SharedKernel.Budgeting.RedoChange.RedoChange(long Version) -> void
+YHAB.SharedKernel.Budgeting.RegisterCursor
+YHAB.SharedKernel.Budgeting.RegisterCursor.<Clone>$() -> YHAB.SharedKernel.Budgeting.RegisterCursor!
+YHAB.SharedKernel.Budgeting.RegisterCursor.Amount.get -> decimal
+YHAB.SharedKernel.Budgeting.RegisterCursor.Amount.init -> void
+YHAB.SharedKernel.Budgeting.RegisterCursor.Date.get -> System.DateOnly
+YHAB.SharedKernel.Budgeting.RegisterCursor.Date.init -> void
+YHAB.SharedKernel.Budgeting.RegisterCursor.Deconstruct(out System.DateOnly Date, out long Sequence, out System.Guid Id, out string! Payee, out decimal Amount) -> void
+YHAB.SharedKernel.Budgeting.RegisterCursor.Equals(YHAB.SharedKernel.Budgeting.RegisterCursor? other) -> bool
+YHAB.SharedKernel.Budgeting.RegisterCursor.Id.get -> System.Guid
+YHAB.SharedKernel.Budgeting.RegisterCursor.Id.init -> void
+YHAB.SharedKernel.Budgeting.RegisterCursor.Payee.get -> string!
+YHAB.SharedKernel.Budgeting.RegisterCursor.Payee.init -> void
+YHAB.SharedKernel.Budgeting.RegisterCursor.RegisterCursor(System.DateOnly Date, long Sequence, System.Guid Id, string! Payee, decimal Amount) -> void
+YHAB.SharedKernel.Budgeting.RegisterCursor.Sequence.get -> long
+YHAB.SharedKernel.Budgeting.RegisterCursor.Sequence.init -> void
+YHAB.SharedKernel.Budgeting.RegisterPage
+YHAB.SharedKernel.Budgeting.RegisterPage.<Clone>$() -> YHAB.SharedKernel.Budgeting.RegisterPage!
+YHAB.SharedKernel.Budgeting.RegisterPage.Deconstruct(out long Version, out System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.RegisterRow!>! Rows, out int Total, out YHAB.SharedKernel.Budgeting.RegisterCursor? Next) -> void
+YHAB.SharedKernel.Budgeting.RegisterPage.Equals(YHAB.SharedKernel.Budgeting.RegisterPage? other) -> bool
+YHAB.SharedKernel.Budgeting.RegisterPage.Next.get -> YHAB.SharedKernel.Budgeting.RegisterCursor?
+YHAB.SharedKernel.Budgeting.RegisterPage.Next.init -> void
+YHAB.SharedKernel.Budgeting.RegisterPage.RegisterPage(long Version, System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.RegisterRow!>! Rows, int Total, YHAB.SharedKernel.Budgeting.RegisterCursor? Next) -> void
+YHAB.SharedKernel.Budgeting.RegisterPage.Rows.get -> System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.RegisterRow!>!
+YHAB.SharedKernel.Budgeting.RegisterPage.Rows.init -> void
+YHAB.SharedKernel.Budgeting.RegisterPage.Total.get -> int
+YHAB.SharedKernel.Budgeting.RegisterPage.Total.init -> void
+YHAB.SharedKernel.Budgeting.RegisterPage.Version.get -> long
+YHAB.SharedKernel.Budgeting.RegisterPage.Version.init -> void
+YHAB.SharedKernel.Budgeting.RegisterPolicy
+YHAB.SharedKernel.Budgeting.RegisterQuery
+YHAB.SharedKernel.Budgeting.RegisterQuery.<Clone>$() -> YHAB.SharedKernel.Budgeting.RegisterQuery!
+YHAB.SharedKernel.Budgeting.RegisterQuery.AccountId.get -> System.Guid?
+YHAB.SharedKernel.Budgeting.RegisterQuery.AccountId.init -> void
+YHAB.SharedKernel.Budgeting.RegisterQuery.After.get -> YHAB.SharedKernel.Budgeting.RegisterCursor?
+YHAB.SharedKernel.Budgeting.RegisterQuery.After.init -> void
+YHAB.SharedKernel.Budgeting.RegisterQuery.CategoryId.get -> System.Guid?
+YHAB.SharedKernel.Budgeting.RegisterQuery.CategoryId.init -> void
+YHAB.SharedKernel.Budgeting.RegisterQuery.Deconstruct(out System.Guid? AccountId, out string! Search, out string! Filter, out string! Sort, out System.DateOnly? From, out System.DateOnly? Through, out YHAB.SharedKernel.Budgeting.RegisterCursor? After, out int PageSize, out long? Version, out System.Guid? CategoryId) -> void
+YHAB.SharedKernel.Budgeting.RegisterQuery.Equals(YHAB.SharedKernel.Budgeting.RegisterQuery? other) -> bool
+YHAB.SharedKernel.Budgeting.RegisterQuery.Filter.get -> string!
+YHAB.SharedKernel.Budgeting.RegisterQuery.Filter.init -> void
+YHAB.SharedKernel.Budgeting.RegisterQuery.From.get -> System.DateOnly?
+YHAB.SharedKernel.Budgeting.RegisterQuery.From.init -> void
+YHAB.SharedKernel.Budgeting.RegisterQuery.PageSize.get -> int
+YHAB.SharedKernel.Budgeting.RegisterQuery.PageSize.init -> void
+YHAB.SharedKernel.Budgeting.RegisterQuery.RegisterQuery(System.Guid? AccountId = null, string! Search = "", string! Filter = "All posted", string! Sort = "Newest first", System.DateOnly? From = null, System.DateOnly? Through = null, YHAB.SharedKernel.Budgeting.RegisterCursor? After = null, int PageSize = 50, long? Version = null, System.Guid? CategoryId = null) -> void
+YHAB.SharedKernel.Budgeting.RegisterQuery.Search.get -> string!
+YHAB.SharedKernel.Budgeting.RegisterQuery.Search.init -> void
+YHAB.SharedKernel.Budgeting.RegisterQuery.Sort.get -> string!
+YHAB.SharedKernel.Budgeting.RegisterQuery.Sort.init -> void
+YHAB.SharedKernel.Budgeting.RegisterQuery.Through.get -> System.DateOnly?
+YHAB.SharedKernel.Budgeting.RegisterQuery.Through.init -> void
+YHAB.SharedKernel.Budgeting.RegisterQuery.Version.get -> long?
+YHAB.SharedKernel.Budgeting.RegisterQuery.Version.init -> void
+YHAB.SharedKernel.Budgeting.RegisterRow
+YHAB.SharedKernel.Budgeting.RegisterRow.<Clone>$() -> YHAB.SharedKernel.Budgeting.RegisterRow!
+YHAB.SharedKernel.Budgeting.RegisterRow.Deconstruct(out YHAB.SharedKernel.Budgeting.TransactionData! Transaction, out decimal RunningBalance) -> void
+YHAB.SharedKernel.Budgeting.RegisterRow.Equals(YHAB.SharedKernel.Budgeting.RegisterRow? other) -> bool
+YHAB.SharedKernel.Budgeting.RegisterRow.RegisterRow(YHAB.SharedKernel.Budgeting.TransactionData! Transaction, decimal RunningBalance) -> void
+YHAB.SharedKernel.Budgeting.RegisterRow.RunningBalance.get -> decimal
+YHAB.SharedKernel.Budgeting.RegisterRow.RunningBalance.init -> void
+YHAB.SharedKernel.Budgeting.RegisterRow.Transaction.get -> YHAB.SharedKernel.Budgeting.TransactionData!
+YHAB.SharedKernel.Budgeting.RegisterRow.Transaction.init -> void
+YHAB.SharedKernel.Budgeting.RemoveCategory
+YHAB.SharedKernel.Budgeting.RemoveCategory.CategoryId.get -> System.Guid
+YHAB.SharedKernel.Budgeting.RemoveCategory.CategoryId.init -> void
+YHAB.SharedKernel.Budgeting.RemoveCategory.Deconstruct(out long Version, out System.Guid CategoryId, out System.Guid? ReplacementCategoryId) -> void
+YHAB.SharedKernel.Budgeting.RemoveCategory.Equals(YHAB.SharedKernel.Budgeting.RemoveCategory? other) -> bool
+YHAB.SharedKernel.Budgeting.RemoveCategory.RemoveCategory(long Version, System.Guid CategoryId, System.Guid? ReplacementCategoryId) -> void
+YHAB.SharedKernel.Budgeting.RemoveCategory.ReplacementCategoryId.get -> System.Guid?
+YHAB.SharedKernel.Budgeting.RemoveCategory.ReplacementCategoryId.init -> void
+YHAB.SharedKernel.Budgeting.RenamePayee
+YHAB.SharedKernel.Budgeting.RenamePayee.Deconstruct(out long Version, out string! OldName, out string! NewName) -> void
+YHAB.SharedKernel.Budgeting.RenamePayee.Equals(YHAB.SharedKernel.Budgeting.RenamePayee? other) -> bool
+YHAB.SharedKernel.Budgeting.RenamePayee.NewName.get -> string!
+YHAB.SharedKernel.Budgeting.RenamePayee.NewName.init -> void
+YHAB.SharedKernel.Budgeting.RenamePayee.OldName.get -> string!
+YHAB.SharedKernel.Budgeting.RenamePayee.OldName.init -> void
+YHAB.SharedKernel.Budgeting.RenamePayee.RenamePayee(long Version, string! OldName, string! NewName) -> void
+YHAB.SharedKernel.Budgeting.ReorderCategory
+YHAB.SharedKernel.Budgeting.ReorderCategory.BeforeCategoryId.get -> System.Guid?
+YHAB.SharedKernel.Budgeting.ReorderCategory.BeforeCategoryId.init -> void
+YHAB.SharedKernel.Budgeting.ReorderCategory.CategoryId.get -> System.Guid
+YHAB.SharedKernel.Budgeting.ReorderCategory.CategoryId.init -> void
+YHAB.SharedKernel.Budgeting.ReorderCategory.Deconstruct(out long Version, out System.Guid CategoryId, out System.Guid GroupId, out System.Guid? BeforeCategoryId) -> void
+YHAB.SharedKernel.Budgeting.ReorderCategory.Equals(YHAB.SharedKernel.Budgeting.ReorderCategory? other) -> bool
+YHAB.SharedKernel.Budgeting.ReorderCategory.GroupId.get -> System.Guid
+YHAB.SharedKernel.Budgeting.ReorderCategory.GroupId.init -> void
+YHAB.SharedKernel.Budgeting.ReorderCategory.ReorderCategory(long Version, System.Guid CategoryId, System.Guid GroupId, System.Guid? BeforeCategoryId) -> void
+YHAB.SharedKernel.Budgeting.ReorderGroup
+YHAB.SharedKernel.Budgeting.ReorderGroup.BeforeGroupId.get -> System.Guid?
+YHAB.SharedKernel.Budgeting.ReorderGroup.BeforeGroupId.init -> void
+YHAB.SharedKernel.Budgeting.ReorderGroup.Deconstruct(out long Version, out System.Guid GroupId, out System.Guid? BeforeGroupId) -> void
+YHAB.SharedKernel.Budgeting.ReorderGroup.Equals(YHAB.SharedKernel.Budgeting.ReorderGroup? other) -> bool
+YHAB.SharedKernel.Budgeting.ReorderGroup.GroupId.get -> System.Guid
+YHAB.SharedKernel.Budgeting.ReorderGroup.GroupId.init -> void
+YHAB.SharedKernel.Budgeting.ReorderGroup.ReorderGroup(long Version, System.Guid GroupId, System.Guid? BeforeGroupId) -> void
+YHAB.SharedKernel.Budgeting.RepeatFrequency
+YHAB.SharedKernel.Budgeting.RepeatFrequency.Daily = 1 -> YHAB.SharedKernel.Budgeting.RepeatFrequency
+YHAB.SharedKernel.Budgeting.RepeatFrequency.EverySixMonths = 8 -> YHAB.SharedKernel.Budgeting.RepeatFrequency
+YHAB.SharedKernel.Budgeting.RepeatFrequency.EveryTwoMonths = 6 -> YHAB.SharedKernel.Budgeting.RepeatFrequency
+YHAB.SharedKernel.Budgeting.RepeatFrequency.EveryTwoWeeks = 3 -> YHAB.SharedKernel.Budgeting.RepeatFrequency
+YHAB.SharedKernel.Budgeting.RepeatFrequency.Monthly = 5 -> YHAB.SharedKernel.Budgeting.RepeatFrequency
+YHAB.SharedKernel.Budgeting.RepeatFrequency.None = 0 -> YHAB.SharedKernel.Budgeting.RepeatFrequency
+YHAB.SharedKernel.Budgeting.RepeatFrequency.Quarterly = 7 -> YHAB.SharedKernel.Budgeting.RepeatFrequency
+YHAB.SharedKernel.Budgeting.RepeatFrequency.TwiceMonthly = 4 -> YHAB.SharedKernel.Budgeting.RepeatFrequency
+YHAB.SharedKernel.Budgeting.RepeatFrequency.Weekly = 2 -> YHAB.SharedKernel.Budgeting.RepeatFrequency
+YHAB.SharedKernel.Budgeting.RepeatFrequency.Yearly = 9 -> YHAB.SharedKernel.Budgeting.RepeatFrequency
+YHAB.SharedKernel.Budgeting.ReportAccountMonth
+YHAB.SharedKernel.Budgeting.ReportAccountMonth.<Clone>$() -> YHAB.SharedKernel.Budgeting.ReportAccountMonth!
+YHAB.SharedKernel.Budgeting.ReportAccountMonth.AccountId.get -> System.Guid
+YHAB.SharedKernel.Budgeting.ReportAccountMonth.AccountId.init -> void
+YHAB.SharedKernel.Budgeting.ReportAccountMonth.Amount.get -> decimal
+YHAB.SharedKernel.Budgeting.ReportAccountMonth.Amount.init -> void
+YHAB.SharedKernel.Budgeting.ReportAccountMonth.Deconstruct(out System.Guid AccountId, out System.DateOnly Month, out decimal Amount) -> void
+YHAB.SharedKernel.Budgeting.ReportAccountMonth.Equals(YHAB.SharedKernel.Budgeting.ReportAccountMonth? other) -> bool
+YHAB.SharedKernel.Budgeting.ReportAccountMonth.Month.get -> System.DateOnly
+YHAB.SharedKernel.Budgeting.ReportAccountMonth.Month.init -> void
+YHAB.SharedKernel.Budgeting.ReportAccountMonth.ReportAccountMonth(System.Guid AccountId, System.DateOnly Month, decimal Amount) -> void
+YHAB.SharedKernel.Budgeting.ReportCalculator
+YHAB.SharedKernel.Budgeting.ReportCategoryMonth
+YHAB.SharedKernel.Budgeting.ReportCategoryMonth.<Clone>$() -> YHAB.SharedKernel.Budgeting.ReportCategoryMonth!
+YHAB.SharedKernel.Budgeting.ReportCategoryMonth.Amount.get -> decimal
+YHAB.SharedKernel.Budgeting.ReportCategoryMonth.Amount.init -> void
+YHAB.SharedKernel.Budgeting.ReportCategoryMonth.CategoryId.get -> System.Guid?
+YHAB.SharedKernel.Budgeting.ReportCategoryMonth.CategoryId.init -> void
+YHAB.SharedKernel.Budgeting.ReportCategoryMonth.Deconstruct(out System.Guid? CategoryId, out System.DateOnly Month, out decimal Amount) -> void
+YHAB.SharedKernel.Budgeting.ReportCategoryMonth.Equals(YHAB.SharedKernel.Budgeting.ReportCategoryMonth? other) -> bool
+YHAB.SharedKernel.Budgeting.ReportCategoryMonth.Month.get -> System.DateOnly
+YHAB.SharedKernel.Budgeting.ReportCategoryMonth.Month.init -> void
+YHAB.SharedKernel.Budgeting.ReportCategoryMonth.ReportCategoryMonth(System.Guid? CategoryId, System.DateOnly Month, decimal Amount) -> void
+YHAB.SharedKernel.Budgeting.ReportTotals
+YHAB.SharedKernel.Budgeting.ReportTotals.<Clone>$() -> YHAB.SharedKernel.Budgeting.ReportTotals!
+YHAB.SharedKernel.Budgeting.ReportTotals.AccountMonths.get -> System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.ReportAccountMonth!>!
+YHAB.SharedKernel.Budgeting.ReportTotals.AccountMonths.init -> void
+YHAB.SharedKernel.Budgeting.ReportTotals.CategoryMonths.get -> System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.ReportCategoryMonth!>!
+YHAB.SharedKernel.Budgeting.ReportTotals.CategoryMonths.init -> void
+YHAB.SharedKernel.Budgeting.ReportTotals.Deconstruct(out System.Collections.Generic.IReadOnlyDictionary<System.Guid, decimal>! PriorAccountChanges, out System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.ReportAccountMonth!>! AccountMonths, out System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.ReportCategoryMonth!>! CategoryMonths) -> void
+YHAB.SharedKernel.Budgeting.ReportTotals.Equals(YHAB.SharedKernel.Budgeting.ReportTotals? other) -> bool
+YHAB.SharedKernel.Budgeting.ReportTotals.PriorAccountChanges.get -> System.Collections.Generic.IReadOnlyDictionary<System.Guid, decimal>!
+YHAB.SharedKernel.Budgeting.ReportTotals.PriorAccountChanges.init -> void
+YHAB.SharedKernel.Budgeting.ReportTotals.ReportTotals(System.Collections.Generic.IReadOnlyDictionary<System.Guid, decimal>! PriorAccountChanges, System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.ReportAccountMonth!>! AccountMonths, System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.ReportCategoryMonth!>! CategoryMonths) -> void
+YHAB.SharedKernel.Budgeting.ReportView
+YHAB.SharedKernel.Budgeting.ReportView.<Clone>$() -> YHAB.SharedKernel.Budgeting.ReportView!
+YHAB.SharedKernel.Budgeting.ReportView.Budgeted.get -> System.Collections.Generic.IReadOnlyDictionary<System.Guid, decimal>!
+YHAB.SharedKernel.Budgeting.ReportView.Budgeted.init -> void
+YHAB.SharedKernel.Budgeting.ReportView.Deconstruct(out long Version, out System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.MonthReport!>! Months, out System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.CategorySpending!>! Spending, out System.Collections.Generic.IReadOnlyDictionary<System.Guid, decimal>! Budgeted) -> void
+YHAB.SharedKernel.Budgeting.ReportView.Equals(YHAB.SharedKernel.Budgeting.ReportView? other) -> bool
+YHAB.SharedKernel.Budgeting.ReportView.Months.get -> System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.MonthReport!>!
+YHAB.SharedKernel.Budgeting.ReportView.Months.init -> void
+YHAB.SharedKernel.Budgeting.ReportView.ReportView(long Version, System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.MonthReport!>! Months, System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.CategorySpending!>! Spending, System.Collections.Generic.IReadOnlyDictionary<System.Guid, decimal>! Budgeted) -> void
+YHAB.SharedKernel.Budgeting.ReportView.Spending.get -> System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.CategorySpending!>!
+YHAB.SharedKernel.Budgeting.ReportView.Spending.init -> void
+YHAB.SharedKernel.Budgeting.ReportView.Version.get -> long
+YHAB.SharedKernel.Budgeting.ReportView.Version.init -> void
+YHAB.SharedKernel.Budgeting.RequestToken
+YHAB.SharedKernel.Budgeting.RequestToken.<Clone>$() -> YHAB.SharedKernel.Budgeting.RequestToken!
+YHAB.SharedKernel.Budgeting.RequestToken.Deconstruct(out string! Token) -> void
+YHAB.SharedKernel.Budgeting.RequestToken.Equals(YHAB.SharedKernel.Budgeting.RequestToken? other) -> bool
+YHAB.SharedKernel.Budgeting.RequestToken.RequestToken(string! Token) -> void
+YHAB.SharedKernel.Budgeting.RequestToken.Token.get -> string!
+YHAB.SharedKernel.Budgeting.RequestToken.Token.init -> void
+YHAB.SharedKernel.Budgeting.RevisionRequest
+YHAB.SharedKernel.Budgeting.RevisionRequest.<Clone>$() -> YHAB.SharedKernel.Budgeting.RevisionRequest!
+YHAB.SharedKernel.Budgeting.RevisionRequest.Deconstruct(out long Version) -> void
+YHAB.SharedKernel.Budgeting.RevisionRequest.Equals(YHAB.SharedKernel.Budgeting.RevisionRequest? other) -> bool
+YHAB.SharedKernel.Budgeting.RevisionRequest.RevisionRequest(long Version) -> void
+YHAB.SharedKernel.Budgeting.RevisionRequest.Version.get -> long
+YHAB.SharedKernel.Budgeting.RevisionRequest.Version.init -> void
+YHAB.SharedKernel.Budgeting.SaveAccount
+YHAB.SharedKernel.Budgeting.SaveAccount.Account.get -> YHAB.SharedKernel.Budgeting.AccountData!
+YHAB.SharedKernel.Budgeting.SaveAccount.Account.init -> void
+YHAB.SharedKernel.Budgeting.SaveAccount.Deconstruct(out long Version, out YHAB.SharedKernel.Budgeting.AccountData! Account) -> void
+YHAB.SharedKernel.Budgeting.SaveAccount.Equals(YHAB.SharedKernel.Budgeting.SaveAccount? other) -> bool
+YHAB.SharedKernel.Budgeting.SaveAccount.SaveAccount(long Version, YHAB.SharedKernel.Budgeting.AccountData! Account) -> void
+YHAB.SharedKernel.Budgeting.SaveCategory
+YHAB.SharedKernel.Budgeting.SaveCategory.Category.get -> YHAB.SharedKernel.Budgeting.CategoryData!
+YHAB.SharedKernel.Budgeting.SaveCategory.Category.init -> void
+YHAB.SharedKernel.Budgeting.SaveCategory.Deconstruct(out long Version, out YHAB.SharedKernel.Budgeting.CategoryData! Category) -> void
+YHAB.SharedKernel.Budgeting.SaveCategory.Equals(YHAB.SharedKernel.Budgeting.SaveCategory? other) -> bool
+YHAB.SharedKernel.Budgeting.SaveCategory.SaveCategory(long Version, YHAB.SharedKernel.Budgeting.CategoryData! Category) -> void
+YHAB.SharedKernel.Budgeting.SaveGroup
+YHAB.SharedKernel.Budgeting.SaveGroup.Deconstruct(out long Version, out YHAB.SharedKernel.Budgeting.GroupData! Group) -> void
+YHAB.SharedKernel.Budgeting.SaveGroup.Equals(YHAB.SharedKernel.Budgeting.SaveGroup? other) -> bool
+YHAB.SharedKernel.Budgeting.SaveGroup.Group.get -> YHAB.SharedKernel.Budgeting.GroupData!
+YHAB.SharedKernel.Budgeting.SaveGroup.Group.init -> void
+YHAB.SharedKernel.Budgeting.SaveGroup.SaveGroup(long Version, YHAB.SharedKernel.Budgeting.GroupData! Group) -> void
+YHAB.SharedKernel.Budgeting.SaveTransaction
+YHAB.SharedKernel.Budgeting.SaveTransaction.Deconstruct(out long Version, out YHAB.SharedKernel.Budgeting.TransactionData! Transaction) -> void
+YHAB.SharedKernel.Budgeting.SaveTransaction.Equals(YHAB.SharedKernel.Budgeting.SaveTransaction? other) -> bool
+YHAB.SharedKernel.Budgeting.SaveTransaction.SaveTransaction(long Version, YHAB.SharedKernel.Budgeting.TransactionData! Transaction) -> void
+YHAB.SharedKernel.Budgeting.SaveTransaction.Transaction.get -> YHAB.SharedKernel.Budgeting.TransactionData!
+YHAB.SharedKernel.Budgeting.SaveTransaction.Transaction.init -> void
+YHAB.SharedKernel.Budgeting.SplitData
+YHAB.SharedKernel.Budgeting.SplitData.<Clone>$() -> YHAB.SharedKernel.Budgeting.SplitData!
+YHAB.SharedKernel.Budgeting.SplitData.Amount.get -> decimal
+YHAB.SharedKernel.Budgeting.SplitData.Amount.init -> void
+YHAB.SharedKernel.Budgeting.SplitData.CategoryId.get -> System.Guid?
+YHAB.SharedKernel.Budgeting.SplitData.CategoryId.init -> void
+YHAB.SharedKernel.Budgeting.SplitData.Deconstruct(out System.Guid Id, out System.Guid? CategoryId, out decimal Amount, out string! Memo) -> void
+YHAB.SharedKernel.Budgeting.SplitData.Equals(YHAB.SharedKernel.Budgeting.SplitData? other) -> bool
+YHAB.SharedKernel.Budgeting.SplitData.Id.get -> System.Guid
+YHAB.SharedKernel.Budgeting.SplitData.Id.init -> void
+YHAB.SharedKernel.Budgeting.SplitData.Memo.get -> string!
+YHAB.SharedKernel.Budgeting.SplitData.Memo.init -> void
+YHAB.SharedKernel.Budgeting.SplitData.SplitData(System.Guid Id, System.Guid? CategoryId, decimal Amount, string! Memo) -> void
+YHAB.SharedKernel.Budgeting.TargetCadence
+YHAB.SharedKernel.Budgeting.TargetCadence.Custom = 3 -> YHAB.SharedKernel.Budgeting.TargetCadence
+YHAB.SharedKernel.Budgeting.TargetCadence.Monthly = 1 -> YHAB.SharedKernel.Budgeting.TargetCadence
+YHAB.SharedKernel.Budgeting.TargetCadence.Weekly = 0 -> YHAB.SharedKernel.Budgeting.TargetCadence
+YHAB.SharedKernel.Budgeting.TargetCadence.Yearly = 2 -> YHAB.SharedKernel.Budgeting.TargetCadence
+YHAB.SharedKernel.Budgeting.TargetCalculator
+YHAB.SharedKernel.Budgeting.TargetData
+YHAB.SharedKernel.Budgeting.TargetData.<Clone>$() -> YHAB.SharedKernel.Budgeting.TargetData!
+YHAB.SharedKernel.Budgeting.TargetData.Amount.get -> decimal
+YHAB.SharedKernel.Budgeting.TargetData.Amount.init -> void
+YHAB.SharedKernel.Budgeting.TargetData.Cadence.get -> YHAB.SharedKernel.Budgeting.TargetCadence
+YHAB.SharedKernel.Budgeting.TargetData.Cadence.init -> void
+YHAB.SharedKernel.Budgeting.TargetData.Deconstruct(out YHAB.SharedKernel.Budgeting.TargetKind Kind, out YHAB.SharedKernel.Budgeting.TargetCadence Cadence, out decimal Amount, out System.DateOnly StartMonth, out System.DateOnly? DueDate, out int RepeatEveryMonths, out System.DayOfWeek Weekday) -> void
+YHAB.SharedKernel.Budgeting.TargetData.DueDate.get -> System.DateOnly?
+YHAB.SharedKernel.Budgeting.TargetData.DueDate.init -> void
+YHAB.SharedKernel.Budgeting.TargetData.Equals(YHAB.SharedKernel.Budgeting.TargetData? other) -> bool
+YHAB.SharedKernel.Budgeting.TargetData.Kind.get -> YHAB.SharedKernel.Budgeting.TargetKind
+YHAB.SharedKernel.Budgeting.TargetData.Kind.init -> void
+YHAB.SharedKernel.Budgeting.TargetData.RepeatEveryMonths.get -> int
+YHAB.SharedKernel.Budgeting.TargetData.RepeatEveryMonths.init -> void
+YHAB.SharedKernel.Budgeting.TargetData.StartMonth.get -> System.DateOnly
+YHAB.SharedKernel.Budgeting.TargetData.StartMonth.init -> void
+YHAB.SharedKernel.Budgeting.TargetData.TargetData(YHAB.SharedKernel.Budgeting.TargetKind Kind, YHAB.SharedKernel.Budgeting.TargetCadence Cadence, decimal Amount, System.DateOnly StartMonth, System.DateOnly? DueDate, int RepeatEveryMonths = 0, System.DayOfWeek Weekday = System.DayOfWeek.Friday) -> void
+YHAB.SharedKernel.Budgeting.TargetData.Weekday.get -> System.DayOfWeek
+YHAB.SharedKernel.Budgeting.TargetData.Weekday.init -> void
+YHAB.SharedKernel.Budgeting.TargetKind
+YHAB.SharedKernel.Budgeting.TargetKind.Balance = 2 -> YHAB.SharedKernel.Budgeting.TargetKind
+YHAB.SharedKernel.Budgeting.TargetKind.Refill = 0 -> YHAB.SharedKernel.Budgeting.TargetKind
+YHAB.SharedKernel.Budgeting.TargetKind.SetAside = 1 -> YHAB.SharedKernel.Budgeting.TargetKind
+YHAB.SharedKernel.Budgeting.TargetPeriod
+YHAB.SharedKernel.Budgeting.TargetPeriod.<Clone>$() -> YHAB.SharedKernel.Budgeting.TargetPeriod!
+YHAB.SharedKernel.Budgeting.TargetPeriod.Deconstruct(out System.DateOnly Start, out System.DateOnly Due) -> void
+YHAB.SharedKernel.Budgeting.TargetPeriod.Due.get -> System.DateOnly
+YHAB.SharedKernel.Budgeting.TargetPeriod.Due.init -> void
+YHAB.SharedKernel.Budgeting.TargetPeriod.Equals(YHAB.SharedKernel.Budgeting.TargetPeriod? other) -> bool
+YHAB.SharedKernel.Budgeting.TargetPeriod.Start.get -> System.DateOnly
+YHAB.SharedKernel.Budgeting.TargetPeriod.Start.init -> void
+YHAB.SharedKernel.Budgeting.TargetPeriod.TargetPeriod(System.DateOnly Start, System.DateOnly Due) -> void
+YHAB.SharedKernel.Budgeting.TransactionData
+YHAB.SharedKernel.Budgeting.TransactionData.<Clone>$() -> YHAB.SharedKernel.Budgeting.TransactionData!
+YHAB.SharedKernel.Budgeting.TransactionData.AccountId.get -> System.Guid
+YHAB.SharedKernel.Budgeting.TransactionData.AccountId.init -> void
+YHAB.SharedKernel.Budgeting.TransactionData.Amount.get -> decimal
+YHAB.SharedKernel.Budgeting.TransactionData.Amount.init -> void
+YHAB.SharedKernel.Budgeting.TransactionData.AnchorDate.get -> System.DateOnly?
+YHAB.SharedKernel.Budgeting.TransactionData.AnchorDate.init -> void
+YHAB.SharedKernel.Budgeting.TransactionData.Date.get -> System.DateOnly
+YHAB.SharedKernel.Budgeting.TransactionData.Date.init -> void
+YHAB.SharedKernel.Budgeting.TransactionData.Deconstruct(out System.Guid Id, out System.Guid AccountId, out System.DateOnly Date, out string! Payee, out string! Memo, out decimal Amount, out System.Guid? TransferAccountId, out string! Flag, out System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.SplitData!>! Splits, out YHAB.SharedKernel.Budgeting.RepeatFrequency Repeat, out System.DateOnly? AnchorDate, out int Occurrence, out System.Guid? SourceTemplateId, out System.DateOnly? ScheduledDate, out long Sequence) -> void
+YHAB.SharedKernel.Budgeting.TransactionData.Equals(YHAB.SharedKernel.Budgeting.TransactionData? other) -> bool
+YHAB.SharedKernel.Budgeting.TransactionData.Flag.get -> string!
+YHAB.SharedKernel.Budgeting.TransactionData.Flag.init -> void
+YHAB.SharedKernel.Budgeting.TransactionData.Id.get -> System.Guid
+YHAB.SharedKernel.Budgeting.TransactionData.Id.init -> void
+YHAB.SharedKernel.Budgeting.TransactionData.Memo.get -> string!
+YHAB.SharedKernel.Budgeting.TransactionData.Memo.init -> void
+YHAB.SharedKernel.Budgeting.TransactionData.Occurrence.get -> int
+YHAB.SharedKernel.Budgeting.TransactionData.Occurrence.init -> void
+YHAB.SharedKernel.Budgeting.TransactionData.Payee.get -> string!
+YHAB.SharedKernel.Budgeting.TransactionData.Payee.init -> void
+YHAB.SharedKernel.Budgeting.TransactionData.Repeat.get -> YHAB.SharedKernel.Budgeting.RepeatFrequency
+YHAB.SharedKernel.Budgeting.TransactionData.Repeat.init -> void
+YHAB.SharedKernel.Budgeting.TransactionData.ScheduledDate.get -> System.DateOnly?
+YHAB.SharedKernel.Budgeting.TransactionData.ScheduledDate.init -> void
+YHAB.SharedKernel.Budgeting.TransactionData.Sequence.get -> long
+YHAB.SharedKernel.Budgeting.TransactionData.Sequence.init -> void
+YHAB.SharedKernel.Budgeting.TransactionData.SourceTemplateId.get -> System.Guid?
+YHAB.SharedKernel.Budgeting.TransactionData.SourceTemplateId.init -> void
+YHAB.SharedKernel.Budgeting.TransactionData.Splits.get -> System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.SplitData!>!
+YHAB.SharedKernel.Budgeting.TransactionData.Splits.init -> void
+YHAB.SharedKernel.Budgeting.TransactionData.TransactionData(System.Guid Id, System.Guid AccountId, System.DateOnly Date, string! Payee, string! Memo, decimal Amount, System.Guid? TransferAccountId, string! Flag, System.Collections.Generic.IReadOnlyList<YHAB.SharedKernel.Budgeting.SplitData!>! Splits, YHAB.SharedKernel.Budgeting.RepeatFrequency Repeat = YHAB.SharedKernel.Budgeting.RepeatFrequency.None, System.DateOnly? AnchorDate = null, int Occurrence = 0, System.Guid? SourceTemplateId = null, System.DateOnly? ScheduledDate = null, long Sequence = 0) -> void
+YHAB.SharedKernel.Budgeting.TransactionData.TransferAccountId.get -> System.Guid?
+YHAB.SharedKernel.Budgeting.TransactionData.TransferAccountId.init -> void
+YHAB.SharedKernel.Budgeting.TransactionOrdering
+YHAB.SharedKernel.Budgeting.UndoChange
+YHAB.SharedKernel.Budgeting.UndoChange.Deconstruct(out long Version) -> void
+YHAB.SharedKernel.Budgeting.UndoChange.Equals(YHAB.SharedKernel.Budgeting.UndoChange? other) -> bool
+YHAB.SharedKernel.Budgeting.UndoChange.UndoChange(long Version) -> void
+YHAB.SharedKernel.Budgeting.UpdatePlan
+YHAB.SharedKernel.Budgeting.UpdatePlan.Deconstruct(out long Version, out string! Name, out string! Notes) -> void
+YHAB.SharedKernel.Budgeting.UpdatePlan.Equals(YHAB.SharedKernel.Budgeting.UpdatePlan? other) -> bool
+YHAB.SharedKernel.Budgeting.UpdatePlan.Name.get -> string!
+YHAB.SharedKernel.Budgeting.UpdatePlan.Name.init -> void
+YHAB.SharedKernel.Budgeting.UpdatePlan.Notes.get -> string!
+YHAB.SharedKernel.Budgeting.UpdatePlan.Notes.init -> void
+YHAB.SharedKernel.Budgeting.UpdatePlan.UpdatePlan(long Version, string! Name, string! Notes) -> void
+YHAB.SharedKernel.Budgeting.WorkspaceOperation
+YHAB.SharedKernel.Budgeting.WorkspaceOperation.<Clone>$() -> YHAB.SharedKernel.Budgeting.WorkspaceOperation!
+YHAB.SharedKernel.Budgeting.WorkspaceOperation.CanEdit.get -> bool
+YHAB.SharedKernel.Budgeting.WorkspaceOperation.CanRetry.get -> bool
+YHAB.SharedKernel.Budgeting.WorkspaceOperation.Deconstruct(out YHAB.SharedKernel.Budgeting.WorkspacePhase Phase, out YHAB.SharedKernel.Budgeting.PlanCommand? Pending, out string! Message, out bool PreservesDraft) -> void
+YHAB.SharedKernel.Budgeting.WorkspaceOperation.Equals(YHAB.SharedKernel.Budgeting.WorkspaceOperation? other) -> bool
+YHAB.SharedKernel.Budgeting.WorkspaceOperation.Interrupted() -> YHAB.SharedKernel.Budgeting.WorkspaceOperation!
+YHAB.SharedKernel.Budgeting.WorkspaceOperation.IsBusy.get -> bool
+YHAB.SharedKernel.Budgeting.WorkspaceOperation.Loaded() -> YHAB.SharedKernel.Budgeting.WorkspaceOperation!
+YHAB.SharedKernel.Budgeting.WorkspaceOperation.Message.get -> string!
+YHAB.SharedKernel.Budgeting.WorkspaceOperation.Message.init -> void
+YHAB.SharedKernel.Budgeting.WorkspaceOperation.Pending.get -> YHAB.SharedKernel.Budgeting.PlanCommand?
+YHAB.SharedKernel.Budgeting.WorkspaceOperation.Pending.init -> void
+YHAB.SharedKernel.Budgeting.WorkspaceOperation.Phase.get -> YHAB.SharedKernel.Budgeting.WorkspacePhase
+YHAB.SharedKernel.Budgeting.WorkspaceOperation.Phase.init -> void
+YHAB.SharedKernel.Budgeting.WorkspaceOperation.PreservesDraft.get -> bool
+YHAB.SharedKernel.Budgeting.WorkspaceOperation.PreservesDraft.init -> void
+YHAB.SharedKernel.Budgeting.WorkspaceOperation.Saved() -> YHAB.SharedKernel.Budgeting.WorkspaceOperation!
+YHAB.SharedKernel.Budgeting.WorkspaceOperation.WorkspaceOperation(YHAB.SharedKernel.Budgeting.WorkspacePhase Phase = YHAB.SharedKernel.Budgeting.WorkspacePhase.Ready, YHAB.SharedKernel.Budgeting.PlanCommand? Pending = null, string! Message = "All changes saved", bool PreservesDraft = false) -> void
+YHAB.SharedKernel.Budgeting.WorkspacePhase
+YHAB.SharedKernel.Budgeting.WorkspacePhase.Ready = 0 -> YHAB.SharedKernel.Budgeting.WorkspacePhase
+YHAB.SharedKernel.Budgeting.WorkspacePhase.Refreshing = 2 -> YHAB.SharedKernel.Budgeting.WorkspacePhase
+YHAB.SharedKernel.Budgeting.WorkspacePhase.SavedNeedsRefresh = 4 -> YHAB.SharedKernel.Budgeting.WorkspacePhase
+YHAB.SharedKernel.Budgeting.WorkspacePhase.Saving = 1 -> YHAB.SharedKernel.Budgeting.WorkspacePhase
+YHAB.SharedKernel.Budgeting.WorkspacePhase.Uncertain = 3 -> YHAB.SharedKernel.Budgeting.WorkspacePhase

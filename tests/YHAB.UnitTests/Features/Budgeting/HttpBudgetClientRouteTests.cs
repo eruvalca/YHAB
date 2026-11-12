@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using Shouldly;
 using Xunit;
 using YHAB.Client.Services;
@@ -32,22 +33,51 @@ public sealed class HttpBudgetClientRouteTests
         summary.IsOwner.ShouldBeFalse();
     }
 
+    [Fact]
+    public async Task CommandsSerializeWithTheirConcreteContractAsync()
+    {
+        using var handler = new RecordingHandler();
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://budget.example.test/") };
+        var client = new HttpBudgetClient(http);
+        var planId = Guid.NewGuid();
+        var assignment = new AssignMoney(11, Guid.NewGuid(), new DateOnly(2026, 3, 1), 25.50m);
+        var rename = new UpdatePlan(12, "Household", "");
+
+        await client.ExecuteAsync(planId, assignment, TestContext.Current.CancellationToken);
+        await client.ExecuteAsync(planId, rename, TestContext.Current.CancellationToken);
+
+        // The endpoint contracts are concrete commands, so the source-generated metadata must
+        // produce the same payload as reflection-based serialization of the runtime type.
+        var web = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        handler.Bodies.ShouldBe(
+        [
+            JsonSerializer.Serialize(assignment, assignment.GetType(), web),
+            JsonSerializer.Serialize(rename, rename.GetType(), web),
+        ]);
+    }
+
     private sealed class RecordingHandler : HttpMessageHandler
     {
         public List<(HttpMethod Method, string PathAndQuery)> Calls { get; } = [];
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        public List<string> Bodies { get; } = [];
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Calls.Add((request.Method, request.RequestUri!.PathAndQuery));
+            if (request.Content is not null)
+            {
+                Bodies.Add(await request.Content.ReadAsStringAsync(cancellationToken));
+            }
             if (request.RequestUri.AbsolutePath.EndsWith("/token", StringComparison.Ordinal))
             {
-                return Task.FromResult(Respond(HttpStatusCode.OK, """{"token":"csrf"}"""));
+                return Respond(HttpStatusCode.OK, """{"token":"csrf"}""");
             }
             if (request.Method == HttpMethod.Delete)
             {
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NoContent));
+                return new HttpResponseMessage(HttpStatusCode.NoContent);
             }
-            return Task.FromResult(Respond(HttpStatusCode.OK, """{"ownerName":"b@example.test","isOwner":false,"collaborators":[]}"""));
+            return Respond(HttpStatusCode.OK, """{"ownerName":"b@example.test","isOwner":false,"collaborators":[]}""");
         }
 
         private static HttpResponseMessage Respond(HttpStatusCode status, string json)

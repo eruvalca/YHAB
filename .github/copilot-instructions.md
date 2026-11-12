@@ -79,7 +79,7 @@ otherwise; Markdown links are relative to their containing file.
   scoped `IdentityCancellation` bridge for tokenless manager APIs. Forward the
   caller's token through HTTP, services, EF and execution-strategy retries;
   preserve framework override/event signatures.
-  CA2016, CA1068, MA0032, MA0040, MA0079 and MA0080 are build-enforced. Explicit
+  CA2016, CA1068, CA2027, MA0032, MA0040, MA0079 and MA0080 are build-enforced. Explicit
   `None`/`default` needs a concrete lifetime/commit/cleanup reason, not a workaround.
 - Use request cancellation for static SSR, component lifetime for interactivity,
   and host shutdown for background workers. Never serialize tokens or reuse a
@@ -89,10 +89,11 @@ otherwise; Markdown links are relative to their containing file.
   through `IdentityCancellation.CompleteWrite()`. See
   [cancellation lifetimes](../docs/budgeting.md#cancellation-lifetimes) for boundaries.
 - Compiler and analyzer warnings fail builds through `TreatWarningsAsErrors`.
-  `.editorconfig`, `Directory.Build.props`, and `CodeMetricsConfig.txt` govern
-  diagnostics. Fix findings without weakening shared settings; keep necessary
-  exceptions narrow and justified. See [build rules](../build/README.md) for
-  analyzer rules and the documented SDK compatibility workaround.
+  `.editorconfig`, `Directory.Build.props`, `CodeMetricsConfig.txt`, and the
+  `PublicAPI.*.txt` files govern diagnostics. Fix findings without weakening
+  shared settings; keep necessary exceptions narrow and justified. See
+  [build rules](../build/README.md) for analyzer rules and the documented SDK
+  compatibility workaround.
 - Run `dotnet build YHAB.slnx` after code changes. The Razor code-behind policy
   is checked automatically during builds; see `build/README.md` for diagnostics.
 - For every change set, including configuration and documentation changes, run

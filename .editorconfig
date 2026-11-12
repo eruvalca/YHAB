@@ -177,6 +177,13 @@ dotnet_diagnostic.CA2227.severity = warning
 # Flag System.Random usage; security-sensitive values require secure randomness.
 dotnet_diagnostic.CA5394.severity = warning
 
+# Validate analyzer inputs supplied through AdditionalFiles; a malformed entry
+# silently disables the metric it was meant to configure.
+dotnet_diagnostic.CA1509.severity = warning
+
+# Preserve the original stack trace when rethrowing.
+dotnet_diagnostic.CA2200.severity = warning
+
 # Local variable type preferences.
 csharp_style_var_for_built_in_types = true:suggestion
 csharp_style_var_when_type_is_apparent = true:suggestion
@@ -213,6 +220,13 @@ csharp_style_implicit_object_creation_when_type_is_apparent = true:suggestion
 csharp_style_inlined_variable_declaration = true:suggestion
 csharp_prefer_simple_using_statement = true:warning
 dotnet_style_prefer_collection_expression = when_types_exactly_match:suggestion
+
+# Name a generic type by its unbound form rather than a closed construction.
+dotnet_style_prefer_unbound_generic_type_in_nameof = true:warning
+dotnet_diagnostic.IDE0340.severity = warning
+
+# Drop explicitly typed lambda parameters when the type is inferable.
+dotnet_diagnostic.IDE0350.severity = warning
 
 # Mark eligible private fields readonly; primary constructor parameters are separate.
 dotnet_style_readonly_field = true:warning
