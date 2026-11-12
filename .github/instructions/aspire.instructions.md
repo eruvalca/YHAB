@@ -35,7 +35,10 @@ running tests. Detailed setup and runtime procedures remain in the
   the explicitly selected `Aspire.Hosting.EntityFrameworkCore` preview, and the
   managed EF tool version in `AppHost.cs` aligned with each other and with the
   documented setup in `README.md`. The manifests own those versions; do not
-  restate them here.
+  restate them here. Keep the migration bundle `baseImage` in `AzureDeployment.cs`
+  on the runtime image matching the projects' target framework: the EF bundle is
+  framework-dependent, so a stale image fails the migration job and blocks web
+  deployment.
   Use `.agents/skills` as the shared skill location; retain the single user-level
   `aspire agent mcp` entry for each agent rather than adding repository duplicates.
 - pgAdmin is an explicit-start, run-mode developer tool. See `README.md` for
