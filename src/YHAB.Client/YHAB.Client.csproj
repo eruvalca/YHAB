@@ -17,6 +17,25 @@
     <ProjectReference Include="..\YHAB.SharedKernel\YHAB.SharedKernel.csproj" />
   </ItemGroup>
 
+  <!-- Razor components are found and activated by reflection: route discovery scans the
+       assembly, and the server's render-mode descriptors name page components for the
+       WebAssembly root renderer. Trimming that assembly deletes the pages, so it is
+       rooted whole. The trim and AOT analyzers still run against it. -->
+  <ItemGroup>
+    <TrimmerRootAssembly Include="YHAB.UI" />
+  </ItemGroup>
+
+  <!-- A publish must never ship a component assembly whose pages the linker removed. -->
+  <Target Name="VerifyTrimmedComponentLibrary"
+          AfterTargets="ILLink"
+          Condition="'$(PublishTrimmed)' == 'true' and '$(RunILLink)' != 'false'">
+    <PropertyGroup>
+      <_UntrimmedComponentAssembly>$(MSBuildProjectDirectory)/../YHAB.UI/bin/$(Configuration)/$(TargetFramework)/YHAB.UI.dll</_UntrimmedComponentAssembly>
+      <_TrimmedComponentAssembly>$(IntermediateLinkDir)YHAB.UI.dll</_TrimmedComponentAssembly>
+    </PropertyGroup>
+    <Exec Command="&quot;$(_YHABDotNetHost)&quot; &quot;$(_YHABBuildAssembly)&quot; verify-trimmed-components &quot;$(_UntrimmedComponentAssembly)&quot; &quot;$(_TrimmedComponentAssembly)&quot;" />
+  </Target>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" />

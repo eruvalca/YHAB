@@ -428,10 +428,22 @@ severity records the warning already enabled by the SDK's `All` analysis mode.
 ### Trimming and Native AOT analysis
 
 `YHAB.SharedKernel`, `YHAB.UI` and `YHAB.Client` set `IsTrimmable`,
-`EnableTrimAnalyzer` and `EnableAotAnalyzer`. The browser-served assemblies are
-trimmed, and Native AOT is available for WebAssembly, so reflection-dependent
-contracts must be rejected at build time rather than discovered after publish.
-Findings are `IL2xxx`/`IL3xxx` diagnostics and fail the build like any warning.
+`EnableTrimAnalyzer` and `EnableAotAnalyzer`. Blazor WebAssembly publishes with
+`PublishTrimmed=true` and `TrimMode=partial`, so only assemblies that declare
+`IsTrimmable` are trimmed, and Native AOT is available for WebAssembly.
+Reflection-dependent contracts must be rejected at build time rather than
+discovered after publish; findings are `IL2xxx`/`IL3xxx` diagnostics and fail the
+build like any warning.
+
+Razor components are located and activated by reflection: route discovery scans the
+assembly, and a prerendered interactive page is handed to the WebAssembly root
+renderer by type. Trimming `YHAB.UI` therefore deletes its pages, and the browser
+fails with `Root component type ... could not be found in the assembly 'YHAB.UI'`.
+`YHAB.Client` roots that assembly whole with `TrimmerRootAssembly`, and the
+`VerifyTrimmedComponentLibrary` target, which runs after `ILLink` during publish,
+compares the routed component types before and after linking and fails the publish
+if a page was removed. Keep both when changing the trimming configuration; the trim
+and AOT analyzers still run against the rooted assembly.
 
 The `IL2026` finding that adoption surfaced was
 `[Range(typeof(bool), "true", "true")]` in `PlanSettings`: `RangeAttribute(Type,
