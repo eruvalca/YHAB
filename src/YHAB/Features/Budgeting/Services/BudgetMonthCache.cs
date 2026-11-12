@@ -5,7 +5,8 @@ namespace YHAB.Features.Budgeting.Services;
 
 internal sealed class BudgetMonthCache : IDisposable
 {
-    private readonly MemoryCache _cache = new(new MemoryCacheOptions { SizeLimit = 100_000 });
+    // Statistics feed the .NET 11 MemoryCache meter; the instruments stay dormant unless requested.
+    private readonly MemoryCache _cache = new(new MemoryCacheOptions { SizeLimit = 100_000, TrackStatistics = true });
 
     public bool TryGet((string Owner, Guid Plan, long Version, DateOnly Today, DateOnly Month) key, out BudgetMonth value)
         => _cache.TryGetValue(key, out value!);

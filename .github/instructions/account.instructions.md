@@ -22,9 +22,23 @@ tests also follow the [test guide](tests.instructions.md).
   `[ExcludeFromInteractiveRouting]` in their page imports, authorization on
   account-management pages, and their HTTP context and cookie contracts. Keep
   form names, POST methods, `[SupplyParameterFromForm]` mapping, and antiforgery
-  hooks intact. Account pages stay on static SSR under the repository-wide
+  hooks intact. Keep the explicit `app.UseAntiforgery()` call even though the
+  ASP.NET Core 11 template omits it: static SSR emits form tokens only when the
+  token-based middleware runs, so removing it would silently drop them. Account
+  pages stay on static SSR under the repository-wide
   [render-mode rules](../copilot-instructions.md#project-boundaries-and-rendering);
   do not apply a global interactive render mode that changes account behavior.
 - `BlazorDisableThrowNavigationException` is enabled. After redirecting, return
   or otherwise terminate the current branch when subsequent work must not
   execute. Do not rely on navigation throwing to stop an account operation.
+- Passkey sign-in runs `SignInManager.PreSignInCheck` in ASP.NET Core 11, like the
+  other sign-in methods. Keep `SignInOutcome` mapping `IsLockedOut` and
+  `IsNotAllowed` and keep the login page handling both: a successful passkey
+  assertion no longer bypasses confirmation policies or lockout.
+- Keep the redirect status message on the `Identity.StatusMessage` cookie. Blazor's
+  static SSR TempData API is component-only: `ITempData`, `[SupplyParameterFromTempData]`,
+  and the cascading value are its public surface, while `TempDataService`, its
+  `ITempDataProvider`, and the `GetOrCreateTempData` accessor are internal. A
+  redirect service therefore cannot write TempData, and moving the message into
+  components would require a fabricated cascading value in bUnit tests. Revisit if
+  a public service-side TempData API ships.

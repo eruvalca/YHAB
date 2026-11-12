@@ -61,6 +61,9 @@ automated checks and the remaining device-level installation checks.
 ## Local prerequisites
 
 - .NET SDK **11.0.100** (selected by `global.json`).
+- A CPU that meets the .NET 11 baseline: x86-64-v2 or later on x64, or Arm64 with
+  LSE atomics. The deployed Container Apps host and current development machines
+  already qualify; older self-hosted runners and virtual machines may not.
 - Aspire CLI **13.6.5** on `PATH` (the version the deployment workflow pins), with
   the AppHost SDK on **13.6.5**. Follow the
   [Aspire installation guide](https://aspire.dev/get-started/install/).
@@ -707,6 +710,10 @@ export is enabled when `APPLICATIONINSIGHTS_CONNECTION_STRING` is configured; OT
 export remains available for the Aspire dashboard.
 
 The dashboard exposes server logs, request traces, Npgsql database spans, and metrics.
+Metrics include the .NET 11 `Microsoft.Extensions.Caching.Memory` meter, which
+`BudgetMonthCache` enables through `TrackStatistics`; it reports cache requests with
+a hit/miss tag, evictions, entries, and estimated size, and stays silent until a
+listener such as the OpenTelemetry pipeline is attached.
 Useful CLI commands include `aspire logs yhab`, `aspire otel traces`, and
 `aspire otel logs`. The Aspire MCP server provides the same resource and telemetry
 visibility to agents. Database query telemetry can contain application information;

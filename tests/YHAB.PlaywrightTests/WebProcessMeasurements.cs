@@ -42,8 +42,12 @@ internal sealed class WebProcessMeasurements(Process[] processes, string[] resou
                 var matches = new List<int>();
                 foreach (var id in ids)
                 {
-                    using var child = Process.GetProcessById(id);
-                    if (string.Equals(child.MainModule!.FileName, expected, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal)) { matches.Add(id); }
+                    // A child can exit between enumeration and lookup; the throwing overload would fail the sample.
+                    if (!Process.TryGetProcessById(id, out var child)) { continue; }
+                    using (child)
+                    {
+                        if (string.Equals(child.MainModule!.FileName, expected, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal)) { matches.Add(id); }
+                    }
                 }
                 matches.Count.ShouldBe(1, "sample the actual web executable, not the dotnet launcher");
                 children.Add(Process.GetProcessById(matches[0]));

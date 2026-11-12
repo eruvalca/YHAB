@@ -147,7 +147,11 @@ app.UseAntiforgery();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode()
+    .AddInteractiveServerRenderMode(options => options.ConfigureConnection = connection =>
+    {
+        // End circuits when the Identity cookie expires instead of serving an unauthenticated session.
+        connection.CloseOnAuthenticationExpiration = true;
+    })
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(YHAB.UI.UiAssemblyMarker).Assembly);
 
