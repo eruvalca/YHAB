@@ -102,3 +102,16 @@ distinguishes complete success from partial completion.
   for receiver/generic rules, migration checks, and compiled examples. Keep this
   repository on the language version its target framework selects (C# 15 for
   `net11.0`); do not copy preview-only features or SDK settings.
+
+## C# 14 features without analyzer coverage
+
+No SDK rule reports these two conventions, so the build does not catch a
+regression.
+
+- Use `field` when exactly one property accessor needs a body and no other member
+  reads the value: `private bool IsBusy { get => Busy || field || _error is not null; set; }`
+  in `AccountRegister` and `BudgetBoard`. Keep a real `_field` when other members
+  read or write it, as `InlineNameEditor.Name` keeps `_name`.
+- Write parsing and character-scanning helpers against `ReadOnlySpan<char>` and
+  let the implicit string conversion supply the receiver; do not add
+  `string`/`char[]` overload triples. `AmountExpression` is the model.

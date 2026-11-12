@@ -209,7 +209,9 @@ csharp_style_prefer_extended_property_pattern = true:warning
 
 # Null handling.
 dotnet_style_prefer_is_null_check_over_reference_equality_method = true:warning
-dotnet_style_null_propagation = true:suggestion
+# Null-conditional assignment keeps a single guarded write in the C# 14 form.
+dotnet_style_null_propagation = true:warning
+dotnet_diagnostic.IDE0031.severity = warning
 dotnet_style_coalesce_expression = true:warning
 csharp_style_prefer_null_check_over_type_check = true:warning
 

@@ -350,9 +350,13 @@ warnings-as-errors policy already gates them.
 
 `IDE0340` (unbound generic type in `nameof`) and `IDE0350` (redundant explicit
 lambda parameter type) are recorded as warnings because C# 14-era style rules are
-silent until given a severity. Other candidate rules were rejected because they
-could not be observed firing on this SDK. Do not add a style rule on
-documentation evidence alone: confirm it reports against a probe first.
+silent until given a severity. `IDE0031` is also raised to a warning so the C# 14
+null-conditional assignment form (`target?.Member = value`) stays consistent. No
+SDK rule promotes the `field` keyword; that convention is recorded in the
+[C# and Razor conventions](../.github/instructions/csharp.instructions.md#c-14-features-without-analyzer-coverage).
+Other candidate rules were rejected because they could not be observed firing on
+this SDK. Do not add a style rule on documentation evidence alone: confirm it
+reports against a probe first.
 
 Method cyclomatic complexity must not exceed 25 (`CA1502`, warning). The root
 `CodeMetricsConfig.txt` records this threshold, and `Directory.Build.props` supplies
