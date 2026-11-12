@@ -56,11 +56,82 @@ public sealed class HttpBudgetClientRouteTests
         ]);
     }
 
+    [Fact]
+    public async Task ReadsDeserializeServerFormattedNestedPayloadsAsync()
+    {
+        var planId = Guid.NewGuid();
+        var categoryId = Guid.NewGuid();
+        var created = new DateOnly(2026, 2, 3);
+        var month = new DateOnly(2026, 2, 1);
+        var snapshot = new PlanSnapshot(planId, "Household", "", created, 7, [], [], [], [], [], false, true, [])
+        {
+            Today = new DateOnly(2026, 2, 10),
+            OwnerName = "b@example.test",
+        };
+        var monthView = new PlanMonthView(
+            new PlanView(snapshot, [new AccountBalance(Guid.NewGuid(), 1234.56m)], true),
+            new BudgetMonth(month, 100.25m, 200.50m, -50.75m, 49.75m, 0m, 0m, 0m, []));
+        var transaction = new TransactionData(
+            Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 2, 4), "Shop", "", -12.34m, null, "", [],
+            RepeatFrequency.Monthly, created, 2, null, new DateOnly(2026, 3, 4));
+        var register = new RegisterPage(7, [new RegisterRow(transaction, 99.99m)], 1,
+            new RegisterCursor(new DateOnly(2026, 2, 4), 2, transaction.Id, "Shop", -12.34m));
+        var report = new ReportView(7, [new MonthReport(month, 500m, 120m, 1000m, 250m)],
+            [new CategorySpending(categoryId, "Food", 120m)], new Dictionary<Guid, decimal> { [categoryId] = 120m });
+
+        // Serialize with the server's Web defaults so the client's source-generated metadata
+        // is read against the format the API actually produces.
+        var web = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        using var handler = new RecordingHandler
+        {
+            Responses =
+            [
+                ($"/api/plans/{planId}", JsonSerializer.Serialize(snapshot, web)),
+                ($"/api/plans/{planId}/workspace", JsonSerializer.Serialize(monthView, web)),
+                ($"/api/plans/{planId}/register", JsonSerializer.Serialize(register, web)),
+                ($"/api/plans/{planId}/reports", JsonSerializer.Serialize(report, web)),
+            ],
+        };
+        using var http = new HttpClient(handler) { BaseAddress = new Uri("https://budget.example.test/") };
+        var client = new HttpBudgetClient(http);
+        var token = TestContext.Current.CancellationToken;
+
+        var readSnapshot = await client.ReadAsync(planId, token);
+        readSnapshot.OwnerName.ShouldBe("b@example.test");
+        readSnapshot.CreatedOn.ShouldBe(created);
+        readSnapshot.Today.ShouldBe(new DateOnly(2026, 2, 10));
+        readSnapshot.CanRedo.ShouldBeTrue();
+
+        var readMonth = await client.ReadWorkspaceAsync(planId, null, token);
+        readMonth.Month.ReadyToAssign.ShouldBe(100.25m);
+        readMonth.Month.Activity.ShouldBe(-50.75m);
+        readMonth.View.Balances.Single().Working.ShouldBe(1234.56m);
+        readMonth.View.HasDueRecurring.ShouldBeTrue();
+
+        var readRegister = await client.ReadRegisterAsync(planId, new RegisterQuery(), token);
+        readRegister.Total.ShouldBe(1);
+        var row = readRegister.Rows.Single();
+        row.RunningBalance.ShouldBe(99.99m);
+        row.Transaction.Amount.ShouldBe(-12.34m);
+        row.Transaction.Date.ShouldBe(new DateOnly(2026, 2, 4));
+        row.Transaction.Repeat.ShouldBe(RepeatFrequency.Monthly);
+        row.Transaction.TransferAccountId.ShouldBeNull();
+        row.Transaction.AnchorDate.ShouldBe(created);
+        readRegister.Next.ShouldNotBeNull().Sequence.ShouldBe(2);
+
+        var readReport = await client.ReadReportsAsync(planId, month, month, token);
+        readReport.Months.Single().NetWorth.ShouldBe(750m);
+        readReport.Spending.Single().Amount.ShouldBe(120m);
+        readReport.Budgeted[categoryId].ShouldBe(120m);
+    }
+
     private sealed class RecordingHandler : HttpMessageHandler
     {
         public List<(HttpMethod Method, string PathAndQuery)> Calls { get; } = [];
 
         public List<string> Bodies { get; } = [];
+
+        public List<(string Path, string Body)> Responses { get; init; } = [];
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -68,6 +139,13 @@ public sealed class HttpBudgetClientRouteTests
             if (request.Content is not null)
             {
                 Bodies.Add(await request.Content.ReadAsStringAsync(cancellationToken));
+            }
+            foreach (var (candidate, json) in Responses)
+            {
+                if (string.Equals(candidate, request.RequestUri.AbsolutePath, StringComparison.Ordinal))
+                {
+                    return Respond(HttpStatusCode.OK, json);
+                }
             }
             if (request.RequestUri.AbsolutePath.EndsWith("/token", StringComparison.Ordinal))
             {
