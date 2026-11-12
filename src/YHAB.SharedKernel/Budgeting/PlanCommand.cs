@@ -19,7 +19,10 @@ namespace YHAB.SharedKernel.Budgeting;
 [JsonDerivedType(typeof(UndoChange), "UndoChange")]
 [JsonDerivedType(typeof(RedoChange), "RedoChange")]
 [JsonDerivedType(typeof(PostRecurring), "PostRecurring")]
-public abstract record PlanCommand(long Version)
+// Closed: every direct subtype is declared in this assembly, so a switch that names each one is
+// exhaustiveness-checked (CS8509) wherever it is written. Add a command here and every dispatch
+// must answer for it.
+public closed record PlanCommand(long Version)
 {
     // Created once per user operation; retain this value when retrying an interrupted request.
     public Guid OperationId { get; init; } = Guid.CreateVersion7();

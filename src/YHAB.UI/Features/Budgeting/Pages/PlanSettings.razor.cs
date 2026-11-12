@@ -287,7 +287,11 @@ public sealed partial class PlanSettings(IBudgetClient budgets, NavigationManage
         var counts = _sharing.Collaborators
             .GroupBy(person => person.Name, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
-        var used = new HashSet<string>(_sharing.Collaborators.Select(person => person.Name), StringComparer.OrdinalIgnoreCase);
+        HashSet<string> used =
+        [
+            with(StringComparer.OrdinalIgnoreCase),
+            .. _sharing.Collaborators.Select(person => person.Name),
+        ];
         var nextSuffix = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         return _sharing.Collaborators.Select(person =>
         {

@@ -18,7 +18,9 @@ internal sealed record CommandIds(ImmutableArray<Guid> Values)
             SaveAccount => 3,
             SaveGroup or SaveCategory => 1,
             SaveTransaction save => 1 + Math.Min(100, save.Transaction?.Splits?.Count ?? 0),
-            _ => 0,
+            ReorderGroup or ReorderCategory or RemoveCategory or DeleteTransactions or AssignMoney
+                or MoveMoney or AutoAssign or UpdatePlan or RenamePayee or PostRecurring
+                or UndoChange or RedoChange => 0,
         };
         if (command is PostRecurring or SaveTransaction { Transaction.Repeat: not RepeatFrequency.None })
         {
