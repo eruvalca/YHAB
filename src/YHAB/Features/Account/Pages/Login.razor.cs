@@ -46,7 +46,7 @@ public sealed partial class Login
 
     private async Task PasswordLoginAsync()
     {
-        if (!_editContext.Validate())
+        if (!await _editContext.ValidateAsync(HttpContext.RequestAborted))
         {
             return;
         }

@@ -1,6 +1,6 @@
 # YHAB
 
-A manual envelope-budgeting application built with .NET 10 Blazor, Fluent UI,
+A manual envelope-budgeting application built with .NET 11 Blazor, Fluent UI,
 Aspire, PostgreSQL, and ASP.NET Core Identity. Each user has private USD plans
 that can be shared with other YHAB accounts, plus
 manual accounts and transactions, monthly assignments, targets, credit-card
@@ -60,9 +60,12 @@ automated checks and the remaining device-level installation checks.
 
 ## Local prerequisites
 
-- .NET SDK **10.0.401** (selected by `global.json`).
-- Aspire CLI **13.6.4** on `PATH` (the version the deployment workflow pins), with
-  the AppHost SDK on **13.6.4**. Follow the
+- .NET SDK **11.0.100** (selected by `global.json`).
+- A CPU that meets the .NET 11 baseline: x86-64-v2 or later on x64, or Arm64 with
+  LSE atomics. The deployed Container Apps host and current development machines
+  already qualify; older self-hosted runners and virtual machines may not.
+- Aspire CLI **13.6.5** on `PATH` (the version the deployment workflow pins), with
+  the AppHost SDK on **13.6.5**. Follow the
   [Aspire installation guide](https://aspire.dev/get-started/install/).
 - Docker Desktop running Linux containers, or another Aspire-supported container runtime.
 - A trusted .NET development HTTPS certificate: `dotnet dev-certs https --trust`.
@@ -412,16 +415,21 @@ An **Exited**, **Failed**, or **Unhealthy** application/database resource, or we
 startup blocked by failed migrations, does require investigation through its logs.
 
 The PostgreSQL image version is the built-in default of
-`Aspire.Hosting.PostgreSQL` 13.6.4. Container lifetime remains Aspire's default
+`Aspire.Hosting.PostgreSQL` 13.6.5. Container lifetime remains Aspire's default
 session lifetime. Data uses an Aspire-managed named volume rather than a repository
 file. This is a fresh PostgreSQL schema; the original SQLite scaffold is removed.
 
 Aspire supplies `ConnectionStrings:yhabdb` to both the application and migration
 tool. The application uses Npgsql EF Core 10.0.3, EF Core 10.0.14, and Aspire's
-Azure Npgsql EF integration 13.6.4 (password authentication locally, managed identity
+Azure Npgsql EF integration 13.6.5 (password authentication locally, managed identity
 in Azure). Its non-pooled `IDbContextFactory<ApplicationDbContext>`
 supports a context per Blazor operation; Identity can still resolve the scoped
 context. Dispose factory-created contexts with `await using`.
+
+The projects target .NET 11 while EF Core, its Npgsql provider, and the Identity EF
+integration stay on 10.0.x: no stable Npgsql provider targets EF Core 11 yet, and
+the 13.6.x Aspire integration resolves Npgsql EF Core 10.0.3, which requires EF Core
+below 11. Move those packages together once a stable, compatible set ships.
 
 Identity schema version 3 is retained, including the `AspNetUserPasskeys` table.
 Registration and later sign-ins do not require email confirmation, including for
@@ -480,7 +488,7 @@ recovery codes; this command does not bypass the second factor.
 
 ## EF migrations
 
-`Aspire.Hosting.EntityFrameworkCore` **13.6.4-preview.1.26523.11** manages
+`Aspire.Hosting.EntityFrameworkCore` **13.6.5-preview.1.26559.7** manages
 `yhab-migrations` and its **dotnet-ef 10.0.14** tool. It does not alter the machine's
 global EF tool. On every start, migrations wait for PostgreSQL and the database;
 the web application starts only after migration success. Failure blocks web startup.
@@ -702,6 +710,10 @@ export is enabled when `APPLICATIONINSIGHTS_CONNECTION_STRING` is configured; OT
 export remains available for the Aspire dashboard.
 
 The dashboard exposes server logs, request traces, Npgsql database spans, and metrics.
+Metrics include the .NET 11 `Microsoft.Extensions.Caching.Memory` meter, which
+`BudgetMonthCache` enables through `TrackStatistics`; it reports cache requests with
+a hit/miss tag, evictions, entries, and estimated size, and stays silent until a
+listener such as the OpenTelemetry pipeline is attached.
 Useful CLI commands include `aspire logs yhab`, `aspire otel traces`, and
 `aspire otel logs`. The Aspire MCP server provides the same resource and telemetry
 visibility to agents. Database query telemetry can contain application information;
@@ -835,7 +847,7 @@ requires Docker, Aspire tooling, development HTTPS, and Playwright Chromium:
 dotnet format YHAB.slnx --severity warn
 dotnet format YHAB.slnx --severity warn --verify-no-changes
 dotnet build YHAB.slnx
-pwsh ./tests/YHAB.PlaywrightTests/bin/Debug/net10.0/playwright.ps1 install chromium
+pwsh ./tests/YHAB.PlaywrightTests/bin/Debug/net11.0/playwright.ps1 install chromium
 dotnet test --solution YHAB.slnx --max-parallel-test-modules 1
 ```
 

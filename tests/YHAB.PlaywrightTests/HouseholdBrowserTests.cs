@@ -56,15 +56,16 @@ public sealed class HouseholdBrowserTests(ITestOutputHelper output)
         page.PageError += (_, error) => errors.Enqueue(error);
         var artifacts = System.IO.Path.Combine(AppContext.BaseDirectory, "TestResults", $"household-{Guid.NewGuid():N}");
         var tracing = true;
-        var allowWebAssembly = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var runtimeRequested = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        // Hold the runtime download so a cold server circuit must work on its own.
-        await context.RouteAsync("**/_framework/dotnet.native.*.wasm", async route =>
-        {
-            runtimeRequested.TrySetResult();
-            await allowWebAssembly.Task.WaitAsync(timeout.Token);
-            await route.ContinueAsync();
-        });
+        // .NET 11 selects the Auto runtime per document from the cached bundle hash, and it does
+        // not fetch that bundle while a cold circuit is already on Server. Clearing the hash keeps
+        // the cold phase on Server; blocking the download cannot, because it bypasses page routing.
+        await context.AddInitScriptAsync("""
+            if (!localStorage.getItem('yhab-test-allow-wasm')) {
+                for (const key of Object.keys(localStorage)) {
+                    if (key.startsWith('blazor-resource-hash')) { localStorage.removeItem(key); }
+                }
+            }
+            """);
         try
         {
             await BudgetWorkflowTests.RegisterAndLoginAsync(page);
@@ -81,16 +82,14 @@ public sealed class HouseholdBrowserTests(ITestOutputHelper output)
                 await VerifyBudgetAsync(page, api.Path, snapshot.Today, months);
                 if (months == 1)
                 {
-                    await runtimeRequested.Task.WaitAsync(TimeSpan.FromSeconds(30), timeout.Token);
                     (await page.Locator(".workspace").GetAttributeAsync("data-renderer")).ShouldBe("Server");
                     errors.ShouldBeEmpty();
-                    allowWebAssembly.SetResult();
-                    await context.UnrouteAsync("**/_framework/dotnet.native.*.wasm");
-                    // .NET 10 writes this cache marker after the Auto runtime finishes
-                    // loading. Leaving the document sooner can cancel its downloads.
+                    // Let later documents cache and select the WebAssembly bundle.
+                    await page.EvaluateAsync("() => localStorage.setItem('yhab-test-allow-wasm', '1')");
+                    await page.ReloadAsync();
                     await page.WaitForFunctionAsync("() => Object.keys(localStorage).some(key => key.startsWith('blazor-resource-hash:'))", null,
                         new() { Timeout = 60000 });
-                    output.WriteLine("Cold server circuit verified; WebAssembly resources finished loading.");
+                    output.WriteLine("Cold server circuit verified; WebAssembly bundle cached.");
                 }
                 await VerifyRegisterAsync(page, api.Path, months);
                 var session = await context.NewCDPSessionAsync(page);
@@ -129,8 +128,6 @@ public sealed class HouseholdBrowserTests(ITestOutputHelper output)
         }
         finally
         {
-            allowWebAssembly.TrySetResult();
-            await context.UnrouteAllAsync(new() { Behavior = UnrouteBehavior.IgnoreErrors });
             await BrowserArtifacts.CaptureAsync(page, context, artifacts, output.WriteLine, captureTrace: tracing);
         }
     }

@@ -34,7 +34,7 @@ public sealed class WorkspaceTests
         await workspace.WaitForAssertionAsync(() => workspace.FindComponent<AccountRegister>().ShouldNotBeNull());
         budgets.ClearReceivedCalls();
 
-        await workspace.InvokeAsync(() => navigation.NavigateTo(destination.StartsWith('/') ? destination : $"/plans/{plan.Id}/{destination}"));
+        await workspace.InvokeAsync(() => navigation.NavigateTo(destination.StartsWith('/', StringComparison.Ordinal) ? destination : $"/plans/{plan.Id}/{destination}"));
         workspace.Render(parameters => parameters.Add(item => item.PlanId, plan.Id));
 
         workspace.FindComponents<BudgetBoard>().ShouldBeEmpty();

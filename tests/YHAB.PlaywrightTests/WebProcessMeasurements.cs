@@ -38,12 +38,16 @@ internal sealed class WebProcessMeasurements(Process[] processes, string[] resou
                 var arguments = JsonSerializer.SerializeToElement(resource.Snapshot.Properties.Single(item => string.Equals(item.Name, "executable.args", StringComparison.Ordinal)).Value);
                 arguments.EnumerateArray().Select(item => item.GetString()).ShouldContain(value => string.Equals(value, configuration, StringComparison.Ordinal));
                 var ids = await ChildIdsAsync(parent, token);
-                var expected = Path.Combine(Path.GetDirectoryName(projectPath)!, "bin", configuration, "net10.0", OperatingSystem.IsWindows() ? "YHAB.exe" : "YHAB");
+                var expected = Path.Combine(Path.GetDirectoryName(projectPath)!, "bin", configuration, "net11.0", OperatingSystem.IsWindows() ? "YHAB.exe" : "YHAB");
                 var matches = new List<int>();
                 foreach (var id in ids)
                 {
-                    using var child = Process.GetProcessById(id);
-                    if (string.Equals(child.MainModule!.FileName, expected, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal)) { matches.Add(id); }
+                    // A child can exit between enumeration and lookup; the throwing overload would fail the sample.
+                    if (!Process.TryGetProcessById(id, out var child)) { continue; }
+                    using (child)
+                    {
+                        if (string.Equals(child.MainModule!.FileName, expected, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal)) { matches.Add(id); }
+                    }
                 }
                 matches.Count.ShouldBe(1, "sample the actual web executable, not the dotnet launcher");
                 children.Add(Process.GetProcessById(matches[0]));

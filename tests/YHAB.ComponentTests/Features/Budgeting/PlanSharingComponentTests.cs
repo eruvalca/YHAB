@@ -413,7 +413,7 @@ public sealed class PlanSharingComponentTests
         await component.Find("#join-plan-form").SubmitAsync();
 
         component.Find(".notice[data-kind='error']").TextContent.ShouldBe("Request failed.");
-        component.Find("#join-plan-form").QuerySelectorAll(".notice, .validation-message").ShouldBeEmpty();
+        component.Find("#join-plan-form").QuerySelectorAll(".notice, .validation-message:not([hidden])").ShouldBeEmpty();
         component.Find("#join-code").HasAttribute("aria-invalid").ShouldBeFalse();
     }
 

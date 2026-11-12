@@ -1,6 +1,6 @@
 # YHAB
 
-This solution contains a .NET 10 Blazor server, WebAssembly client, shared UI and
+This solution contains a .NET 11 Blazor server, WebAssembly client, shared UI and
 shared kernel, plus Aspire hosting and service defaults.
 
 ## Read the guidance for the task

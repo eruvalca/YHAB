@@ -71,7 +71,7 @@ internal static class AzureDeployment
         migrations.WithAzureUserAssignedIdentity(databaseIdentity)
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Production")
             .WithEnvironment("DOTNET_ENVIRONMENT", "Production")
-            .PublishAsMigrationBundle(publishContainer: true, baseImage: "mcr.microsoft.com/dotnet/aspnet:10.0")
+            .PublishAsMigrationBundle(publishContainer: true, baseImage: "mcr.microsoft.com/dotnet/aspnet:11.0")
             .PublishAsAzureContainerAppJob((_, job) =>
             {
                 job.Name = migrations.Resource.Name;

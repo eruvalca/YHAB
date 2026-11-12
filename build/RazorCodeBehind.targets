@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <_YHABBuildProject>$(MSBuildThisFileDirectory)YHAB.Build/YHAB.Build.csproj</_YHABBuildProject>
-    <_YHABBuildAssembly>$(MSBuildThisFileDirectory)YHAB.Build/bin/$(Configuration)/net10.0/YHAB.Build.dll</_YHABBuildAssembly>
+    <_YHABBuildAssembly>$(MSBuildThisFileDirectory)YHAB.Build/bin/$(Configuration)/net11.0/YHAB.Build.dll</_YHABBuildAssembly>
     <_YHABDotNetHost Condition="'$(DotNetHostPath)' != ''">$(DotNetHostPath)</_YHABDotNetHost>
     <_YHABDotNetHost Condition="'$(_YHABDotNetHost)' == ''">dotnet</_YHABDotNetHost>
   </PropertyGroup>

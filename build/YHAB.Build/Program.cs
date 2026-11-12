@@ -18,7 +18,9 @@ try
 
     if (args.Length != 5)
     {
-        await Console.Error.WriteLineAsync("Expected: project-directory root-namespace define-constants components-manifest compile-manifest");
+        await Console.Error.WriteLineAsync(
+            "Expected: project-directory root-namespace define-constants components-manifest compile-manifest".AsMemory(),
+            cancellation.Token);
         return 2;
     }
 

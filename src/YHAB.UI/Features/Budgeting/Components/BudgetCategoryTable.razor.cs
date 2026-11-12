@@ -204,8 +204,13 @@ public sealed partial class BudgetCategoryTable
         public async ValueTask InitializeAsync(ElementReference table, CancellationToken cancellationToken)
         {
             _table = table;
-            _module = await js.InvokeAsync<IJSObjectReference>("import", cancellationToken, ModulePath);
-            await _module.InvokeVoidAsync("initialize", cancellationToken, table);
+            try
+            {
+                _module = await js.InvokeAsync<IJSObjectReference>("import", cancellationToken, ModulePath);
+                await _module.InvokeVoidAsync("initialize", cancellationToken, table);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { /* The component was disposed before the drag keys were wired up. */ }
+            catch (JSDisconnectedException) { /* The circuit closed before the drag keys were wired up. */ }
         }
 
         public async ValueTask DisposeAsync()

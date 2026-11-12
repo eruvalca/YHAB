@@ -66,7 +66,7 @@ public sealed class ProfileTests
 
         await component.Find("form").SubmitAsync();
 
-        component.FindAll(".error-text[role='alert']").ShouldBeEmpty();
+        component.FindAll(".error-text[role='alert']:not([hidden])").ShouldBeEmpty();
         user.DisplayName.ShouldBe("Alice");
         await account.Users.Received(1).UpdateAsync(user);
         await account.SignIn.Received(1).RefreshSignInAsync(user);

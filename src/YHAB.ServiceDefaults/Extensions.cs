@@ -22,6 +22,8 @@ public static class Extensions
 {
     private const string HealthEndpointPath = "/health";
     private const string AlivenessEndpointPath = "/alive";
+    // .NET 11 publishes MemoryCache statistics through this meter when a cache enables TrackStatistics.
+    private const string MemoryCacheMeterName = "Microsoft.Extensions.Caching.Memory";
 
     extension<TBuilder>(TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
@@ -56,7 +58,8 @@ public static class Extensions
             builder.Services.AddOpenTelemetry()
                 .WithMetrics(metrics => metrics.AddAspNetCoreInstrumentation()
                         .AddHttpClientInstrumentation()
-                        .AddRuntimeInstrumentation())
+                        .AddRuntimeInstrumentation()
+                        .AddMeter(MemoryCacheMeterName))
                 .WithTracing(tracing => tracing.AddSource(builder.Environment.ApplicationName)
                         .AddAspNetCoreInstrumentation(tracing =>
                             // Exclude health check requests from tracing

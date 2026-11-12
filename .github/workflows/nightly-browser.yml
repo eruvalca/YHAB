@@ -16,7 +16,7 @@ concurrency:
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
-  ASPIRE_VERSION: 13.6.4
+  ASPIRE_VERSION: 13.6.5
 
 jobs:
   browser-full:
@@ -61,8 +61,8 @@ jobs:
         with:
           name: browser-diagnostics-performance
           path: |
-            tests/YHAB.PlaywrightTests/bin/Release/net10.0/TestResults/**/trace.zip
-            tests/YHAB.PlaywrightTests/bin/Release/net10.0/TestResults/**/*.png
+            tests/YHAB.PlaywrightTests/bin/Release/net11.0/TestResults/**/trace.zip
+            tests/YHAB.PlaywrightTests/bin/Release/net11.0/TestResults/**/*.png
           retention-days: 7
           if-no-files-found: warn
 
