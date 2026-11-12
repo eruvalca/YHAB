@@ -345,7 +345,15 @@ public sealed partial class PlanSettings(IBudgetClient budgets, NavigationManage
     }
     private sealed class LeaveInput
     {
-        [Range(typeof(bool), "true", "true", ErrorMessage = "Confirm that you want to leave this plan.")]
+        [MustBeTrue]
         public bool Confirmed { get; set; }
+    }
+
+    // Reflection-free replacement for [Range(typeof(bool), "true", "true")], which
+    // relies on a RequiresUnreferencedCode constructor and is unsafe under trimming.
+    [AttributeUsage(AttributeTargets.Property)]
+    private sealed class MustBeTrueAttribute() : ValidationAttribute("Confirm that you want to leave this plan.")
+    {
+        public override bool IsValid(object? value) => value is true;
     }
 }

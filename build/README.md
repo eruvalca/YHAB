@@ -276,6 +276,7 @@ packages do not inherit them.
 | --- | --- |
 | Meziantou.Analyzer | Correctness, performance, API usage, and Blazor checks |
 | Microsoft.CodeAnalysis.BannedApiAnalyzers | Repository-specific API bans from project-scoped `BannedSymbols.*.txt` files |
+| Microsoft.CodeAnalysis.PublicApiAnalyzers | Exported surface of `YHAB.SharedKernel` traced in `PublicAPI.*.txt` |
 | SonarAnalyzer.CSharp | Bugs, security, and maintainability checks |
 | Roslynator.Analyzers | C# simplification and style checks |
 | xunit.analyzers | xUnit test checks; included only when `IsTestProject` is `true` |
@@ -329,6 +330,29 @@ with `All`. Review new findings one rule at a time, including Razor and framewor
 contracts, and record severity decisions in `.editorconfig`. Future code and SDK
 updates can introduce additional build-blocking findings. This mode does not
 change the separately installed third-party analyzer packages.
+
+Two rules that `All` does not enable are opted in through `.editorconfig`:
+`CA1509` validates the `CodeMetricsConfig.txt` entries supplied through
+`AdditionalFiles`, so a malformed threshold cannot silently disable the metric it
+configures, and `CA2200` requires a bare `throw` so a rethrow preserves the
+original stack trace.
+
+The .NET 11 SDK corrected `AnalysisLevel=latest` to select the .NET 11 rule set
+rather than .NET 9; that correction, not a project change, is what enabled
+`CA1517`, `CA1876`, `CA1877`, `CA2026`, `CA2027` and `CA2028` here. `CA2027`
+(no non-cancelable `Task.Delay` with `WhenAny`) belongs to the cancellation rules
+in the [tables below](#cancellation-enforcement).
+
+The Blazor component (`BL0xxx`) and EF Core (`EF1xxx`) analyzers arrive with the
+framework packages and run at their package defaults; `.editorconfig` records no
+overrides for them. Every reported rule is a warning, so the shared
+warnings-as-errors policy already gates them.
+
+`IDE0340` (unbound generic type in `nameof`) and `IDE0350` (redundant explicit
+lambda parameter type) are recorded as warnings because C# 14-era style rules are
+silent until given a severity. Other candidate rules were rejected because they
+could not be observed firing on this SDK. Do not add a style rule on
+documentation evidence alone: confirm it reports against a probe first.
 
 Method cyclomatic complexity must not exceed 25 (`CA1502`, warning). The root
 `CodeMetricsConfig.txt` records this threshold, and `Directory.Build.props` supplies
@@ -397,6 +421,38 @@ Razor code-behind too. The explicit-discard preference does not justify discardi
 the asynchronous operation itself; preserve any required `await`. The explicit
 severity records the warning already enabled by the SDK's `All` analysis mode.
 
+### Trimming and Native AOT analysis
+
+`YHAB.SharedKernel`, `YHAB.UI` and `YHAB.Client` set `IsTrimmable`,
+`EnableTrimAnalyzer` and `EnableAotAnalyzer`. The browser-served assemblies are
+trimmed, and Native AOT is available for WebAssembly, so reflection-dependent
+contracts must be rejected at build time rather than discovered after publish.
+Findings are `IL2xxx`/`IL3xxx` diagnostics and fail the build like any warning.
+
+The `IL2026` finding that adoption surfaced was
+`[Range(typeof(bool), "true", "true")]` in `PlanSettings`: `RangeAttribute(Type,
+...)` reflects over its type argument. Replace that pattern with a reflection-free
+`ValidationAttribute`. Do not add `[UnconditionalSuppressMessage]` to keep such a
+call.
+
+`YHAB.Client` serializes its HTTP contracts through the source-generated
+`BudgetJsonContext` and the `JsonTypeInfo` overloads of `JsonSerializer`,
+`JsonContent.Create` and `ReadFromJsonAsync`. Keep new payload types registered in
+that context; reflection-based overloads reintroduce the warnings. Source
+generation must also match the server's `JsonSerializerDefaults.Web` options, and
+commands serialize through their concrete record type because the endpoints
+accept concrete contracts, not the polymorphic base.
+
+### Public API surface
+
+`YHAB.SharedKernel` is the contract shared by the server and the browser, so its
+exported surface is traced in `PublicAPI.Shipped.txt` and
+`PublicAPI.Unshipped.txt`. A new or changed public member is reported as `RS0016`
+until it is declared, and a declaration without a matching member is `RS0017`.
+Move an entry from unshipped to shipped when a release ships it; do not widen an
+internal type merely to keep an entry. `YHAB.UI` is deliberately out of scope
+because Razor components are public by design.
+
 ### Sealing and accessibility
 
 Sealing and accessibility diagnostics are warnings and therefore fail builds. Their
@@ -426,6 +482,7 @@ Cancellation diagnostics are warnings and therefore fail builds:
 | `MA0032` | Identify cancellable calls in methods that have no available token. |
 | `CA1068` | Put token parameters last, subject to the rule's framework/signature exceptions. |
 | `MA0079`, `MA0080` | Forward tokens to async enumeration, including methods without an available token. |
+| `CA2027` | Pair `Task.Delay` with a token when racing it through `WhenAny`. |
 
 Keep application I/O contracts explicit: `IBudgetClient` and both implementations
 require a final token without a default value. Omitting the argument is then a C#
