@@ -10,7 +10,7 @@ internal static class PlanAccess
     extension(IQueryable<BudgetPlan> plans)
     {
         // Plans stay visible to their owner and to every account the owner shares them with.
-        public IQueryable<BudgetPlan> WhereAccessibleBy(string userId)
+        internal IQueryable<BudgetPlan> WhereAccessibleBy(string userId)
             => plans.Where(item => item.OwnerId == userId || item.Members.Any(member => member.UserId == userId));
     }
 

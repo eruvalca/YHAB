@@ -18,7 +18,7 @@ internal static partial class IdentityComponentsEndpointRouteBuilderExtensions
     extension(IEndpointRouteBuilder endpoints)
     {
         // These endpoints are required by the Identity Razor components defined in the Features/Account/Pages directory of this project.
-        public IEndpointConventionBuilder MapAdditionalIdentityEndpoints()
+        internal IEndpointConventionBuilder MapAdditionalIdentityEndpoints()
         {
             ArgumentNullException.ThrowIfNull(endpoints);
 

@@ -76,10 +76,7 @@ builder.Services.PostConfigure<HealthCheckServiceOptions>(options =>
 {
     var databaseCheck = options.Registrations.SingleOrDefault(registration =>
         string.Equals(registration.Name, nameof(ApplicationDbContext), StringComparison.Ordinal));
-    if (databaseCheck is not null)
-    {
-        databaseCheck.Timeout = TimeSpan.FromSeconds(5);
-    }
+    databaseCheck?.Timeout = TimeSpan.FromSeconds(5);
 });
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
