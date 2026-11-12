@@ -33,8 +33,7 @@
       <_UntrimmedComponentAssembly>$(MSBuildProjectDirectory)/../YHAB.UI/bin/$(Configuration)/$(TargetFramework)/YHAB.UI.dll</_UntrimmedComponentAssembly>
       <_TrimmedComponentAssembly>$(IntermediateLinkDir)YHAB.UI.dll</_TrimmedComponentAssembly>
     </PropertyGroup>
-    <Exec Condition="Exists('$(_TrimmedComponentAssembly)')"
-          Command="&quot;$(_YHABDotNetHost)&quot; &quot;$(_YHABBuildAssembly)&quot; verify-trimmed-components &quot;$(_UntrimmedComponentAssembly)&quot; &quot;$(_TrimmedComponentAssembly)&quot;" />
+    <Exec Command="&quot;$(_YHABDotNetHost)&quot; &quot;$(_YHABBuildAssembly)&quot; verify-trimmed-components &quot;$(_UntrimmedComponentAssembly)&quot; &quot;$(_TrimmedComponentAssembly)&quot;" />
   </Target>
 
   <ItemGroup>
