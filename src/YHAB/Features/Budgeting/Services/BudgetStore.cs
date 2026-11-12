@@ -89,6 +89,7 @@ internal sealed class BudgetStore(IDbContextFactory<ApplicationDbContext> contex
             InvalidBudgetChange invalid => throw new InvalidOperationException(invalid.Message),
             PlanNotFound => false,
             PlanVersionConflict => false,
+            null => throw new InvalidOperationException("A plan operation returned an outcome with no value."),
         };
     }
 
@@ -137,6 +138,7 @@ internal sealed class BudgetStore(IDbContextFactory<ApplicationDbContext> contex
                 InvalidBudgetChange invalid => Task.FromResult(new Execution(invalid, false)),
                 PlanNotFound missing => Task.FromResult(new Execution(missing, false)),
                 PlanVersionConflict conflict => Task.FromResult(new Execution(conflict, false)),
+                null => throw new InvalidOperationException("A plan operation returned an outcome with no value."),
             });
 
             async Task<Execution> CommitAsync(PreparedBudgetChange prepared)
@@ -225,6 +227,7 @@ internal sealed class BudgetStore(IDbContextFactory<ApplicationDbContext> contex
             InvalidBudgetChange invalid => invalid,
             PlanNotFound missing => missing,
             PlanVersionConflict conflict => conflict,
+            null => throw new InvalidOperationException("A plan operation returned an outcome with no value."),
         };
 
     private static BudgetPreparationOutcome PrepareLedgerChange(BudgetPlan plan, PlanSnapshot before, PlanCommand command, PlanSnapshot after)
@@ -268,6 +271,7 @@ internal sealed class BudgetStore(IDbContextFactory<ApplicationDbContext> contex
             InvalidBudgetChange invalid => Task.FromResult<BudgetChangeOutcome>(invalid),
             PlanNotFound missing => Task.FromResult<BudgetChangeOutcome>(missing),
             PlanVersionConflict conflict => Task.FromResult<BudgetChangeOutcome>(conflict),
+            null => throw new InvalidOperationException("A plan operation returned an outcome with no value."),
         });
 
         async Task<BudgetChangeOutcome> ApplyRecurringAsync(PlanSnapshot proposed)

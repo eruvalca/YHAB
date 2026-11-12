@@ -89,6 +89,25 @@ models mutually exclusive inputs;
 [EnableAuthenticatorOutcome](../../src/YHAB/Features/Account/Models/EnableAuthenticatorOutcome.cs)
 distinguishes complete success from partial completion.
 
+## Closed hierarchies
+
+- Mark a base class or record `closed` when we own every direct subtype, they live
+  in one assembly, and code switches over them: `closed record PlanCommand(long Version)`
+  with `sealed` leaves, as [PlanCommand](../../src/YHAB.SharedKernel/Budgeting/PlanCommand.cs)
+  does. `closed` is implicitly `abstract`, so replace an `abstract` modifier instead
+  of combining them.
+- A switch expression that names each direct subtype is exhaustiveness-checked
+  (`CS8509`) in every consuming assembly, so adding a subtype breaks the build at each
+  dispatch. A `_` arm absorbs that subtype; where a silent default would be wrong,
+  enumerate the remaining cases with an `or` pattern instead.
+- `closed` restricts derivation, not serialization. Keep the hand-written
+  `[JsonDerivedType]` list on a polymorphic base and the completeness test that guards
+  it (`PlanCommandSerializationContractTests`); an unregistered subtype throws at run
+  time.
+- Do not use `closed` for a union. A union is already closed and exhaustiveness-checked,
+  and its boxed value-type cases make it the wrong tool for subtypes that share a base
+  contract.
+
 ## C# extension members
 
 - Prefer C# 14 extension blocks for handwritten extensions. Group related members

@@ -24,7 +24,8 @@ internal static class PlanCommandHandler
             RenamePayee rename => Rename(plan, rename),
             PostRecurring post when post.ThroughDate <= today && CatalogChanges.ValidDate(post.ThroughDate)
                 => TransactionChanges.PostDue(ids, plan, post.ThroughDate, posted),
-            _ => new InvalidBudgetChange("This plan operation is not supported."),
+            PostRecurring => new InvalidBudgetChange("Recurring transactions can only be posted through a valid date up to today."),
+            UndoChange or RedoChange => new InvalidBudgetChange("This plan operation is not supported."),
         };
 
     private static BudgetChangeOutcome Update(PlanSnapshot plan, UpdatePlan command)
@@ -68,6 +69,7 @@ internal static class PlanCommandHandler
         UpdatePlan => "Updated plan",
         RenamePayee => "Renamed payee",
         PostRecurring => "Posted recurring transactions",
-        _ => "Updated plan",
+        UndoChange => "Change undone",
+        RedoChange => "Change restored",
     };
 }
