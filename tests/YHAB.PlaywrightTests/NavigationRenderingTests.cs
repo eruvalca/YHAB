@@ -37,14 +37,16 @@ public sealed class NavigationRenderingTests(ITestOutputHelper output)
             ViewportSize = new() { Width = 1280, Height = 960 },
             ServiceWorkers = ServiceWorkerPolicy.Block,
         });
-        var runtime = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         if (string.Equals(renderer, "Server", StringComparison.Ordinal))
         {
-            await context.RouteAsync("**/_framework/dotnet.native.*.wasm", async route =>
-            {
-                await runtime.Task.WaitAsync(timeout.Token);
-                await route.ContinueAsync();
-            });
+            // Auto picks WebAssembly only when a bundle hash is cached. Clearing the hash before
+            // each document keeps every page load on the Server renderer; blocking the runtime
+            // downloads instead leaves the client waiting for the blocked files in .NET 11.
+            await context.AddInitScriptAsync("""
+                for (const key of Object.keys(localStorage)) {
+                    if (key.startsWith('blazor-resource-hash')) { localStorage.removeItem(key); }
+                }
+                """);
         }
         await context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = true });
         var page = await context.NewPageAsync();
@@ -58,16 +60,17 @@ public sealed class NavigationRenderingTests(ITestOutputHelper output)
             await page.GetByRole(AriaRole.Button, new() { Name = "Create your plan" }).ClickAsync();
             await page.Locator(".workspace[data-interactive='true'][aria-busy='false']").WaitForAsync();
             var planPath = new Uri(page.Url).AbsolutePath;
-            var origin = await page.EvaluateAsync<double>("performance.timeOrigin");
-            await BudgetWorkflowTests.AddAccountAsync(page);
             if (string.Equals(renderer, "WebAssembly", StringComparison.Ordinal))
             {
+                // Auto uses the cached bundle on the next document rather than migrating a running
+                // Server component, so load again before measuring. The reload precedes the
+                // performance.timeOrigin capture, which still guards the measured navigation flow.
                 await page.WaitForFunctionAsync("() => Object.keys(localStorage).some(key => key.startsWith('blazor-resource-hash:'))");
-                // Auto selects the downloaded runtime on the next workspace mount.
-                await page.Locator(".plan-navigation").GetByRole(AriaRole.Link, new() { Name = "Reflect", Exact = true }).ClickAsync();
-                await page.GetByRole(AriaRole.Heading, new() { Name = "Reflect", Exact = true }).WaitForAsync();
-                await page.Locator($".plan-navigation a[href='{planPath}']").ClickAsync();
+                await page.ReloadAsync();
+                await page.Locator($".workspace[data-renderer='{renderer}'][data-interactive='true'][aria-busy='false']").WaitForAsync();
             }
+            var origin = await page.EvaluateAsync<double>("performance.timeOrigin");
+            await BudgetWorkflowTests.AddAccountAsync(page);
             await page.Locator($".workspace[data-renderer='{renderer}'][data-interactive='true'][aria-busy='false']").WaitForAsync();
             // Do not let a previously hidden onboarding panel masquerade as a route layout change.
             var dismiss = page.Locator("fluent-button[aria-label='Dismiss getting started checklist']");
@@ -201,8 +204,6 @@ public sealed class NavigationRenderingTests(ITestOutputHelper output)
         }
         finally
         {
-            runtime.TrySetResult();
-            await context.UnrouteAsync("**/_framework/dotnet.native.*.wasm");
             var artifacts = Path.Combine(AppContext.BaseDirectory, "TestResults", $"route-handoff-{renderer}-{width}-{Guid.NewGuid():N}");
             await BrowserArtifacts.CaptureAsync(page, context, artifacts, output.WriteLine);
         }

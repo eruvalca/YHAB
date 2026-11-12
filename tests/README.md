@@ -398,22 +398,23 @@ SSR-to-interactive handoff or SignalR transport.
 Existing stack selected September 26, 2026; infrastructure/browser additions
 verified October 2, 2026; all versions re-verified against the repository
 manifests (`Directory.Packages.props`, `global.json`) and the extension baseline
-on November 5, 2026; stack updated for the .NET 11 migration on November 11, 2026:
+on November 5, 2026; stack updated for the .NET 11 migration and follow-up
+package upgrades on November 11, 2026:
 
 | Component | Version |
 | --- | --- |
 | .NET SDK | 11.0.100 |
-| bunit (component project only) | 2.13.3 |
-| xunit.v3.core.mtp-v2 | 4.0.2 |
+| bunit (component project only) | 2.15.2 |
+| xunit.v3.core.mtp-v2 | 4.0.3 |
 | Shouldly | 4.3.0 |
 | TngTech.ArchUnitNET (unit project only) | 0.13.5 |
 | NSubstitute (account tests) | 6.2.0 |
 | NSubstitute.Analyzers.CSharp | 1.0.17 |
 | Bogus (locally seeded fake data) | 35.6.5 |
-| Microsoft.Testing.Platform / Platform.MSBuild | 2.5.2 |
-| Microsoft.Testing.Extensions.TrxReport | 2.5.2 |
+| Microsoft.Testing.Platform / Platform.MSBuild | 2.5.3 |
+| Microsoft.Testing.Extensions.TrxReport | 2.5.3 |
 | Microsoft.Testing.Extensions.CodeCoverage | 18.12.0 |
-| xunit.analyzers | 2.2.0 |
+| xunit.analyzers | 2.3.0 |
 | Aspire.Hosting.Testing (matches AppHost) | 13.6.5 |
 | Testcontainers.PostgreSql | 4.16.0 |
 | Microsoft.Playwright | 1.64.1 |
@@ -421,7 +422,7 @@ on November 5, 2026; stack updated for the .NET 11 migration on November 11, 202
 
 Package versions are centralized in `Directory.Packages.props`. Explicit MTP
 runtime and MSBuild references advance xUnit's transitive 2.5.1 dependencies to
-2.5.2. Test package references use `PrivateAssets="all"`. All test projects
+2.5.3. Test package references use `PrivateAssets="all"`. All test projects
 reference xUnit's core MTP package, which supplies the framework and runner
 without `xunit.v3.assert`; xUnit analyzers remain included by the root build props.
 NSubstitute usage is also checked by a test-only analyzer reference in the shared
@@ -773,6 +774,11 @@ workspace, including shared actions such as "+ Add transaction", while the
 replacement loads, and clicks are dropped until `enhancedload` fires. Wait for
 that event (through `Blazor.addEventListener`) plus a destination-only locator
 before interacting, rather than a bare `.workspace[data-interactive='true']`.
+`InteractiveAuto` selects its runtime per document and does not migrate a running
+Server component to WebAssembly (ASP.NET Core 11). A test that needs the
+WebAssembly renderer must cache the bundle and then load a new document; a test
+that needs Server must keep the cached bundle hash absent before each document
+rather than blocking the runtime downloads, which leaves the client waiting.
 Each navigation case attempts to retain `page.png` and `trace.zip` independently
 in a unique `bin/<configuration>/net11.0/TestResults/navigation-*` directory.
 Artifact capture is best effort: failures are reported through xUnit test output
