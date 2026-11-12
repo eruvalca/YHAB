@@ -1,11 +1,9 @@
 using System.Text;
 using Microsoft.AspNetCore.WebUtilities;
-using OneOf;
 
 namespace YHAB.Features.Account.Models;
 
-[GenerateOneOf]
-internal sealed partial class TokenDecodeOutcome : OneOfBase<TokenDecodeOutcome.DecodedToken, TokenDecodeOutcome.InvalidToken>
+internal union TokenDecodeOutcome(TokenDecodeOutcome.DecodedToken, TokenDecodeOutcome.InvalidToken)
 {
     internal sealed record DecodedToken(string Value);
     internal readonly record struct InvalidToken;

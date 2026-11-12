@@ -342,3 +342,10 @@ dotnet_diagnostic.MA0048.severity = none
 dotnet_diagnostic.MA0048.severity = none
 # Schema migrations naturally contain long sequences of generated operations.
 dotnet_diagnostic.MA0051.severity = none
+
+[{src/YHAB/Features/Account/Pages/ConfirmEmail.razor.cs,src/YHAB/Features/Account/Pages/ConfirmEmailChange.razor.cs,src/YHAB/Features/Account/Pages/ExternalLogin.razor.cs,src/YHAB/Features/Account/Pages/Manage/EnableAuthenticator.razor.cs,src/YHAB/Features/Account/Pages/Manage/GenerateRecoveryCodes.razor.cs,src/YHAB/Features/Account/Pages/Manage/Passkeys.razor.cs,src/YHAB/Features/Account/Pages/Manage/RenamePasskey.razor.cs,src/YHAB/Features/Account/Pages/ResetPassword.razor.cs,src/YHAB/Features/Budgeting/Models/BudgetMutationExtensions.cs,src/YHAB/Features/Budgeting/Services/BudgetHistoryReader.cs,src/YHAB/Features/Budgeting/Services/BudgetStore.cs}]
+# CA1508 reads each C# 15 union case pattern as a boolean condition and reports the arm as dead
+# code, for example 'LedgerPatch ledger => ledger.IsEmpty' is always true. The arms are not
+# conditions and the switches are exhaustiveness-checked by the compiler (CS8509), so the rule adds
+# no signal in these dispatch files. Remove an entry once CA1508 models union patterns correctly.
+dotnet_diagnostic.CA1508.severity = none

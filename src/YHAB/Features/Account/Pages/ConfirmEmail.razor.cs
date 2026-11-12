@@ -34,17 +34,23 @@ public sealed partial class ConfirmEmail
         }
         else
         {
-            await TokenDecodeOutcome.Decode(Code).Match(
-                async token =>
-                {
-                    var result = await UserManager.ConfirmEmailAsync(user, token.Value);
-                    _statusMessage = result.Succeeded ? "Thank you for confirming your email." : "Error confirming your email.";
-                },
-                _ =>
-                {
-                    _statusMessage = "Error confirming your email.";
-                    return Task.CompletedTask;
-                });
+            await (TokenDecodeOutcome.Decode(Code) switch
+            {
+                TokenDecodeOutcome.DecodedToken token => ConfirmAsync(user, token),
+                TokenDecodeOutcome.InvalidToken => ReportInvalidAsync(),
+            });
         }
+    }
+
+    private async Task ConfirmAsync(ApplicationUser user, TokenDecodeOutcome.DecodedToken token)
+    {
+        var result = await UserManager.ConfirmEmailAsync(user, token.Value);
+        _statusMessage = result.Succeeded ? "Thank you for confirming your email." : "Error confirming your email.";
+    }
+
+    private Task ReportInvalidAsync()
+    {
+        _statusMessage = "Error confirming your email.";
+        return Task.CompletedTask;
     }
 }

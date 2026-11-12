@@ -1,9 +1,6 @@
-using OneOf;
-
 namespace YHAB.Features.Account.Models;
 
-[GenerateOneOf]
-internal sealed partial class PasskeySubmission : OneOfBase<PasskeySubmission.Missing, PasskeySubmission.Credential, PasskeySubmission.BrowserError>
+internal union PasskeySubmission(PasskeySubmission.Missing, PasskeySubmission.Credential, PasskeySubmission.BrowserError)
 {
     internal readonly record struct Missing;
     internal sealed record Credential(string Json);

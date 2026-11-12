@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Identity;
 using YHAB.Data;
+using YHAB.Features.Account.Models;
 
 namespace YHAB.Features.Account.Pages.Manage;
 
@@ -31,10 +32,30 @@ public sealed partial class RenamePasskey
         }
 
         var result = await AccountPasskeys.FindAsync(_user, Id);
-        result.Switch(
-            found => _passkey = found.Passkey,
-            _ => RedirectManager.RedirectToWithStatus("Account/Manage/Passkeys", "Error: The specified passkey ID had an invalid format.", HttpContext),
-            _ => RedirectManager.RedirectToWithStatus("Account/Manage/Passkeys", "Error: The specified passkey could not be found.", HttpContext));
+        _ = result switch
+        {
+            PasskeyLookupOutcome.Found found => AcceptFound(found),
+            CredentialIdOutcome.InvalidCredentialId => RedirectInvalidFormat(),
+            PasskeyLookupOutcome.NotFound => RedirectNotFound(),
+        };
+    }
+
+    private bool AcceptFound(PasskeyLookupOutcome.Found found)
+    {
+        _passkey = found.Passkey;
+        return true;
+    }
+
+    private bool RedirectInvalidFormat()
+    {
+        RedirectManager.RedirectToWithStatus("Account/Manage/Passkeys", "Error: The specified passkey ID had an invalid format.", HttpContext);
+        return false;
+    }
+
+    private bool RedirectNotFound()
+    {
+        RedirectManager.RedirectToWithStatus("Account/Manage/Passkeys", "Error: The specified passkey could not be found.", HttpContext);
+        return false;
     }
 
     private async Task RenameAsync()

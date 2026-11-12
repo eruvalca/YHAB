@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Identity;
 using YHAB.Data;
 using YHAB.Features.Account.Extensions;
+using YHAB.Features.Account.Models;
 using YHAB.Features.Account.Services;
 
 namespace YHAB.Features.Account.Pages;
@@ -26,13 +27,17 @@ public sealed partial class Register
     public async Task RegisterUserAsync(EditContext editContext)
     {
         var result = await AccountRegistration.PasswordAsync(Input.Email, Input.Password);
-        await result.Match(
-            created => CompleteRegistrationAsync(created.User),
-            rejected =>
-            {
-                _identityErrors = rejected.Errors;
-                return Task.CompletedTask;
-            });
+        await (result switch
+        {
+            RegistrationOutcome.Created created => CompleteRegistrationAsync(created.User),
+            RegistrationOutcome.CreationRejected rejected => ReportRejectedAsync(rejected),
+        });
+    }
+
+    private Task ReportRejectedAsync(RegistrationOutcome.CreationRejected rejected)
+    {
+        _identityErrors = rejected.Errors;
+        return Task.CompletedTask;
     }
 
     private async Task CompleteRegistrationAsync(ApplicationUser user)

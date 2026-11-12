@@ -37,19 +37,27 @@ public sealed partial class ConfirmEmailChange
             return;
         }
 
-        await TokenDecodeOutcome.Decode(Code).Match(
-            async token =>
-            {
-                var result = await AccountEmailChange.ChangeAsync(user, Email, token.Value);
-                _message = result.Match(
-                    _ => "Thank you for confirming your email change.",
-                    _ => "Error changing email.",
-                    _ => "Error: Your email was changed, but your user name could not be updated.");
-            },
-            _ =>
-            {
-                RedirectManager.RedirectToWithStatus("Account/Login", "Error: Invalid email change confirmation link.", HttpContext);
-                return Task.CompletedTask;
-            });
+        await (TokenDecodeOutcome.Decode(Code) switch
+        {
+            TokenDecodeOutcome.DecodedToken token => ConfirmAsync(user, Email, token),
+            TokenDecodeOutcome.InvalidToken => ReportInvalidAsync(),
+        });
+    }
+
+    private async Task ConfirmAsync(ApplicationUser user, string email, TokenDecodeOutcome.DecodedToken token)
+    {
+        var result = await AccountEmailChange.ChangeAsync(user, email, token.Value);
+        _message = result switch
+        {
+            EmailChangeOutcome.Changed => "Thank you for confirming your email change.",
+            EmailChangeOutcome.EmailChangeRejected => "Error changing email.",
+            EmailChangeOutcome.UsernameChangeRejected => "Error: Your email was changed, but your user name could not be updated.",
+        };
+    }
+
+    private Task ReportInvalidAsync()
+    {
+        RedirectManager.RedirectToWithStatus("Account/Login", "Error: Invalid email change confirmation link.", HttpContext);
+        return Task.CompletedTask;
     }
 }

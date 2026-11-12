@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using YHAB.Features.Budgeting.Models;
 using YHAB.Features.Budgeting.Services;
 using YHAB.SharedKernel.Budgeting;
 
@@ -161,11 +162,13 @@ internal static class BudgetEndpoints
         where TCommand : PlanCommand
     {
         var outcome = await store.ExecuteAsync(Owner(context), planId, request, cancellationToken);
-        return outcome.Match<Results<Ok<RevisionRequest>, ProblemHttpResult>>(
-            plan => TypedResults.Ok(new RevisionRequest(plan.Version)),
-            invalid => TypedResults.Problem(detail: invalid.Message, statusCode: 400, title: "Check your entry"),
-            _ => TypedResults.Problem(statusCode: 404, title: "Plan not found"),
-            _ => TypedResults.Problem(detail: "This plan changed in another tab. Refresh before trying again.", statusCode: 409, title: "Plan changed"));
+        return outcome switch
+        {
+            PlanSnapshot plan => TypedResults.Ok(new RevisionRequest(plan.Version)),
+            InvalidBudgetChange invalid => TypedResults.Problem(detail: invalid.Message, statusCode: 400, title: "Check your entry"),
+            PlanNotFound => TypedResults.Problem(statusCode: 404, title: "Plan not found"),
+            PlanVersionConflict => TypedResults.Problem(detail: "This plan changed in another tab. Refresh before trying again.", statusCode: 409, title: "Plan changed"),
+        };
     }
 
     private static string Owner(HttpContext context)

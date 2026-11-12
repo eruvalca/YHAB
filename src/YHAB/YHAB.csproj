@@ -22,8 +22,6 @@
     <ProjectReference Include="..\YHAB.SharedKernel\YHAB.SharedKernel.csproj" />
     <ProjectReference Include="..\YHAB.ServiceDefaults\YHAB.ServiceDefaults.csproj" />
     <PackageReference Include="Aspire.Azure.Npgsql.EntityFrameworkCore.PostgreSQL" />
-    <PackageReference Include="OneOf" />
-    <PackageReference Include="OneOf.SourceGenerator" PrivateAssets="all" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />

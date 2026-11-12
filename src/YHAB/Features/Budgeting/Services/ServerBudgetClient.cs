@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
+using YHAB.Features.Budgeting.Models;
 using YHAB.SharedKernel.Budgeting;
 
 namespace YHAB.Features.Budgeting.Services;
@@ -19,11 +20,13 @@ internal sealed class ServerBudgetClient(BudgetStore store, BudgetQueries querie
     public async Task ExecuteAsync(Guid planId, PlanCommand command, CancellationToken cancellationToken)
     {
         var result = await store.ExecuteAsync(await OwnerAsync(cancellationToken), planId, command, cancellationToken);
-        result.Switch(
-            _ => { },
-            invalid => throw new BudgetRequestException(400, invalid.Message),
-            _ => throw new BudgetRequestException(404, "This plan is not available."),
-            _ => throw new BudgetRequestException(409, "This plan changed in another tab. Refresh and try your change again."));
+        _ = result switch
+        {
+            PlanSnapshot => true,
+            InvalidBudgetChange invalid => throw new BudgetRequestException(400, invalid.Message),
+            PlanNotFound => throw new BudgetRequestException(404, "This plan is not available."),
+            PlanVersionConflict => throw new BudgetRequestException(409, "This plan changed in another tab. Refresh and try your change again."),
+        };
     }
 
     public async Task<PlanView> ReadViewAsync(Guid planId, CancellationToken cancellationToken)

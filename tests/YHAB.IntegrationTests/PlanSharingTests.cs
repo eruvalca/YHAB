@@ -7,6 +7,7 @@ using Xunit;
 using YHAB.Data;
 using YHAB.Features.Budgeting.Data;
 using YHAB.SharedKernel.Budgeting;
+using YHAB.Tests.Scenarios;
 
 namespace YHAB.IntegrationTests;
 

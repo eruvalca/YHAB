@@ -48,18 +48,30 @@ public sealed partial class Passkeys
             return;
         }
 
-        await PasskeySubmission.From(Input).Match(
-            _ => CompleteWithStatusAsync("Error: The browser did not provide a passkey."),
-            async credential =>
-            {
-                var result = await AccountPasskeys.AddAsync(_user, credential.Json, _currentPasskeys!.Count);
-                result.Switch(
-                    added => RedirectManager.RedirectTo($"Account/Manage/RenamePasskey/{Base64Url.EncodeToString(added.CredentialId)}"),
-                    _ => ShowStatus("Error: You have reached the maximum number of allowed passkeys."),
-                    rejected => ShowStatus($"Error: Could not add the passkey: {rejected.Message}"),
-                    _ => ShowStatus("Error: The passkey could not be added to your account."));
-            },
-            error => CompleteWithStatusAsync($"Error: {error.Message}"));
+        await (PasskeySubmission.From(Input) switch
+        {
+            PasskeySubmission.Missing => CompleteWithStatusAsync("Error: The browser did not provide a passkey."),
+            PasskeySubmission.Credential credential => SubmitPasskeyAsync(credential, _user),
+            PasskeySubmission.BrowserError error => CompleteWithStatusAsync($"Error: {error.Message}"),
+        });
+    }
+
+    private async Task SubmitPasskeyAsync(PasskeySubmission.Credential credential, ApplicationUser user)
+    {
+        var result = await AccountPasskeys.AddAsync(user, credential.Json, _currentPasskeys!.Count);
+        await (result switch
+        {
+            AddPasskeyOutcome.Added added => RedirectToRenameAsync(added),
+            AddPasskeyOutcome.LimitReached => CompleteWithStatusAsync("Error: You have reached the maximum number of allowed passkeys."),
+            AddPasskeyOutcome.AttestationRejected rejected => CompleteWithStatusAsync($"Error: Could not add the passkey: {rejected.Message}"),
+            AddPasskeyOutcome.PersistenceRejected => CompleteWithStatusAsync("Error: The passkey could not be added to your account."),
+        });
+    }
+
+    private Task RedirectToRenameAsync(AddPasskeyOutcome.Added added)
+    {
+        RedirectManager.RedirectTo($"Account/Manage/RenamePasskey/{Base64Url.EncodeToString(added.CredentialId)}");
+        return Task.CompletedTask;
     }
 
     private async Task UpdatePasskeyAsync()
@@ -86,13 +98,17 @@ public sealed partial class Passkeys
             return;
         }
 
-        await CredentialIdOutcome.Decode(CredentialId).Match(
-            async decoded =>
-            {
-                var result = await UserManager.RemovePasskeyAsync(_user, decoded.Bytes);
-                ShowStatus(result.Succeeded ? "Passkey deleted successfully." : "Error: The passkey could not be deleted.");
-            },
-            _ => CompleteWithStatusAsync("Error: The specified passkey ID had an invalid format."));
+        await (CredentialIdOutcome.Decode(CredentialId) switch
+        {
+            CredentialIdOutcome.DecodedCredentialId decoded => RemovePasskeyAsync(decoded, _user),
+            CredentialIdOutcome.InvalidCredentialId => CompleteWithStatusAsync("Error: The specified passkey ID had an invalid format."),
+        });
+    }
+
+    private async Task RemovePasskeyAsync(CredentialIdOutcome.DecodedCredentialId decoded, ApplicationUser user)
+    {
+        var result = await UserManager.RemovePasskeyAsync(user, decoded.Bytes);
+        ShowStatus(result.Succeeded ? "Passkey deleted successfully." : "Error: The passkey could not be deleted.");
     }
 
     private void ShowStatus(string message) => RedirectManager.RedirectToCurrentPageWithStatus(message, HttpContext);

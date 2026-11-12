@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Identity;
 using YHAB.Data;
+using YHAB.Features.Account.Models;
 
 namespace YHAB.Features.Account.Pages.Manage;
 
@@ -39,24 +40,32 @@ public sealed partial class GenerateRecoveryCodes
 
         _recoveryCodes = null;
         var result = await AccountTwoFactor.GenerateRecoveryCodesAsync(_user);
-        await result.Match(
-            async generated =>
-            {
-                _recoveryCodes = generated.Codes;
-                _message = "You have generated new recovery codes.";
-                var userId = await UserManager.GetUserIdAsync(_user);
-                LogRecoveryCodesGenerated(Logger, userId);
-            },
-            _ =>
-            {
-                RedirectManager.RedirectToWithStatus("Account/Manage/TwoFactorAuthentication", "Error: Enable two-factor authentication before generating recovery codes.", HttpContext);
-                return Task.CompletedTask;
-            },
-            _ =>
-            {
-                _message = "Error: Recovery codes could not be generated. Please try again.";
-                return Task.CompletedTask;
-            });
+        await (result switch
+        {
+            RecoveryCodesOutcome.Generated generated => OnGeneratedAsync(generated, _user),
+            RecoveryCodesOutcome.TwoFactorNotEnabled => ReportNotEnabledAsync(),
+            RecoveryCodesOutcome.GenerationFailed => ReportFailedAsync(),
+        });
+    }
+
+    private async Task OnGeneratedAsync(RecoveryCodesOutcome.Generated generated, ApplicationUser user)
+    {
+        _recoveryCodes = generated.Codes;
+        _message = "You have generated new recovery codes.";
+        var userId = await UserManager.GetUserIdAsync(user);
+        LogRecoveryCodesGenerated(Logger, userId);
+    }
+
+    private Task ReportNotEnabledAsync()
+    {
+        RedirectManager.RedirectToWithStatus("Account/Manage/TwoFactorAuthentication", "Error: Enable two-factor authentication before generating recovery codes.", HttpContext);
+        return Task.CompletedTask;
+    }
+
+    private Task ReportFailedAsync()
+    {
+        _message = "Error: Recovery codes could not be generated. Please try again.";
+        return Task.CompletedTask;
     }
 
     [LoggerMessage(EventId = 1016, Level = LogLevel.Information, Message = "User with ID '{UserId}' has generated new 2FA recovery codes.")]

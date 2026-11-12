@@ -26,11 +26,15 @@ internal sealed class AccountPasskeyService(UserManager<ApplicationUser> userMan
     }
 
     public Task<PasskeyLookupOutcome> FindAsync(ApplicationUser user, string? credentialId) =>
-        CredentialIdOutcome.Decode(credentialId).Match(
-            async decoded =>
-            {
-                var passkey = await userManager.GetPasskeyAsync(user, decoded.Bytes);
-                return passkey is null ? new PasskeyLookupOutcome.NotFound() : new PasskeyLookupOutcome.Found(passkey);
-            },
-            invalid => Task.FromResult<PasskeyLookupOutcome>(invalid));
+        CredentialIdOutcome.Decode(credentialId) switch
+        {
+            CredentialIdOutcome.DecodedCredentialId decoded => FindPasskeyAsync(user, decoded),
+            CredentialIdOutcome.InvalidCredentialId invalid => Task.FromResult<PasskeyLookupOutcome>(invalid),
+        };
+
+    private async Task<PasskeyLookupOutcome> FindPasskeyAsync(ApplicationUser user, CredentialIdOutcome.DecodedCredentialId decoded)
+    {
+        var passkey = await userManager.GetPasskeyAsync(user, decoded.Bytes);
+        return passkey is null ? new PasskeyLookupOutcome.NotFound() : new PasskeyLookupOutcome.Found(passkey);
+    }
 }

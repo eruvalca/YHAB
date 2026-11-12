@@ -20,5 +20,7 @@
     <ProjectReference Include="..\YHAB.Testing\YHAB.Testing.csproj" />
     <ProjectReference Include="../../src/YHAB.SharedKernel/YHAB.SharedKernel.csproj" />
     <Compile Include="../Scenarios/*.cs" Link="Scenarios/%(Filename)%(Extension)" />
+    <!-- Budget outcome case accessors serve server-facing tests only; Playwright tests do not reference the server project. -->
+    <Compile Remove="../Scenarios/BudgetOutcomeCaseExtensions.cs" />
   </ItemGroup>
 </Project>
