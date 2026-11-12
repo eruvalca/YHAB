@@ -16,6 +16,11 @@ try
         return await PatchFluentModule.RunAsync(source, destination, cancellation.Token);
     }
 
+    if (args is ["verify-trimmed-components", var untrimmedAssembly, var trimmedAssembly])
+    {
+        return await VerifyTrimmedComponents.RunAsync(untrimmedAssembly, trimmedAssembly, cancellation.Token);
+    }
+
     if (args.Length != 5)
     {
         await Console.Error.WriteLineAsync(
