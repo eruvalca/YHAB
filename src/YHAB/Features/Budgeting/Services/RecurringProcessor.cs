@@ -5,10 +5,8 @@ using YHAB.SharedKernel.Budgeting;
 
 namespace YHAB.Features.Budgeting.Services;
 
-internal sealed class RecurringProcessor(IDbContextFactory<ApplicationDbContext> factory, BudgetStore store, BudgetClock clock, ILogger<RecurringProcessor> logger)
+internal sealed partial class RecurringProcessor(IDbContextFactory<ApplicationDbContext> factory, BudgetStore store, BudgetClock clock, ILogger<RecurringProcessor> logger)
 {
-    private static readonly Action<ILogger, Guid, Exception?> _planFailed = LoggerMessage.Define<Guid>(LogLevel.Error,
-        new EventId(4101, "RecurringPlanFailed"), "Recurring posting failed for plan {PlanId}; other plans will continue.");
     // Discovery is bounded. Execution serializes one batch per plan across processes
     // and refreshes the revision after acquiring the plan lock.
     public async Task<int> RunBatchAsync(CancellationToken cancellationToken)
@@ -36,9 +34,12 @@ internal sealed class RecurringProcessor(IDbContextFactory<ApplicationDbContext>
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
                 // Retain the exception and plan identity, without abandoning other discovered plans.
-                _planFailed(logger, plan.Id, exception);
+                LogPlanFailed(logger, plan.Id, exception);
             }
         }
         return committed;
     }
+
+    [LoggerMessage(EventId = 4101, EventName = "RecurringPlanFailed", Level = LogLevel.Error, Message = "Recurring posting failed for plan {PlanId}; other plans will continue.")]
+    private static partial void LogPlanFailed(ILogger logger, Guid planId, Exception? exception);
 }
