@@ -32,7 +32,7 @@ public sealed class SignInResultExtensionsTests
     {
         var result = CombinedSignInResult.Create(succeeded, requiresTwoFactor, isLockedOut, isNotAllowed);
 
-        result.ToSignInOutcome().Value.GetType().ShouldBe(expectedCase);
+        result.ToSignInOutcome().Value.ShouldBeOfType(expectedCase);
     }
 
     private sealed class CombinedSignInResult : SignInResult

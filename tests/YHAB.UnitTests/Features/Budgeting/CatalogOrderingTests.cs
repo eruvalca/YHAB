@@ -4,6 +4,7 @@ using Xunit;
 using YHAB.Features.Budgeting.Models;
 using YHAB.Features.Budgeting.Services;
 using YHAB.SharedKernel.Budgeting;
+using YHAB.Tests.Scenarios;
 
 namespace YHAB.UnitTests.Features.Budgeting;
 

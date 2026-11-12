@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Identity;
 using YHAB.Data;
 using YHAB.Features.Account.Extensions;
+using YHAB.Features.Account.Models;
 
 namespace YHAB.Features.Account.Pages.Manage;
 
@@ -57,12 +58,14 @@ public sealed partial class EnableAuthenticator
         }
         _recoveryCodes = null;
         var result = await AccountTwoFactor.EnableAsync(_user, Input.Code);
-        await result.Match(
-            _ => SetMessageAsync("Error: Verification code is invalid."),
-            _ => CompleteEnableAsync(_user, null),
-            enabled => CompleteEnableAsync(_user, enabled.Codes),
-            _ => SetMessageAsync("Error: Two-factor authentication could not be enabled. Please try again."),
-            _ => SetMessageAsync("Error: Two-factor authentication is enabled, but recovery codes could not be generated. Generate recovery codes from your two-factor authentication settings."));
+        await (result switch
+        {
+            EnableAuthenticatorOutcome.InvalidCode => SetMessageAsync("Error: Verification code is invalid."),
+            EnableAuthenticatorOutcome.Enabled => CompleteEnableAsync(_user, null),
+            EnableAuthenticatorOutcome.EnabledWithRecoveryCodes enabled => CompleteEnableAsync(_user, enabled.Codes),
+            EnableAuthenticatorOutcome.EnableFailed => SetMessageAsync("Error: Two-factor authentication could not be enabled. Please try again."),
+            EnableAuthenticatorOutcome.EnabledButRecoveryCodesFailed => SetMessageAsync("Error: Two-factor authentication is enabled, but recovery codes could not be generated. Generate recovery codes from your two-factor authentication settings."),
+        });
     }
 
     private async Task CompleteEnableAsync(ApplicationUser user, string[]? codes)
@@ -86,14 +89,18 @@ public sealed partial class EnableAuthenticator
     private async ValueTask LoadSharedKeyAndQrCodeUriAsync(ApplicationUser user)
     {
         var result = await AccountTwoFactor.PrepareAsync(user);
-        await result.Match(
-            async ready =>
-            {
-                _sharedKey = ready.Key.FormatAuthenticatorKey();
-                var email = await UserManager.GetEmailAsync(user);
-                _authenticatorUri = GenerateQrCodeUri(email!, ready.Key);
-            },
-            _ => SetMessageAsync("Error: The authenticator key could not be initialized. Please try again."));
+        await (result switch
+        {
+            AuthenticatorSetupOutcome.SetupReady ready => ApplySetupAsync(user, ready),
+            AuthenticatorSetupOutcome.KeyInitializationFailed => SetMessageAsync("Error: The authenticator key could not be initialized. Please try again."),
+        });
+    }
+
+    private async Task ApplySetupAsync(ApplicationUser user, AuthenticatorSetupOutcome.SetupReady ready)
+    {
+        _sharedKey = ready.Key.FormatAuthenticatorKey();
+        var email = await UserManager.GetEmailAsync(user);
+        _authenticatorUri = GenerateQrCodeUri(email!, ready.Key);
     }
 
     private string GenerateQrCodeUri(string email, string unformattedKey)

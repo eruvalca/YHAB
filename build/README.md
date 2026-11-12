@@ -520,9 +520,9 @@ passing `this` as an argument.
 `IDE0001` (warning) requires simplifying redundant namespace/type qualification
 and inferable generic type arguments where binding is unchanged. Keep qualification
 or type arguments when they resolve an ambiguity. In particular, an inferred
-task-returning `Match` preserves the asynchronous OneOf contract; it must still be
-returned or awaited, and asynchronous lambdas must never be passed to `Switch`.
-IDE0001 and IDE0003 are editor/formatter diagnostics in the current SDK; an
+task-returning `switch` expression over a union outcome preserves the asynchronous
+contract; it must still be returned or awaited, and every arm must produce a
+`Task`. IDE0001 and IDE0003 are editor/formatter diagnostics in the current SDK; an
 ordinary build alone does not establish compliance. The required `dotnet format`
 pass checks these conventions, including handwritten Razor code-behind. Generated
 Razor output must remain untouched.

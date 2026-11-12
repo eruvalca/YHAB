@@ -11,9 +11,12 @@ internal static class BudgetHistoryCodec
     private const string PayeeKind = "payee-names-v1";
 
     public static (string Before, string After) Serialize(BudgetMutation mutation)
-        => mutation.Match(ledger => (JsonSerializer.Serialize(ledger.Before, _json), JsonSerializer.Serialize(ledger.After, _json)),
-            payees => (JsonSerializer.Serialize(new PayeeHistory(PayeeKind, payees.Before), _json),
-                JsonSerializer.Serialize(new PayeeHistory(PayeeKind, payees.After), _json)));
+        => mutation switch
+        {
+            LedgerPatch ledger => (JsonSerializer.Serialize(ledger.Before, _json), JsonSerializer.Serialize(ledger.After, _json)),
+            PayeePatch payees => (JsonSerializer.Serialize(new PayeeHistory(PayeeKind, payees.Before), _json),
+                JsonSerializer.Serialize(new PayeeHistory(PayeeKind, payees.After), _json)),
+        };
 
     public static BudgetMutation Deserialize(BudgetHistory history)
     {

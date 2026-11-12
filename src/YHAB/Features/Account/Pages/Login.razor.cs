@@ -35,14 +35,21 @@ public sealed partial class Login
         }
     }
 
-    public Task LoginUserAsync() => PasskeySubmission.From(Input.Passkey).Match(
-        _ => PasswordLoginAsync(),
-        async credential => HandleSignIn(await AccountSignIn.PasskeyAsync(credential.Json)),
-        error =>
-        {
-            _errorMessage = $"Error: {error.Message}";
-            return Task.CompletedTask;
-        });
+    public Task LoginUserAsync() => PasskeySubmission.From(Input.Passkey) switch
+    {
+        PasskeySubmission.Missing => PasswordLoginAsync(),
+        PasskeySubmission.Credential credential => PasskeyLoginAsync(credential),
+        PasskeySubmission.BrowserError error => ReportBrowserErrorAsync(error),
+    };
+
+    private async Task PasskeyLoginAsync(PasskeySubmission.Credential credential)
+        => HandleSignIn(await AccountSignIn.PasskeyAsync(credential.Json));
+
+    private Task ReportBrowserErrorAsync(PasskeySubmission.BrowserError error)
+    {
+        _errorMessage = $"Error: {error.Message}";
+        return Task.CompletedTask;
+    }
 
     private async Task PasswordLoginAsync()
     {
@@ -55,22 +62,41 @@ public sealed partial class Login
 
     private void HandleSignIn(SignInOutcome result)
     {
-        result.Switch(
-            _ =>
-            {
-                LogUserLoggedIn(Logger);
-                RedirectManager.RedirectTo(ReturnUrl);
-            },
-            _ => RedirectManager.RedirectTo(
-                "Account/LoginWith2fa",
-                new(StringComparer.Ordinal) { ["returnUrl"] = ReturnUrl, ["rememberMe"] = Input.RememberMe }),
-            _ =>
-            {
-                LogUserLockedOut(Logger);
-                RedirectManager.RedirectTo("Account/Lockout");
-            },
-            _ => _errorMessage = "Error: Invalid login attempt.",
-            _ => _errorMessage = "Error: Invalid login attempt.");
+        _ = result switch
+        {
+            SignInOutcome.Succeeded => RedirectAfterSignIn(),
+            SignInOutcome.RequiresTwoFactor => RedirectToTwoFactor(),
+            SignInOutcome.LockedOut => RedirectLockedOut(),
+            SignInOutcome.NotAllowed or SignInOutcome.Failed => ReportInvalidAttempt(),
+        };
+    }
+
+    private bool RedirectAfterSignIn()
+    {
+        LogUserLoggedIn(Logger);
+        RedirectManager.RedirectTo(ReturnUrl);
+        return true;
+    }
+
+    private bool RedirectToTwoFactor()
+    {
+        RedirectManager.RedirectTo(
+            "Account/LoginWith2fa",
+            new(StringComparer.Ordinal) { ["returnUrl"] = ReturnUrl, ["rememberMe"] = Input.RememberMe });
+        return true;
+    }
+
+    private bool RedirectLockedOut()
+    {
+        LogUserLockedOut(Logger);
+        RedirectManager.RedirectTo("Account/Lockout");
+        return true;
+    }
+
+    private bool ReportInvalidAttempt()
+    {
+        _errorMessage = "Error: Invalid login attempt.";
+        return false;
     }
 
     [LoggerMessage(EventId = 1001, Level = LogLevel.Information, Message = "User logged in.")]

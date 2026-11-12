@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Identity;
 using YHAB.Data;
 using YHAB.Features.Account.Extensions;
+using YHAB.Features.Account.Models;
 
 namespace YHAB.Features.Account.Pages.Manage;
 
@@ -36,17 +37,21 @@ public sealed partial class Disable2fa
         }
 
         var result = await AccountTwoFactor.DisableAsync(_user);
-        await result.Match(
-            async _ =>
-            {
-                var userId = await UserManager.GetUserIdAsync(_user);
-                LogTwoFactorDisabled(Logger, userId);
-                RedirectManager.RedirectToWithStatus(
-                    "Account/Manage/TwoFactorAuthentication",
-                    "2fa has been disabled. You can reenable 2fa when you setup an authenticator app", HttpContext);
-            },
-            _ => ShowStatusAsync("Account/Manage/TwoFactorAuthentication", "Two-factor authentication is already disabled."),
-            _ => ShowStatusAsync("Account/Manage/Disable2fa", "Error: Two-factor authentication could not be disabled. Please try again."));
+        await (result switch
+        {
+            DisableTwoFactorOutcome.Disabled => OnDisabledAsync(_user),
+            DisableTwoFactorOutcome.AlreadyDisabled => ShowStatusAsync("Account/Manage/TwoFactorAuthentication", "Two-factor authentication is already disabled."),
+            DisableTwoFactorOutcome.DisableFailed => ShowStatusAsync("Account/Manage/Disable2fa", "Error: Two-factor authentication could not be disabled. Please try again."),
+        });
+    }
+
+    private async Task OnDisabledAsync(ApplicationUser user)
+    {
+        var userId = await UserManager.GetUserIdAsync(user);
+        LogTwoFactorDisabled(Logger, userId);
+        RedirectManager.RedirectToWithStatus(
+            "Account/Manage/TwoFactorAuthentication",
+            "2fa has been disabled. You can reenable 2fa when you setup an authenticator app", HttpContext);
     }
 
     private Task ShowStatusAsync(string destination, string message)

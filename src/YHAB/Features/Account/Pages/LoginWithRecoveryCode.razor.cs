@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Identity;
 using YHAB.Data;
+using YHAB.Features.Account.Models;
 
 namespace YHAB.Features.Account.Pages;
 
@@ -31,26 +32,35 @@ public sealed partial class LoginWithRecoveryCode
 
         var userId = await UserManager.GetUserIdAsync(_user);
 
-        result.Switch(
-            _ =>
-            {
-                LogUserLoggedInWithRecoveryCode(Logger, userId);
-                RedirectManager.RedirectTo(ReturnUrl);
-            },
-            _ => ShowInvalidCode(userId),
-            _ =>
-            {
-                LogUserLockedOut(Logger);
-                RedirectManager.RedirectTo("Account/Lockout");
-            },
-            _ => ShowInvalidCode(userId),
-            _ => ShowInvalidCode(userId));
+        await (result switch
+        {
+            SignInOutcome.Succeeded => OnSucceededAsync(userId),
+            SignInOutcome.RequiresTwoFactor => ShowInvalidCodeAsync(userId),
+            SignInOutcome.LockedOut => OnLockedOutAsync(),
+            SignInOutcome.NotAllowed => ShowInvalidCodeAsync(userId),
+            SignInOutcome.Failed => ShowInvalidCodeAsync(userId),
+        });
     }
 
-    private void ShowInvalidCode(string userId)
+    private Task OnSucceededAsync(string userId)
+    {
+        LogUserLoggedInWithRecoveryCode(Logger, userId);
+        RedirectManager.RedirectTo(ReturnUrl);
+        return Task.CompletedTask;
+    }
+
+    private Task OnLockedOutAsync()
+    {
+        LogUserLockedOut(Logger);
+        RedirectManager.RedirectTo("Account/Lockout");
+        return Task.CompletedTask;
+    }
+
+    private Task ShowInvalidCodeAsync(string userId)
     {
         LogInvalidRecoveryCode(Logger, userId);
         _message = "Error: Invalid recovery code entered.";
+        return Task.CompletedTask;
     }
 
     [LoggerMessage(EventId = 1006, Level = LogLevel.Information, Message = "User with ID '{UserId}' logged in with a recovery code.")]

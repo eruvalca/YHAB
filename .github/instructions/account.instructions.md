@@ -10,7 +10,7 @@ and the [server guidance](server.instructions.md) still apply. Before changing
 account Razor, styling, components, forms, submitters, or navigation, read the
 [UI guide](ui.instructions.md), including its native Identity input/submitter and
 static navigation requirements. Use the
-[OneOf outcome conventions](csharp.instructions.md#oneof-and-operation-outcomes)
+[union outcome conventions](csharp.instructions.md#union-types-and-operation-outcomes)
 and the repository-wide cancellation rules for account outcomes and committed
 writes; consult
 [cancellation lifetimes](../../docs/budgeting.md#cancellation-lifetimes). Account

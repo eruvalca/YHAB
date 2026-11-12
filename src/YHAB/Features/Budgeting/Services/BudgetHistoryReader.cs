@@ -15,17 +15,24 @@ internal static class BudgetHistoryReader
         var position = HistoryPolicy.RequestedPosition(plan.HistoryCursor, !reverse);
         var history = await database.Set<BudgetHistory>().SingleOrDefaultAsync(item => item.PlanId == plan.Id && item.Position == position, token);
         if (history is null) { return new(current, null); }
-        return await BudgetHistoryCodec.Deserialize(history).Match(async patch =>
+        return await (BudgetHistoryCodec.Deserialize(history) switch
         {
-            var expected = reverse ? patch.After : patch.Before;
-            var desired = reverse ? patch.Before : patch.After;
-            var removedAccounts = expected.Accounts.Select(item => item.Id).Except(desired.Accounts.Select(item => item.Id)).ToArray();
-            var removedCategories = expected.Categories.Select(item => item.Id).Except(desired.Categories.Select(item => item.Id)).ToArray();
-            var allocations = await AllocationsAsync(database, plan.Id, patch, removedCategories, token);
-            var entries = await EntriesAsync(database, plan.Id, patch, removedAccounts, removedCategories, token);
-            var snapshot = current with { Allocations = allocations, Transactions = entries };
-            return new Input(snapshot, NormalizeDates(patch, snapshot));
-        }, payees => Task.FromResult(new Input(current, payees)));
+            LedgerPatch patch => ReadLedgerAsync(database, plan, current, patch, reverse, token),
+            PayeePatch payees => Task.FromResult(new Input(current, payees)),
+        });
+    }
+
+    private static async Task<Input> ReadLedgerAsync(ApplicationDbContext database, BudgetPlan plan, PlanSnapshot current,
+        LedgerPatch patch, bool reverse, CancellationToken token)
+    {
+        var expected = reverse ? patch.After : patch.Before;
+        var desired = reverse ? patch.Before : patch.After;
+        var removedAccounts = expected.Accounts.Select(item => item.Id).Except(desired.Accounts.Select(item => item.Id)).ToArray();
+        var removedCategories = expected.Categories.Select(item => item.Id).Except(desired.Categories.Select(item => item.Id)).ToArray();
+        var allocations = await AllocationsAsync(database, plan.Id, patch, removedCategories, token);
+        var entries = await EntriesAsync(database, plan.Id, patch, removedAccounts, removedCategories, token);
+        var snapshot = current with { Allocations = allocations, Transactions = entries };
+        return new Input(snapshot, NormalizeDates(patch, snapshot));
     }
 
     internal sealed record Input(PlanSnapshot Current, BudgetMutation? Patch);

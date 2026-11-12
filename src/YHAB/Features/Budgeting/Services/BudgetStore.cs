@@ -83,8 +83,13 @@ internal sealed class BudgetStore(IDbContextFactory<ApplicationDbContext> contex
     public async Task<bool> PostRecurringAsync(string userId, Guid planId, DateOnly through, CancellationToken cancellationToken)
     {
         var result = await ExecuteCoreAsync(userId, planId, new PostRecurring(0, through), background: true, cancellationToken);
-        return result.Outcome.Match(_ => result.Committed,
-            invalid => throw new InvalidOperationException(invalid.Message), _ => false, _ => false);
+        return result.Outcome switch
+        {
+            PlanSnapshot => result.Committed,
+            InvalidBudgetChange invalid => throw new InvalidOperationException(invalid.Message),
+            PlanNotFound => false,
+            PlanVersionConflict => false,
+        };
     }
 
     private async Task<Execution> ExecuteCoreAsync(string userId, Guid planId, PlanCommand command, bool background, CancellationToken cancellationToken)
@@ -126,46 +131,56 @@ internal sealed class BudgetStore(IDbContextFactory<ApplicationDbContext> contex
                 : new BudgetHistoryReader.Input(await BudgetSnapshotMapping.LoadAsync(database, plan, cancellationToken, command: command), null);
             var before = input.Current with { Today = clock.Today };
             var outcome = await PrepareAsync(database, userId, plan, before, command, input.Patch, cancellationToken);
-            return await outcome.Match(
-                async prepared =>
+            return await (outcome switch
+            {
+                PreparedBudgetChange prepared => CommitAsync(prepared),
+                InvalidBudgetChange invalid => Task.FromResult(new Execution(invalid, false)),
+                PlanNotFound missing => Task.FromResult(new Execution(missing, false)),
+                PlanVersionConflict conflict => Task.FromResult(new Execution(conflict, false)),
+            });
+
+            async Task<Execution> CommitAsync(PreparedBudgetChange prepared)
+            {
+                var after = prepared.Snapshot;
+                var patch = prepared.Mutation;
+                if (background && patch.IsEmpty)
                 {
-                    var after = prepared.Snapshot;
-                    var patch = prepared.Mutation;
-                    if (background && patch.IsEmpty)
+                    return new Execution(before, false);
+                }
+                try
+                {
+                    // Claim the revision first. Competing writes fail before any ledger/history changes.
+                    plan.Version++;
+                    await database.SaveChangesAsync(cancellationToken);
+                    plan.Name = after.Name;
+                    plan.Notes = after.Notes;
+                    await (patch switch
                     {
-                        return new Execution(before, false);
+                        LedgerPatch ledger => InvalidateCheckpointsAsync(ledger),
+                        PayeePatch payees => PayeePersistence.ApplyAsync(database, planId, payees, cancellationToken),
+                    });
+                    if (!patch.IsEmpty && command is not (UndoChange or RedoChange or PostRecurring))
+                    {
+                        await SaveHistoryAsync(database, plan, patch, command, cancellationToken);
                     }
-                    try
-                    {
-                        // Claim the revision first. Competing writes fail before any ledger/history changes.
-                        plan.Version++;
-                        await database.SaveChangesAsync(cancellationToken);
-                        plan.Name = after.Name;
-                        plan.Notes = after.Notes;
-                        await patch.Match(async ledger =>
-                        {
-                            await BudgetCheckpoints.InvalidateAsync(database, planId, plan.Version, ledger, cancellationToken);
-                            BudgetSnapshotMapping.ApplyPatch(database, ledger);
-                        }, payees => PayeePersistence.ApplyAsync(database, planId, payees, cancellationToken));
-                        if (!patch.IsEmpty && command is not (UndoChange or RedoChange or PostRecurring))
-                        {
-                            await SaveHistoryAsync(database, plan, patch, command, cancellationToken);
-                        }
 
-                        database.Add(new BudgetReceipt { PlanId = planId, OperationId = command.OperationId, RequestHash = requestHash, Version = plan.Version });
+                    database.Add(new BudgetReceipt { PlanId = planId, OperationId = command.OperationId, RequestHash = requestHash, Version = plan.Version });
 
-                        await database.SaveChangesAsync(cancellationToken);
-                        await transaction.CommitAsync(cancellationToken);
-                        return new Execution(after with { Version = plan.Version }, true);
-                    }
-                    catch (DbUpdateConcurrencyException)
-                    {
-                        return new Execution(new PlanVersionConflict(), false);
-                    }
-                },
-                invalid => Task.FromResult(new Execution(invalid, false)),
-                missing => Task.FromResult(new Execution(missing, false)),
-                conflict => Task.FromResult(new Execution(conflict, false)));
+                    await database.SaveChangesAsync(cancellationToken);
+                    await transaction.CommitAsync(cancellationToken);
+                    return new Execution(after with { Version = plan.Version }, true);
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    return new Execution(new PlanVersionConflict(), false);
+                }
+            }
+
+            async Task InvalidateCheckpointsAsync(LedgerPatch ledger)
+            {
+                await BudgetCheckpoints.InvalidateAsync(database, planId, plan.Version, ledger, cancellationToken);
+                BudgetSnapshotMapping.ApplyPatch(database, ledger);
+            }
         }, cancellationToken);
     }
 
@@ -182,31 +197,44 @@ internal sealed class BudgetStore(IDbContextFactory<ApplicationDbContext> contex
             {
                 return new InvalidBudgetChange(reverse ? "There is nothing to undo." : "There is nothing to redo.");
             }
-            return await history.Match(
-                ledger => Task.FromResult(PrepareLedger(plan, before, command, Restore(plan, before, command, ledger))),
-                async payees =>
-                {
-                    var patch = reverse ? payees.Reverse() : payees;
-                    if (!await PayeePersistence.CanApplyAsync(database, plan.Id, patch, token))
-                    {
-                        return (BudgetPreparationOutcome)new InvalidBudgetChange("A renamed transaction was removed or its payee changed. Review those entries before undoing or redoing it.");
-                    }
-                    plan.HistoryCursor = HistoryPolicy.RestoredCursor(plan.HistoryCursor, !reverse);
-                    return new PreparedBudgetChange(before, patch);
-                });
+            return await (history switch
+            {
+                LedgerPatch ledger => Task.FromResult(PrepareLedger(plan, before, command, Restore(plan, before, command, ledger))),
+                PayeePatch payees => PreparePayeeAsync(payees, reverse, database, plan, before, token),
+            });
         }
         return PrepareLedger(plan, before, command, await ApplyAsync(database, userId, plan, before, command, token));
     }
 
-    private static BudgetPreparationOutcome PrepareLedger(BudgetPlan plan, PlanSnapshot before, PlanCommand command, BudgetChangeOutcome outcome)
-        => outcome.Match(after =>
+    private static async Task<BudgetPreparationOutcome> PreparePayeeAsync(PayeePatch payees, bool reverse,
+        ApplicationDbContext database, BudgetPlan plan, PlanSnapshot before, CancellationToken token)
+    {
+        var patch = reverse ? payees.Reverse() : payees;
+        if (!await PayeePersistence.CanApplyAsync(database, plan.Id, patch, token))
         {
-            // The plan revision serializes sequence allocation. Restored records retain their original sequence.
-            var ordered = TransactionOrdering.Assign(before.Transactions, after.Transactions, plan.NextSequence, command is UndoChange or RedoChange);
-            plan.NextSequence = ordered.LastSequence;
-            after = after with { Transactions = ordered.Transactions };
-            return (BudgetPreparationOutcome)new PreparedBudgetChange(after, LedgerPatch.Between(before, after));
-        }, invalid => invalid, missing => missing, conflict => conflict);
+            return new InvalidBudgetChange("A renamed transaction was removed or its payee changed. Review those entries before undoing or redoing it.");
+        }
+        plan.HistoryCursor = HistoryPolicy.RestoredCursor(plan.HistoryCursor, !reverse);
+        return new PreparedBudgetChange(before, patch);
+    }
+
+    private static BudgetPreparationOutcome PrepareLedger(BudgetPlan plan, PlanSnapshot before, PlanCommand command, BudgetChangeOutcome outcome)
+        => outcome switch
+        {
+            PlanSnapshot after => PrepareLedgerChange(plan, before, command, after),
+            InvalidBudgetChange invalid => invalid,
+            PlanNotFound missing => missing,
+            PlanVersionConflict conflict => conflict,
+        };
+
+    private static BudgetPreparationOutcome PrepareLedgerChange(BudgetPlan plan, PlanSnapshot before, PlanCommand command, PlanSnapshot after)
+    {
+        // The plan revision serializes sequence allocation. Restored records retain their original sequence.
+        var ordered = TransactionOrdering.Assign(before.Transactions, after.Transactions, plan.NextSequence, command is UndoChange or RedoChange);
+        plan.NextSequence = ordered.LastSequence;
+        after = after with { Transactions = ordered.Transactions };
+        return new PreparedBudgetChange(after, LedgerPatch.Between(before, after));
+    }
 
     private async Task<BudgetChangeOutcome> ApplyAsync(ApplicationDbContext database, string userId, BudgetPlan plan,
         PlanSnapshot before, PlanCommand command, CancellationToken token)
@@ -234,12 +262,19 @@ internal sealed class BudgetStore(IDbContextFactory<ApplicationDbContext> contex
             return outcome;
         }
 
-        return await outcome.Match(async proposed =>
+        return await (outcome switch
+        {
+            PlanSnapshot proposed => ApplyRecurringAsync(proposed),
+            InvalidBudgetChange invalid => Task.FromResult<BudgetChangeOutcome>(invalid),
+            PlanNotFound missing => Task.FromResult<BudgetChangeOutcome>(missing),
+            PlanVersionConflict conflict => Task.FromResult<BudgetChangeOutcome>(conflict),
+        });
+
+        async Task<BudgetChangeOutcome> ApplyRecurringAsync(PlanSnapshot proposed)
         {
             var posted = await RecurringOccurrences.ExistingAsync(database, before, proposed, token);
             return posted.Count == 0 ? proposed : PlanCommandHandler.Apply(ids, before, command, clock.Today, projection, posted);
-        }, invalid => Task.FromResult<BudgetChangeOutcome>(invalid),
-            missing => Task.FromResult<BudgetChangeOutcome>(missing), conflict => Task.FromResult<BudgetChangeOutcome>(conflict));
+        }
     }
 
     private static BudgetChangeOutcome Restore(BudgetPlan plan, PlanSnapshot current, PlanCommand command, LedgerPatch patch)

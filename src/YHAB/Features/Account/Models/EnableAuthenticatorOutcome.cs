@@ -1,9 +1,6 @@
-using OneOf;
-
 namespace YHAB.Features.Account.Models;
 
-[GenerateOneOf]
-internal sealed partial class EnableAuthenticatorOutcome : OneOfBase<EnableAuthenticatorOutcome.InvalidCode, EnableAuthenticatorOutcome.Enabled, EnableAuthenticatorOutcome.EnabledWithRecoveryCodes, EnableAuthenticatorOutcome.EnableFailed, EnableAuthenticatorOutcome.EnabledButRecoveryCodesFailed>
+internal union EnableAuthenticatorOutcome(EnableAuthenticatorOutcome.InvalidCode, EnableAuthenticatorOutcome.Enabled, EnableAuthenticatorOutcome.EnabledWithRecoveryCodes, EnableAuthenticatorOutcome.EnableFailed, EnableAuthenticatorOutcome.EnabledButRecoveryCodesFailed)
 {
     internal readonly record struct InvalidCode;
     internal readonly record struct Enabled;

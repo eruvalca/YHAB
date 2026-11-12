@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using YHAB.Data;
 using YHAB.Features.Budgeting.Data;
+using YHAB.Features.Budgeting.Models;
 using YHAB.SharedKernel.Budgeting;
 
 namespace YHAB.Features.Budgeting.Services;
@@ -12,9 +13,12 @@ internal static class BudgetCheckpoints
     internal const int FormatVersion = 1;
 
     public static Task InvalidateAsync(ApplicationDbContext database, Guid planId, long version, LedgerPatch patch, CancellationToken token)
-        => CheckpointPolicy.For(patch).Match(_ => Task.CompletedTask,
-            _ => InvalidateFromAsync(database, planId, version, DateOnly.MinValue, token),
-            changed => InvalidateFromAsync(database, planId, version, changed.Month.AddMonths(1), token));
+        => CheckpointPolicy.For(patch) switch
+        {
+            PreserveCheckpoints => Task.CompletedTask,
+            ResetCheckpoints => InvalidateFromAsync(database, planId, version, DateOnly.MinValue, token),
+            InvalidateCheckpointsAfter changed => InvalidateFromAsync(database, planId, version, changed.Month.AddMonths(1), token),
+        };
 
     private static async Task InvalidateFromAsync(ApplicationDbContext database, Guid planId, long version, DateOnly firstInvalidMonth, CancellationToken token)
     {

@@ -5,6 +5,7 @@ using Shouldly;
 using Xunit;
 using YHAB.Features.Budgeting.Data;
 using YHAB.SharedKernel.Budgeting;
+using YHAB.Tests.Scenarios;
 
 namespace YHAB.IntegrationTests;
 

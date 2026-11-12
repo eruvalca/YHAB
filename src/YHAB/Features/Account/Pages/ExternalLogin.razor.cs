@@ -81,16 +81,45 @@ public sealed partial class ExternalLogin
             _externalLoginInfo.LoginProvider,
             _externalLoginInfo.ProviderKey);
 
-        result.Switch(
-            _ =>
-            {
-                LogUserLoggedInWithExternalProvider(Logger, _externalLoginInfo.Principal.Identity?.Name, _externalLoginInfo.LoginProvider);
-                RedirectManager.RedirectTo(ReturnUrl);
-            },
-            _ => RedirectManager.RedirectTo("Account/LoginWith2fa", new(StringComparer.Ordinal) { ["returnUrl"] = ReturnUrl, ["rememberMe"] = false }),
-            _ => RedirectManager.RedirectTo("Account/Lockout"),
-            _ => RedirectManager.RedirectToWithStatus("Account/Login", "Error: Invalid login attempt.", HttpContext),
-            _ => Input.Email = _externalLoginInfo.Principal.FindFirstValue(ClaimTypes.Email) ?? "");
+        _ = result switch
+        {
+            SignInOutcome.Succeeded => RedirectAfterSignIn(_externalLoginInfo),
+            SignInOutcome.RequiresTwoFactor => RedirectToTwoFactor(),
+            SignInOutcome.LockedOut => RedirectLockedOut(),
+            SignInOutcome.NotAllowed => ReportInvalidAttempt(),
+            SignInOutcome.Failed => PrefillEmail(_externalLoginInfo),
+        };
+    }
+
+    private bool RedirectAfterSignIn(ExternalLoginInfo info)
+    {
+        LogUserLoggedInWithExternalProvider(Logger, info.Principal.Identity?.Name, info.LoginProvider);
+        RedirectManager.RedirectTo(ReturnUrl);
+        return true;
+    }
+
+    private bool RedirectToTwoFactor()
+    {
+        RedirectManager.RedirectTo("Account/LoginWith2fa", new(StringComparer.Ordinal) { ["returnUrl"] = ReturnUrl, ["rememberMe"] = false });
+        return true;
+    }
+
+    private bool RedirectLockedOut()
+    {
+        RedirectManager.RedirectTo("Account/Lockout");
+        return true;
+    }
+
+    private bool ReportInvalidAttempt()
+    {
+        RedirectManager.RedirectToWithStatus("Account/Login", "Error: Invalid login attempt.", HttpContext);
+        return false;
+    }
+
+    private bool PrefillEmail(ExternalLoginInfo info)
+    {
+        Input.Email = info.Principal.FindFirstValue(ClaimTypes.Email) ?? "";
+        return true;
     }
 
     private async Task OnValidSubmitAsync()
@@ -102,19 +131,25 @@ public sealed partial class ExternalLogin
         }
 
         var result = await AccountRegistration.ExternalAsync(Input.Email, _externalLoginInfo);
-        await result.Match(
-            created => CompleteRegistrationAsync(created.User, _externalLoginInfo.LoginProvider),
-            rejected =>
-            {
-                _message = $"Error: {rejected.Errors.FormatDescriptions(",")}";
-                return Task.CompletedTask;
-            },
-            failure =>
-            {
-                _linkFailure = failure;
-                _message = $"Error: Your account was created, but the external login could not be linked. {failure.Errors.FormatDescriptions(",")}";
-                return Task.CompletedTask;
-            });
+        await (result switch
+        {
+            RegistrationOutcome.Created created => CompleteRegistrationAsync(created.User, _externalLoginInfo.LoginProvider),
+            RegistrationOutcome.CreationRejected rejected => ReportRejectedAsync(rejected),
+            ExternalRegistrationOutcome.ExternalLoginLinkFailed failure => ReportLinkFailureAsync(failure),
+        });
+    }
+
+    private Task ReportRejectedAsync(RegistrationOutcome.CreationRejected rejected)
+    {
+        _message = $"Error: {rejected.Errors.FormatDescriptions(",")}";
+        return Task.CompletedTask;
+    }
+
+    private Task ReportLinkFailureAsync(ExternalRegistrationOutcome.ExternalLoginLinkFailed failure)
+    {
+        _linkFailure = failure;
+        _message = $"Error: Your account was created, but the external login could not be linked. {failure.Errors.FormatDescriptions(",")}";
+        return Task.CompletedTask;
     }
 
     private async Task CompleteRegistrationAsync(ApplicationUser user, string provider)

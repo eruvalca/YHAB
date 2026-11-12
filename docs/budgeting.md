@@ -592,7 +592,7 @@ plan, and 409 stale revision. Responses are not cacheable.
 | Rename payee / merge category | POST `/api/plans/{planId}/payees/rename` / `categories/merge` |
 | Undo / redo / post due repeats | POST `/api/plans/{planId}/undo` / `redo` / `recurring/post-due` |
 
-Concrete command records are request contracts, not EF entities or OneOf unions.
+Concrete command records are request contracts, not EF entities or union outcomes.
 Commands include `operationId`; retain it together with the original command when
 retrying an uncertain write. The workspace's optional `month` defaults to the
 server's current budget month; an explicit date is normalized to its month.

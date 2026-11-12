@@ -1,10 +1,8 @@
 using System.Buffers.Text;
-using OneOf;
 
 namespace YHAB.Features.Account.Models;
 
-[GenerateOneOf]
-internal sealed partial class CredentialIdOutcome : OneOfBase<CredentialIdOutcome.DecodedCredentialId, CredentialIdOutcome.InvalidCredentialId>
+internal union CredentialIdOutcome(CredentialIdOutcome.DecodedCredentialId, CredentialIdOutcome.InvalidCredentialId)
 {
     internal sealed record DecodedCredentialId(byte[] Bytes);
     internal readonly record struct InvalidCredentialId;

@@ -46,34 +46,40 @@ rules for project boundaries, dependencies, and validation apply on top.
   property injection. `IDE0290` enforcement is documented in
   [build rules](../../build/README.md#sealing-and-accessibility).
 
-## OneOf and operation outcomes
+## Union types and operation outcomes
 
 - Use unions for meaningful alternatives that need different handling or payloads,
   or to replace fields and flags representing mutually exclusive states. Keep
   ordinary optional values, independent booleans, and adequate existing contracts
   such as simple `IdentityResult` operations. Do not introduce a universal result
-  abstraction or convert every operation to OneOf.
-- Prefer named, source-generated `OneOfBase` types for reusable service outcomes:
-  `[GenerateOneOf] internal sealed partial class ... : OneOfBase<...>`. Use
-  descriptive case records for payloads and marker structs for cases without data.
-  Let the generator supply constructors and conversions. A small local helper does
-  not automatically need a named union class.
-- Prefer exhaustive `Match` when producing a value and `Switch` for synchronous
-  side effects. Avoid routine control flow through the union's `.Value`, `IsTn`,
-  or `AsTn`. `TryPick` is appropriate when deliberately separating one case and
-  handling or forwarding the remaining union; direct case inspection is also
-  appropriate in tests.
-- Return and await task-returning `Match` for asynchronous branches
-  (`Match<Task>` or `Match<Task<T>>`); let the compiler infer the type arguments
-  when they are redundant under IDE0001. Never pass asynchronous lambdas to
-  `Switch`, whose callbacks return `void`.
+  abstraction or convert every operation to a union.
+- Declare a named union per reusable service outcome:
+  `internal union Name(Name.CaseA, Name.CaseB);`. Nest the case declarations in the
+  union body so they stay namespaced, use descriptive records for payloads and
+  marker structs for cases without data, and let the generated constructors and
+  implicit conversions create values. The generated union boxes value-type cases,
+  so prefer reference-type cases where allocation matters. A small local helper
+  does not automatically need a named union.
+- Dispatch with a `switch` expression so the compiler checks every case (`CS8509`).
+  Use one that returns a value or `Task`, including for side effects: a `switch`
+  statement is not exhaustiveness-checked and silently ignores a new case. Name
+  every case, and reserve `_` for a deliberate merge that an `or` pattern should
+  state explicitly. Avoid routine control flow through the union's `.Value`;
+  direct case inspection is appropriate in tests.
+- Add a `null` arm wherever default-initialized union values can reach a switch.
+  Union contents are stored in `object?`, so `default` holds null and an otherwise
+  exhaustive switch throws `SwitchExpressionException` at run time.
+- Keep behavior that inspects the union's own cases out of the union body: a
+  type-pattern switch there trips `S3060`, so put it in a nearby extension member.
+  `CA1508` also reports union case patterns as dead code; the affected files carry
+  a narrow, justified `.editorconfig` exception instead of per-site pragmas.
 - Represent anticipated failures and partial completion accurately, including
   earlier writes that succeeded. Preserve unexpected exceptions and cancellation;
   do not catch every exception into a generic failure outcome.
 - Keep outcomes close to their feature and out of unrelated layers. Share cases
-  only when their meaning is identical. Keep transport models separate;
-  do not expose OneOf directly through forms, cookies, persistence models, or HTTP
-  contracts.
+  only when their meaning is identical. Keep transport models separate; do not
+  expose unions directly through forms, cookies, persistence models, or HTTP
+  contracts, which also cannot round-trip a union through serialization.
 - Test each meaningful case, its payload, and its observable handling. For
   multi-step operations, verify that failures skip later operations and that
   partial completion does not produce complete-success messages or logs.

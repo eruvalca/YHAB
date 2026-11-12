@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Identity;
 using YHAB.Data;
+using YHAB.Features.Account.Models;
 
 namespace YHAB.Features.Account.Pages;
 
@@ -33,26 +34,35 @@ public sealed partial class LoginWith2fa
         var result = await AccountSignIn.AuthenticatorAsync(Input.TwoFactorCode!, RememberMe, Input.RememberMachine);
         var userId = await UserManager.GetUserIdAsync(_user);
 
-        result.Switch(
-            _ =>
-            {
-                LogUserLoggedInWithTwoFactor(Logger, userId);
-                RedirectManager.RedirectTo(ReturnUrl);
-            },
-            _ => ShowInvalidCode(userId),
-            _ =>
-            {
-                LogUserLockedOut(Logger, userId);
-                RedirectManager.RedirectTo("Account/Lockout");
-            },
-            _ => ShowInvalidCode(userId),
-            _ => ShowInvalidCode(userId));
+        await (result switch
+        {
+            SignInOutcome.Succeeded => OnSucceededAsync(userId),
+            SignInOutcome.RequiresTwoFactor => ShowInvalidCodeAsync(userId),
+            SignInOutcome.LockedOut => OnLockedOutAsync(userId),
+            SignInOutcome.NotAllowed => ShowInvalidCodeAsync(userId),
+            SignInOutcome.Failed => ShowInvalidCodeAsync(userId),
+        });
     }
 
-    private void ShowInvalidCode(string userId)
+    private Task OnSucceededAsync(string userId)
+    {
+        LogUserLoggedInWithTwoFactor(Logger, userId);
+        RedirectManager.RedirectTo(ReturnUrl);
+        return Task.CompletedTask;
+    }
+
+    private Task OnLockedOutAsync(string userId)
+    {
+        LogUserLockedOut(Logger, userId);
+        RedirectManager.RedirectTo("Account/Lockout");
+        return Task.CompletedTask;
+    }
+
+    private Task ShowInvalidCodeAsync(string userId)
     {
         LogInvalidAuthenticatorCode(Logger, userId);
         _message = "Error: Invalid authenticator code.";
+        return Task.CompletedTask;
     }
 
     [LoggerMessage(EventId = 1003, Level = LogLevel.Information, Message = "User with ID '{UserId}' logged in with 2fa.")]

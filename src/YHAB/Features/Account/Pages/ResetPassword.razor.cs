@@ -24,13 +24,23 @@ public sealed partial class ResetPassword
     {
         Input ??= new();
 
-        TokenDecodeOutcome.Decode(Code).Switch(
-            token =>
-            {
-                Input.Code = token.Value;
-                _hasValidResetLink = true;
-            },
-            _ => RedirectManager.RedirectTo("Account/InvalidPasswordReset"));
+        _hasValidResetLink = TokenDecodeOutcome.Decode(Code) switch
+        {
+            TokenDecodeOutcome.DecodedToken token => AcceptResetToken(token),
+            TokenDecodeOutcome.InvalidToken => RejectResetToken(),
+        };
+    }
+
+    private bool AcceptResetToken(TokenDecodeOutcome.DecodedToken token)
+    {
+        Input.Code = token.Value;
+        return true;
+    }
+
+    private bool RejectResetToken()
+    {
+        RedirectManager.RedirectTo("Account/InvalidPasswordReset");
+        return false;
     }
 
     private async Task OnValidSubmitAsync()
