@@ -1,10 +1,8 @@
 namespace YHAB.Features.Budgeting.Services;
 
-internal sealed class RecurringWorker(IServiceScopeFactory scopes, TimeProvider timeProvider,
+internal sealed partial class RecurringWorker(IServiceScopeFactory scopes, TimeProvider timeProvider,
     IConfiguration configuration, ILogger<RecurringWorker> logger) : BackgroundService
 {
-    private static readonly Action<ILogger, Exception?> _postingFailed = LoggerMessage.Define(LogLevel.Error,
-        new EventId(4100, "RecurringPostingFailed"), "Recurring posting failed; the next batch will retry.");
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         if (!configuration.GetValue("Budgeting:AutomaticPosting", true))
@@ -24,7 +22,7 @@ internal sealed class RecurringWorker(IServiceScopeFactory scopes, TimeProvider 
                 catch (Exception exception) when (exception is not OperationCanceledException)
                 {
                     // Preserve failure details and retry on the next tick. Ledger and cursor changes are atomic.
-                    _postingFailed(logger, exception);
+                    LogPostingFailed(logger, exception);
                 }
             }
             while (await timer.WaitForNextTickAsync(stoppingToken));
@@ -34,4 +32,7 @@ internal sealed class RecurringWorker(IServiceScopeFactory scopes, TimeProvider 
             // Normal host shutdown.
         }
     }
+
+    [LoggerMessage(EventId = 4100, EventName = "RecurringPostingFailed", Level = LogLevel.Error, Message = "Recurring posting failed; the next batch will retry.")]
+    private static partial void LogPostingFailed(ILogger logger, Exception? exception);
 }
