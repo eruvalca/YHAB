@@ -23,7 +23,7 @@ h1 span { color: var(--colorBrandForeground1); }
 }
 
 .surface:hover {
-    transform: translateY(-2px);
+    transform: translateY(-0.125rem);
     box-shadow: var(--yh-shadow-raised);
 }
 

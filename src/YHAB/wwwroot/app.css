@@ -67,13 +67,13 @@
     --yh-panel-radius: var(--yh-radius-xl);
 
     --yh-shadow-rest:
-        0 1px 2px rgb(16 24 40 / 6%),
+        0 0.0625rem 0.125rem rgb(16 24 40 / 6%),
         0 0.75rem 1.75rem -1rem rgb(16 24 40 / 18%);
     --yh-shadow-raised:
-        0 2px 4px rgb(16 24 40 / 8%),
+        0 0.125rem 0.25rem rgb(16 24 40 / 8%),
         0 1.125rem 2.5rem -1.125rem rgb(16 24 40 / 24%);
     --yh-shadow-overlay:
-        0 4px 8px rgb(16 24 40 / 10%),
+        0 0.25rem 0.5rem rgb(16 24 40 / 10%),
         0 1.75rem 3.5rem -1.25rem rgb(16 24 40 / 30%);
 
     --yh-surface-canvas: var(--colorNeutralBackground2);
@@ -411,13 +411,13 @@ body[data-theme="dark"] {
     /* Shadows need stronger alpha on dark surfaces, and the warm accent needs
        a dark-mode value to keep contrast. */
     --yh-shadow-rest:
-        0 1px 2px rgb(0 0 0 / 40%),
+        0 0.0625rem 0.125rem rgb(0 0 0 / 40%),
         0 0.75rem 1.75rem -1rem rgb(0 0 0 / 60%);
     --yh-shadow-raised:
-        0 2px 4px rgb(0 0 0 / 50%),
+        0 0.125rem 0.25rem rgb(0 0 0 / 50%),
         0 1.125rem 2.5rem -1.125rem rgb(0 0 0 / 70%);
     --yh-shadow-overlay:
-        0 4px 8px rgb(0 0 0 / 50%),
+        0 0.25rem 0.5rem rgb(0 0 0 / 50%),
         0 1.75rem 3.5rem -1.25rem rgb(0 0 0 / 75%);
     --yh-accent-warm: #fbbf24;
     --yh-accent-warm-soft: #3a2c0a;
@@ -433,7 +433,7 @@ body { background: var(--colorNeutralBackground2); color: var(--colorNeutralFore
 .page-heading { margin-block: var(--spacingVerticalM); }
 .surface, .plan-card { padding: var(--spacingVerticalL) var(--spacingHorizontalL); border: 1px solid var(--yh-border-subtle); border-radius: var(--yh-card-radius); background: var(--yh-surface-raised); box-shadow: var(--yh-shadow-rest); }
 .plan-card { display: block; height: 100%; text-decoration: none; color: var(--yh-text-strong); transition: transform var(--yh-duration-base) var(--yh-ease-standard), box-shadow var(--yh-duration-base) var(--yh-ease-standard), background-color var(--yh-duration-fast) var(--yh-ease-standard); }
-.plan-card:hover { border-color: var(--colorBrandStroke1); background: var(--yh-surface-accent-soft); transform: translateY(-2px); box-shadow: var(--yh-shadow-raised); }
+.plan-card:hover { border-color: var(--colorBrandStroke1); background: var(--yh-surface-accent-soft); transform: translateY(-0.125rem); box-shadow: var(--yh-shadow-raised); }
 .plan-card h3 { margin-top: var(--spacingVerticalXL); font-size: var(--fontSizeBase500); }
 @media (prefers-reduced-motion: reduce) { .plan-card { transition: none; } .plan-card:hover { transform: none; } }
 .plan-card p { color: var(--colorNeutralForeground3); }
