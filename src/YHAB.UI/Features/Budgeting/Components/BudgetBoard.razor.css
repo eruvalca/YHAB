@@ -62,4 +62,6 @@ h1 { margin: 0; font-size: var(--yh-font-title-compact); line-height: 1.25; }
     }
     /* The open editor owns the screen; a floating quick add would cover its form. */
     .summary-actions ::deep .board-add-transaction.is-editing { display: none; }
+    /* Keep the docked action from covering the last category row. */
+    .budget-categories { padding-block-end: calc(var(--yh-control-touch) + var(--spacingVerticalXXL)); }
 }

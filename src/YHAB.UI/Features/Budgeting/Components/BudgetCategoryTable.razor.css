@@ -20,7 +20,7 @@
 .budget-table ::deep .category-row { cursor: pointer; }
 .budget-table ::deep .category-row:hover { background: var(--colorSubtleBackgroundHover); }
 .budget-table ::deep .category-row[data-selected="true"] { background: var(--yh-surface-accent-soft); box-shadow: inset 3px 0 var(--colorBrandStroke1); }
-.budget-table ::deep .row-move, .budget-table ::deep .group-toggle, .budget-table ::deep .group-add { flex: 0 0 auto; min-width: var(--yh-control-compact); min-height: var(--yh-control-compact); padding: 0; border: 0; background: transparent; color: var(--yh-text-muted); }
+.budget-table ::deep .row-move, .budget-table ::deep .group-toggle, .budget-table ::deep .group-add { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; min-width: var(--yh-control-compact); min-height: var(--yh-control-compact); padding: 0; border: 0; background: transparent; color: var(--yh-text-muted); line-height: 1; }
 .budget-table ::deep .row-move { cursor: grab; }
 .budget-table ::deep .row-move:active { cursor: grabbing; }
 .budget-table ::deep .group-add { font-size: var(--fontSizeBase400); }
@@ -52,17 +52,37 @@
     /* Stack each row into two lines so the amount field fits without horizontal scrolling. */
     .budget-table { min-width: 0; }
     .budget-table ::deep .budget-header { display: none; }
-    .budget-table ::deep .budget-grid {
-        grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+    /* A category keeps its name and available amount on one line, then the
+       assignment field and activity beneath. */
+    .budget-table ::deep .category-row {
+        grid-template-columns: minmax(0, 1fr) auto;
         grid-template-areas:
             "category available"
             "assigned activity";
+        align-items: start;
         row-gap: var(--spacingVerticalXS);
     }
-    .budget-table ::deep .budget-grid > :nth-child(1) { grid-area: category; }
-    .budget-table ::deep .budget-grid > :nth-child(2) { grid-area: assigned; }
-    .budget-table ::deep .budget-grid > :nth-child(3) { grid-area: activity; }
-    .budget-table ::deep .budget-grid > :nth-child(4) { grid-area: available; }
+    .budget-table ::deep .category-row > :nth-child(1) { grid-area: category; }
+    .budget-table ::deep .category-row > :nth-child(2) { grid-area: assigned; justify-self: start; }
+    .budget-table ::deep .category-row > :nth-child(3) { grid-area: activity; justify-self: end; }
+    .budget-table ::deep .category-row > :nth-child(4) { grid-area: available; justify-self: end; }
+
+    /* A group header is not a data row: give the name and its controls the full
+       width so they never wrap mid-word, and keep the three totals together on
+       one compact line instead of splitting them around the name. */
+    .budget-table ::deep .group-row {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-areas:
+            "category category category"
+            "assigned activity available";
+        align-items: center;
+        row-gap: var(--spacingVerticalXXS);
+    }
+    .budget-table ::deep .group-row > :nth-child(1) { grid-area: category; }
+    .budget-table ::deep .group-row > :nth-child(2) { grid-area: assigned; }
+    .budget-table ::deep .group-row > :nth-child(3) { grid-area: activity; }
+    .budget-table ::deep .group-row > :nth-child(4) { grid-area: available; }
+    .budget-table ::deep .group-row > :nth-child(1) > * { min-width: 0; }
     /* Each line carries its own label because the column header is hidden. */
     .budget-table ::deep .budget-grid .visually-hidden {
         position: static;
@@ -79,7 +99,7 @@
     }
     /* Touch targets: the budget workspace's compact controls reach 40px. */
     .budget-table ::deep .amount-input fluent-text-input::part(root) { height: 2.5rem; }
-    .budget-table ::deep .assigned-cell { justify-self: end; width: min(100%, 10rem); }
+    .budget-table ::deep .assigned-cell { justify-self: start; width: min(100%, 9rem); }
     .budget-table ::deep .available-pill { min-height: 2.5rem; }
     .budget-table ::deep .category-row .row-move { align-self: flex-start; }
     .budget-table ::deep .row-move,

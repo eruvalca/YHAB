@@ -59,6 +59,9 @@
    Fluent components take no scope attribute, so the dock anchors on the plain
    wrapper and reaches the button with ::deep. */
 @media (max-width: 62.4375rem) {
+    /* Keep the docked action from covering the last transaction row. */
+    .register-results { padding-block-end: calc(var(--yh-control-touch) + var(--spacingVerticalXXL)); }
+
     .add-transaction-dock {
         position: fixed;
         inset-block-end: calc(var(--spacingVerticalL) + env(safe-area-inset-bottom, 0px));
