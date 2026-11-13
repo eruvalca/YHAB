@@ -1,7 +1,35 @@
-.welcome { padding-block: clamp(2rem, 6vw, 5rem); max-width: 55rem; }
-h1 { font-size: var(--yh-font-display); letter-spacing: -0.055em; line-height: 1.04; margin-bottom: var(--spacingVerticalXXXL); }
+/* A soft warm wash keeps the hero inviting without an image asset. */
+.welcome {
+    max-width: 60rem;
+    margin-block-end: var(--spacingVerticalXL);
+    padding: clamp(1.5rem, 5vw, 3.5rem);
+    border: 1px solid var(--yh-border-subtle);
+    border-radius: var(--yh-panel-radius);
+    background:
+        radial-gradient(120% 140% at 100% 0%, var(--yh-accent-warm-soft), transparent 55%),
+        var(--yh-surface-raised);
+    box-shadow: var(--yh-shadow-rest);
+}
+
+h1 { font-size: var(--yh-font-display); letter-spacing: var(--yh-tracking-display); line-height: 1.02; margin-bottom: var(--spacingVerticalXL); }
 h1 span { color: var(--colorBrandForeground1); }
-.welcome p { max-width: 36rem; margin-bottom: var(--spacingVerticalXXL); }
-.login-link { display: inline-block; margin: var(--spacingVerticalL) var(--spacingHorizontalXL); }
-.surface { height: 100%; }
-.surface p:last-child { color: var(--colorNeutralForeground3); margin-bottom: 0; }
+.welcome p { max-width: 34rem; margin-bottom: 0; }
+.welcome .lead { margin-bottom: var(--spacingVerticalXL); }
+.login-link { display: inline-block; margin: var(--spacingVerticalM) var(--spacingHorizontalXL); }
+
+.surface {
+    height: 100%;
+    transition: transform var(--yh-duration-base) var(--yh-ease-standard), box-shadow var(--yh-duration-base) var(--yh-ease-standard);
+}
+
+.surface:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--yh-shadow-raised);
+}
+
+.surface p:last-child { color: var(--yh-text-muted); margin-bottom: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+    .surface { transition: none; }
+    .surface:hover { transform: none; }
+}

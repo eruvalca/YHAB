@@ -3,8 +3,8 @@
 .first-run-account {
     padding: var(--spacingVerticalM) var(--spacingHorizontalM);
     border: 1px solid var(--colorBrandStroke2);
-    border-radius: var(--borderRadiusMedium);
-    background: var(--colorBrandBackground2);
+    border-radius: var(--yh-control-radius);
+    background: var(--yh-surface-accent-soft);
 }
 
 .first-run-account h2 { margin: 0 0 var(--spacingVerticalXS); font-size: var(--fontSizeBase400); }
@@ -12,9 +12,9 @@
 
 .first-run-checklist {
     padding: var(--spacingVerticalM) var(--spacingHorizontalM);
-    border: 1px solid var(--colorNeutralStroke2);
-    border-radius: var(--borderRadiusMedium);
-    background: var(--colorNeutralBackground1);
+    border: 1px solid var(--yh-border-subtle);
+    border-radius: var(--yh-control-radius);
+    background: var(--yh-surface-raised);
 }
 
 .first-run-steps {
@@ -37,7 +37,7 @@
 
 .first-run-steps li[data-current="true"] { font-weight: var(--fontWeightSemibold); }
 .first-run-steps li[data-complete="true"] .step-marker { border-color: var(--colorPaletteGreenBorder1); color: var(--colorPaletteGreenForeground1); }
-.first-run-steps li[data-current="true"] .step-marker { border-color: var(--colorBrandStroke1); background: var(--colorBrandBackground2); color: var(--colorBrandForeground1); }
+.first-run-steps li[data-current="true"] .step-marker { border-color: var(--colorBrandStroke1); background: var(--yh-surface-accent-soft); color: var(--colorBrandForeground1); }
 
 .step-marker {
     display: inline-flex;
@@ -46,7 +46,7 @@
     justify-content: center;
     width: 1.25rem;
     height: 1.25rem;
-    border: 1px solid var(--colorNeutralStroke1);
+    border: 1px solid var(--yh-border-control);
     border-radius: 50%;
     font-size: var(--fontSizeBase100);
     font-variant-numeric: tabular-nums;

@@ -432,9 +432,10 @@ body { background: var(--colorNeutralBackground2); color: var(--colorNeutralFore
 .page-heading h1 { margin-bottom: var(--spacingVerticalS); letter-spacing: var(--yh-tracking-display); }
 .page-heading { margin-block: var(--spacingVerticalM); }
 .surface, .plan-card { padding: var(--spacingVerticalL) var(--spacingHorizontalL); border: 1px solid var(--yh-border-subtle); border-radius: var(--yh-card-radius); background: var(--yh-surface-raised); box-shadow: var(--yh-shadow-rest); }
-.plan-card { display: block; height: 100%; text-decoration: none; color: var(--colorNeutralForeground1); }
-.plan-card:hover { border-color: var(--colorBrandStroke1); background: var(--colorBrandBackground2); }
-.plan-card h3 { margin-top: var(--spacingVerticalXXL); font-size: var(--fontSizeBase500); }
+.plan-card { display: block; height: 100%; text-decoration: none; color: var(--yh-text-strong); transition: transform var(--yh-duration-base) var(--yh-ease-standard), box-shadow var(--yh-duration-base) var(--yh-ease-standard), background-color var(--yh-duration-fast) var(--yh-ease-standard); }
+.plan-card:hover { border-color: var(--colorBrandStroke1); background: var(--yh-surface-accent-soft); transform: translateY(-2px); box-shadow: var(--yh-shadow-raised); }
+.plan-card h3 { margin-top: var(--spacingVerticalXL); font-size: var(--fontSizeBase500); }
+@media (prefers-reduced-motion: reduce) { .plan-card { transition: none; } .plan-card:hover { transform: none; } }
 .plan-card p { color: var(--colorNeutralForeground3); }
 .plan-card .plan-card-shared { color: var(--colorBrandForeground1); font-size: var(--fontSizeBase200); font-weight: var(--fontWeightSemibold); }
 .plan-card-action { display: block; margin-top: var(--spacingVerticalXXXL); color: var(--colorBrandForeground1); font-weight: var(--fontWeightSemibold); }
@@ -442,7 +443,7 @@ body { background: var(--colorNeutralBackground2); color: var(--colorNeutralFore
 .primary-action:hover { background: var(--colorBrandBackgroundHover); color: var(--colorNeutralForegroundOnBrand); }
 .secondary-action { display: inline-flex; align-items: center; justify-content: center; min-height: var(--yh-control-standard); padding: var(--spacingVerticalS) var(--spacingHorizontalL); background: transparent; color: var(--colorBrandForeground1); border: 1px solid var(--yh-border-subtle); border-radius: var(--yh-control-radius); font-size: var(--yh-control-font); font-weight: var(--fontWeightSemibold); }
 .secondary-action:hover { background: var(--colorSubtleBackgroundHover); }
-.empty-state { padding: clamp(2rem, 6vw, 4rem); text-align: center; border: 1px dashed var(--yh-border-control); border-radius: var(--yh-panel-radius); margin-block: var(--spacingVerticalL); color: var(--yh-text-muted); }
+.empty-state { padding: clamp(2rem, 6vw, 4rem); text-align: center; border: 1px dashed var(--yh-border-control); border-radius: var(--yh-panel-radius); background: var(--yh-surface-raised); margin-block: var(--spacingVerticalL); color: var(--yh-text-muted); }
 .empty-state h2, .empty-state h3 { color: var(--colorNeutralForeground1); }
 .stat { height: 100%; padding: var(--spacingVerticalL) var(--spacingHorizontalL); border: 1px solid var(--yh-border-subtle); border-radius: var(--yh-card-radius); background: var(--yh-surface-raised); }
 .stat span { display: block; font-size: var(--fontSizeBase200); color: var(--colorNeutralForeground3); margin-bottom: var(--spacingVerticalS); }

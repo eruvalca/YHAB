@@ -3,9 +3,9 @@
 .plan-name { font-size: var(--fontSizeBase400); font-weight: var(--fontWeightSemibold); margin-bottom: var(--spacingVerticalS); overflow-wrap: anywhere; }
 .account-nav-heading { margin-top: var(--spacingVerticalL); }
 .account-nav-heading .eyebrow { margin-bottom: var(--spacingVerticalXS); }
-.account-nav-link { display: block; padding: var(--spacingVerticalS) var(--spacingHorizontalXS); text-decoration: none; color: var(--colorNeutralForeground1); font-size: var(--fontSizeBase300); }
-.account-nav-link:hover { background: var(--colorSubtleBackgroundHover); border-radius: var(--borderRadiusMedium); }
+.account-nav-link { display: block; padding: var(--spacingVerticalS) var(--spacingHorizontalXS); text-decoration: none; color: var(--yh-text-strong); font-size: var(--fontSizeBase300); }
+.account-nav-link:hover { background: var(--colorSubtleBackgroundHover); border-radius: var(--yh-control-radius); }
 .account-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .account-nav-link .money { white-space: nowrap; font-size: var(--fontSizeBase200); }
-.plan-private { margin-top: var(--spacingVerticalL); color: var(--colorNeutralForeground3); font-size: var(--fontSizeBase200); }
+.plan-private { margin-top: var(--spacingVerticalL); color: var(--yh-text-muted); font-size: var(--fontSizeBase200); }
 details { margin-block: var(--spacingVerticalS); }

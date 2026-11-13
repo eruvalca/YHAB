@@ -1,4 +1,4 @@
-.editor-surface { margin-block: var(--spacingVerticalXL); padding: clamp(1rem, 2vw, 1.75rem); border: 1px solid var(--colorBrandStroke2); border-radius: var(--borderRadiusXLarge); background: var(--colorNeutralBackground1); box-shadow: var(--shadow8); }
+.editor-surface { margin-block: var(--spacingVerticalXL); padding: clamp(1rem, 2vw, 1.75rem); border: 1px solid var(--colorBrandStroke2); border-radius: var(--yh-panel-radius); background: var(--yh-surface-raised); box-shadow: var(--yh-shadow-raised); }
 h2 { margin: 0; scroll-margin-top: var(--spacingVerticalS); }
 .editor-surface ::deep .editor-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacingHorizontalS); }
 .editor-surface ::deep fluent-field:has(> fluent-text-input, > fluent-dropdown, > fluent-textarea),
@@ -21,10 +21,10 @@ h2 { margin: 0; scroll-margin-top: var(--spacingVerticalS); }
         z-index: 5;
         margin-inline: calc(var(--spacingHorizontalM) * -1);
         padding: var(--spacingVerticalS) var(--spacingHorizontalM);
-        background: var(--colorNeutralBackground1);
-        border-bottom: 1px solid var(--colorNeutralStroke2);
-        border-start-start-radius: var(--borderRadiusXLarge);
-        border-start-end-radius: var(--borderRadiusXLarge);
+        background: var(--yh-surface-raised);
+        border-bottom: 1px solid var(--yh-border-subtle);
+        border-start-start-radius: var(--yh-panel-radius);
+        border-start-end-radius: var(--yh-panel-radius);
     }
     .editor-surface ::deep .editor-actions {
         position: sticky;
@@ -32,10 +32,10 @@ h2 { margin: 0; scroll-margin-top: var(--spacingVerticalS); }
         z-index: 5;
         margin-inline: calc(var(--spacingHorizontalM) * -1);
         padding: var(--spacingVerticalS) var(--spacingHorizontalM);
-        background: var(--colorNeutralBackground1);
-        border-top: 1px solid var(--colorNeutralStroke2);
-        border-end-start-radius: var(--borderRadiusXLarge);
-        border-end-end-radius: var(--borderRadiusXLarge);
+        background: var(--yh-surface-raised);
+        border-top: 1px solid var(--yh-border-subtle);
+        border-end-start-radius: var(--yh-panel-radius);
+        border-end-end-radius: var(--yh-panel-radius);
     }
     .editor-surface ::deep .editor-actions > fluent-button { flex: 1 1 8rem; }
     /* Native date/number fields follow the larger Fluent controls beside them. */

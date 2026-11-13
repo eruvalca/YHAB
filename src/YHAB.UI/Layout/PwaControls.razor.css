@@ -1,16 +1,21 @@
 .pwa-install {
     margin-block-end: var(--spacingVerticalL);
-    color: var(--colorNeutralForeground2);
+    padding: var(--spacingVerticalS) var(--spacingHorizontalM);
+    color: var(--yh-text-body);
     font-size: var(--fontSizeBase200);
+    background: var(--yh-surface-raised);
+    border: 1px solid var(--yh-border-subtle);
+    border-radius: var(--yh-radius-md);
 }
 
 .pwa-install summary {
     width: fit-content;
     min-height: var(--yh-control-touch);
-    padding-block: var(--spacingVerticalM);
-    padding-inline: var(--spacingHorizontalS);
+    padding-block: var(--spacingVerticalS);
+    padding-inline: 0;
     cursor: pointer;
-    color: var(--colorBrandForegroundLink);
+    color: var(--colorBrandForeground1);
+    font-weight: 600;
 }
 
 .pwa-install summary:focus-visible {
