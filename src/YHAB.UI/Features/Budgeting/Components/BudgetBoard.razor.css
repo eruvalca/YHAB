@@ -3,7 +3,17 @@
    overlays so a drawer or dialog still covers it. */
 .budget-summary { position: sticky; top: var(--plan-page-tabs-height, 0px); z-index: 90; padding: var(--spacingVerticalS) var(--spacingHorizontalM); border-radius: var(--yh-control-radius); background: var(--yh-surface-raised); border: 1px solid var(--yh-border-subtle); }
 .budget-summary[data-negative="true"] { border-color: var(--colorPaletteRedBorder1); }
-h1 { margin: 0; font-size: var(--yh-font-title-compact); line-height: 1.25; }
+/* The sticky summary is a toolbar, so its heading steps down to an eyebrow on
+   the month switcher's line instead of claiming a row of its own. */
+.summary-head { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--spacingHorizontalM); row-gap: var(--spacingVerticalXXS); min-width: 0; }
+.summary-title { margin: 0; color: var(--yh-text-muted); font-size: var(--yh-font-eyebrow); font-weight: var(--fontWeightSemibold); letter-spacing: var(--yh-tracking-eyebrow); line-height: 1.2; }
+/* One sunken pager groups the chevrons with the month they step through, so the
+   control reads as a unit instead of two floating boxes. */
+.budget-summary ::deep .month-navigation { padding: var(--spacingVerticalXXS); border-radius: var(--yh-radius-pill); background: var(--yh-surface-sunken); }
+/* Today stays a quiet text action on the dense control step, so the eyebrow
+   row never turns into a boxed button row when another month is open. */
+.month-today { min-height: var(--yh-control-compact); padding: 0; border: 0; background: transparent; color: var(--colorBrandForeground1); font-size: var(--fontSizeBase200); font-weight: var(--fontWeightSemibold); }
+.month-today:hover { text-decoration: underline; }
 @media (min-width: 37.5625rem) {
     /* Only the dense month controls use the compact step; summary actions,
        including the primary action, keep the standard minimum. */
@@ -20,7 +30,10 @@ h1 { margin: 0; font-size: var(--yh-font-title-compact); line-height: 1.25; }
 .category-details { flex: 0 1 20rem; min-width: 0; width: 100%; order: 2; position: sticky; top: 8rem; max-height: calc(100dvh - 8rem); overflow-y: auto; }
 .category-details ::deep .editor-surface { margin-block: var(--spacingVerticalS); padding: var(--spacingVerticalM) var(--spacingHorizontalM); border-radius: var(--yh-control-radius); box-shadow: none; }
 .category-details ::deep h2 { font-size: var(--fontSizeBase400); overflow-wrap: anywhere; }
-.month-label { white-space: nowrap; }
+.month-label { flex: 1 1 auto; min-width: 8rem; text-align: center; white-space: nowrap; }
+/* The month board keeps the compact page-heading step in its loading state, the
+   way the summary card did before its heading became an eyebrow. */
+.month-loading-title { font-size: var(--yh-font-title-compact); }
 .month-loading > span[aria-hidden] { display: block; margin-block: var(--spacingVerticalS); border-radius: var(--yh-control-radius); background: var(--yh-surface-sunken); }
 .month-loading-summary { height: 8rem; }
 .month-loading-row { height: 3rem; }
@@ -36,7 +49,19 @@ h1 { margin: 0; font-size: var(--yh-font-title-compact); line-height: 1.25; }
 .summary-actions { display: flex; flex-direction: column; align-items: flex-end; gap: var(--spacingVerticalXXS); }
 .action-hint { margin: 0; font-size: var(--fontSizeBase100); text-align: end; }
 @media (max-width: 75rem) { .category-details { flex-basis: 100%; position: static; max-height: none; overflow-y: visible; } }
-@media (max-width: 37.5rem) { .summary-actions { align-items: flex-start; } .action-hint { text-align: start; } }
+@media (max-width: 37.5rem) {
+    .summary-actions { align-items: flex-start; }
+    .action-hint { text-align: start; }
+    /* A phone centers the month in the card: the pager takes the full width
+       while the eyebrow and Today keep the row's outer edges, so the rest of
+       the card's left-aligned content still lines up. Ordering keeps Today on
+       the eyebrow's line ahead of the full-width pager, which follows it in
+       the markup. */
+    .summary-head { width: 100%; }
+    .summary-title { order: 1; }
+    .month-today { order: 2; margin-inline-start: auto; }
+    .budget-summary ::deep .month-navigation { flex: 1 1 100%; order: 3; }
+}
 
 /* Below 700px an editor pins its own heading to the same top offset as the
    summary, so the summary stops sticking while one is open instead of covering

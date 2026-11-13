@@ -65,6 +65,29 @@ public sealed class BudgetBoardTests
         component.FindAll("[role='alert']").ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task TodayActionAppearsOnlyWhileAnotherMonthIsOpenAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var plan = CreatePlan();
+        var component = context.Render<BudgetBoard>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.OnCommand, _ => { }));
+
+        component.Find("h1.summary-title").TextContent.ShouldBe("Plan your money");
+        component.FindAll("button.month-today").ShouldBeEmpty();
+
+        await component.Find("fluent-button[aria-label='Next month']").ClickAsync();
+        component.Find(".month-label").TextContent.ShouldBe("November 2026");
+        component.FindAll("button.month-today").Count.ShouldBe(1);
+
+        await component.Find("button.month-today").ClickAsync();
+        component.Find(".month-label").TextContent.ShouldBe(BudgetFacts.Month(plan.Today).ToString("MMMM yyyy", BudgetFacts.Culture));
+        component.FindAll("button.month-today").ShouldBeEmpty();
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

@@ -5,14 +5,17 @@
 <div class="budget-board" aria-busy="@(IsBusy ? "true" : "false")">
     <section class="budget-summary" aria-label="Monthly budget summary" data-editing="@(IsEditing ? "true" : "false")" data-negative="@(_budget.ReadyToAssign < 0 ? "true" : "false")">
         <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalAlignment="HorizontalAlignment.SpaceBetween" HorizontalGap="var(--spacingHorizontalM)" VerticalGap="var(--spacingVerticalS)">
-            <div>
-                <h1>Plan your money</h1>
+            <div class="summary-head">
+                <h1 class="summary-title">Plan your money</h1>
                 <FluentStack Width="auto" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalXS)" Class="month-navigation">
-                    <FluentButton OnClick="PreviousAsync" Disabled="@(_month.Year <= 2000)" Size="ButtonSize.Small" IconOnly="true" Appearance="ButtonAppearance.Subtle" aria-label="Previous month">←</FluentButton>
-                    <strong class="month-label">@_budget.Month.ToString("MMMM yyyy", Culture)</strong>
-                    <FluentButton OnClick="NextAsync" Disabled="@(_month.Year >= 2100)" Size="ButtonSize.Small" IconOnly="true" Appearance="ButtonAppearance.Subtle" aria-label="Next month">→</FluentButton>
-                    <FluentButton OnClick="CurrentAsync" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle">Today</FluentButton>
+                    <FluentButton OnClick="PreviousAsync" Disabled="@(_month.Year <= 2000)" Size="ButtonSize.Small" IconOnly="true" Appearance="ButtonAppearance.Subtle" aria-label="Previous month"><FluentIcon Value="@(new Icons.Regular.Size20.ChevronLeft())" /></FluentButton>
+                    <strong class="month-label" aria-live="polite">@_budget.Month.ToString("MMMM yyyy", Culture)</strong>
+                    <FluentButton OnClick="NextAsync" Disabled="@(_month.Year >= 2100)" Size="ButtonSize.Small" IconOnly="true" Appearance="ButtonAppearance.Subtle" aria-label="Next month"><FluentIcon Value="@(new Icons.Regular.Size20.ChevronRight())" /></FluentButton>
                 </FluentStack>
+                @if (!IsCurrentMonth)
+                {
+                    <button type="button" class="month-today" @onclick="CurrentAsync">Today</button>
+                }
             </div>
             <div class="ready-balance">
                 <BudgetTermHelp Term="@(_budget.ReadyToAssign < 0 ? BudgetTerm.Overassigned : BudgetTerm.ReadyToAssign)" OnExplain="ShowHelpAsync" />
@@ -97,7 +100,7 @@
 else
 {
     @* The actions stay reachable when the month could not be read, and follow a heading here too. *@
-    <h1>Plan your money</h1>
+    <h1 class="month-loading-title">Plan your money</h1>
     @PlanActions
     @if (_error is null)
     {

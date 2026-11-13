@@ -65,6 +65,8 @@ public sealed partial class BudgetBoard
     private CategoryData? _category;
     private CategoryMonth? EditingMonth => _budget.Categories.SingleOrDefault(item => item.Category.Id == _category?.Id);
     private bool HasAccounts => Plan.Accounts.Count > 0;
+    // The Today action only changes what the sticky summary shows while another month is open.
+    private bool IsCurrentMonth => _budget.Month == BudgetFacts.Month(Plan.Today);
     private bool HasOpenAccounts => Plan.Accounts.Any(item => !item.Closed);
     // A phone's editor pins its own heading to the top of the viewport, so the
     // sticky summary steps aside instead of covering it.
