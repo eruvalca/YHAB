@@ -133,12 +133,13 @@ recreate rows.
 Empty groups remain visible so they can receive categories. Collapse individual
 groups or all groups to focus the plan.
 
-On phones the table stacks instead of scrolling sideways: the category and
-Available share the first line, and Assigned and Activity share the second.
-Each value carries its own label, and the assignment field uses the decimal
-keypad. A group header keeps its name and controls on their own full-width
-line, with that group's Assigned, Activity, and Available totals together
-beneath, so a long group name never squeezes its Rename control.
+On phones the table stacks instead of scrolling sideways: the category name spans
+the row, then Assigned, Activity, and Available sit side by side in the same
+order as the desktop columns, each with its own label above the value.
+The assignment field uses the decimal keypad. A group header keeps its name and
+controls on their own full-width line, with that group's Assigned, Activity, and
+Available totals together beneath, so a long group name never squeezes its
+Rename control.
 Compact row, group, and shell controls keep a 40-pixel touch target.
 The Available pill is a button at every width, so covering overspending and
 moving money out of a category work without a physical minus key.

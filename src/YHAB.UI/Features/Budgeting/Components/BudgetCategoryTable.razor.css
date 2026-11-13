@@ -52,20 +52,25 @@
     /* Stack each row into two lines so the amount field fits without horizontal scrolling. */
     .budget-table { min-width: 0; }
     .budget-table ::deep .budget-header { display: none; }
-    /* A category keeps its name and available amount on one line, then the
-       assignment field and activity beneath. */
+    /* Phones keep the desktop column order in one compact block: the name
+       spans the row, then Assigned, Activity, and Available sit side by side
+       in the same order as the desktop columns. Each cell stacks its own label
+       over its value, so no line opens with dead space. */
     .budget-table ::deep .category-row {
-        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr);
         grid-template-areas:
-            "category available"
-            "assigned activity";
+            "category category category"
+            "assigned activity available";
         align-items: start;
-        row-gap: var(--spacingVerticalXS);
+        row-gap: var(--spacingVerticalXXS);
     }
     .budget-table ::deep .category-row > :nth-child(1) { grid-area: category; }
-    .budget-table ::deep .category-row > :nth-child(2) { grid-area: assigned; justify-self: start; }
-    .budget-table ::deep .category-row > :nth-child(3) { grid-area: activity; justify-self: end; }
-    .budget-table ::deep .category-row > :nth-child(4) { grid-area: available; justify-self: end; }
+    .budget-table ::deep .category-row > :nth-child(2) { grid-area: assigned; }
+    .budget-table ::deep .category-row > :nth-child(3) { grid-area: activity; }
+    .budget-table ::deep .category-row > :nth-child(4) { grid-area: available; }
+    /* Fluent text inputs shrink below their intrinsic width, unlike the
+       dropdowns that keep a 160px floor, so the field fills its column. */
+    .budget-table ::deep .category-row .assigned-cell fluent-text-input { width: 100%; }
 
     /* A group header is not a data row: give the name and its controls the full
        width so they never wrap mid-word, and keep the three totals together on
@@ -99,7 +104,7 @@
     }
     /* Touch targets: the budget workspace's compact controls reach 40px. */
     .budget-table ::deep .amount-input fluent-text-input::part(root) { height: 2.5rem; }
-    .budget-table ::deep .assigned-cell { justify-self: start; width: min(100%, 9rem); }
+    .budget-table ::deep .assigned-cell { justify-self: stretch; width: 100%; min-width: 0; }
     .budget-table ::deep .available-pill { min-height: 2.5rem; }
     .budget-table ::deep .category-row .row-move { align-self: flex-start; }
     .budget-table ::deep .row-move,

@@ -482,6 +482,7 @@ $RECYCLE.BIN/
 *.swp
 # Playwright CLI output (may contain credentials)
 .playwright-cli/
+.playwright-mcp/
 
 # Aspire runtime state and local credentials; shared aspire.config.json stays tracked.
 .aspire/
