@@ -18,7 +18,8 @@
 }
 
 .register-table tbody tr { background: var(--yh-surface-raised); }
-.register-table tbody tr:hover { background: var(--yh-surface-sunken); }
+/* Selected rows keep their selection fill; the hover tint is for the rest. */
+.register-table tbody tr:not([data-selected="true"]):hover { background: var(--yh-surface-sunken); }
 .register-table tbody td { border-bottom: 0; }
 .register-table tbody td:first-child { border-start-start-radius: var(--yh-radius-md); border-end-start-radius: var(--yh-radius-md); }
 .register-table tbody td:last-child { border-start-end-radius: var(--yh-radius-md); border-end-end-radius: var(--yh-radius-md); }
@@ -59,9 +60,6 @@
    Fluent components take no scope attribute, so the dock anchors on the plain
    wrapper and reaches the button with ::deep. */
 @media (max-width: 62.4375rem) {
-    /* Keep the docked action from covering the last transaction row. */
-    .register-results { padding-block-end: calc(var(--yh-control-touch) + var(--spacingVerticalXXL)); }
-
     .add-transaction-dock {
         position: fixed;
         inset-block-end: calc(var(--spacingVerticalL) + env(safe-area-inset-bottom, 0px));
@@ -77,5 +75,5 @@
         box-shadow: var(--yh-shadow-overlay);
     }
     /* Keep the last rows and the pager clear of the floating action. */
-    .register-results { padding-block-end: calc(var(--yh-control-touch) + var(--spacingVerticalL)); }
+    .register-results { padding-block-end: calc(var(--yh-control-touch) + var(--spacingVerticalXXL)); }
 }

@@ -83,11 +83,12 @@
         align-items: center;
         row-gap: var(--spacingVerticalXXS);
     }
-    .budget-table ::deep .group-row > :nth-child(1) { grid-area: category; }
+    /* Only the header cell may shrink. Descendants keep their own minimums so
+       the group's Move, Collapse, and Add controls retain their touch targets. */
+    .budget-table ::deep .group-row > :nth-child(1) { grid-area: category; min-width: 0; }
     .budget-table ::deep .group-row > :nth-child(2) { grid-area: assigned; }
     .budget-table ::deep .group-row > :nth-child(3) { grid-area: activity; }
     .budget-table ::deep .group-row > :nth-child(4) { grid-area: available; }
-    .budget-table ::deep .group-row > :nth-child(1) > * { min-width: 0; }
     /* Each line carries its own label because the column header is hidden. */
     .budget-table ::deep .budget-grid .visually-hidden {
         position: static;
