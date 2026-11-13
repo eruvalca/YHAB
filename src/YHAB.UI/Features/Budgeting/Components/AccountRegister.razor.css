@@ -1,16 +1,40 @@
-.register-table { min-width: 53rem; font-size: var(--fontSizeBase200); }
-.register-loading { padding: var(--spacingVerticalM); border: 1px solid var(--colorNeutralStroke2); border-radius: var(--borderRadiusMedium); }
-.register-loading > span[aria-hidden] { display: block; height: 3.5rem; margin-block: var(--spacingVerticalS); border-radius: var(--borderRadiusMedium); background: var(--colorNeutralBackground3); }
-.register-table small { display: block; margin-top: var(--spacingVerticalXS); color: var(--colorNeutralForeground3); font-weight: var(--fontWeightRegular); }
+/* Rows read as calm surfaces rather than ruled table lines: the table keeps
+   its semantics, the spacing provides the separation. */
+.register-table {
+    min-width: 53rem;
+    font-size: var(--fontSizeBase200);
+    border-collapse: separate;
+    border-spacing: 0 var(--spacingVerticalXS);
+}
+
+.register-table thead th {
+    padding-block: var(--spacingVerticalS);
+    color: var(--yh-text-muted);
+    font-size: var(--yh-font-eyebrow);
+    font-weight: var(--fontWeightSemibold);
+    letter-spacing: var(--yh-tracking-eyebrow);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--yh-border-subtle);
+}
+
+.register-table tbody tr { background: var(--yh-surface-raised); }
+/* Selected rows keep their selection fill; the hover tint is for the rest. */
+.register-table tbody tr:not([data-selected="true"]):hover { background: var(--yh-surface-sunken); }
+.register-table tbody td { border-bottom: 0; }
+.register-table tbody td:first-child { border-start-start-radius: var(--yh-radius-md); border-end-start-radius: var(--yh-radius-md); }
+.register-table tbody td:last-child { border-start-end-radius: var(--yh-radius-md); border-end-end-radius: var(--yh-radius-md); }
+.register-loading { padding: var(--spacingVerticalM); border: 1px solid var(--yh-border-subtle); border-radius: var(--yh-control-radius); }
+.register-loading > span[aria-hidden] { display: block; height: 3.5rem; margin-block: var(--spacingVerticalS); border-radius: var(--yh-control-radius); background: var(--yh-surface-sunken); }
+.register-table small { display: block; margin-top: var(--spacingVerticalXS); color: var(--yh-text-muted); font-weight: var(--fontWeightRegular); }
 .register-table th, .register-table td { padding-block: var(--spacingVerticalM); }
 .register-table th.numeric { white-space: nowrap; }
-.register-table tr[data-selected="true"] { background: var(--colorBrandBackground2); }
+.register-table tr[data-selected="true"] { background: var(--yh-surface-accent-soft); }
 .row-actions { margin-top: var(--spacingVerticalXS); }
 .row-actions > summary {
     display: flex;
     align-items: center;
     min-height: var(--yh-control-compact);
-    color: var(--colorNeutralForeground3);
+    color: var(--yh-text-muted);
     font-size: var(--fontSizeBase200);
     cursor: pointer;
 }
@@ -26,11 +50,16 @@
 .flag[data-flag="Green"] { border-color: var(--colorPaletteGreenForeground1); }
 .flag[data-flag="Purple"] { border-color: var(--colorPalettePurpleForeground1); }
 
+/* Rows have no rule of their own; restore one where the system forces colors. */
+@media (forced-colors: active) {
+    .register-table tbody td { border-bottom: 1px solid CanvasText; }
+}
+
 /* A phone screen holds only part of the register, so the primary action stays at
    the edge of the viewport instead of scrolling away with the page heading.
    Fluent components take no scope attribute, so the dock anchors on the plain
    wrapper and reaches the button with ::deep. */
-@media (max-width: 999px) {
+@media (max-width: 62.4375rem) {
     .add-transaction-dock {
         position: fixed;
         inset-block-end: calc(var(--spacingVerticalL) + env(safe-area-inset-bottom, 0px));
@@ -43,8 +72,8 @@
     .add-transaction-dock[data-editing="true"] { display: none; }
     .add-transaction-dock ::deep .add-transaction-action {
         min-height: var(--yh-control-touch);
-        box-shadow: var(--shadow16);
+        box-shadow: var(--yh-shadow-overlay);
     }
     /* Keep the last rows and the pager clear of the floating action. */
-    .register-results { padding-block-end: calc(var(--yh-control-touch) + var(--spacingVerticalL)); }
+    .register-results { padding-block-end: calc(var(--yh-control-touch) + var(--spacingVerticalXXL)); }
 }

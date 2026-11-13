@@ -47,13 +47,35 @@ assets/provider setup and [build rules](../../build/README.md) for enforcement.
   component markup requires them. Custom CSS supplements Fluent for application
   sizing, accessibility, and static Identity forms; it is not a competing design
   system. Use Fluent design tokens instead of unrelated colors and spacing.
+- The UI face is self-hosted Plus Jakarta Sans
+  (`src/YHAB.UI/wwwroot/lib/fonts/plus-jakarta-sans/`, OFL), exposed as
+  `--yh-font-family` and assigned to `--fontFamilyBase` on `:root`. Keep each
+  `@font-face` subset paired with its `unicode-range`, do not add a second
+  family, and do not load fonts from a CDN or npm package. The offline document
+  stays on a system stack so the service worker does not precache the font.
 - Size controls and headings through the shared scale in `app.css`:
   `--yh-control-compact` for dense in-row actions, `--yh-control-standard` for
   buttons and inputs, and `--yh-control-touch` for primary call-to-action
   targets, with `--yh-control-font` for form text. Headings and eyebrows use
   `--yh-font-title`, `--yh-font-title-compact` for dense page headers,
   `--yh-font-display`, and `--yh-font-eyebrow`. Do not add
-  one-off sizes or leave a primary action at Fluent's 24px small size.
+  one-off sizes or leave a primary action at Fluent's 24px small size. Page
+  body text comes from `--yh-font-body` applied on `body`; do not hard-code a
+  font size per page.
+- Shape, elevation, color, density, and motion also come from the shared scale
+  in `app.css`: `--yh-radius-sm|md|lg|xl` (with `--yh-control-radius`,
+  `--yh-card-radius`, `--yh-panel-radius`, `--yh-radius-pill`),
+  `--yh-shadow-rest|raised|overlay`, the `--yh-surface-*`, `--yh-text-*`,
+  `--yh-border-subtle|control|interactive`, `--yh-accent*`, and
+  `--yh-positive|negative|attention` roles, plus
+  `--yh-row-padding-block`/`--yh-cell-padding-block`. Neutral roles alias Fluent
+  tokens so light and dark stay theme-driven. `--yh-accent` aliases the brand
+  ramp; only `--yh-accent-warm*` carries literal values, with a dark override.
+  Use these instead of new hex colors or raw radii.
+- Use `rem` for type, spacing, control sizes, radii, and shadow offsets; `px`
+  only for `1px`/`2px` hairlines, focus-ring widths, and the pill radius. Media
+  queries use `rem` (for example `62.4375rem`) so breakpoints follow the user's
+  default font size. Do not add `px` type, spacing, or radii.
 - A malformed `.razor.css` rule is not a build error. It reaches the generated
   scoped-CSS bundle as written, and an unterminated block swallows every following
   rule in the assembly, breaking unrelated pages. Verify scoped-CSS edits with a

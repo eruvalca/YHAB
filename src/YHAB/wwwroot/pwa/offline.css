@@ -6,10 +6,12 @@
     --colorBrandBackground: #0f766e;
     --colorNeutralForegroundOnBrand: #ffffff;
     --colorBrandForegroundLink: #0f766e;
-    --spacingHorizontalXL: 20px;
-    --spacingVerticalXXXL: 32px;
-    --borderRadiusMedium: 4px;
-    --fontFamilyBase: "Segoe UI", sans-serif;
+    --spacingHorizontalXL: 1.25rem;
+    --spacingVerticalXXXL: 2rem;
+    --borderRadiusMedium: 0.25rem;
+    /* The offline document stays on system fonts so the worker does not need
+       to precache the self-hosted UI face. */
+    --fontFamilyBase: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 }
 
 body {

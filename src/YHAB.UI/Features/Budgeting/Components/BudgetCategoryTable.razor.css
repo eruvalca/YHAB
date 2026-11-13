@@ -1,6 +1,6 @@
 .category-catalog { min-width: 0; }
 .category-catalog ::deep .table-toolbar { margin-block: var(--spacingVerticalXS); }
-@media (min-width: 601px) {
+@media (min-width: 37.5625rem) {
     /* The table toolbar is dense chrome; phones keep 40px touch targets. */
     .category-catalog ::deep .table-toolbar fluent-button { min-height: var(--yh-control-compact); }
     .category-catalog ::deep .table-toolbar fluent-button[icon-only] { min-width: var(--yh-control-compact); }
@@ -10,53 +10,88 @@
 /* A div grid keeps the table's aligned columns while each group's rows remain a sortable list. */
 /* Contain visually hidden labels in the horizontal scroller so they cannot widen the page. */
 .budget-table { position: relative; min-width: 35rem; }
-.budget-table ::deep .budget-grid { display: grid; grid-template-columns: minmax(0, 42fr) minmax(0, 24fr) repeat(2, minmax(0, 17fr)); align-items: center; border-bottom: 1px solid var(--colorNeutralStroke2); }
+.budget-table ::deep .budget-grid { display: grid; grid-template-columns: minmax(0, 42fr) minmax(0, 24fr) repeat(2, minmax(0, 17fr)); align-items: center; border: 1px solid transparent; border-radius: var(--yh-radius-sm); }
+.budget-table ::deep .budget-grid:hover { background: var(--colorSubtleBackgroundHover); }
 .budget-table ::deep .budget-grid > * { box-sizing: border-box; min-width: 0; padding: var(--spacingVerticalXXS) var(--spacingHorizontalS); }
 .budget-table ::deep .budget-header { font-weight: var(--fontWeightSemibold); }
-.budget-table ::deep .group-row { background: var(--colorNeutralBackground3); font-weight: var(--fontWeightSemibold); }
-.budget-table ::deep .row-panel, .budget-table ::deep .category-move-row { padding: var(--spacingVerticalXS) var(--spacingHorizontalS); border-bottom: 1px solid var(--colorNeutralStroke2); }
+.budget-table ::deep .group-row { background: var(--yh-surface-sunken); border-color: var(--yh-border-subtle); font-weight: var(--fontWeightSemibold); }
+.budget-table ::deep .group-row:hover { background: var(--yh-surface-sunken); }
+.budget-table ::deep .row-panel, .budget-table ::deep .category-move-row { padding: var(--spacingVerticalXS) var(--spacingHorizontalS); border-bottom: 1px solid var(--yh-border-subtle); }
 .budget-table ::deep .category-row { cursor: pointer; }
 .budget-table ::deep .category-row:hover { background: var(--colorSubtleBackgroundHover); }
-.budget-table ::deep .category-row[data-selected="true"] { background: var(--colorBrandBackground2); box-shadow: inset 3px 0 var(--colorBrandStroke1); }
-.budget-table ::deep .row-move, .budget-table ::deep .group-toggle, .budget-table ::deep .group-add { flex: 0 0 auto; min-width: var(--yh-control-compact); min-height: var(--yh-control-compact); padding: 0; border: 0; background: transparent; color: var(--colorNeutralForeground3); }
+.budget-table ::deep .category-row[data-selected="true"] { background: var(--yh-surface-accent-soft); box-shadow: inset 3px 0 var(--colorBrandStroke1); }
+.budget-table ::deep .row-move, .budget-table ::deep .group-toggle, .budget-table ::deep .group-add { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; min-width: var(--yh-control-compact); min-height: var(--yh-control-compact); padding: 0; border: 0; background: transparent; color: var(--yh-text-muted); line-height: 1; }
 .budget-table ::deep .row-move { cursor: grab; }
 .budget-table ::deep .row-move:active { cursor: grabbing; }
 .budget-table ::deep .group-add { font-size: var(--fontSizeBase400); }
 .budget-table ::deep .category-name { flex: 1; min-width: 0; }
-.budget-table ::deep .target-caption { display: block; font-weight: var(--fontWeightRegular); color: var(--colorNeutralForeground3); font-size: var(--fontSizeBase100); line-height: var(--lineHeightBase100); }
+.budget-table ::deep .target-caption { display: block; font-weight: var(--fontWeightRegular); color: var(--yh-text-muted); font-size: var(--fontSizeBase100); line-height: var(--lineHeightBase100); }
 .budget-table ::deep .target-progress { display: block; width: 100%; height: 0.1875rem; margin-top: var(--spacingVerticalXXS); accent-color: var(--colorBrandBackground); }
 .budget-table ::deep .amount-input { margin-block: 0; }
 .budget-table ::deep .assigned-cell .amount-input label { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .budget-table ::deep .amount-input fluent-text-input::part(control) { text-align: right; font-variant-numeric: tabular-nums; }
 .budget-table ::deep .available-pill { padding: var(--spacingVerticalXXS) var(--spacingHorizontalS); }
 .budget-table ::deep .numeric small { display: block; font-size: var(--fontSizeBase100); }
-.budget-table ::deep .empty-group { padding-inline-start: var(--spacingHorizontalXXL); color: var(--colorNeutralForeground3); }
+.budget-table ::deep .empty-group { padding-inline-start: var(--spacingHorizontalXXL); color: var(--yh-text-muted); }
 .budget-table ::deep .drop-end { padding: var(--spacingVerticalS); border: 1px dashed var(--colorBrandStroke1); color: var(--colorBrandForeground1); }
 .budget-table-container[data-dragging="true"] ::deep .group-row:hover { outline: 2px solid var(--colorBrandStroke1); outline-offset: -2px; }
 /* Replace the Fluent sortable list's card styling with table rows; selectors outrank the library's global rules. */
-.budget-table ::deep .fluent-sortable-list.category-list { --fluent-sortable-list-item-height: auto; --fluent-sortable-list-item-drop-color: var(--colorBrandBackground2); --fluent-sortable-list-item-drop-border-color: var(--colorBrandStroke1); min-height: 0; padding: 0; border: 0; border-radius: 0; }
-.budget-table ::deep .fluent-sortable-list.category-list:not(:has(.sortable-item)) { min-height: 2.5rem; margin: var(--spacingVerticalXS) var(--spacingHorizontalS) 0; border: 1px dashed var(--colorNeutralStroke1); }
-.budget-table ::deep .category-list .sortable-item { display: block; margin: 0; padding: 0; border: 0; border-radius: 0; background: var(--colorNeutralBackground1); user-select: auto; }
-.budget-table ::deep .category-list .sortable-item:focus { border: 0; background: var(--colorNeutralBackground1); outline: none; }
+.budget-table ::deep .fluent-sortable-list.category-list { --fluent-sortable-list-item-height: auto; --fluent-sortable-list-item-drop-color: var(--yh-surface-accent-soft); --fluent-sortable-list-item-drop-border-color: var(--colorBrandStroke1); min-height: 0; padding: 0; border: 0; border-radius: 0; }
+.budget-table ::deep .fluent-sortable-list.category-list:not(:has(.sortable-item)) { min-height: 2.5rem; margin: var(--spacingVerticalXS) var(--spacingHorizontalS) 0; border: 1px dashed var(--yh-border-control); }
+.budget-table ::deep .category-list .sortable-item { display: block; margin: 0; padding: 0; border: 0; border-radius: var(--yh-radius-sm); background: transparent; user-select: auto; }
+.budget-table ::deep .category-list .sortable-item:focus { border: 0; background: transparent; outline: none; }
 .budget-table ::deep .category-list .sortable-item:focus-visible { outline: 2px solid var(--colorStrokeFocus2); outline-offset: -2px; }
-.budget-table ::deep .category-list .sortable-item[aria-grabbed="true"] { border: 0; background: var(--colorBrandBackground2); box-shadow: inset 3px 0 var(--colorBrandStroke1); }
-.budget-table ::deep .category-list .sortable-drag { background: var(--colorNeutralBackground1); box-shadow: var(--shadow16); }
+.budget-table ::deep .category-list .sortable-item[aria-grabbed="true"] { border: 0; background: var(--yh-surface-accent-soft); box-shadow: inset 3px 0 var(--colorBrandStroke1); }
+.budget-table ::deep .category-list .sortable-drag { background: var(--yh-surface-raised); box-shadow: var(--yh-shadow-overlay); }
 .budget-table ::deep .category-list .row-move.sortable-grab { position: static; display: inline-flex; align-items: center; justify-content: center; width: auto; height: auto; padding: 0; border-radius: 0; background: transparent; touch-action: none; }
-@media (max-width: 600px) {
+@media (forced-colors: active) {
+    .budget-table ::deep .budget-grid { border-color: CanvasText; }
+}
+
+@media (max-width: 37.5rem) {
     /* Stack each row into two lines so the amount field fits without horizontal scrolling. */
     .budget-table { min-width: 0; }
     .budget-table ::deep .budget-header { display: none; }
-    .budget-table ::deep .budget-grid {
-        grid-template-columns: minmax(0, 1fr) minmax(0, auto);
-        grid-template-areas:
-            "category available"
-            "assigned activity";
-        row-gap: var(--spacingVerticalXS);
+    /* Phones keep the desktop column order: the name spans the row, then
+       Assigned, Activity, and Available follow in the same order as the desktop
+       columns. Each cell stacks its own label over its value. Metrics size to
+       their content and wrap in that order when three no longer fit, so a large
+       balance such as $123,456.78 never overlaps its neighbour or truncates. */
+    .budget-table ::deep .category-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        column-gap: var(--spacingHorizontalS);
+        row-gap: var(--spacingVerticalXXS);
     }
-    .budget-table ::deep .budget-grid > :nth-child(1) { grid-area: category; }
-    .budget-table ::deep .budget-grid > :nth-child(2) { grid-area: assigned; }
-    .budget-table ::deep .budget-grid > :nth-child(3) { grid-area: activity; }
-    .budget-table ::deep .budget-grid > :nth-child(4) { grid-area: available; }
+    .budget-table ::deep .category-row > :nth-child(1) { flex: 1 1 100%; min-width: 0; }
+    /* The amount field keeps a usable width but stays compact, capped so it
+       cannot stretch across a wide phone row. */
+    .budget-table ::deep .category-row > :nth-child(2) { flex: 1 1 7rem; min-width: 7rem; max-width: 10rem; }
+    /* Values never shrink below their content, so they wrap rather than overlap. */
+    .budget-table ::deep .category-row > :nth-child(3),
+    .budget-table ::deep .category-row > :nth-child(4) { flex: 1 1 auto; min-width: max-content; }
+    /* Fluent text inputs shrink below their intrinsic width, unlike the
+       dropdowns that keep a 160px floor, so the field fills its column. */
+    .budget-table ::deep .category-row .assigned-cell fluent-text-input { width: 100%; }
+
+    /* A group header is not a data row: give the name and its controls the full
+       width so they never wrap mid-word, and keep the three totals together on
+       one compact line instead of splitting them around the name. */
+    .budget-table ::deep .group-row {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-areas:
+            "category category category"
+            "assigned activity available";
+        align-items: center;
+        row-gap: var(--spacingVerticalXXS);
+    }
+    /* Only the header cell may shrink. Descendants keep their own minimums so
+       the group's Move, Collapse, and Add controls retain their touch targets. */
+    .budget-table ::deep .group-row > :nth-child(1) { grid-area: category; min-width: 0; }
+    .budget-table ::deep .group-row > :nth-child(2) { grid-area: assigned; }
+    .budget-table ::deep .group-row > :nth-child(3) { grid-area: activity; }
+    .budget-table ::deep .group-row > :nth-child(4) { grid-area: available; }
     /* Each line carries its own label because the column header is hidden. */
     .budget-table ::deep .budget-grid .visually-hidden {
         position: static;
@@ -67,13 +102,13 @@
         overflow: visible;
         clip-path: none;
         white-space: nowrap;
-        color: var(--colorNeutralForeground3);
+        color: var(--yh-text-muted);
         font-size: var(--fontSizeBase100);
         line-height: var(--lineHeightBase100);
     }
     /* Touch targets: the budget workspace's compact controls reach 40px. */
     .budget-table ::deep .amount-input fluent-text-input::part(root) { height: 2.5rem; }
-    .budget-table ::deep .assigned-cell { justify-self: end; width: min(100%, 10rem); }
+    .budget-table ::deep .assigned-cell { justify-self: stretch; width: 100%; min-width: 0; }
     .budget-table ::deep .available-pill { min-height: 2.5rem; }
     .budget-table ::deep .category-row .row-move { align-self: flex-start; }
     .budget-table ::deep .row-move,

@@ -1,47 +1,47 @@
 /* The sticky summary clears Fluent's layout areas (the footer sits at 85) so the
    docked transaction action stays tappable, and stays under the shell's 1000
    overlays so a drawer or dialog still covers it. */
-.budget-summary { position: sticky; top: var(--plan-page-tabs-height, 0px); z-index: 90; padding: var(--spacingVerticalS) var(--spacingHorizontalM); border-radius: var(--borderRadiusMedium); background: var(--colorNeutralBackground1); border: 1px solid var(--colorNeutralStroke2); }
+.budget-summary { position: sticky; top: var(--plan-page-tabs-height, 0px); z-index: 90; padding: var(--spacingVerticalS) var(--spacingHorizontalM); border-radius: var(--yh-control-radius); background: var(--yh-surface-raised); border: 1px solid var(--yh-border-subtle); }
 .budget-summary[data-negative="true"] { border-color: var(--colorPaletteRedBorder1); }
 h1 { margin: 0; font-size: var(--yh-font-title-compact); line-height: 1.25; }
-@media (min-width: 601px) {
+@media (min-width: 37.5625rem) {
     /* Only the dense month controls use the compact step; summary actions,
        including the primary action, keep the standard minimum. */
     .budget-summary ::deep .month-navigation fluent-button { min-height: var(--yh-control-compact); }
     .budget-summary ::deep .month-navigation fluent-button[icon-only] { min-width: var(--yh-control-compact); }
 }
-.ready-balance > span { display: block; color: var(--colorNeutralForeground2); font-size: var(--fontSizeBase200); }
+.ready-balance > span { display: block; color: var(--yh-text-body); font-size: var(--fontSizeBase200); }
 .hero-amount { display: block; font-size: var(--fontSizeBase600); line-height: var(--lineHeightBase600); font-variant-numeric: tabular-nums; color: var(--colorBrandForeground1); }
-.budget-summary ::deep .budget-totals { border-top: 1px solid var(--colorNeutralStroke2); margin-top: var(--spacingVerticalXS); padding-top: 0; font-size: var(--fontSizeBase200); }
-.budget-total > span { color: var(--colorNeutralForeground2); }
+.budget-summary ::deep .budget-totals { border-top: 1px solid var(--yh-border-subtle); margin-top: var(--spacingVerticalXS); padding-top: 0; font-size: var(--fontSizeBase200); }
+.budget-total > span { color: var(--yh-text-body); }
 .budget-total strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .budget-workspace-scope { container: budget-workspace / inline-size; }
 .budget-categories { flex: 1 1 35rem; min-width: 0; order: 1; }
 .category-details { flex: 0 1 20rem; min-width: 0; width: 100%; order: 2; position: sticky; top: 8rem; max-height: calc(100dvh - 8rem); overflow-y: auto; }
-.category-details ::deep .editor-surface { margin-block: var(--spacingVerticalS); padding: var(--spacingVerticalM) var(--spacingHorizontalM); border-radius: var(--borderRadiusMedium); box-shadow: none; }
+.category-details ::deep .editor-surface { margin-block: var(--spacingVerticalS); padding: var(--spacingVerticalM) var(--spacingHorizontalM); border-radius: var(--yh-control-radius); box-shadow: none; }
 .category-details ::deep h2 { font-size: var(--fontSizeBase400); overflow-wrap: anywhere; }
 .month-label { white-space: nowrap; }
-.month-loading > span[aria-hidden] { display: block; margin-block: var(--spacingVerticalS); border-radius: var(--borderRadiusMedium); background: var(--colorNeutralBackground3); }
+.month-loading > span[aria-hidden] { display: block; margin-block: var(--spacingVerticalS); border-radius: var(--yh-control-radius); background: var(--yh-surface-sunken); }
 .month-loading-summary { height: 8rem; }
 .month-loading-row { height: 3rem; }
 .hero-amount[data-money-tone="positive"] { color: var(--colorPaletteGreenForeground1); }
 .hero-amount[data-money-tone="negative"] { color: var(--colorPaletteRedForeground1); }
-.budget-help { margin-block: var(--spacingVerticalM); padding: var(--spacingVerticalM) var(--spacingHorizontalM); border: 1px solid var(--colorNeutralStroke2); border-radius: var(--borderRadiusMedium); background: var(--colorNeutralBackground1); font-size: var(--fontSizeBase200); }
+.budget-help { margin-block: var(--spacingVerticalM); padding: var(--spacingVerticalM) var(--spacingHorizontalM); border: 1px solid var(--yh-border-subtle); border-radius: var(--yh-control-radius); background: var(--yh-surface-raised); font-size: var(--fontSizeBase200); }
 .budget-help h2 { margin: 0; font-size: var(--fontSizeBase400); }
 .budget-help p { margin: 0; }
 .budget-glossary { margin-block: var(--spacingVerticalS); }
 .budget-glossary dt { font-weight: var(--fontWeightSemibold); }
 .budget-glossary dd { margin: 0 0 var(--spacingVerticalXS); }
-.still-needed-breakdown { margin-inline-start: var(--spacingHorizontalXS); color: var(--colorNeutralForeground3); font-size: var(--fontSizeBase100); }
+.still-needed-breakdown { margin-inline-start: var(--spacingHorizontalXS); color: var(--yh-text-muted); font-size: var(--fontSizeBase100); }
 .summary-actions { display: flex; flex-direction: column; align-items: flex-end; gap: var(--spacingVerticalXXS); }
 .action-hint { margin: 0; font-size: var(--fontSizeBase100); text-align: end; }
-@media (max-width: 1200px) { .category-details { flex-basis: 100%; position: static; max-height: none; overflow-y: visible; } }
-@media (max-width: 600px) { .summary-actions { align-items: flex-start; } .action-hint { text-align: start; } }
+@media (max-width: 75rem) { .category-details { flex-basis: 100%; position: static; max-height: none; overflow-y: visible; } }
+@media (max-width: 37.5rem) { .summary-actions { align-items: flex-start; } .action-hint { text-align: start; } }
 
 /* Below 700px an editor pins its own heading to the same top offset as the
    summary, so the summary stops sticking while one is open instead of covering
    the heading and Close button that keep the form usable. */
-@media (max-width: 700px) {
+@media (max-width: 43.75rem) {
     .budget-summary[data-editing="true"] { position: static; }
 }
 
@@ -49,7 +49,7 @@ h1 { margin: 0; font-size: var(--yh-font-title-compact); line-height: 1.25; }
    pushed the category table out of view. Dock the shortcut at the viewport edge
    instead, the way the register does, so recording money stays one tap away.
    Fluent components take no scope attribute, so ::deep reaches the button. */
-@media (max-width: 999px) {
+@media (max-width: 62.4375rem) {
     .summary-actions ::deep .board-add-transaction {
         position: fixed;
         inset-block-end: calc(var(--spacingVerticalL) + env(safe-area-inset-bottom, 0px));
@@ -58,8 +58,10 @@ h1 { margin: 0; font-size: var(--yh-font-title-compact); line-height: 1.25; }
            shell's 1000 overlays, so a drawer or dialog still covers this. */
         z-index: 900;
         min-height: var(--yh-control-touch);
-        box-shadow: var(--shadow16);
+        box-shadow: var(--yh-shadow-overlay);
     }
     /* The open editor owns the screen; a floating quick add would cover its form. */
     .summary-actions ::deep .board-add-transaction.is-editing { display: none; }
+    /* Keep the docked action from covering the last category row. */
+    .budget-categories { padding-block-end: calc(var(--yh-control-touch) + var(--spacingVerticalXXL)); }
 }

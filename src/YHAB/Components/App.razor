@@ -8,6 +8,9 @@
     <meta name="application-name" content="YHAB" />
     <base href="/" />
     <ResourcePreloader />
+    @* Match the @font-face URL exactly; the fingerprinted asset route is a
+       different cache key and fetches the same file twice. *@
+    <link rel="preload" href="_content/YHAB.UI/lib/fonts/plus-jakarta-sans/plus-jakarta-sans-latin-var.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="@Assets["_content/Microsoft.FluentUI.AspNetCore.Components/css/default-fuib.css"]" />
     <link rel="stylesheet" href="@Assets["YHAB.styles.css"]" />
     <link rel="stylesheet" href="@Assets["app.css"]" />

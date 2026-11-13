@@ -187,6 +187,28 @@ public sealed class LayoutAndSharingTests(ITestOutputHelper output)
         {
             (await arrow.BoundingBoxAsync()).ShouldNotBeNull().Width.ShouldBeGreaterThanOrEqualTo(40);
         }
+
+        // A large formatted balance must wrap in Assigned, Activity, Available
+        // order instead of overlapping its neighbours or truncating the value.
+        var largeAmount = BudgetWorkflowTests.Input(page, "Assign to Groceries");
+        await largeAmount.FillAsync("123456.78");
+        await largeAmount.PressAsync("Tab");
+        await groceries.Locator("button.available-pill").Filter(new() { HasText = "$123,456.78" }).WaitForAsync();
+        (await groceries.EvaluateAsync<bool>("""
+            row => {
+                const cells = [...row.children].slice(1);
+                if (cells.some(cell => cell.scrollWidth > cell.clientWidth + 1)) return false;
+                for (let i = 0; i < cells.length; i++) {
+                    for (let j = i + 1; j < cells.length; j++) {
+                        const a = cells[i].getBoundingClientRect();
+                        const b = cells[j].getBoundingClientRect();
+                        if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) return false;
+                    }
+                }
+                return true;
+            }
+            """)).ShouldBeTrue();
+        (await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth")).ShouldBeTrue();
     }
 
     private static async Task VerifyPlansLayoutAsync(IPage page)

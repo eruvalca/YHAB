@@ -8,13 +8,15 @@
 }
 
 .navigation-section-label {
-    margin: 0;
-    padding: var(--spacingVerticalS) var(--spacingHorizontalMNudge);
-    color: var(--colorNeutralForeground2);
-    font-size: var(--fontSizeBase300);
+    margin: var(--spacingVerticalM) 0 var(--spacingVerticalXS);
+    padding-inline: var(--spacingHorizontalMNudge);
+    color: var(--yh-text-muted);
+    font-size: var(--yh-font-eyebrow);
     font-weight: var(--fontWeightSemibold);
+    letter-spacing: var(--yh-tracking-eyebrow);
+    text-transform: uppercase;
 }
 
 .logout-form {
-    margin: 1rem;
+    margin: var(--spacingVerticalM) var(--spacingHorizontalM) 0;
 }
