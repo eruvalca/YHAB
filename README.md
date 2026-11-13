@@ -239,6 +239,15 @@ the selected theme and restores the selector after enhanced navigation, which ca
 replace the body's client-side theme marker. Appearance does not start a .NET renderer.
 Application styles use v5 CSS design tokens.
 
+The UI face is Plus Jakarta Sans, self-hosted from
+`src/YHAB.UI/wwwroot/lib/fonts/plus-jakarta-sans/` alongside its `OFL.txt`; no
+CDN or npm package is involved. `app.css` declares the latin and latin-ext
+subsets and exposes `--yh-font-family`, which is also assigned to Fluent's
+`--fontFamilyBase` on `:root` so web components inherit it. Fluent applies its
+theme tokens through an adopted stylesheet targeting `html`, and `:root`
+outranks that selector. `App.razor` preloads the latin file. The offline
+document stays on system fonts so the service worker does not precache the font.
+
 The shell uses `FluentLayout`, `FluentNav`, and `FluentNavItem`; the home and
 authenticated pages use Fluent cards and buttons with native content links.
 Native anchors preserve accessible link names and navigation before JavaScript
@@ -339,10 +348,14 @@ notices (`notice` with a semantic `data-kind`), and table overflow
 (`--yh-control-touch`) for primary call-to-action targets. Controls use
 `--yh-control-font` (16px) text so mobile browsers do not zoom on focus, and a
 primary action is never smaller than the standard step. The type scale uses
-`--yh-font-body` (14px), `--yh-font-eyebrow` (12px), and the capped
-`--yh-font-title`, `--yh-font-title-compact` (for dense page headers such as the
-budget summary), and `--yh-font-display` heading ramps. Use these tokens for new
-controls and headings instead of ad hoc sizes.
+`--yh-font-body` (15px, applied on `body`), `--yh-font-eyebrow` (12px), and the
+capped `--yh-font-title`, `--yh-font-title-compact` (for dense page headers such
+as the budget summary), and `--yh-font-display` heading ramps. Shape, elevation,
+and color use `--yh-radius-*`, `--yh-shadow-*`, and the `--yh-surface-*`,
+`--yh-text-*`, `--yh-border-*`, and `--yh-accent*` roles. Sizes are `rem`; `px`
+is limited to hairlines, focus-ring widths, and the pill radius, and media
+queries use `rem` so breakpoints follow the user's default font size. Use these
+tokens for new controls and headings instead of ad hoc sizes.
 Component-specific styles belong in adjacent `.razor.css` files. Use narrowly
 scoped `::deep` selectors for child component markup.
 Native button styling excludes slotted controls: Fluent dropdowns render a native

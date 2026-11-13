@@ -4,7 +4,7 @@
 .budget-summary { position: sticky; top: var(--plan-page-tabs-height, 0px); z-index: 90; padding: var(--spacingVerticalS) var(--spacingHorizontalM); border-radius: var(--borderRadiusMedium); background: var(--colorNeutralBackground1); border: 1px solid var(--colorNeutralStroke2); }
 .budget-summary[data-negative="true"] { border-color: var(--colorPaletteRedBorder1); }
 h1 { margin: 0; font-size: var(--yh-font-title-compact); line-height: 1.25; }
-@media (min-width: 601px) {
+@media (min-width: 37.5625rem) {
     /* Only the dense month controls use the compact step; summary actions,
        including the primary action, keep the standard minimum. */
     .budget-summary ::deep .month-navigation fluent-button { min-height: var(--yh-control-compact); }
@@ -35,13 +35,13 @@ h1 { margin: 0; font-size: var(--yh-font-title-compact); line-height: 1.25; }
 .still-needed-breakdown { margin-inline-start: var(--spacingHorizontalXS); color: var(--colorNeutralForeground3); font-size: var(--fontSizeBase100); }
 .summary-actions { display: flex; flex-direction: column; align-items: flex-end; gap: var(--spacingVerticalXXS); }
 .action-hint { margin: 0; font-size: var(--fontSizeBase100); text-align: end; }
-@media (max-width: 1200px) { .category-details { flex-basis: 100%; position: static; max-height: none; overflow-y: visible; } }
-@media (max-width: 600px) { .summary-actions { align-items: flex-start; } .action-hint { text-align: start; } }
+@media (max-width: 75rem) { .category-details { flex-basis: 100%; position: static; max-height: none; overflow-y: visible; } }
+@media (max-width: 37.5rem) { .summary-actions { align-items: flex-start; } .action-hint { text-align: start; } }
 
 /* Below 700px an editor pins its own heading to the same top offset as the
    summary, so the summary stops sticking while one is open instead of covering
    the heading and Close button that keep the form usable. */
-@media (max-width: 700px) {
+@media (max-width: 43.75rem) {
     .budget-summary[data-editing="true"] { position: static; }
 }
 
@@ -49,7 +49,7 @@ h1 { margin: 0; font-size: var(--yh-font-title-compact); line-height: 1.25; }
    pushed the category table out of view. Dock the shortcut at the viewport edge
    instead, the way the register does, so recording money stays one tap away.
    Fluent components take no scope attribute, so ::deep reaches the button. */
-@media (max-width: 999px) {
+@media (max-width: 62.4375rem) {
     .summary-actions ::deep .board-add-transaction {
         position: fixed;
         inset-block-end: calc(var(--spacingVerticalL) + env(safe-area-inset-bottom, 0px));

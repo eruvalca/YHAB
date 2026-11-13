@@ -1,6 +1,6 @@
 .category-catalog { min-width: 0; }
 .category-catalog ::deep .table-toolbar { margin-block: var(--spacingVerticalXS); }
-@media (min-width: 601px) {
+@media (min-width: 37.5625rem) {
     /* The table toolbar is dense chrome; phones keep 40px touch targets. */
     .category-catalog ::deep .table-toolbar fluent-button { min-height: var(--yh-control-compact); }
     .category-catalog ::deep .table-toolbar fluent-button[icon-only] { min-width: var(--yh-control-compact); }
@@ -42,7 +42,7 @@
 .budget-table ::deep .category-list .sortable-item[aria-grabbed="true"] { border: 0; background: var(--colorBrandBackground2); box-shadow: inset 3px 0 var(--colorBrandStroke1); }
 .budget-table ::deep .category-list .sortable-drag { background: var(--colorNeutralBackground1); box-shadow: var(--shadow16); }
 .budget-table ::deep .category-list .row-move.sortable-grab { position: static; display: inline-flex; align-items: center; justify-content: center; width: auto; height: auto; padding: 0; border-radius: 0; background: transparent; touch-action: none; }
-@media (max-width: 600px) {
+@media (max-width: 37.5rem) {
     /* Stack each row into two lines so the amount field fits without horizontal scrolling. */
     .budget-table { min-width: 0; }
     .budget-table ::deep .budget-header { display: none; }

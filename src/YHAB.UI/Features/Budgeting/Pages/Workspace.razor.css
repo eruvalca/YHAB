@@ -1,4 +1,4 @@
-@media (max-width: 600px) {
+@media (max-width: 37.5rem) {
     /* Fluent small controls are 24px; the budget workspace keeps 40px targets. */
     .workspace ::deep fluent-button { min-height: 2.5rem; }
     .workspace ::deep fluent-button[icon-only] { min-width: 2.5rem; }
@@ -76,7 +76,7 @@
     background: var(--colorNeutralBackground2);
 }
 
-@media (max-width: 999px) {
+@media (max-width: 62.4375rem) {
     .workspace-loading-tabs {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));

@@ -30,7 +30,7 @@
    the edge of the viewport instead of scrolling away with the page heading.
    Fluent components take no scope attribute, so the dock anchors on the plain
    wrapper and reaches the button with ::deep. */
-@media (max-width: 999px) {
+@media (max-width: 62.4375rem) {
     .add-transaction-dock {
         position: fixed;
         inset-block-end: calc(var(--spacingVerticalL) + env(safe-area-inset-bottom, 0px));

@@ -1,6 +1,34 @@
+/* Self-hosted UI face. Files and license live in
+   src/YHAB.UI/wwwroot/lib/fonts/plus-jakarta-sans/. The latin and latin-ext
+   subsets carry separate unicode ranges so a browser only fetches the glyphs a
+   page needs; both are variable across 400-800. */
+@font-face {
+    font-family: "Plus Jakarta Sans";
+    src: url("_content/YHAB.UI/lib/fonts/plus-jakarta-sans/plus-jakarta-sans-latin-var.woff2") format("woff2");
+    font-weight: 400 800;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: "Plus Jakarta Sans";
+    src: url("_content/YHAB.UI/lib/fonts/plus-jakarta-sans/plus-jakarta-sans-latin-ext-var.woff2") format("woff2");
+    font-weight: 400 800;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
 :root {
     color-scheme: light;
-    font-family: var(--fontFamilyBase, system-ui, sans-serif);
+
+    /* Fluent applies its theme tokens through an adopted stylesheet that
+       targets html. A :root declaration outranks it, so Fluent components pick
+       this face up through --fontFamilyBase as well. */
+    --yh-font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --fontFamilyBase: var(--yh-font-family);
+    font-family: var(--fontFamilyBase);
     line-height: 1.5;
     background: var(--colorNeutralBackground1, #fff);
     color: var(--colorNeutralForeground1, #242424);
@@ -13,13 +41,65 @@
     --yh-control-touch: 2.75rem;     /* 44px: primary call-to-action targets */
     --yh-control-font: 1rem;
 
-    /* Type scale. Body copy is 14px, eyebrows sit one step below it, and
+    /* Type scale. Body copy is 15px, eyebrows sit one step below it, and
        page/display headings share a single capped ramp. */
-    --yh-font-body: 0.875rem;
+    --yh-font-body: 0.9375rem;
     --yh-font-eyebrow: 0.75rem;
-    --yh-font-title-compact: clamp(1.25rem, 1.5vw, 1.5rem);
-    --yh-font-title: clamp(1.5rem, 2vw, 2rem);
-    --yh-font-display: clamp(2rem, 4.5vw, 3rem);
+    --yh-font-title-compact: clamp(1.375rem, 1.6vw, 1.625rem);
+    --yh-font-title: clamp(1.75rem, 2.4vw, 2.25rem);
+    --yh-font-display: clamp(2.25rem, 5vw, 3.5rem);
+    --yh-line-body: 1.6;
+    --yh-tracking-display: -0.03em;
+    --yh-tracking-eyebrow: 0.08em;
+
+    /* Shape, elevation, color, density, and motion. Neutral values alias
+       Fluent tokens so light and dark come from the theme; only the accent and
+       elevation need explicit values. Sizes are rem so they track the user's
+       text size; hairlines stay 1px. */
+    --yh-radius-xs: var(--borderRadiusMedium);
+    --yh-radius-sm: 0.5rem;
+    --yh-radius-md: 0.75rem;
+    --yh-radius-lg: 1rem;
+    --yh-radius-xl: 1.5rem;
+    --yh-radius-pill: 999px;
+    --yh-control-radius: var(--yh-radius-sm);
+    --yh-card-radius: var(--yh-radius-lg);
+    --yh-panel-radius: var(--yh-radius-xl);
+
+    --yh-shadow-rest:
+        0 1px 2px rgb(16 24 40 / 6%),
+        0 0.75rem 1.75rem -1rem rgb(16 24 40 / 18%);
+    --yh-shadow-raised:
+        0 2px 4px rgb(16 24 40 / 8%),
+        0 1.125rem 2.5rem -1.125rem rgb(16 24 40 / 24%);
+    --yh-shadow-overlay:
+        0 4px 8px rgb(16 24 40 / 10%),
+        0 1.75rem 3.5rem -1.25rem rgb(16 24 40 / 30%);
+
+    --yh-surface-canvas: var(--colorNeutralBackground2);
+    --yh-surface-raised: var(--colorNeutralBackground1);
+    --yh-surface-sunken: var(--colorNeutralBackground3);
+    --yh-surface-accent-soft: var(--colorBrandBackground2);
+    --yh-text-strong: var(--colorNeutralForeground1);
+    --yh-text-body: var(--colorNeutralForeground2);
+    --yh-text-muted: var(--colorNeutralForeground3);
+    --yh-border-subtle: var(--colorNeutralStroke2);
+    --yh-border-control: var(--colorNeutralStroke1);
+    --yh-border-interactive: var(--colorNeutralStrokeAccessible);
+    --yh-accent: var(--colorBrandBackground);
+    --yh-accent-strong: var(--colorBrandBackgroundPressed);
+    --yh-accent-warm: #f59e0b;
+    --yh-accent-warm-soft: #fef3c7;
+    --yh-positive: var(--colorPaletteGreenForeground1);
+    --yh-negative: var(--colorPaletteRedForeground1);
+    --yh-attention: var(--colorPaletteMarigoldForeground2);
+
+    --yh-row-padding-block: var(--spacingVerticalS);
+    --yh-cell-padding-block: 0.625rem;
+
+    --yh-duration-fast: 120ms;
+    --yh-duration-base: 180ms;
+    --yh-ease-standard: cubic-bezier(0.2, 0, 0, 1);
 }
 
 /* The document scrollbar and native controls follow the root scheme. Mirror
@@ -36,6 +116,8 @@ html[data-theme="dark"] {
 
 body {
     margin: 0;
+    font-size: var(--yh-font-body);
+    line-height: var(--yh-line-body);
     /* Fluent's viewport shell defaults to overflow:hidden. This app uses the
        document scrollbar, including enhanced-navigation scroll restoration. */
     height: auto;
@@ -125,10 +207,10 @@ button:where(:not([slot])) {
     min-height: var(--yh-control-standard);
     padding: 0.4rem 0.75rem;
     cursor: pointer;
-    border: 1px solid var(--colorNeutralStroke1, #d1d1d1);
-    border-radius: var(--borderRadiusMedium, 4px);
-    background: var(--colorNeutralBackground1, #fff);
-    color: var(--colorNeutralForeground1, #242424);
+    border: 1px solid var(--yh-border-control);
+    border-radius: var(--yh-control-radius);
+    background: var(--yh-surface-raised);
+    color: var(--yh-text-strong);
     font-weight: 600;
 }
 
@@ -182,10 +264,10 @@ hr {
     width: 100%;
     min-width: 0;
     padding: 0.5rem 0.75rem;
-    border: 1px solid var(--colorNeutralStroke1, #d1d1d1);
-    border-bottom-color: var(--colorNeutralStrokeAccessible, #616161);
-    border-radius: var(--borderRadiusMedium, 4px);
-    background: var(--colorNeutralBackground1, #fff);
+    border: 1px solid var(--yh-border-control);
+    border-bottom-color: var(--yh-border-interactive);
+    border-radius: var(--yh-control-radius);
+    background: var(--yh-surface-raised);
     color: inherit;
 }
 
@@ -234,8 +316,10 @@ hr {
 .notice {
     margin-block: 1rem;
     padding: 1rem;
-    border: 1px solid var(--colorNeutralStroke1, #d1d1d1);
+    border: 1px solid var(--yh-border-control);
     border-inline-start-width: 0.25rem;
+    border-radius: var(--yh-radius-md);
+    background: var(--yh-surface-raised);
 }
 
 .notice > :last-child {
@@ -275,8 +359,8 @@ table .actions {
 }
 
 th, td {
-    padding: 0.5rem;
-    border-bottom: 1px solid var(--colorNeutralStroke2, #e0e0e0);
+    padding: var(--yh-cell-padding-block) 0.5rem;
+    border-bottom: 1px solid var(--yh-border-subtle);
     text-align: start;
     vertical-align: top;
 }
@@ -314,45 +398,58 @@ th, td {
 
 .account-sections {
     padding: clamp(1rem, 2vw, 1.5rem);
-    border: 1px solid var(--colorNeutralStroke2, #e0e0e0);
-    border-radius: var(--borderRadiusLarge, 6px);
-    background: var(--colorNeutralBackground1, #fff);
-    box-shadow: var(--shadow2, 0 1px 2px #00000014);
+    border: 1px solid var(--yh-border-subtle);
+    border-radius: var(--yh-panel-radius);
+    background: var(--yh-surface-raised);
+    box-shadow: var(--yh-shadow-rest);
 }
 
 /* Reusable budgeting surfaces inherit Fluent's selected light/dark palette. */
 body[data-theme="dark"] {
     --colorBrandForeground1: var(--colorBrandForegroundLinkHover);
     --colorBrandForegroundLink: var(--colorBrandForegroundLinkHover);
+    /* Shadows need stronger alpha on dark surfaces, and the warm accent needs
+       a dark-mode value to keep contrast. */
+    --yh-shadow-rest:
+        0 1px 2px rgb(0 0 0 / 40%),
+        0 0.75rem 1.75rem -1rem rgb(0 0 0 / 60%);
+    --yh-shadow-raised:
+        0 2px 4px rgb(0 0 0 / 50%),
+        0 1.125rem 2.5rem -1.125rem rgb(0 0 0 / 70%);
+    --yh-shadow-overlay:
+        0 4px 8px rgb(0 0 0 / 50%),
+        0 1.75rem 3.5rem -1.25rem rgb(0 0 0 / 75%);
+    --yh-accent-warm: #fbbf24;
+    --yh-accent-warm-soft: #3a2c0a;
     color-scheme: dark;
 }
 body { background: var(--colorNeutralBackground2); color: var(--colorNeutralForeground1); }
-.eyebrow { color: var(--colorBrandForeground1); font-size: var(--yh-font-eyebrow); font-weight: var(--fontWeightSemibold); letter-spacing: 0.12em; margin-bottom: var(--spacingVerticalS); }
+.eyebrow { color: var(--colorBrandForeground1); font-size: var(--yh-font-eyebrow); font-weight: var(--fontWeightSemibold); letter-spacing: var(--yh-tracking-eyebrow); margin-bottom: var(--spacingVerticalS); }
 .lead { color: var(--colorNeutralForeground2); font-size: var(--fontSizeBase400); max-width: 43rem; }
 .muted, .field-hint { color: var(--colorNeutralForeground3); }
 .field-hint { font-size: var(--fontSizeBase200); }
 .page-intro { margin-block: var(--spacingVerticalL) var(--spacingVerticalXL); }
-.page-heading h1 { margin-bottom: var(--spacingVerticalS); letter-spacing: -0.045em; }
+.page-heading h1 { margin-bottom: var(--spacingVerticalS); letter-spacing: var(--yh-tracking-display); }
 .page-heading { margin-block: var(--spacingVerticalM); }
-.surface, .plan-card { padding: var(--spacingVerticalL) var(--spacingHorizontalL); border: 1px solid var(--colorNeutralStroke2); border-radius: var(--borderRadiusXLarge); background: var(--colorNeutralBackground1); box-shadow: var(--shadow2); }
+.surface, .plan-card { padding: var(--spacingVerticalL) var(--spacingHorizontalL); border: 1px solid var(--yh-border-subtle); border-radius: var(--yh-card-radius); background: var(--yh-surface-raised); box-shadow: var(--yh-shadow-rest); }
 .plan-card { display: block; height: 100%; text-decoration: none; color: var(--colorNeutralForeground1); }
 .plan-card:hover { border-color: var(--colorBrandStroke1); background: var(--colorBrandBackground2); }
 .plan-card h3 { margin-top: var(--spacingVerticalXXL); font-size: var(--fontSizeBase500); }
 .plan-card p { color: var(--colorNeutralForeground3); }
 .plan-card .plan-card-shared { color: var(--colorBrandForeground1); font-size: var(--fontSizeBase200); font-weight: var(--fontWeightSemibold); }
 .plan-card-action { display: block; margin-top: var(--spacingVerticalXXXL); color: var(--colorBrandForeground1); font-weight: var(--fontWeightSemibold); }
-.primary-action { display: inline-flex; align-items: center; justify-content: center; min-height: var(--yh-control-touch); padding: var(--spacingVerticalM) var(--spacingHorizontalXL); text-decoration: none; background: var(--colorBrandBackground); color: var(--colorNeutralForegroundOnBrand); border: 1px solid var(--colorBrandBackground); border-radius: var(--borderRadiusMedium); font-size: var(--yh-control-font); font-weight: var(--fontWeightSemibold); }
+.primary-action { display: inline-flex; align-items: center; justify-content: center; min-height: var(--yh-control-touch); padding: var(--spacingVerticalM) var(--spacingHorizontalXL); text-decoration: none; background: var(--yh-accent); color: var(--colorNeutralForegroundOnBrand); border: 1px solid var(--yh-accent); border-radius: var(--yh-control-radius); font-size: var(--yh-control-font); font-weight: var(--fontWeightSemibold); }
 .primary-action:hover { background: var(--colorBrandBackgroundHover); color: var(--colorNeutralForegroundOnBrand); }
-.secondary-action { display: inline-flex; align-items: center; justify-content: center; min-height: var(--yh-control-standard); padding: var(--spacingVerticalS) var(--spacingHorizontalL); background: transparent; color: var(--colorBrandForeground1); border: 1px solid var(--colorNeutralStroke2); border-radius: var(--borderRadiusMedium); font-size: var(--yh-control-font); font-weight: var(--fontWeightSemibold); }
+.secondary-action { display: inline-flex; align-items: center; justify-content: center; min-height: var(--yh-control-standard); padding: var(--spacingVerticalS) var(--spacingHorizontalL); background: transparent; color: var(--colorBrandForeground1); border: 1px solid var(--yh-border-subtle); border-radius: var(--yh-control-radius); font-size: var(--yh-control-font); font-weight: var(--fontWeightSemibold); }
 .secondary-action:hover { background: var(--colorSubtleBackgroundHover); }
-.empty-state { padding: clamp(2rem, 6vw, 4rem); text-align: center; border: 1px dashed var(--colorNeutralStroke1); border-radius: var(--borderRadiusXLarge); margin-block: var(--spacingVerticalL); color: var(--colorNeutralForeground3); }
+.empty-state { padding: clamp(2rem, 6vw, 4rem); text-align: center; border: 1px dashed var(--yh-border-control); border-radius: var(--yh-panel-radius); margin-block: var(--spacingVerticalL); color: var(--yh-text-muted); }
 .empty-state h2, .empty-state h3 { color: var(--colorNeutralForeground1); }
-.stat { height: 100%; padding: var(--spacingVerticalL) var(--spacingHorizontalL); border: 1px solid var(--colorNeutralStroke2); border-radius: var(--borderRadiusLarge); background: var(--colorNeutralBackground1); }
+.stat { height: 100%; padding: var(--spacingVerticalL) var(--spacingHorizontalL); border: 1px solid var(--yh-border-subtle); border-radius: var(--yh-card-radius); background: var(--yh-surface-raised); }
 .stat span { display: block; font-size: var(--fontSizeBase200); color: var(--colorNeutralForeground3); margin-bottom: var(--spacingVerticalS); }
 .stat strong { font-size: clamp(1.15rem, 2vw, 1.5rem); font-variant-numeric: tabular-nums; letter-spacing: -0.025em; }
 .summary-grid { margin-block: var(--spacingVerticalL); }
 .table-toolbar { margin-top: var(--spacingVerticalL); align-items: end; }
-.selection-toolbar { padding: var(--spacingVerticalM); background: var(--colorBrandBackground2); border-radius: var(--borderRadiusMedium); margin-block: var(--spacingVerticalM); }
+.selection-toolbar { padding: var(--spacingVerticalM); background: var(--yh-surface-accent-soft); border-radius: var(--yh-radius-md); margin-block: var(--spacingVerticalM); }
 .category-link { border: 0; background: transparent; padding: 0; text-align: start; font-weight: var(--fontWeightSemibold); }
 .category-link:hover { color: var(--colorBrandForeground1); text-decoration: underline; }
 .numeric { text-align: right; font-variant-numeric: tabular-nums; }
@@ -361,7 +458,7 @@ body { background: var(--colorNeutralBackground2); color: var(--colorNeutralFore
 [data-money-tone="negative"] { color: var(--colorPaletteRedForeground1); }
 [data-money-tone="attention"] { color: var(--colorPaletteMarigoldForeground2); }
 .nowrap { white-space: nowrap; }
-.available-pill { display: inline-flex; align-items: center; justify-content: center; min-height: var(--yh-control-compact); padding: var(--spacingVerticalXS) var(--spacingHorizontalM); border-radius: var(--borderRadiusCircular); background: var(--colorNeutralBackground3); font-weight: var(--fontWeightSemibold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.available-pill { display: inline-flex; align-items: center; justify-content: center; min-height: var(--yh-control-compact); padding: var(--spacingVerticalXS) var(--spacingHorizontalM); border-radius: var(--yh-radius-pill); background: var(--yh-surface-sunken); font-weight: var(--fontWeightSemibold); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .available-pill[data-tone="positive"] { background: var(--colorPaletteGreenBackground1); color: var(--colorPaletteGreenForeground1); }
 .available-pill[data-tone="attention"] { background: var(--colorPaletteMarigoldBackground1); color: var(--colorPaletteMarigoldForeground2); }
 .available-pill[data-tone="negative"] { background: var(--colorPaletteRedBackground1); color: var(--colorPaletteRedForeground1); }

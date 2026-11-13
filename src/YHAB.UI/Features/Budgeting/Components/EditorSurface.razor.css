@@ -13,7 +13,7 @@ h2 { margin: 0; scroll-margin-top: var(--spacingVerticalS); }
 
 /* Phone layouts keep the title, Close, and the primary action on screen while
    the rest of the form scrolls, so a long transaction never strands them. */
-@media (max-width: 700px) {
+@media (max-width: 43.75rem) {
     .editor-surface { padding: var(--spacingVerticalL) var(--spacingHorizontalM); }
     .editor-surface ::deep .editor-heading {
         position: sticky;

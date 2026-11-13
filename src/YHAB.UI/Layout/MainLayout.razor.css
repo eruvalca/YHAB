@@ -145,7 +145,7 @@
     font-size: var(--yh-control-font);
 }
 
-@media (max-width: 700px) {
+@media (max-width: 43.75rem) {
     .site-tagline,
     .theme-control label,
     .site-footer span {
