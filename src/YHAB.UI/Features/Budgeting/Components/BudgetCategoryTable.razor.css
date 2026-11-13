@@ -52,22 +52,25 @@
     /* Stack each row into two lines so the amount field fits without horizontal scrolling. */
     .budget-table { min-width: 0; }
     .budget-table ::deep .budget-header { display: none; }
-    /* Phones keep the desktop column order in one compact block: the name
-       spans the row, then Assigned, Activity, and Available sit side by side
-       in the same order as the desktop columns. Each cell stacks its own label
-       over its value, so no line opens with dead space. */
+    /* Phones keep the desktop column order: the name spans the row, then
+       Assigned, Activity, and Available follow in the same order as the desktop
+       columns. Each cell stacks its own label over its value. Metrics size to
+       their content and wrap in that order when three no longer fit, so a large
+       balance such as $123,456.78 never overlaps its neighbour or truncates. */
     .budget-table ::deep .category-row {
-        grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr);
-        grid-template-areas:
-            "category category category"
-            "assigned activity available";
-        align-items: start;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        column-gap: var(--spacingHorizontalS);
         row-gap: var(--spacingVerticalXXS);
     }
-    .budget-table ::deep .category-row > :nth-child(1) { grid-area: category; }
-    .budget-table ::deep .category-row > :nth-child(2) { grid-area: assigned; }
-    .budget-table ::deep .category-row > :nth-child(3) { grid-area: activity; }
-    .budget-table ::deep .category-row > :nth-child(4) { grid-area: available; }
+    .budget-table ::deep .category-row > :nth-child(1) { flex: 1 1 100%; min-width: 0; }
+    /* The amount field keeps a usable width but stays compact, capped so it
+       cannot stretch across a wide phone row. */
+    .budget-table ::deep .category-row > :nth-child(2) { flex: 1 1 7rem; min-width: 7rem; max-width: 10rem; }
+    /* Values never shrink below their content, so they wrap rather than overlap. */
+    .budget-table ::deep .category-row > :nth-child(3),
+    .budget-table ::deep .category-row > :nth-child(4) { flex: 1 1 auto; min-width: max-content; }
     /* Fluent text inputs shrink below their intrinsic width, unlike the
        dropdowns that keep a 160px floor, so the field fills its column. */
     .budget-table ::deep .category-row .assigned-cell fluent-text-input { width: 100%; }
