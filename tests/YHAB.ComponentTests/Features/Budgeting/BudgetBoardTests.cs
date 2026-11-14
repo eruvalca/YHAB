@@ -65,6 +65,61 @@ public sealed class BudgetBoardTests
         component.FindAll("[role='alert']").ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task TodayActionAppearsOnlyWhileAnotherMonthIsOpenAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var plan = CreatePlan();
+        var component = context.Render<BudgetBoard>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.OnCommand, _ => { }));
+
+        component.Find("h1.summary-title").TextContent.ShouldBe("Plan your money");
+        component.FindAll("button.month-today").ShouldBeEmpty();
+
+        await component.Find("fluent-button[aria-label='Next month']").ClickAsync();
+        component.Find(".month-label").TextContent.ShouldBe("November 2026");
+        component.FindAll("button.month-today").Count.ShouldBe(1);
+
+        await component.Find("button.month-today").ClickAsync();
+        component.Find(".month-label").TextContent.ShouldBe(BudgetFacts.Month(plan.Today).ToString("MMMM yyyy", BudgetFacts.Culture));
+        component.FindAll("button.month-today").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task FailedTodayReadKeepsFocusOwnershipForTheRetryAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var plan = CreatePlan();
+        var reads = 0;
+        var component = context.Render<BudgetBoard>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.OnCommand, _ => { })
+            .Add(item => item.LoadMonth, (month, _) =>
+            {
+                reads++;
+                return reads == 3
+                    ? Task.FromException<BudgetMonth>(new HttpRequestException("offline"))
+                    : Task.FromResult(BudgetCalculator.Calculate(plan, month, plan.Today));
+            }));
+
+        await component.Find("fluent-button[aria-label='Next month']").ClickAsync();
+        await component.Find("button.month-today").FocusAsync();
+        await component.Find("button.month-today").ClickAsync();
+        component.Find("[role='alert']").TextContent.ShouldContain("Unable to load this month");
+        component.Find("button.month-today").ShouldNotBeNull();
+
+        // Retrying without tabbing away must still hand focus to the pager, which
+        // only happens when the failed read kept the action's focus ownership.
+        await component.Find("button.month-today").ClickAsync();
+        component.FindAll("button.month-today").ShouldBeEmpty();
+        context.JSInterop.Invocations.Identifiers.ShouldContain(item => string.Equals(item, "Blazor._internal.domWrapper.focus", StringComparison.Ordinal));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

@@ -236,8 +236,10 @@ red marks negative balances/outflows, and amber marks funding still needed.
 Signs, labels, and overspending messages retain the meaning without color.
 The compact monthly summary stays at the top of the viewport as you scroll the
 category table, keeping Ready to assign, all four totals, and their definitions
-within reach. The page retains normal document scrolling; keyboard focus and
-editor headings stay below the summary. On desktop, **Hide menu / Show menu** in the site header frees space
+within reach. Its heading sits above or beside the month, which the **Previous
+month** and **Next month** arrow buttons step through; **Today** returns to the current month
+and appears only while another month is open. The page retains normal document
+scrolling; keyboard focus and editor headings stay below the summary. On desktop, **Hide menu / Show menu** in the site header frees space
 for the plan and remembers your preference across navigation and reloads. Without
 a saved preference, the global menu is collapsed within a plan, leaving a single
 compact plan sidebar. On smaller screens, sticky **Plan**, **Transactions**,

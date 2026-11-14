@@ -1,7 +1,7 @@
+/* Spacing alone separates these tools from the board below; a hairline here sat
+   directly on the first card's own border. */
 .workspace-toolbar {
-    padding-bottom: var(--spacingVerticalXS);
-    margin-bottom: 0;
-    border-bottom: 1px solid var(--yh-border-subtle);
+    padding-bottom: var(--spacingVerticalM);
 }
 
 .workspace-status {
