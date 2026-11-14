@@ -104,9 +104,7 @@ The selected SDK's CA1034 analyzer flags the public extension blocks in service
 defaults. The existing public container has a justified type-level suppression
 for the generated nested metadata types.
 
-The approved global fallback suppresses unlocated CA1515 diagnostics, while
-`.editorconfig` still enforces the rule on ordinary C# source types. Isolated
-compiler probes verify both the extension-block success case and an ordinary
+Isolated compiler probes verify both the extension-block success case and an ordinary
 public type's CA1515 failure. This fallback affects every unlocated CA1515
 diagnostic, not just this bug. See the [build conventions](../../../../build/README.md)
 for its removal condition. Retest these exceptions when updating the SDK;
