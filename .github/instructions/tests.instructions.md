@@ -61,7 +61,8 @@ the [test README](../../tests/README.md).
   a `--` separator or VSTest `--filter`/`--logger` arguments. Confirm that the
   selected test names and count match the intended scope; zero discovered or
   executed tests do not establish successful validation.
-- Preserve `all` / `conservative` / `1x` parallel settings. Give each test its own
+- Preserve `all` / `conservative` parallel settings and each project's
+  `maxParallelThreads` limit. Give each test its own
   mutable state; bUnit tests create and dispose a fresh `BunitContext` with
   `await using`. Shared fixtures must support concurrent access, and any opt-out
   from parallel execution needs a documented reason.

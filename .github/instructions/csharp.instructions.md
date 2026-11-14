@@ -110,13 +110,8 @@ distinguishes complete success from partial completion.
 
 ## C# extension members
 
-- Prefer C# 14 extension blocks for handwritten extensions. Group related members
-  by receiver and concern, using internal static containers for feature-local APIs.
-  Preserve existing public contracts and document any compatibility or generator
+- Preserve existing public contracts and document any compatibility or generator
   requirement that needs classic extension-method syntax.
-- Use properties for inexpensive, side-effect-free facts and methods for
-  transformations, enumeration, async work, or side effects. Keep core behavior
-  and factories on types we own; do not convert every static helper.
 - Follow the [C# extension members skill](../../.agents/skills/csharp-extension-members/SKILL.md)
   for receiver/generic rules, migration checks, and compiled examples. Keep this
   repository on the language version its target framework selects (C# 15 for
