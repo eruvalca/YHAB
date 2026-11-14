@@ -8,13 +8,13 @@
             <div class="summary-head">
                 <h1 class="summary-title">Plan your money</h1>
                 <FluentStack Width="auto" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalXS)" Class="month-navigation">
-                    <FluentButton OnClick="PreviousAsync" Disabled="@(_month.Year <= 2000)" Size="ButtonSize.Small" IconOnly="true" Appearance="ButtonAppearance.Subtle" aria-label="Previous month"><FluentIcon Value="@(new Icons.Regular.Size20.ChevronLeft())" /></FluentButton>
+                    <FluentButton @ref="_monthStep" OnClick="PreviousAsync" Disabled="@(_month.Year <= 2000)" Size="ButtonSize.Small" IconOnly="true" Appearance="ButtonAppearance.Subtle" aria-label="Previous month"><FluentIcon Value="@(new Icons.Regular.Size20.ChevronLeft())" /></FluentButton>
                     <strong class="month-label" aria-live="polite">@_budget.Month.ToString("MMMM yyyy", Culture)</strong>
                     <FluentButton OnClick="NextAsync" Disabled="@(_month.Year >= 2100)" Size="ButtonSize.Small" IconOnly="true" Appearance="ButtonAppearance.Subtle" aria-label="Next month"><FluentIcon Value="@(new Icons.Regular.Size20.ChevronRight())" /></FluentButton>
                 </FluentStack>
                 @if (!IsCurrentMonth)
                 {
-                    <button type="button" class="month-today" @onclick="CurrentAsync">Today</button>
+                    <button type="button" class="month-today" @onclick="CurrentAsync" @onfocus="TodayFocused" @onblur="TodayBlurred">Today</button>
                 }
             </div>
             <div class="ready-balance">

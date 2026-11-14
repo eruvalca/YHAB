@@ -734,6 +734,16 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         (await page.EvaluateAsync<double>("() => { let element = document.activeElement; while (element.shadowRoot?.activeElement) element = element.shadowRoot.activeElement; return element.getBoundingClientRect().top - document.querySelector('.budget-summary').getBoundingClientRect().bottom; }")).ShouldBeGreaterThan(0);
         await Button(page, "Undo").ClickAsync();
         await page.Locator(".hero-amount").Filter(new() { HasText = "$700.00" }).WaitForAsync();
+        // Today unmounts once the current month arrives, so a keyboard activation
+        // has to hand focus to the pager instead of dropping it on the document.
+        await page.Locator("fluent-button[aria-label='Next month']").FocusAsync();
+        await page.Keyboard.PressAsync("Enter");
+        await page.Locator(".month-today").WaitForAsync();
+        await page.Locator(".month-today").FocusAsync();
+        await page.Keyboard.PressAsync("Enter");
+        await page.WaitForFunctionAsync("""
+            () => document.activeElement === document.querySelector('.month-navigation fluent-button[aria-label="Previous month"]')
+            """);
         await page.SetViewportSizeAsync(width, 960);
     }
 

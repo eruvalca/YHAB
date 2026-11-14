@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Components;
+using Microsoft.FluentUI.AspNetCore.Components;
 using YHAB.SharedKernel.Budgeting;
 
 namespace YHAB.UI.Features.Budgeting.Components;
@@ -61,6 +62,9 @@ public sealed partial class BudgetBoard
     private bool _help;
     private bool _focusHelp;
     private ElementReference _helpPanel;
+    private FluentButton? _monthStep;
+    private bool _todayFocused;
+    private bool _focusMonthStep;
     private BudgetCategoryTable? _categoryTable;
     private CategoryData? _category;
     private CategoryMonth? EditingMonth => _budget.Categories.SingleOrDefault(item => item.Category.Id == _category?.Id);
@@ -154,9 +158,17 @@ public sealed partial class BudgetBoard
     // Opening help moves focus to the panel so keyboard users land on the explanation instead of the next control.
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!_focusHelp || IsDisposed) { return; }
-        _focusHelp = false;
-        await _helpPanel.FocusAsync();
+        if (IsDisposed) { return; }
+        if (_focusHelp)
+        {
+            _focusHelp = false;
+            await _helpPanel.FocusAsync();
+        }
+        if (_focusMonthStep)
+        {
+            _focusMonthStep = false;
+            if (_monthStep is not null) { await _monthStep.Element.FocusAsync(); }
+        }
     }
     private async Task CalculateAsync()
     {
@@ -195,7 +207,23 @@ public sealed partial class BudgetBoard
     }
     private async Task PreviousAsync() { _month = _month.AddMonths(-1); await CalculateAsync(); }
     private async Task NextAsync() { _month = _month.AddMonths(1); await CalculateAsync(); }
-    private async Task CurrentAsync() { _month = BudgetFacts.Month(Plan.Today); await CalculateAsync(); }
+    private async Task CurrentAsync()
+    {
+        _month = BudgetFacts.Month(Plan.Today);
+        await CalculateAsync();
+        // The action unmounts when the current month arrives, which would leave a
+        // keyboard user with no focus indicator. Hand focus to the pager unless
+        // they moved elsewhere while the read was in flight, and leave it alone
+        // when the read failed because Today stays mounted.
+        var handoff = _todayFocused && IsCurrentMonth;
+        _todayFocused = false;
+        if (handoff)
+        {
+            _focusMonthStep = true;
+        }
+    }
+    private void TodayFocused() => _todayFocused = true;
+    private void TodayBlurred() => _todayFocused = false;
     private Task AutoAssignAsync() => OnCommand.InvokeAsync(new AutoAssign(Plan.Version, _month));
 
     // Remember the exact command the mounted target editor submitted, so the board can tell its own
