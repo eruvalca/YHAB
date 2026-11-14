@@ -102,8 +102,7 @@ alone does not authorize that change.
 
 The selected SDK's CA1034 analyzer flags the public extension blocks in service
 defaults. The existing public container has a justified type-level suppression
-for the generated nested metadata types. Its CA1515 analyzer also reports
-extension blocks inside internal containers without a source location.
+for the generated nested metadata types.
 
 The approved global fallback suppresses unlocated CA1515 diagnostics, while
 `.editorconfig` still enforces the rule on ordinary C# source types. Isolated
