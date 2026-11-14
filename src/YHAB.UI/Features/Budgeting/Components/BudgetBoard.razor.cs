@@ -213,12 +213,12 @@ public sealed partial class BudgetBoard
         await CalculateAsync();
         // The action unmounts when the current month arrives, which would leave a
         // keyboard user with no focus indicator. Hand focus to the pager unless
-        // they moved elsewhere while the read was in flight, and leave it alone
-        // when the read failed because Today stays mounted.
-        var handoff = _todayFocused && IsCurrentMonth;
-        _todayFocused = false;
-        if (handoff)
+        // they moved elsewhere while the read was in flight. A failed read keeps
+        // Today mounted, so it keeps focus ownership for an immediate retry; only
+        // the successful handoff clears it, since the action can no longer own it.
+        if (_todayFocused && IsCurrentMonth)
         {
+            _todayFocused = false;
             _focusMonthStep = true;
         }
     }
