@@ -10,15 +10,16 @@
 /* One sunken pager groups the chevrons with the month they step through, so the
    control reads as a unit instead of two floating boxes. */
 .budget-summary ::deep .month-navigation { padding: var(--spacingVerticalXXS); border-radius: var(--yh-radius-pill); background: var(--yh-surface-sunken); }
-/* Today stays a quiet text action on the dense control step, so the eyebrow
-   row never turns into a boxed button row when another month is open. */
-.month-today { min-height: var(--yh-control-compact); padding: 0; border: 0; background: transparent; color: var(--colorBrandForeground1); font-size: var(--fontSizeBase200); font-weight: var(--fontWeightSemibold); }
+/* Today stays a quiet text action at the shared phone touch target, and only
+   the dense desktop row drops to the compact step. */
+.month-today { min-height: var(--yh-control-standard); padding: 0; border: 0; background: transparent; color: var(--colorBrandForeground1); font-size: var(--fontSizeBase200); font-weight: var(--fontWeightSemibold); }
 .month-today:hover { text-decoration: underline; }
 @media (min-width: 37.5625rem) {
     /* Only the dense month controls use the compact step; summary actions,
        including the primary action, keep the standard minimum. */
     .budget-summary ::deep .month-navigation fluent-button { min-height: var(--yh-control-compact); }
     .budget-summary ::deep .month-navigation fluent-button[icon-only] { min-width: var(--yh-control-compact); }
+    .month-today { min-height: var(--yh-control-compact); }
 }
 .ready-balance > span { display: block; color: var(--yh-text-body); font-size: var(--fontSizeBase200); }
 .hero-amount { display: block; font-size: var(--fontSizeBase600); line-height: var(--lineHeightBase600); font-variant-numeric: tabular-nums; color: var(--colorBrandForeground1); }

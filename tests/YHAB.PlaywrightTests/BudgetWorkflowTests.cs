@@ -739,6 +739,9 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await page.Locator("fluent-button[aria-label='Next month']").FocusAsync();
         await page.Keyboard.PressAsync("Enter");
         await page.Locator(".month-today").WaitForAsync();
+        // The quiet text action still has to keep the documented phone target.
+        (await page.Locator(".month-today").BoundingBoxAsync()).ShouldNotBeNull()
+            .Height.ShouldBeGreaterThanOrEqualTo(width < 1000 ? 40 : 32);
         await page.Locator(".month-today").FocusAsync();
         await page.Keyboard.PressAsync("Enter");
         await page.WaitForFunctionAsync("""
