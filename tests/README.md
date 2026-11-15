@@ -736,7 +736,13 @@ and the key event's DOM path are only exercised by a real browser. Wait for the
 editor's heading focus before typing, and let Tab commit the field before pressing
 Escape: a machine-speed escape can outrun the debounced binding that the guard
 reads, while a person's hands never do. The draft-guard assertion reports the
-editor, dialog, and focus state when the prompt never opens.
+editor, dialog, and focus state when the prompt never opens. Fluent also attaches a
+text field's immediate listener from its own interop call after the editor renders,
+so a fill that lands first never reaches .NET and the save writes nothing: wait for
+the field to report that listener (Fluent marks the `fluent-text-input` host) before
+typing, as `PlanCatalogTests.FillAsync` does. Fluent's `current-value` mirror and
+the shadow control's own `value` update from the browser alone, so neither proves
+the value arrived.
 
 Both Aspire and Playwright tests use `YHAB.Testing.TestAppHost`, a small shared
 library that removes container volume/bind mounts and enforces session lifetimes

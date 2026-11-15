@@ -80,7 +80,7 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             await row.Locator(".category-link").ClickAsync();
             await page.Locator(".category-details h3").Filter(new() { HasText = "Target" }).WaitForAsync();
             await page.Locator(".category-details fluent-checkbox").First.ClickAsync();
-            await Input(page, "Target amount").FillAsync("250");
+            await FillAsync(page, "Target amount", "250");
             await Input(page, "Target amount").PressAsync("Tab");
             await Button(page, "Save category").ClickAsync();
             await row.Locator(".target-caption").Filter(new() { HasText = "$250.00 more needed" }).WaitForAsync();
@@ -280,7 +280,7 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             await RovingTabStopsAsync();
 
             await Name(categories[2].Id).PressAsync("F2");
-            await Input(page, "Category name").FillAsync("Keyboard renamed");
+            await FillAsync(page, "Category name", "Keyboard renamed");
             await Button(page, "Save").ClickAsync();
             var renamed = Row(page, categories[2].Id.ToString()).GetByRole(AriaRole.Button, new() { Name = "Keyboard renamed", Exact = true });
             await renamed.WaitForAsync();
@@ -288,7 +288,7 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             await RovingTabStopsAsync();
 
             await Row(page, categories[2].Id.ToString()).GetByRole(AriaRole.Button, new() { Name = "Rename Keyboard renamed", Exact = true }).ClickAsync();
-            await Input(page, "Category name").FillAsync("Pointer renamed");
+            await FillAsync(page, "Category name", "Pointer renamed");
             await Button(page, "Save").ClickAsync();
             renamed = Row(page, categories[2].Id.ToString()).GetByRole(AriaRole.Button, new() { Name = "Pointer renamed", Exact = true });
             await renamed.WaitForAsync();
@@ -484,7 +484,7 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             var path = new Uri(page.Url).AbsolutePath;
             // Create an empty group after the starter groups; the previous group is then one ArrowRight away.
             await Button(page, "Category group").ClickAsync();
-            await Input(page, "New group name").FillAsync("Later");
+            await FillAsync(page, "New group name", "Later");
             await Button(page, "Save").ClickAsync();
             await page.WaitForFunctionAsync("() => [...document.querySelectorAll('.group-row')].some(row => row.textContent.includes('Later'))");
             var plan = await ReadAsync(page, path);
@@ -780,16 +780,16 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
     private static async Task CreateAndRenameAsync(IPage page)
     {
         await Button(page, "Category group").ClickAsync();
-        await Input(page, "New group name").FillAsync("Future");
+        await FillAsync(page, "New group name", "Future");
         await Button(page, "Save").ClickAsync();
         await page.GetByRole(AriaRole.Button, new() { Name = "Rename Future", Exact = true }).ClickAsync();
-        await Input(page, "Group name").FillAsync("Dreams");
+        await FillAsync(page, "Group name", "Dreams");
         await Input(page, "Group name").PressAsync("Enter");
         await page.GetByRole(AriaRole.Button, new() { Name = "Add category to Dreams", Exact = true }).ClickAsync();
-        await Input(page, "New category name").FillAsync("Holiday");
+        await FillAsync(page, "New category name", "Holiday");
         await Button(page, "Save").ClickAsync();
         await page.GetByRole(AriaRole.Button, new() { Name = "Rename Holiday", Exact = true }).ClickAsync();
-        await Input(page, "Category name").FillAsync("Adventure fund");
+        await FillAsync(page, "Category name", "Adventure fund");
         await Input(page, "Category name").PressAsync("Enter");
         await page.GetByRole(AriaRole.Button, new() { Name = "Adventure fund", Exact = true }).WaitForAsync();
     }
@@ -857,4 +857,18 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
         .Filter(new() { Has = page.GetByText(label, new() { Exact = true }) }).Locator("input");
     private static ILocator Button(IPage page, string label) => page.Locator("fluent-button")
         .Filter(new() { HasTextRegex = new Regex($"^\\s*{Regex.Escape(label)}\\s*$", RegexOptions.None, TimeSpan.FromSeconds(1)) });
+
+    // Fluent attaches a field's immediate listener from its own interop call after the editor
+    // renders, so a fill that lands first never reaches .NET and the following save writes
+    // nothing. Wait for that wiring before typing: detaching it and typing proves the field
+    // drops the text, and only the wired field delivers it.
+    private static async Task FillAsync(IPage page, string label, string value)
+    {
+        var field = page.Locator("fluent-field").Filter(new() { Has = page.GetByText(label, new() { Exact = true }) });
+        var host = field.Locator("fluent-text-input");
+        await host.WaitForAsync();
+        var id = (await host.GetAttributeAsync("id")).ShouldNotBeNull();
+        await page.WaitForFunctionAsync("id => document.getElementById(id)?.__immediate != null", id);
+        await field.Locator("input").FillAsync(value);
+    }
 }
