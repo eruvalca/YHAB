@@ -251,7 +251,12 @@ and appears only while another month is open. The page retains normal document
 scrolling; keyboard focus and editor headings stay below the summary. On desktop, **Hide menu / Show menu** in the site header frees space
 for the plan and remembers your preference across navigation and reloads. Without
 a saved preference, the global menu is collapsed within a plan, leaving a single
-compact plan sidebar. On smaller screens, sticky **Plan**, **Transactions**,
+compact plan sidebar. At desktop width that sidebar stays pinned beside the
+scrolling plan content while the window leaves room for both columns, so the
+**ACCOUNTS** list and its balances stay in view; a plan with more accounts than
+fit in the viewport scrolls the sidebar on its own. When an expanded site menu
+leaves too little width and the content wraps below, the sidebar stays in the
+page flow instead. On smaller screens, sticky **Plan**, **Transactions**,
 **Reflect**, and **Settings** tabs keep page navigation reachable while scrolling
 and identify the current page; **Transactions** stays current while an individual
 account register is open. Open **Plan & accounts** for accounts; a new plan's

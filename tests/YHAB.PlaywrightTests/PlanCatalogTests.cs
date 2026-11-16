@@ -192,6 +192,8 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             (sticky.Y + sticky.Height).ShouldBeGreaterThan(0);
             var summary = (await page.Locator(".budget-summary").BoundingBoxAsync()).ShouldNotBeNull();
             summary.Y.ShouldBeGreaterThanOrEqualTo(sticky.Y + sticky.Height - 1);
+            // Only the desktop layout pins the accounts sidebar; a phone keeps it in the drawer.
+            (await page.EvaluateAsync<string>("getComputedStyle(document.querySelector('.plan-sidebar')).position")).ShouldBe("static");
 
             await tabs.GetByRole(AriaRole.Link, new() { Name = "Reflect", Exact = true }).ClickAsync();
             await page.GetByRole(AriaRole.Heading, new() { Name = "Reflect", Exact = true }).WaitForAsync();
@@ -204,6 +206,183 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
         finally
         {
             await BrowserArtifacts.CaptureAsync(page, context, Path.Combine(AppContext.BaseDirectory, "TestResults", $"plan-page-tabs-{width}"), output.WriteLine);
+        }
+    }
+
+    [Fact]
+    [Trait("Category", "BrowserSmoke")]
+    public async Task DesktopPlanSidebarStaysInViewWhileScrollingAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(4));
+        await using var builder = await TestAppHost.CreateAsync(timeout.Token);
+        await using var app = await builder.BuildAsync(timeout.Token);
+        await app.StartAsync(timeout.Token);
+        await app.ResourceNotifications.WaitForResourceHealthyAsync("yhab", timeout.Token);
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync();
+        await using var context = await browser.NewContextAsync(new()
+        {
+            BaseURL = app.GetEndpoint("yhab", "https").ToString(),
+            IgnoreHTTPSErrors = true,
+            ViewportSize = new() { Width = 1440, Height = 720 },
+        });
+        await context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = true });
+        var page = await context.NewPageAsync();
+        var errors = new ConcurrentQueue<string>();
+        page.PageError += (_, error) => errors.Enqueue(error);
+        try
+        {
+            await BudgetWorkflowTests.RegisterAndLoginAsync(page);
+            await page.GotoAsync("/plans");
+            await page.GetByLabel("Plan name", new() { Exact = true }).FillAsync("Sidebar reference");
+            await page.GetByRole(AriaRole.Button, new() { Name = "Create your plan" }).ClickAsync();
+            await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+            var path = new Uri(page.Url).AbsolutePath;
+            await SeedAccountsAsync(page, path, 14);
+            await page.ReloadAsync();
+            await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+
+            var sidebar = page.Locator(".plan-sidebar");
+            (await sidebar.IsVisibleAsync()).ShouldBeTrue();
+            (await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth")).ShouldBeTrue();
+
+            // Account rows are the sidebar's variable-height part; fourteen need more than a
+            // viewport, so the sidebar must scroll on its own instead of growing the page.
+            (await page.EvaluateAsync<bool>("() => document.querySelector('.plan-sidebar').scrollHeight > document.querySelector('.plan-sidebar').clientHeight + 1")).ShouldBeTrue();
+
+            // Stay clear of the plan shell's end so the sidebar can reach the viewport top.
+            var measurements = await page.EvaluateAsync<double[]>("""
+                () => {
+                    const shell = document.querySelector('.plan-shell');
+                    const sidebar = document.querySelector('.plan-sidebar');
+                    const box = shell.getBoundingClientRect();
+                    return [box.top + scrollY, box.bottom + scrollY, sidebar.getBoundingClientRect().height,
+                        document.documentElement.scrollHeight - innerHeight];
+                }
+                """);
+            var (shellTop, shellBottom, sidebarHeight, maxScroll) = (measurements[0], measurements[1], measurements[2], measurements[3]);
+            var target = Math.Min(shellTop + 200, Math.Min(shellBottom - sidebarHeight - 8, maxScroll));
+            target.ShouldBeGreaterThan(shellTop);
+            await page.EvaluateAsync("top => window.scrollTo(0, top)", target);
+            await page.WaitForFunctionAsync("top => window.scrollY >= top - 1", target);
+
+            var pinned = (await sidebar.BoundingBoxAsync()).ShouldNotBeNull();
+            pinned.Y.ShouldBeInRange(-1, 1);
+            pinned.Height.ShouldBeLessThanOrEqualTo(721);
+            foreach (var item in new[] { page.Locator(".account-nav-heading"), sidebar.Locator(".account-nav-link").First })
+            {
+                var box = (await item.BoundingBoxAsync()).ShouldNotBeNull();
+                box.Y.ShouldBeGreaterThanOrEqualTo(pinned.Y - 1);
+                (box.Y + box.Height).ShouldBeLessThanOrEqualTo(pinned.Y + pinned.Height + 1);
+            }
+
+            // Keyboard focus pulls the account into the sidebar's own scrollport rather than
+            // leaving it behind a sticky edge the way the shared summary helper prevents.
+            await page.EvaluateAsync("() => { document.querySelector('.plan-sidebar').scrollTop = 0; }");
+            var lastAccount = sidebar.Locator(".account-nav-link").Last;
+            await lastAccount.FocusAsync();
+            var focused = (await lastAccount.BoundingBoxAsync()).ShouldNotBeNull();
+            focused.Y.ShouldBeGreaterThanOrEqualTo(pinned.Y - 1);
+            (focused.Y + focused.Height).ShouldBeLessThanOrEqualTo(pinned.Y + pinned.Height + 1);
+            (await page.EvaluateAsync<bool>("() => document.activeElement?.classList.contains('account-nav-link') === true")).ShouldBeTrue();
+            (await page.EvaluateAsync<bool>("() => document.querySelector('.plan-sidebar').scrollTop > 0")).ShouldBeTrue();
+
+            // The sticky summary keeps its own top offset above the scrolling content.
+            (await page.Locator(".budget-summary").BoundingBoxAsync()).ShouldNotBeNull().Y.ShouldBeInRange(-1, 1);
+            (await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth")).ShouldBeTrue();
+            errors.ShouldBeEmpty();
+        }
+        finally
+        {
+            await BrowserArtifacts.CaptureAsync(page, context, Path.Combine(AppContext.BaseDirectory, "TestResults", "plan-sidebar-desktop"), output.WriteLine);
+        }
+    }
+
+    [Fact]
+    [Trait("Category", "BrowserSmoke")]
+    public async Task ExpandedMenuNearTheBreakpointKeepsTheWrappedSidebarInFlowAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(4));
+        await using var builder = await TestAppHost.CreateAsync(timeout.Token);
+        await using var app = await builder.BuildAsync(timeout.Token);
+        await app.StartAsync(timeout.Token);
+        await app.ResourceNotifications.WaitForResourceHealthyAsync("yhab", timeout.Token);
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync();
+        await using var context = await browser.NewContextAsync(new()
+        {
+            BaseURL = app.GetEndpoint("yhab", "https").ToString(),
+            IgnoreHTTPSErrors = true,
+            ViewportSize = new() { Width = 1024, Height = 640 },
+        });
+        await context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = true });
+        var page = await context.NewPageAsync();
+        var errors = new ConcurrentQueue<string>();
+        page.PageError += (_, error) => errors.Enqueue(error);
+        try
+        {
+            await BudgetWorkflowTests.RegisterAndLoginAsync(page);
+            await page.GotoAsync("/plans");
+            await page.GetByLabel("Plan name", new() { Exact = true }).FillAsync("Wrapped sidebar");
+            await page.GetByRole(AriaRole.Button, new() { Name = "Create your plan" }).ClickAsync();
+            await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+            var path = new Uri(page.Url).AbsolutePath;
+            await SeedAccountsAsync(page, path, 14);
+            await page.ReloadAsync();
+            await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+
+            // A plan route hides the global menu unless a preference says otherwise; show it so
+            // 1024 px leaves too little width for the sidebar and content to share a row.
+            (await page.Locator("#desktop-navigation").IsVisibleAsync()).ShouldBeFalse();
+            await page.Locator("[data-navigation-toggle]").ClickAsync();
+            await page.WaitForFunctionAsync("() => document.querySelector('#desktop-navigation')?.dataset.collapsed === 'false'");
+            (await page.Locator("#desktop-navigation").IsVisibleAsync()).ShouldBeTrue();
+
+            var sidebar = page.Locator(".plan-sidebar");
+            var sidebarBox = (await sidebar.BoundingBoxAsync()).ShouldNotBeNull();
+            var contentBox = (await page.Locator(".plan-content").BoundingBoxAsync()).ShouldNotBeNull();
+            contentBox.Y.ShouldBeGreaterThanOrEqualTo(sidebarBox.Y + sidebarBox.Height - 1);
+
+            // A wrapped sidebar stays in the flow instead of pinning over the content.
+            (await page.EvaluateAsync<string>("getComputedStyle(document.querySelector('.plan-sidebar')).position")).ShouldBe("static");
+
+            // Put the first category row below the sticky summary but inside the left band a
+            // pinned sidebar would cover, then prove the row itself receives the click.
+            var target = await page.EvaluateAsync<double>("""
+                () => {
+                    const link = document.querySelector('.category-list [data-category-id] .category-link');
+                    const summary = document.querySelector('.budget-summary');
+                    const clearance = Math.min(Math.max((summary?.getBoundingClientRect().height ?? 0) + 24, 400), 560);
+                    const max = document.documentElement.scrollHeight - innerHeight;
+                    return Math.min(Math.max(0, link.getBoundingClientRect().top + scrollY - clearance), max);
+                }
+                """);
+            await page.EvaluateAsync("top => window.scrollTo(0, top)", target);
+            await page.WaitForFunctionAsync("top => Math.abs(window.scrollY - top) < 2", target);
+            (await page.EvaluateAsync<string>("""
+                () => {
+                    const link = document.querySelector('.category-list [data-category-id] .category-link');
+                    const box = link.getBoundingClientRect();
+                    const element = document.elementFromPoint(box.left + Math.min(24, box.width / 2), box.top + box.height / 2);
+                    return element?.closest('.plan-sidebar') ? 'sidebar' : element?.closest('.category-link') ? 'link' : element?.tagName ?? 'none';
+                }
+                """)).ShouldBe("link");
+            var point = await page.EvaluateAsync<double[]>("""
+                () => {
+                    const box = document.querySelector('.category-list [data-category-id] .category-link').getBoundingClientRect();
+                    return [box.left + Math.min(24, box.width / 2), box.top + box.height / 2];
+                }
+                """);
+            await page.Mouse.ClickAsync((float)point[0], (float)point[1]);
+            await page.Locator(".category-details h3").Filter(new() { HasText = "Target" }).WaitForAsync();
+            (await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth")).ShouldBeTrue();
+            errors.ShouldBeEmpty();
+        }
+        finally
+        {
+            await BrowserArtifacts.CaptureAsync(page, context, Path.Combine(AppContext.BaseDirectory, "TestResults", "plan-sidebar-wrapped"), output.WriteLine);
         }
     }
 
@@ -861,6 +1040,27 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             (await page.GetByRole(AriaRole.Link, new() { Name = "Plan your money", Exact = true }).IsVisibleAsync()).ShouldBeTrue();
             await page.Locator(".plan-drawer > summary").ClickAsync();
         }
+    }
+
+    private static async Task SeedAccountsAsync(IPage page, string path, int count)
+    {
+        var plan = await ReadAsync(page, path);
+        await using var response = await page.APIRequest.GetAsync("/api/plans/token");
+        var token = (await response.JsonAsync()).ShouldNotBeNull().GetProperty("token").GetString()!;
+        var version = plan.Version;
+        for (var index = 1; index <= count; index++)
+        {
+            var account = new AccountData(Guid.Empty, $"Everyday account {index}", AccountKind.Checking, 100 * index, plan.Today, false, string.Empty);
+            await using var saved = await page.APIRequest.PostAsync($"/api{path}/accounts", new()
+            {
+                Headers = new Dictionary<string, string>(StringComparer.Ordinal) { ["X-CSRF-TOKEN"] = token, ["Content-Type"] = "application/json" },
+                Data = JsonSerializer.Serialize(new SaveAccount(version, account), JsonSerializerOptions.Web),
+            });
+            saved.Status.ShouldBe(200, await saved.TextAsync());
+            version = (await saved.JsonAsync()).ShouldNotBeNull().GetProperty("version").GetInt64();
+        }
+
+        (await ReadAsync(page, path)).Accounts.Count.ShouldBe(count);
     }
 
     private static async Task SeedTargetsAsync(IPage page, string path)
