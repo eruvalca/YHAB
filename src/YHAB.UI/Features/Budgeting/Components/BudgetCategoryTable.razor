@@ -55,7 +55,7 @@
                                                        Moving="@(_movingCategory == context)" OnToggleMove="() => ToggleCategoryMoveAsync(context)"
                                                        Busy="Busy" Selected="@(SelectedCategoryId == context)" Draft="Draft(context)"
                                                        InlineEditor="InlineEditor" OnCloseEditor="OnCloseEditor" OnEditorCommand="OnEditorCommand" FocusEditor="FocusEditor" EditorEpoch="EditorEpoch"
-                                                       OnEditorRegistered="OnEditorRegistered"
+                                                       OnEditorRegistered="OnEditorRegistered" EditorDraft="@(SelectedCategoryId == context ? EditorDraft(row) : null)"
                                                        RestoreFocus="@(_restoreFocusCategory == context)" OnFocusRestored="ClearFocusCategory" />
                                 }
                             </ItemTemplate>

@@ -443,6 +443,35 @@ public sealed class BudgetCatalogTests
     }
 
     [Fact]
+    public async Task ReorderingKeepsTheInlineDetailsDraftAsync()
+    {
+        await using var context = CreateContext();
+        context.JSInterop.SetupModule(ModulePath).Setup<bool>("inlineCategoryDetails").SetResult(true);
+        var plan = Plan();
+        var (groceries, utilities) = (plan.Categories[0], plan.Categories[1]);
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, command => { }));
+
+        await component.Find($"[data-category-id='{groceries.Id}'] .category-link").ClickAsync();
+        await component.Find(".category-inline-editor .amount-input fluent-text-input").ChangeAsync(new() { Value = "250" });
+        var draft = component.FindComponent<CategoryEditor>().Instance;
+
+        // A reorder recreates the row and its editor. The table-owned draft restores the typed
+        // amount instead of the saved record.
+        var moved = plan with { Version = plan.Version + 1, Categories = [groceries with { SortOrder = 5 }, utilities] };
+        component.Render(p => p.Add(item => item.Plan, moved).Add(item => item.OnCommand, command => { }));
+
+        component.FindComponent<CategoryEditor>().Instance.ShouldNotBeSameAs(draft);
+        component.Find(".category-inline-editor .editor-surface h2").TextContent.ShouldBe(groceries.Name);
+        component.Find(".category-inline-editor .amount-input fluent-text-input").GetAttribute("value").ShouldBe("250");
+
+        // A rejected move refreshes the original order again; the draft still survives.
+        var rolledBack = moved with { Version = moved.Version + 1, Categories = plan.Categories };
+        component.Render(p => p.Add(item => item.Plan, rolledBack).Add(item => item.OnCommand, command => { }));
+
+        component.Find(".category-inline-editor .amount-input fluent-text-input").GetAttribute("value").ShouldBe("250");
+    }
+
+    [Fact]
     public async Task AssignmentFieldKeepsDecimalEntryWithoutASignToggleAsync()
     {
         await using var context = CreateContext();

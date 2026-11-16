@@ -59,6 +59,10 @@ public sealed partial class BudgetCategoryTable
     private Guid? _movingCategory;
     private Guid? _selectedCategory;
     private Guid? _restoreFocusCategory;
+    private CategoryEditorDraft? _editorDraft;
+    private Guid? _editorDraftCategory;
+    private DateOnly _editorDraftMonth;
+    private long _editorDraftEpoch = -1;
     private Guid? _newCategoryGroup;
     private bool _newGroup;
     private long _version = -1;
@@ -125,6 +129,8 @@ public sealed partial class BudgetCategoryTable
             _restoreFocusCategory = SelectedCategoryId is null ? _selectedCategory : null;
             _movingCategory = null;
             _selectedCategory = SelectedCategoryId;
+            // A different row, or no row, owns the details editor now; the old draft is done.
+            _editorDraft = null;
         }
         if (_version != Plan.Version)
         {
@@ -142,6 +148,24 @@ public sealed partial class BudgetCategoryTable
     {
         if (!_drafts.TryGetValue(category, out var draft)) { _drafts[category] = draft = new(); }
         return draft;
+    }
+
+    // The details editor can be recreated by a reorder before an explicit close, so its draft lives
+    // here too, outside the sortable wrappers. It is dropped when the selection changes, the month
+    // changes, or a settled save remounts the editor against the refreshed record.
+    private CategoryEditorDraft EditorDraft(CategoryMonth row)
+    {
+        if (_editorDraft is null
+            || _editorDraftCategory != row.Category.Id
+            || _editorDraftMonth != Budget.Month
+            || _editorDraftEpoch != EditorEpoch)
+        {
+            _editorDraft = new();
+            _editorDraftCategory = row.Category.Id;
+            _editorDraftMonth = Budget.Month;
+            _editorDraftEpoch = EditorEpoch;
+        }
+        return _editorDraft;
     }
 
     // Plan order is authoritative because the budget month is recalculated after a plan change arrives.

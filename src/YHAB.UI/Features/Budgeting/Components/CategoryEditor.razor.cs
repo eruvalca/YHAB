@@ -4,7 +4,7 @@ using YHAB.SharedKernel.Budgeting;
 
 namespace YHAB.UI.Features.Budgeting.Components;
 
-public sealed partial class CategoryEditor
+public sealed partial class CategoryEditor : IDisposable
 {
     [Parameter, EditorRequired] public PlanSnapshot Plan { get; set; } = default!;
     [Parameter] public CategoryData? Category { get; set; }
@@ -14,6 +14,9 @@ public sealed partial class CategoryEditor
     [Parameter, EditorRequired] public EventCallback OnClose { get; set; }
     // An inline row control that already owns focus selects without moving it into the editor.
     [Parameter] public bool FocusOnOpen { get; set; } = true;
+    // The table keeps an inline editor's draft outside the sortable rows; the side pane, which a
+    // reorder does not recreate, leaves this null.
+    [Parameter] public CategoryEditorDraft? Draft { get; set; }
     [Parameter] public bool Busy { get; set; }
     private static readonly TargetKind[] _kinds = Enum.GetValues<TargetKind>();
     private static readonly TargetCadence[] _cadences = Enum.GetValues<TargetCadence>();
@@ -50,6 +53,11 @@ public sealed partial class CategoryEditor
     protected override void OnInitialized()
     {
         _baselineMonth = Month;
+        if (Draft is { Initialized: true } draft)
+        {
+            Restore(draft);
+            return;
+        }
         _name = Category?.Name ?? "";
         _notes = Category?.Notes ?? "";
         _group = Category?.GroupId ?? DefaultGroup;
@@ -57,6 +65,56 @@ public sealed partial class CategoryEditor
         _hidden = Category?.Hidden ?? false;
         InitializeTarget();
         _initial = Signature();
+    }
+    // A reorder recreated the row and this editor, so the typed values come back instead of the
+    // saved record. OnParametersSet still rebases the baseline on the refreshed record.
+    private void Restore(CategoryEditorDraft draft)
+    {
+        _name = draft.Name;
+        _notes = draft.Notes;
+        _group = draft.GroupId;
+        _groupEdited = draft.GroupEdited;
+        _nameEdited = draft.NameEdited;
+        _notesEdited = draft.NotesEdited;
+        _hiddenEdited = draft.HiddenEdited;
+        _order = draft.SortOrder;
+        _hidden = draft.Hidden;
+        _hasTarget = draft.HasTarget;
+        _kind = draft.Kind;
+        _cadence = draft.Cadence;
+        _amount = draft.Amount;
+        _due = draft.DueDate;
+        _start = draft.StartMonth;
+        _repeat = draft.RepeatEveryMonths;
+        _weekday = draft.Weekday;
+        _replacement = draft.Replacement;
+        _initial = Signature();
+    }
+    // The editor can be recreated for a reorder at any time, before an explicit close, so every
+    // disposal hands the live draft back to the owner outside the sortable rows.
+    public void Dispose()
+    {
+        if (Draft is not { } draft) { return; }
+        draft.Initialized = true;
+        draft.Name = _name;
+        draft.Notes = _notes;
+        draft.GroupId = _group;
+        draft.GroupEdited = _groupEdited;
+        draft.NameEdited = _nameEdited;
+        draft.NotesEdited = _notesEdited;
+        draft.HiddenEdited = _hiddenEdited;
+        draft.SortOrder = _order;
+        draft.Hidden = _hidden;
+        draft.HasTarget = _hasTarget;
+        draft.Kind = _kind;
+        draft.Cadence = _cadence;
+        draft.Amount = _amount;
+        draft.DueDate = _due;
+        draft.StartMonth = _start;
+        draft.RepeatEveryMonths = _repeat;
+        draft.Weekday = _weekday;
+        draft.Replacement = _replacement;
+        draft.AmountText = _amountInput?.CurrentText() ?? draft.AmountText;
     }
     private string Signature() => DraftSignature.Of(
         _name,

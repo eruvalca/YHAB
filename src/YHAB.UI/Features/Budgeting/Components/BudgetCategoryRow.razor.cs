@@ -34,6 +34,7 @@ public sealed partial class BudgetCategoryRow
     /// </summary>
     [Parameter] public bool RestoreFocus { get; set; }
     [Parameter] public Action<CategoryEditor?>? OnEditorRegistered { get; set; }
+    [Parameter] public CategoryEditorDraft? EditorDraft { get; set; }
     [Parameter] public EventCallback OnFocusRestored { get; set; }
     private CategoryEditor? _editor;
     private CategoryEditor? _reportedEditor;
