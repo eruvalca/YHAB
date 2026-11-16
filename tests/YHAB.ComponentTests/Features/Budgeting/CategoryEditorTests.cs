@@ -15,9 +15,9 @@ public sealed class CategoryEditorTests
     private static readonly DateOnly _today = new(2026, 10, 3);
 
     [Fact]
-    public void DetailsShowsTheCategoryNameAndNotes()
+    public async Task DetailsShowsTheCategoryNameAndNotesAsync()
     {
-        using var context = CreateContext();
+        await using var context = CreateContext();
         var component = Render(context, CreatePlan(CreateCategory("Groceries", "Weekly shop")));
 
         NameField(component).GetAttribute("value").ShouldBe("Groceries");
@@ -25,9 +25,9 @@ public sealed class CategoryEditorTests
     }
 
     [Fact]
-    public void EmptyDetailsShowsEmptyFieldsWithFriendlyPlaceholders()
+    public async Task EmptyDetailsShowsEmptyFieldsWithFriendlyPlaceholdersAsync()
     {
-        using var context = CreateContext();
+        await using var context = CreateContext();
         var component = Render(context, CreatePlan(CreateCategory("", "")));
 
         NameField(component).GetAttribute("value").ShouldBeNullOrEmpty();
