@@ -641,7 +641,11 @@ do not establish passkey ceremonies or every account workflow.
 desktop drag-and-drop, phone move controls, and target editing across reloads.
 At 1440 × 960 it checks that at least ten target-bearing categories fit in the
 viewport, with category rows between 36 and 64 pixels tall. At phone width it
-checks the collapsed plan navigation and document overflow. At both 320px and
+checks the collapsed plan navigation and document overflow. At desktop width with
+fourteen accounts it scrolls the plan content and verifies the sidebar stays
+pinned to the viewport top, keeps its accounts heading and balances visible,
+scrolls its own longer account list, and brings a keyboard-focused account into
+that scrollport without covering the sticky budget summary. At both 320px and
 390px it also scrolls to the document bottom, verifies that sticky plan-page tabs
 remain reachable with 40px targets and without horizontal overflow or covering the
 sticky budget summary, then navigates to Reflect with the active-page state

@@ -4,7 +4,22 @@
 .plan-content { flex: 1 1 35rem; min-width: 0; }
 .plan-drawer { margin: 0; }
 .plan-drawer > summary { padding: var(--spacingVerticalS) var(--spacingHorizontalS); font-weight: var(--fontWeightSemibold); }
+/* At desktop width the accounts sidebar rides along with the document, so the
+   account totals stay beside the categories being assigned. It caps at the
+   viewport and scrolls on its own when a plan has more accounts than fit.
+   align-self is required for sticky inside the wrapping stack; stretching the
+   item would make it as tall as the category list and leave it nothing to
+   travel. The top offset matches the sticky summary, and the z-index clears
+   Fluent's 85 layout areas while staying under the shell's 1000 overlays. */
 @media (min-width: 62.5rem) {
+    .plan-sidebar {
+        position: sticky;
+        top: var(--plan-page-tabs-height, 0px);
+        z-index: 90;
+        align-self: flex-start;
+        max-height: calc(100dvh - var(--plan-page-tabs-height, 0px));
+        overflow-y: auto;
+    }
     .plan-drawer > summary { display: none; }
     .plan-drawer:not([open]) ::deep > .plan-navigation { display: block; }
     .plan-drawer::details-content { content-visibility: visible; }
