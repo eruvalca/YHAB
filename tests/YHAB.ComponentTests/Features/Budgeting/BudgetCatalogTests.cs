@@ -181,6 +181,33 @@ public sealed class BudgetCatalogTests
     }
 
     [Fact]
+    public async Task InlineRowActionKeepsAnOpenMoveDraftAsync()
+    {
+        await using var context = CreateContext();
+        var basePlan = Plan();
+        var plan = basePlan with { Accounts = [new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, basePlan.Today, false, "")] };
+        var (groceries, utilities) = (plan.Categories[0], plan.Categories[1]);
+        var commands = new List<PlanCommand>();
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, commands.Add));
+
+        await component.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Move money", StringComparison.Ordinal)).ClickAsync();
+        await component.Find(".editor-surface .amount-input fluent-text-input").ChangeAsync(new() { Value = "10" });
+
+        // Renaming a row still opens its inline editor, but it cannot unmount the dirty move draft.
+        await component.Find($"button[aria-label='Rename {utilities.Name}']").ClickAsync();
+        component.Find(".inline-name-form").ShouldNotBeNull();
+        component.Find(".editor-surface h2").TextContent.ShouldBe("Move money");
+        component.FindAll(".category-details").ShouldBeEmpty();
+        component.Find(".editor-surface .amount-input fluent-text-input").GetAttribute("value").ShouldBe("10");
+
+        // An assignment still saves and likewise leaves the move draft in place.
+        await component.Find($"[data-category-id='{groceries.Id}'] fluent-text-input").ChangeAsync(new() { Value = "25" });
+        commands.Single().ShouldBeOfType<AssignMoney>().CategoryId.ShouldBe(groceries.Id);
+        component.Find(".editor-surface h2").TextContent.ShouldBe("Move money");
+        component.FindAll(".category-details").ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task AvailablePillAndReorderDoNotSelectTheCategoryAsync()
     {
         await using var context = CreateContext();

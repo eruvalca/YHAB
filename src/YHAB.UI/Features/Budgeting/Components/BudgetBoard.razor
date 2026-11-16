@@ -75,7 +75,7 @@
     }
     @if (_move)
     {
-        <MoveMoneyEditor Plan="Plan" Month="_budget.Month" OnCommand="OnCommand" OnClose="CloseEditors" Busy="IsBusy" />
+        <MoveMoneyEditor @ref="_moveEditor" Plan="Plan" Month="_budget.Month" OnCommand="OnCommand" OnClose="CloseEditors" Busy="IsBusy" />
     }
     @if (_transaction)
     {

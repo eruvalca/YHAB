@@ -67,6 +67,7 @@ public sealed partial class BudgetBoard
     private bool _focusMonthStep;
     private BudgetCategoryTable? _categoryTable;
     private CategoryEditor? _categoryEditor;
+    private MoveMoneyEditor? _moveEditor;
     private CategoryData? _category;
     // Inline row controls keep focus, so only a selection that owns focus moves it into the editor.
     private bool _focusCategory = true;
@@ -281,14 +282,21 @@ public sealed partial class BudgetBoard
     private Task AddCategoryAsync() { _help = false; _categoryTable?.BeginAddCategory(); return Task.CompletedTask; }
     private void EditCategory(CategorySelection selection)
     {
-        // An inline row action must not discard another category's unsaved draft; the workspace
-        // convention is to finish or close the open editor first. The action that triggered the
-        // selection still runs. With no editor open there is nothing to protect, and the removed
-        // editor's reference outlives it because Blazor does not clear an @ref on removal.
-        if (!selection.FocusEditor && _category is not null && _categoryEditor is { IsDirty: true } && _category.Id != selection.Category.Id) { return; }
+        // An inline row action must not discard another draft, whether that is a category's unsaved
+        // edits or an open move-money draft; the workspace convention is to finish or close the open
+        // editor first. The action that triggered the selection still runs. A closed editor's
+        // reference outlives it because Blazor does not clear an @ref on removal, so the open-editor
+        // flags gate the references.
+        if (!selection.FocusEditor
+            && (_move && _moveEditor is { IsDirty: true }
+                || _category is not null && _categoryEditor is { IsDirty: true } && _category.Id != selection.Category.Id))
+        {
+            return;
+        }
         _move = false;
+        _moveEditor = null;
         _category = selection.Category;
         _focusCategory = selection.FocusEditor;
     }
-    private void CloseEditors() { _move = false; _category = null; _categoryEditor = null; CloseTransaction(); }
+    private void CloseEditors() { _move = false; _moveEditor = null; _category = null; _categoryEditor = null; CloseTransaction(); }
 }
