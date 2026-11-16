@@ -104,14 +104,17 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             // A row click on the already open category still hands focus to the details heading.
             await row.Locator(".category-link").ClickAsync();
             await page.WaitForFunctionAsync("() => document.activeElement?.matches('.category-details h2') === true");
-            await page.Locator(".category-details fluent-button[aria-label='Close editor']").ClickAsync();
-            await page.Locator(".category-details").WaitForAsync(new() { State = WaitForSelectorState.Detached });
-            await row.Locator(".category-link").ClickAsync();
+            // Selecting again from an inline control suppresses that focus, and the editor's own save
+            // then remounts it, which must still return focus to the heading.
+            await row.GetByRole(AriaRole.Button, new() { Name = "Rename Adventure fund", Exact = true }).ClickAsync();
+            await Button(page, "Cancel").ClickAsync();
+            await page.Locator(".inline-name-form").WaitForAsync(new() { State = WaitForSelectorState.Detached });
             await page.Locator(".category-details h3").Filter(new() { HasText = "Target" }).WaitForAsync();
             await page.Locator(".category-details fluent-checkbox").First.ClickAsync();
             await FillAsync(page, "Target amount", "250");
             await Input(page, "Target amount").PressAsync("Tab");
             await Button(page, "Save category").ClickAsync();
+            await page.WaitForFunctionAsync("() => document.activeElement?.matches('.category-details h2') === true");
             await row.Locator(".target-caption").Filter(new() { HasText = "$250.00 more needed" }).WaitForAsync();
             await page.ScreenshotAsync(new() { Path = Path.Combine(AppContext.BaseDirectory, "TestResults", $"plan-target-{width}.png") });
             await page.ReloadAsync();

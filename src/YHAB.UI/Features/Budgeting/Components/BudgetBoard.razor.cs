@@ -150,7 +150,13 @@ public sealed partial class BudgetBoard
                     var settled = _transactionCommand is not null
                         && (ReferenceEquals(AppliedCommand, _transactionCommand) || ReferenceEquals(RecoveredCommand, _transactionCommand));
                     if (settled) { CloseTransaction(); }
-                    if (ReferenceEquals(AppliedCommand, _editorCommand) && AppliedCommand is SaveCategory or RemoveCategory) { _editorEpoch++; }
+                    if (ReferenceEquals(AppliedCommand, _editorCommand) && AppliedCommand is SaveCategory or RemoveCategory)
+                    {
+                        _editorEpoch++;
+                        // The save remounts the editor, so its replacement surface takes focus back from
+                        // an inline selection that had deliberately left focus in the row.
+                        _focusCategory = true;
+                    }
                 }
                 _category = Plan.Categories.SingleOrDefault(item => item.Id == _category?.Id);
             }
