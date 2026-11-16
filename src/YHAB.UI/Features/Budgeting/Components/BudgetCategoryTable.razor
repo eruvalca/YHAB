@@ -53,7 +53,9 @@
                                 {
                                     <BudgetCategoryRow @key="context" Plan="Plan" Budget="Budget" Row="row" Month="Budget.Month" OnCommand="OnCommand" OnSelect="OnSelect"
                                                        Moving="@(_movingCategory == context)" OnToggleMove="() => ToggleCategoryMove(context)"
-                                                       Busy="Busy" Selected="@(SelectedCategoryId == context)" Draft="Draft(context)" />
+                                                       Busy="Busy" Selected="@(SelectedCategoryId == context)" Draft="Draft(context)"
+                                                       InlineEditor="InlineEditor" OnCloseEditor="OnCloseEditor" OnEditorCommand="OnEditorCommand" EditorEpoch="EditorEpoch"
+                                                       RestoreFocus="@(_focusCategory == context)" OnFocusRestored="ClearFocusCategory" />
                                 }
                             </ItemTemplate>
                         </FluentSortableList>

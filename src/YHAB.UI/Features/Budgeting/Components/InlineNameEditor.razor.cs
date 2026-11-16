@@ -15,7 +15,20 @@ public sealed partial class InlineNameEditor
     [Parameter] public bool Busy { get; set; }
     // Keeps the draft alive when a sortable reorder recreates this editor.
     [Parameter] public InlineNameDraft? Draft { get; set; }
+    /// <summary>
+    /// The expanded state a disclosure-style name reports, or null when the
+    /// component's name is not a disclosure target.
+    /// </summary>
+    [Parameter] public string? AriaExpanded { get; set; }
+    [Parameter] public string? AriaControls { get; set; }
+    /// <summary>
+    /// A closing editor returned focus to this name; the component focuses it and
+    /// lets the caller clear the request.
+    /// </summary>
+    [Parameter] public bool FocusName { get; set; }
+    [Parameter] public EventCallback OnNameFocused { get; set; }
     private FluentTextInput? _input;
+    private ElementReference _nameControl;
     private string _name = string.Empty;
     private string? _previousValue;
     private bool _editing;
@@ -65,6 +78,13 @@ public sealed partial class InlineNameEditor
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (FocusName)
+        {
+            // A batch can replace the name with its rename form, so the request
+            // clears even when there is no rendered name to focus.
+            if (_nameControl.Id is not null) { await _nameControl.FocusAsync(); }
+            await OnNameFocused.InvokeAsync();
+        }
         if ((_focus || (firstRender && Creating)) && _input is not null)
         {
             _focus = false;

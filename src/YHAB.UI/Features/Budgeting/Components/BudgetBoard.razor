@@ -3,7 +3,7 @@
 @if (_budget is not null)
 {
 <div class="budget-board" aria-busy="@(IsBusy ? "true" : "false")">
-    <section class="budget-summary" aria-label="Monthly budget summary" data-editing="@(IsEditing ? "true" : "false")" data-negative="@(_budget.ReadyToAssign < 0 ? "true" : "false")">
+    <section class="budget-summary" aria-label="Monthly budget summary" data-editing="@(IsPinnedEditor ? "true" : "false")" data-negative="@(_budget.ReadyToAssign < 0 ? "true" : "false")">
         <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalAlignment="HorizontalAlignment.SpaceBetween" HorizontalGap="var(--spacingHorizontalM)" VerticalGap="var(--spacingVerticalS)">
             <div class="summary-head">
                 <h1 class="summary-title">Plan your money</h1>
@@ -85,9 +85,9 @@
         <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalM)" VerticalGap="var(--spacingVerticalM)" Class="budget-workspace">
             <FirstRunChecklist Plan="_budgetPlan!" Budget="_budget" Hidden="@(_category is not null)" OnAddAccount="AddAccountAsync" OnAddCategory="AddCategoryAsync" OnShowHelp="ShowHelpAsync" Busy="IsBusy" />
             <div class="budget-categories">
-                <BudgetCategoryTable @ref="_categoryTable" Plan="_budgetPlan!" Budget="_budget" OnCommand="OnCommand" OnSelect="EditCategory" Busy="IsBusy" SelectedCategoryId="_category?.Id" />
+                <BudgetCategoryTable @ref="_categoryTable" Plan="_budgetPlan!" Budget="_budget" OnCommand="OnCommand" OnSelect="EditCategoryAsync" Busy="IsBusy" SelectedCategoryId="_category?.Id" InlineEditor="_inlineDetails" OnCloseEditor="CloseCategory" OnEditorCommand="SendCategoryCommandAsync" EditorEpoch="_editorEpoch" />
             </div>
-            @if (_category is not null)
+            @if (_category is not null && !_inlineDetails)
             {
                 <aside class="category-details" aria-label="Category details">
                     <CategoryEditor @key="(_category?.Id, _budget.Month, _editorEpoch)" Plan="Plan" Category="_category" MonthState="EditingMonth" Month="_budget.Month" OnCommand="SendCategoryCommandAsync" OnClose="CloseCategory" Busy="IsBusy" />

@@ -172,11 +172,13 @@ library handles these cases itself.
 Each move saves atomically as one revision and one undoable change, including
 normalizing tied display orders. Moving does not change assignments or history.
 
-Select a category row or its name to open its target panel beside the table on
-wide screens or below it on smaller screens. Assignment inputs keep their own
-editing action. The panel supports targets and monthly snoozes; expand **Category
-details** for names, notes, group, and hidden status. Remove a used category by
-moving its history to another category. Account
+Select a category row or its name to open its target panel beside the table
+above 75rem, or directly beneath the selected row below it. The inline panel
+grows with the page, keeps the row it belongs to in view, reports the row's
+expanded state, and returns focus to the row when it closes. Assignment inputs
+keep their own editing action. The panel supports targets and monthly snoozes;
+expand **Category details** for names, notes, group, and hidden status. Remove a
+used category by moving its history to another category. Account
 details support notes and closing zero-balance accounts. Loan accounts record
 rates and minimum payments; interest and payments are entered manually.
 
@@ -638,6 +640,7 @@ isolated AppHosts. Browser tests exercise both desktop and phone widths.
 | In-app plan sharing, editing, and access removal | `ShareCodeGrantsEditingAndReadAccessUntilTheOwnerRemovesItAsync`, `JoinRejectsInvalidExpiredEmptyAndOwnerCodesAsync`, `ASharedMemberCanLeaveButAnOwnerCannotAsync`, `CodesAreSingleUseAndRedemptionRetriesAreIdempotentAsync`, `ConcurrentRedemptionIsIdempotentAndConcurrentRemovalHasOneWinnerAsync`, `MissingDisplayNameFallsBackToAFriendlyNameInsteadOfTheEmailAsync`, `DisplayNameThatEqualsTheCurrentAccountEmailFallsBackToMemberAsync`, `PlansPageSeparatesOwnedAndSharedPlansAndShowsJoinFormAsync`, `OwnerCreatesShareCodeAndRemovesACollaboratorAsync`, `DuplicateCollaboratorNamesAreNumberedSoTheOwnerCanRemoveTheRightAccountAsync`, `GeneratedDuplicateLabelsDoNotCollideWithLiteralDisplayNamesAsync`, `SharedMemberSeesOwnerAndRejectsUnconfirmedLeaveAsync`, `PlansPageJoinsWithACodeAsync`, `JoinServiceErrorIsShownAsync` |
 | Plan deletion and ownership transfer | `OwnerDeletesPlanAndCollaboratorsLoseAccessAsync`, `TransferOwnershipMakesTheCollaboratorOwnerAndKeepsThePreviousOwnerAsAMemberAsync`, `OwnerDeletingAPlanRequiresItsExactNameAsync`, `OwnerDeletesPlanWithItsExactNameAsync`, `CollaboratorCannotDeleteOrTransferAPlanAsync`, `OwnerTransfersOwnershipAndKeepsEditingAccessAsync`, `TransferringWithoutSelectionMarksPersonFieldInvalidAsync` |
 | Manual browser workflow, calculator entry, keyboard undo/redo, reports, and API guards | `ManualPlanPurchaseUndoAndReportsAgreeAsync` at 1440px and 390px, including the phone amount keypad, the Available-pill move flow, editor tap size, and sticky editor chrome; `TappingAvailableMovesMoneyOutOfTheCategoryAsync` covers the touch move flow |
+| Category details placement | `CompactLayoutOpensTheEditorBeneathItsRowAsync`, `WideLayoutKeepsTheEditorBesideTheTableAsync`, `SelectingARowCollapsesTheMoveControlsItHadOpenAsync`, `SavingFromTheInlineEditorSettlesItsDraftBeforeClosingAsync`; `InlineCatalogEditingOrderingAndTargetsPersistAsync` at 1440px, 768px, and 390px checks the pane or inline placement, the selected row staying in view, save settling the draft, and focus returning to the row |
 | Editor draft guard, Enter-to-save, and refresh-safe drafts | `ClosingADirtyEditorAsksBeforeDiscardingAsync`, `ClosingACleanEditorClosesWithoutAskingAsync`, `EscapeAsksOnADirtyEditorAndNeverDiscardsByItselfAsync`, `OtherKeysDoNotCloseTheEditorAsync`, `CancelAsksBeforeDiscardingTypedAccountDetailsAsync`, `CancelClosesAnUnchangedAccountWithoutAskingAsync`, `EnterInTheAmountFieldSavesTheTransactionAsync`, `EnterInThePayeeFieldSavesTheTypedPayeeAsync`, `EnterDoesNotSaveAnIncompleteTransactionAsync`, `InflowRetainsARetiredCategoryAsInvalidAsync`, `InflowSplitsRetainARetiredCategoryAsInvalidAsync`, `RefreshKeepsARemovedDestinationAndBlocksSavingAsync`, `RefreshKeepsAnOpenDraftAndACommandClosesItAsync`, `RefreshKeepsAnEditedDraftWhenTheCatalogOmitsTheLedgerAsync`, `RefreshAfterAConfirmedSaveClosesTheDraftAsync`, `RefreshKeepsTheCategoryEditorWhileACommandResetsItAsync`, `ARefreshedReorderKeepsThePositionWhenATargetSavesAsync`, `AnEditedGroupSurvivesARefreshAsync`, `AnotherCategorySaveKeepsTheTargetDraftAsync`, `RenamingTheOpenCategoryKeepsItsTargetDraftAndNameAsync`, `AnUntouchedGroupMoveDoesNotDirtyTheDraftAsync`, `ReselectingTheOpenedGroupKeepsTheDraftDirtyAsync`, `AHiddenRefreshFollowsTheRecordWithoutPromptingAsync`, `AHiddenRefreshIsSavedInsteadOfRevertedAsync`, `RefreshKeepsADraftWhileAFailedReadRecoversAsync`, `GuardTreatsSeparatorTextInFieldsAsAnEditAsync`, `RefreshPostedCommandKeepsItsDraftIntentThroughFailureAndRetry`, `ActionsStayReachableWhenTheMonthReadFailsAsync`, `PlanActionsFollowThePageHeadingInDocumentOrder`; `EditorKeepsDraftsAndSavesWithEnterAsync` covers the real keyboard and refresh flow in a browser |
 | Themes, mobile navigation, and SSR document continuity | `FluentNavigationPreservesDocumentAndThemeChoice` at 1280px and 390px |
 | Actual startup, migrations, and database readiness | `AppHostCompletesMigrationsAndServesHealthyApplication` |

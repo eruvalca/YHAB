@@ -18,6 +18,7 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
 {
     [Theory]
     [InlineData(1440)]
+    [InlineData(768)]
     [InlineData(390)]
     [Trait("Category", "BrowserSmoke")]
     public async Task InlineCatalogEditingOrderingAndTargetsPersistAsync(int width)
@@ -78,13 +79,24 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
                 await page.Locator($"[data-group-id='{destination.Id}'] [data-category-id='{category.Id}']").WaitForAsync();
             }
             await row.Locator(".category-link").ClickAsync();
-            await page.Locator(".category-details h3").Filter(new() { HasText = "Target" }).WaitForAsync();
-            await page.Locator(".category-details fluent-checkbox").First.ClickAsync();
+            await page.Locator(".editor-surface h3").Filter(new() { HasText = "Target" }).WaitForAsync();
+            await VerifyCategoryEditorPlacementAsync(page, row, category.Id, width);
+            await page.Locator(".editor-surface fluent-checkbox").First.ClickAsync();
             await FillAsync(page, "Target amount", "250");
             await Input(page, "Target amount").PressAsync("Tab");
             await Button(page, "Save category").ClickAsync();
             await row.Locator(".target-caption").Filter(new() { HasText = "$250.00 more needed" }).WaitForAsync();
             await page.ScreenshotAsync(new() { Path = Path.Combine(AppContext.BaseDirectory, "TestResults", $"plan-target-{width}.png") });
+            // Closing the inline panel hands focus back to the row that opened it.
+            await page.Locator(".editor-surface fluent-button[aria-label='Close editor']").ClickAsync();
+            await page.Locator(".editor-surface").WaitForAsync(new() { State = WaitForSelectorState.Detached });
+            if (width < 1200)
+            {
+                await page.WaitForFunctionAsync(
+                    "id => document.activeElement === document.querySelector(`[data-category-id='${id}'] .category-link`)",
+                    category.Id.ToString());
+                (await row.Locator(".category-link").GetAttributeAsync("aria-expanded")).ShouldBe("false");
+            }
             await page.ReloadAsync();
             await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
             plan = await ReadAsync(page, path);
@@ -805,6 +817,30 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
         await page.Mouse.MoveAsync(to.X + to.Width / 2, to.Y + to.Height / 4, new() { Steps = 12 });
         await GhostBesideAsync(page, target, after: false);
         await page.Mouse.UpAsync();
+    }
+
+    private static async Task VerifyCategoryEditorPlacementAsync(IPage page, ILocator row, Guid categoryId, int width)
+    {
+        if (width >= 1200)
+        {
+            // A wide screen keeps the editor in a side pane beside the table.
+            await page.Locator("aside.category-details .editor-surface").WaitForAsync();
+            (await page.Locator(".category-inline-editor").CountAsync()).ShouldBe(0);
+            return;
+        }
+
+        // Below the breakpoint the editor follows the row that opened it, so the
+        // tapped category stays on screen while the form grows with the page.
+        var panel = page.Locator(".category-inline-editor");
+        await panel.WaitForAsync();
+        (await panel.EvaluateAsync<bool>(
+            "(panel, id) => panel.previousElementSibling?.getAttribute('data-category-id') === id",
+            categoryId.ToString())).ShouldBeTrue();
+        var box = (await row.BoundingBoxAsync()).ShouldNotBeNull();
+        box.Y.ShouldBeGreaterThanOrEqualTo(0);
+        (box.Y + box.Height).ShouldBeLessThanOrEqualTo(await page.EvaluateAsync<int>("innerHeight"));
+        (await row.Locator(".category-link").GetAttributeAsync("aria-expanded")).ShouldBe("true");
+        (await row.Locator(".category-link").GetAttributeAsync("aria-controls")).ShouldBe(await panel.GetAttributeAsync("id"));
     }
 
     private static async Task VerifyDensityAsync(IPage page, int width)

@@ -13,7 +13,7 @@
     else
     {
         <FluentStack Width="auto" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalXS)">
-            <button type="button" class="category-link" @onclick="SelectAsync" @ondblclick="BeginEdit" @onkeydown="NameKeyDown" disabled="@Busy">@Value</button>
+            <button type="button" class="category-link" @ref="_nameControl" @onclick="SelectAsync" @ondblclick="BeginEdit" @onkeydown="NameKeyDown" disabled="@Busy" aria-expanded="@AriaExpanded" aria-controls="@AriaControls">@Value</button>
             <button type="button" class="rename-name" tabindex="-1" aria-label="@($"Rename {Value}")" @onclick="BeginEdit" disabled="@Busy">Rename</button>
         </FluentStack>
     }

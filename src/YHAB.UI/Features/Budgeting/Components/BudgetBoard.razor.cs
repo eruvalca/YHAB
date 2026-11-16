@@ -1,12 +1,15 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Components;
 using Microsoft.FluentUI.AspNetCore.Components;
+using Microsoft.JSInterop;
 using YHAB.SharedKernel.Budgeting;
 
 namespace YHAB.UI.Features.Budgeting.Components;
 
-public sealed partial class BudgetBoard
+public sealed partial class BudgetBoard(IJSRuntime javascript)
 {
+    private const string LayoutModulePath = "./_content/YHAB.UI/Features/Budgeting/Components/BudgetBoard.razor.js";
+
     [Parameter, EditorRequired] public PlanSnapshot Plan { get; set; } = default!;
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
     /// <summary>
@@ -67,14 +70,20 @@ public sealed partial class BudgetBoard
     private bool _focusMonthStep;
     private BudgetCategoryTable? _categoryTable;
     private CategoryData? _category;
+    // Below the desktop breakpoint the editor opens beneath its row instead of in
+    // a pane after the table, so the row that was tapped stays in view.
+    private bool _inlineDetails;
+    private IJSObjectReference? _layoutModule;
     private CategoryMonth? EditingMonth => _budget.Categories.SingleOrDefault(item => item.Category.Id == _category?.Id);
     private bool HasAccounts => Plan.Accounts.Count > 0;
     // The Today action only changes what the sticky summary shows while another month is open.
     private bool IsCurrentMonth => _budget.Month == BudgetFacts.Month(Plan.Today);
     private bool HasOpenAccounts => Plan.Accounts.Any(item => !item.Closed);
     // A phone's editor pins its own heading to the top of the viewport, so the
-    // sticky summary steps aside instead of covering it.
+    // sticky summary steps aside instead of covering it. The inline category
+    // editor scrolls with its row and pins nothing, so the summary stays.
     private bool IsEditing => _transaction || _move || _category is not null;
+    private bool IsPinnedEditor => _transaction || _move || (_category is not null && !_inlineDetails);
     // A phone keeps the sticky summary on screen, so this action docks to the
     // viewport instead of adding a row that would shrink the category table, and
     // it steps aside for every board editor so it cannot cover their actions.
@@ -276,6 +285,38 @@ public sealed partial class BudgetBoard
     }
     private void HideHelp() => _help = false;
     private Task AddCategoryAsync() { _help = false; _categoryTable?.BeginAddCategory(); return Task.CompletedTask; }
-    private void EditCategory(CategoryData category) { _move = false; _category = category; }
+    private async Task EditCategoryAsync(CategoryData category)
+    {
+        _move = false;
+        _inlineDetails = await InlineDetailsAsync();
+        _category = category;
+    }
+    // The placement follows the breakpoint the stylesheet already stacks the
+    // workspace on, so a wide screen keeps its side pane and a narrow one opens the
+    // editor beneath the row instead of after the whole table.
+    private async Task<bool> InlineDetailsAsync()
+    {
+        using var operation = CreateOperation();
+        var token = operation.Token;
+        try
+        {
+            _layoutModule ??= await javascript.InvokeAsync<IJSObjectReference>("import", token, LayoutModulePath);
+            token.ThrowIfCancellationRequested();
+            return await _layoutModule.InvokeAsync<bool>("inlineCategoryDetails", token);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { return false; }
+        catch (JSDisconnectedException) { return false; }
+        catch (JSException) { return false; }
+    }
+    protected override async ValueTask DisposeCoreAsync()
+    {
+        if (_layoutModule is not null)
+        {
+            try { await _layoutModule.DisposeAsync(); }
+            catch (JSDisconnectedException) { /* The circuit already released its JavaScript references. */ }
+        }
+
+        await base.DisposeCoreAsync();
+    }
     private void CloseEditors() { _move = false; _category = null; CloseTransaction(); }
 }

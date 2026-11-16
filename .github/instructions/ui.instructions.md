@@ -129,6 +129,12 @@ assets/provider setup and [build rules](../../build/README.md) for enforcement.
 - Make layouts shrink and wrap on narrow screens, preserve visible keyboard
   focus, and put form labels before their controls. Preserve semantic links,
   buttons, tables, and all Blazor/Identity form and reconnect hooks.
+- CSS can restyle a pane but cannot move it in the DOM. When placement must change
+  with width — the category editor sits beside the table above 75rem and beneath
+  its row below it — decide it in the component from the same media query the
+  stylesheet uses, through that component's scoped JS module, and render one
+  instance in one place. Keep the query and the CSS breakpoint identical; do not
+  duplicate a guessed pixel width or render both placements.
 - Shared notices use `class="notice"` with `data-kind="success"`, `"error"`,
   `"warning"`, or `"information"`. Keep meaning in the message, not just color.
 

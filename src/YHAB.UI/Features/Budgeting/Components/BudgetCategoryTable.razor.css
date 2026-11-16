@@ -17,6 +17,11 @@
 .budget-table ::deep .group-row { background: var(--yh-surface-sunken); border-color: var(--yh-border-subtle); font-weight: var(--fontWeightSemibold); }
 .budget-table ::deep .group-row:hover { background: var(--yh-surface-sunken); }
 .budget-table ::deep .row-panel, .budget-table ::deep .category-move-row { padding: var(--spacingVerticalXS) var(--spacingHorizontalS); border-bottom: 1px solid var(--yh-border-subtle); }
+/* The category editor opens beneath its row below the desktop breakpoint, so the
+   row stays in view; it grows with the page instead of being pinned or capped. */
+.budget-table ::deep .category-inline-editor { padding: var(--spacingVerticalXS) var(--spacingHorizontalS) var(--spacingVerticalM); border-bottom: 1px solid var(--yh-border-subtle); }
+.budget-table ::deep .category-inline-editor .editor-surface { margin-block: var(--spacingVerticalS) 0; padding: var(--spacingVerticalM) var(--spacingHorizontalM); border-radius: var(--yh-control-radius); box-shadow: none; }
+.budget-table ::deep .category-inline-editor .editor-surface h2 { font-size: var(--fontSizeBase400); overflow-wrap: anywhere; }
 .budget-table ::deep .category-row { cursor: pointer; }
 .budget-table ::deep .category-row:hover { background: var(--colorSubtleBackgroundHover); }
 .budget-table ::deep .category-row[data-selected="true"] { background: var(--yh-surface-accent-soft); box-shadow: inset 3px 0 var(--colorBrandStroke1); }

@@ -14,6 +14,22 @@ public sealed partial class BudgetCategoryTable
     [Parameter, EditorRequired] public EventCallback<CategoryData> OnSelect { get; set; }
     [Parameter] public Guid? SelectedCategoryId { get; set; }
     [Parameter] public bool Busy { get; set; }
+    /// <summary>
+    /// The details editor opens beneath its row rather than in a pane beside the
+    /// table, so the row stays visible on phone and tablet widths.
+    /// </summary>
+    [Parameter] public bool InlineEditor { get; set; }
+    [Parameter] public EventCallback OnCloseEditor { get; set; }
+    /// <summary>
+    /// Carries the editor's own commands, so a save this editor submitted settles
+    /// its draft the way the side pane's does.
+    /// </summary>
+    [Parameter] public EventCallback<PlanCommand> OnEditorCommand { get; set; }
+    /// <summary>
+    /// Changes when a save settles the open editor's draft, remounting it against
+    /// the plan the command produced.
+    /// </summary>
+    [Parameter] public long EditorEpoch { get; set; }
     private static readonly string _stillNeeded = BudgetGlossary.Label(BudgetTerm.StillNeeded);
     private static readonly string[] _filters = ["All categories", _stillNeeded, "Overspent", "Available", "Hidden"];
     private string _filter = "All categories";
@@ -25,6 +41,8 @@ public sealed partial class BudgetCategoryTable
     private Guid? _dragGroup;
     private Guid? _movingGroup;
     private Guid? _movingCategory;
+    private Guid? _selectedCategory;
+    private Guid? _focusCategory;
     private Guid? _newCategoryGroup;
     private bool _newGroup;
     private long _version = -1;
@@ -35,6 +53,10 @@ public sealed partial class BudgetCategoryTable
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        // A focus request belongs to the render that closed the editor. Clearing it
+        // here drops a request no row could consume and keeps a later filter or
+        // group change from moving focus unexpectedly.
+        _focusCategory = null;
         if (firstRender)
         {
             _interop = new(JS);
@@ -59,6 +81,15 @@ public sealed partial class BudgetCategoryTable
     {
         Groups = Plan.Groups.OrderBy(item => item.SortOrder).ThenBy(item => item.Id).ToArray();
         _rows = Budget.Categories.ToDictionary(item => item.Category.Id);
+        if (_selectedCategory != SelectedCategoryId)
+        {
+            // A row shows one panel at a time: selecting it collapses the move
+            // controls it had open, and closing the editor hands focus back to the
+            // row that opened it instead of dropping focus on the document body.
+            _focusCategory = SelectedCategoryId is null ? _selectedCategory : null;
+            _movingCategory = null;
+            _selectedCategory = SelectedCategoryId;
+        }
         if (_version != Plan.Version)
         {
             _version = Plan.Version;
@@ -185,6 +216,7 @@ public sealed partial class BudgetCategoryTable
     }
 
     private void ClearDrag() => _dragGroup = null;
+    private void ClearFocusCategory() => _focusCategory = null;
     private void DragGroup(Guid id) { ClearDrag(); if (!Busy) { _dragGroup = id; } }
     private Task DropGroupAsync(Guid group) => DropAsync(group);
     private Task DropGroupAtEndAsync() => DropAsync(null);
