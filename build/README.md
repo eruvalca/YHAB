@@ -113,6 +113,11 @@ control. Do not introduce nested `Directory.Packages.props` files or per-project
 `VersionOverride` entries without a documented need: NuGet automatically imports
 only the nearest central package file.
 
+The projects target .NET 11 while EF Core, its Npgsql provider, and the Identity EF
+integration stay on 10.0.x: no stable Npgsql provider targets EF Core 11 yet, and
+the 13.6.x Aspire integration resolves Npgsql EF Core 10.0.3, which requires EF Core
+below 11. Move those packages together once a stable, compatible set ships.
+
 ## Fluent UI lifetime compatibility
 
 The server imports `build/FluentAsset.targets` to serve a generated copy of the

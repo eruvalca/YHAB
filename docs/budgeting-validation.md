@@ -1,5 +1,11 @@
 # Three-month household validation
 
+This is a dated engineering evidence log, not maintained guidance. It records
+what was measured, which workspace state was tested, and what was found during
+each campaign. Current behavior and rules live in the
+[budgeting guide](budgeting.md), and the [test guide](../tests/README.md) explains
+how to reproduce the suites.
+
 Validation campaign: October 3, 2026. Synthetic activity covers January 1 through
 March 31, 2026, including February's shorter month. The initial campaign changed
 only tests and documentation. The subsequent BUG-01 investigation changes
