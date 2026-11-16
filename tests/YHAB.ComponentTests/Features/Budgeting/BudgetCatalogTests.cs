@@ -159,6 +159,28 @@ public sealed class BudgetCatalogTests
     }
 
     [Fact]
+    public async Task InlineActionSelectsAfterDiscardingTheOpenDraftAsync()
+    {
+        await using var context = CreateContext();
+        var plan = Plan();
+        var (groceries, utilities) = (plan.Categories[0], plan.Categories[1]);
+        var commands = new List<PlanCommand>();
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, commands.Add));
+
+        await component.Find($"[data-category-id='{groceries.Id}'] .category-link").ClickAsync();
+        await component.Find(".category-details .amount-input fluent-text-input").ChangeAsync(new() { Value = "250" });
+        await component.Find("aside.category-details fluent-button[aria-label='Close editor']").ClickAsync();
+        await component.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Discard changes", StringComparison.Ordinal)).ClickAsync();
+        component.FindAll(".category-details").ShouldBeEmpty();
+
+        // No editor is open any more, so an inline action selects its own category again; the
+        // discarded editor must not keep blocking the row.
+        await component.Find($"[data-category-id='{utilities.Id}'] fluent-text-input").ChangeAsync(new() { Value = "25" });
+        commands.Single().ShouldBeOfType<AssignMoney>().CategoryId.ShouldBe(utilities.Id);
+        component.Find(".category-details h2").TextContent.ShouldBe(utilities.Name);
+    }
+
+    [Fact]
     public async Task AvailablePillAndReorderDoNotSelectTheCategoryAsync()
     {
         await using var context = CreateContext();

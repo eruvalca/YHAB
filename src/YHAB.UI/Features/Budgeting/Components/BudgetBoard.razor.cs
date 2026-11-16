@@ -270,7 +270,7 @@ public sealed partial class BudgetBoard
         return OnCommand.InvokeAsync(command);
     }
     private void CloseTransaction() { _transaction = false; _transactionCommand = null; }
-    private void CloseCategory() => _category = null;
+    private void CloseCategory() { _category = null; _categoryEditor = null; }
     private Task ShowHelpAsync()
     {
         _help = true;
@@ -283,11 +283,12 @@ public sealed partial class BudgetBoard
     {
         // An inline row action must not discard another category's unsaved draft; the workspace
         // convention is to finish or close the open editor first. The action that triggered the
-        // selection still runs.
-        if (!selection.FocusEditor && _categoryEditor is { IsDirty: true } && _category?.Id != selection.Category.Id) { return; }
+        // selection still runs. With no editor open there is nothing to protect, and the removed
+        // editor's reference outlives it because Blazor does not clear an @ref on removal.
+        if (!selection.FocusEditor && _category is not null && _categoryEditor is { IsDirty: true } && _category.Id != selection.Category.Id) { return; }
         _move = false;
         _category = selection.Category;
         _focusCategory = selection.FocusEditor;
     }
-    private void CloseEditors() { _move = false; _category = null; CloseTransaction(); }
+    private void CloseEditors() { _move = false; _category = null; _categoryEditor = null; CloseTransaction(); }
 }
