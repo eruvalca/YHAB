@@ -240,6 +240,9 @@ Assignment saves preserve the existing inputs and keyboard focus. Amount fields
 are temporarily read-only while a save is pending; a failed save restores the
 last confirmed amount alongside the workspace error. Green marks positive money,
 red marks negative balances/outflows, and amber marks funding still needed.
+The Available pill carries that tone in both its fill and its 1px stroke, so it
+stays distinct from the row in light and dark themes, including hovered and
+selected rows, and the amount keeps WCAG AA contrast on that fill.
 Signs, labels, and overspending messages retain the meaning without color.
 The compact monthly summary stays at the top of the viewport as you scroll the
 category table, keeping Ready to assign, all four totals, and their definitions
@@ -249,7 +252,12 @@ and appears only while another month is open. The page retains normal document
 scrolling; keyboard focus and editor headings stay below the summary. On desktop, **Hide menu / Show menu** in the site header frees space
 for the plan and remembers your preference across navigation and reloads. Without
 a saved preference, the global menu is collapsed within a plan, leaving a single
-compact plan sidebar. On smaller screens, sticky **Plan**, **Transactions**,
+compact plan sidebar. At desktop width that sidebar stays pinned beside the
+scrolling plan content while the window leaves room for both columns, so the
+**ACCOUNTS** list and its balances stay in view; a plan with more accounts than
+fit in the viewport scrolls the sidebar on its own. When an expanded site menu
+leaves too little width and the content wraps below, the sidebar stays in the
+page flow instead. On smaller screens, sticky **Plan**, **Transactions**,
 **Reflect**, and **Settings** tabs keep page navigation reachable while scrolling
 and identify the current page; **Transactions** stays current while an individual
 account register is open. Open **Plan & accounts** for accounts; a new plan's
@@ -646,6 +654,7 @@ isolated AppHosts. Browser tests exercise both desktop and phone widths.
 | Plan deletion and ownership transfer | `OwnerDeletesPlanAndCollaboratorsLoseAccessAsync`, `TransferOwnershipMakesTheCollaboratorOwnerAndKeepsThePreviousOwnerAsAMemberAsync`, `OwnerDeletingAPlanRequiresItsExactNameAsync`, `OwnerDeletesPlanWithItsExactNameAsync`, `CollaboratorCannotDeleteOrTransferAPlanAsync`, `OwnerTransfersOwnershipAndKeepsEditingAccessAsync`, `TransferringWithoutSelectionMarksPersonFieldInvalidAsync` |
 | Manual browser workflow, calculator entry, keyboard undo/redo, reports, and API guards | `ManualPlanPurchaseUndoAndReportsAgreeAsync` at 1440px and 390px, including the phone amount keypad, the Available-pill move flow, editor tap size, and sticky editor chrome; `TappingAvailableMovesMoneyOutOfTheCategoryAsync` covers the touch move flow |
 | Category details placement and row selection | `CategoryRowDeadSpaceSelectsWhileEachControlKeepsItsOwnActionAsync`, `AvailablePillAndReorderDoNotSelectTheCategoryAsync`, `CompactLayoutOpensTheEditorBeneathItsRowAsync`, `WideLayoutKeepsTheEditorBesideTheTableAsync`, `SelectingARowCollapsesTheMoveControlsItHadOpenAsync`, `SavingFromTheInlineEditorSettlesItsDraftBeforeClosingAsync`; `InlineCatalogEditingOrderingAndTargetsPersistAsync` at 1440px, 768px, and 390px checks the pane or inline placement, the selected row staying in view, save settling the draft, and focus returning to the row |
+| Available pill tone mapping and contrast | `AvailablePillToneMatchesTheRowState` covers the negative, attention, positive, and neutral tones; `AvailablePillTonesKeepContrastInBothThemesAndRowStatesAsync` measures rendered light and dark pills in default, hover, and selected rows for at least 4.5:1 amount-to-fill text contrast and 3:1 fill-or-stroke boundary contrast |
 | Editor draft guard, Enter-to-save, and refresh-safe drafts | `ClosingADirtyEditorAsksBeforeDiscardingAsync`, `ClosingACleanEditorClosesWithoutAskingAsync`, `EscapeAsksOnADirtyEditorAndNeverDiscardsByItselfAsync`, `OtherKeysDoNotCloseTheEditorAsync`, `CancelAsksBeforeDiscardingTypedAccountDetailsAsync`, `CancelClosesAnUnchangedAccountWithoutAskingAsync`, `EnterInTheAmountFieldSavesTheTransactionAsync`, `EnterInThePayeeFieldSavesTheTypedPayeeAsync`, `EnterDoesNotSaveAnIncompleteTransactionAsync`, `InflowRetainsARetiredCategoryAsInvalidAsync`, `InflowSplitsRetainARetiredCategoryAsInvalidAsync`, `RefreshKeepsARemovedDestinationAndBlocksSavingAsync`, `RefreshKeepsAnOpenDraftAndACommandClosesItAsync`, `RefreshKeepsAnEditedDraftWhenTheCatalogOmitsTheLedgerAsync`, `RefreshAfterAConfirmedSaveClosesTheDraftAsync`, `RefreshKeepsTheCategoryEditorWhileACommandResetsItAsync`, `ARefreshedReorderKeepsThePositionWhenATargetSavesAsync`, `AnEditedGroupSurvivesARefreshAsync`, `AnotherCategorySaveKeepsTheTargetDraftAsync`, `RenamingTheOpenCategoryKeepsItsTargetDraftAndNameAsync`, `AnUntouchedGroupMoveDoesNotDirtyTheDraftAsync`, `ReselectingTheOpenedGroupKeepsTheDraftDirtyAsync`, `AHiddenRefreshFollowsTheRecordWithoutPromptingAsync`, `AHiddenRefreshIsSavedInsteadOfRevertedAsync`, `RefreshKeepsADraftWhileAFailedReadRecoversAsync`, `GuardTreatsSeparatorTextInFieldsAsAnEditAsync`, `RefreshPostedCommandKeepsItsDraftIntentThroughFailureAndRetry`, `ActionsStayReachableWhenTheMonthReadFailsAsync`, `PlanActionsFollowThePageHeadingInDocumentOrder`; `EditorKeepsDraftsAndSavesWithEnterAsync` covers the real keyboard and refresh flow in a browser |
 | Themes, mobile navigation, and SSR document continuity | `FluentNavigationPreservesDocumentAndThemeChoice` at 1280px and 390px |
 | Actual startup, migrations, and database readiness | `AppHostCompletesMigrationsAndServesHealthyApplication` |

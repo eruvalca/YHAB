@@ -5,9 +5,33 @@
 .plan-drawer { margin: 0; }
 .plan-drawer > summary { padding: var(--spacingVerticalS) var(--spacingHorizontalS); font-weight: var(--fontWeightSemibold); }
 @media (min-width: 62.5rem) {
+    /* The frame, not the viewport, decides whether the sidebar can be pinned:
+       an expanded site menu leaves too little width and wraps the content below
+       the sidebar, where a sticky sidebar would overlap it and intercept clicks.
+       The container starts at this breakpoint so phone-only fixed actions keep
+       positioning against the viewport. */
+    .plan-frame { container: plan-frame / inline-size; }
     .plan-drawer > summary { display: none; }
     .plan-drawer:not([open]) ::deep > .plan-navigation { display: block; }
     .plan-drawer::details-content { content-visibility: visible; }
+}
+/* Sticky only while the stack keeps both columns on one line: 14rem sidebar,
+   1rem stack gap, and the content's 35rem flex basis. Below that the content
+   wraps and the sidebar stays in the document flow. It caps at the viewport and
+   scrolls on its own when a plan has more accounts than fit. align-self is
+   required for sticky inside the wrapping stack; stretching the item would make
+   it as tall as the category list and leave it nothing to travel. The top offset
+   matches the sticky summary, and the z-index clears Fluent's 85 layout areas
+   while staying under the shell's 1000 overlays. */
+@container plan-frame (min-width: 50rem) {
+    .plan-sidebar {
+        position: sticky;
+        top: var(--plan-page-tabs-height, 0px);
+        z-index: 90;
+        align-self: flex-start;
+        max-height: calc(100dvh - var(--plan-page-tabs-height, 0px));
+        overflow-y: auto;
+    }
 }
 @media (max-width: 62.4375rem) {
     .plan-frame { --plan-page-tabs-height: calc(2.5rem + 2px); }
