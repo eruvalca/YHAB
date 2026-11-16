@@ -24,6 +24,9 @@ public sealed partial class AmountInput
     [Parameter] public string? InitialText { get; set; }
     // Saving editors commit from Enter in their amount field, as in the manual entry flow.
     [Parameter] public EventCallback OnEnter { get; set; }
+    // A host can treat a pointer click in the field as intent to work on its owner, such as
+    // selecting a category row, without the field losing focus.
+    [Parameter] public EventCallback OnActivate { get; set; }
     private const string ExpressionError = "Enter an amount or expression using + − * / and parentheses.";
     private const string NonNegativeError = "Enter an amount of zero or more.";
     private string _text = string.Empty;
@@ -127,6 +130,7 @@ public sealed partial class AmountInput
     }
 
     private void FocusIn() => _negateCommit = false;
+    private Task ActivateAsync() => OnActivate.HasDelegate ? OnActivate.InvokeAsync() : Task.CompletedTask;
 
     // Unsaved text does not reach Value until the editor saves, so drafts are
     // compared against the value the field would commit right now.

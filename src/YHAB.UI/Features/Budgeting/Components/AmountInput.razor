@@ -1,4 +1,4 @@
-<div class="amount-field@(AllowNegative ? " amount-field--signed" : "")" @onclick:stopPropagation="true">
+<div class="amount-field@(AllowNegative ? " amount-field--signed" : "")" @onclick="ActivateAsync" @onclick:stopPropagation="true">
     <div class="amount-entry" @onkeydown="KeyDownAsync" data-enter-saves="@(OnEnter.HasDelegate ? "true" : null)">
         <FluentTextInput Id="@Id" Label="@Label" Value="@_text" ValueChanged="EvaluateAsync" Immediate="@CommitOnSave"
                          Placeholder="0.00 or 25 + 10" InputMode="@InputMode" MaxLength="200" Size="@Size"

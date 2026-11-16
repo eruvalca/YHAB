@@ -6,7 +6,7 @@ else
 {
     <button type="button" id="@AnchorId" class="available-pill" data-tone="@Tone"
             aria-haspopup="dialog" aria-expanded="@(_open ? "true" : "false")" aria-label="@AriaLabel"
-            @onclick="Toggle" @onclick:stopPropagation="true">@Money(Row.Available)</button>
+            @onclick="ToggleAsync" @onclick:stopPropagation="true">@Money(Row.Available)</button>
     <FluentPopover AnchorId="@AnchorId" Opened="@_open" OpenedChanged="OpenedChangedAsync" Width="min(22rem, calc(100vw - 2rem))">
         @if (_open)
         {

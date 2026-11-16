@@ -423,7 +423,7 @@ public sealed class BudgetCatalogTests
     }
 
     [Fact]
-    public async Task AvailablePillAndReorderDoNotSelectTheCategoryAsync()
+    public async Task AvailablePillSelectsTheCategoryWhileReorderDoesNotAsync()
     {
         await using var context = CreateContext();
         var plan = Plan();
@@ -435,13 +435,36 @@ public sealed class BudgetCatalogTests
 
         await board.Find($"[data-category-id='{groceries.Id}'] button.available-pill").ClickAsync();
         board.Find(".money-popover").ShouldNotBeNull();
-        board.FindAll(".category-details").ShouldBeEmpty();
+        // Opening the move flow is intent to work on the category, so it selects the row
+        // without moving focus into the details editor.
+        board.Find(".category-details h2").TextContent.ShouldBe(groceries.Name);
+        board.FindComponent<CategoryEditor>().Instance.FocusOnOpen.ShouldBeFalse();
         await board.FindAll(".money-popover fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Cancel", StringComparison.Ordinal)).ClickAsync();
 
         var list = List(board, plan.Groups[0].Id);
         await board.InvokeAsync(() => list.OnUpdateJSAsync(0, 1, ListId(plan.Groups[0].Id), ListId(plan.Groups[0].Id)));
         commands.Single().ShouldBeOfType<ReorderCategory>();
-        board.FindAll(".category-details").ShouldBeEmpty();
+        // A reorder is not an edit, so it leaves the existing selection alone.
+        board.Find(".category-details h2").TextContent.ShouldBe(groceries.Name);
+    }
+
+    [Fact]
+    public async Task ClickingTheAssignmentFieldSelectsTheCategoryWithoutMovingItsFocusAsync()
+    {
+        await using var context = CreateContext();
+        var plan = Plan();
+        var (groceries, utilities) = (plan.Categories[0], plan.Categories[1]);
+        var commands = new List<PlanCommand>();
+        var board = RenderBoard(context, plan, commands, readyToAssign: 100m,
+            Row(groceries, assigned: 40m, activity: 0m, available: 40m),
+            Row(utilities, assigned: 0m, activity: 0m, available: 0m));
+
+        await board.Find($"[data-category-id='{utilities.Id}'] .assigned-cell .amount-field").ClickAsync();
+
+        board.Find(".category-details h2").TextContent.ShouldBe(utilities.Name);
+        // The amount field keeps focus, so the editor must not claim it on open.
+        board.FindComponent<CategoryEditor>().Instance.FocusOnOpen.ShouldBeFalse();
+        commands.ShouldBeEmpty();
     }
 
     [Fact]
