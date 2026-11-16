@@ -38,7 +38,14 @@
 .budget-table ::deep .group-add { font-size: var(--fontSizeBase400); }
 .budget-table ::deep .category-name { flex: 1; min-width: 0; }
 .budget-table ::deep .target-caption { display: block; font-weight: var(--fontWeightRegular); color: var(--yh-text-muted); font-size: var(--fontSizeBase100); line-height: var(--lineHeightBase100); }
-.budget-table ::deep .target-progress { display: block; width: 100%; height: 0.1875rem; margin-top: var(--spacingVerticalXXS); accent-color: var(--colorBrandBackground); }
+/* A funded target used to be a hairline with an invisible track, which read
+   as a divider. Give the native bar an explicit track and pill ends so its
+   purpose is obvious; the extra height comes from the caption's old margin, so
+   the dense row keeps its size. */
+.budget-table ::deep .target-progress { display: block; width: 100%; height: 0.375rem; margin-top: 0; border: 0; border-radius: var(--yh-radius-pill); background: var(--yh-border-subtle); accent-color: var(--yh-accent); appearance: none; overflow: hidden; }
+.budget-table ::deep .target-progress::-webkit-progress-bar { border-radius: var(--yh-radius-pill); background: var(--yh-border-subtle); }
+.budget-table ::deep .target-progress::-webkit-progress-value { border-radius: var(--yh-radius-pill); background: var(--yh-accent); }
+.budget-table ::deep .target-progress::-moz-progress-bar { border-radius: var(--yh-radius-pill); background: var(--yh-accent); }
 .budget-table ::deep .amount-input { margin-block: 0; }
 .budget-table ::deep .assigned-cell .amount-input label { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .budget-table ::deep .amount-input fluent-text-input::part(control) { text-align: right; font-variant-numeric: tabular-nums; }
@@ -58,6 +65,12 @@
 .budget-table ::deep .category-list .row-move.sortable-grab { position: static; display: inline-flex; align-items: center; justify-content: center; width: auto; height: auto; padding: 0; border-radius: 0; background: transparent; touch-action: none; }
 @media (forced-colors: active) {
     .budget-table ::deep .budget-grid { border-color: CanvasText; }
+    /* An appearance:none bar loses its system rendering, so paint the track
+       and fill with window colors here. */
+    .budget-table ::deep .target-progress { border: 1px solid CanvasText; background: Canvas; }
+    .budget-table ::deep .target-progress::-webkit-progress-bar { background: Canvas; }
+    .budget-table ::deep .target-progress::-webkit-progress-value,
+    .budget-table ::deep .target-progress::-moz-progress-bar { background: Highlight; }
 }
 
 @media (max-width: 37.5rem) {

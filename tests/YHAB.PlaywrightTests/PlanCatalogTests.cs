@@ -118,6 +118,21 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             await Button(page, "Save category").ClickAsync();
             await page.WaitForFunctionAsync("() => document.activeElement?.matches('.editor-surface h2') === true");
             await row.Locator(".target-caption").Filter(new() { HasText = "$250.00 more needed" }).WaitForAsync();
+            // The target bar must read as a progress bar rather than a hairline:
+            // a visible track double the old 3px line, with pill-shaped ends.
+            var bar = await row.Locator(".target-progress").EvaluateAsync<double[]>("""
+                element => {
+                    const style = getComputedStyle(element);
+                    return [
+                        element.getBoundingClientRect().height,
+                        Number.parseFloat(style.borderRadius),
+                        style.backgroundColor === 'rgba(0, 0, 0, 0)' ? 0 : 1,
+                    ];
+                }
+                """);
+            bar[0].ShouldBeGreaterThanOrEqualTo(6);
+            bar[1].ShouldBeGreaterThanOrEqualTo(bar[0] / 2);
+            bar[2].ShouldBe(1);
             await page.ScreenshotAsync(new() { Path = Path.Combine(AppContext.BaseDirectory, "TestResults", $"plan-target-{width}.png") });
             // Closing the inline panel hands focus back to the row that opened it.
             await page.Locator(".editor-surface fluent-button[aria-label='Close editor']").ClickAsync();
