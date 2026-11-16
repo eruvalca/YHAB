@@ -11,6 +11,8 @@ public sealed partial class EditorSurface
     // Evaluated on demand: the keyboard path can ask before the change that made
     // the draft dirty has re-rendered this parameter.
     [Parameter] public Func<bool>? HasUnsavedChanges { get; set; }
+    // An inline row control that keeps focus selects without moving it to this editor.
+    [Parameter] public bool FocusOnOpen { get; set; } = true;
     private readonly string _discardId = $"editor-discard-{Guid.CreateVersion7():N}";
     private ElementReference _heading;
     private ElementReference _discardPrompt;
@@ -30,7 +32,7 @@ public sealed partial class EditorSurface
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (firstRender && FocusOnOpen)
         {
             await _heading.FocusAsync();
         }

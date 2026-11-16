@@ -12,6 +12,8 @@ public sealed partial class CategoryEditor
     [Parameter, EditorRequired] public DateOnly Month { get; set; }
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
     [Parameter, EditorRequired] public EventCallback OnClose { get; set; }
+    // An inline row control that already owns focus selects without moving it into the editor.
+    [Parameter] public bool FocusOnOpen { get; set; } = true;
     [Parameter] public bool Busy { get; set; }
     private static readonly TargetKind[] _kinds = Enum.GetValues<TargetKind>();
     private static readonly TargetCadence[] _cadences = Enum.GetValues<TargetCadence>();

@@ -367,6 +367,17 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await Input(page, "Assign to Groceries").PressAsync("Tab");
         await page.Locator(".hero-amount").Filter(new() { HasText = "$700.00" }).WaitForAsync();
         await VerifyAmountEditingAsync(page);
+        // Committing an assignment selects the category, and its open editor owns the board's own
+        // actions, so close it before the workflow continues.
+        await CloseCategoryEditorAsync(page);
+    }
+
+    private static async Task CloseCategoryEditorAsync(IPage page)
+    {
+        var close = page.Locator(".category-details fluent-button[aria-label='Close editor']");
+        if (await close.CountAsync() == 0) { return; }
+        await close.ClickAsync();
+        await page.Locator(".category-details").WaitForAsync(new() { State = WaitForSelectorState.Detached });
     }
 
     // The keyboard flow and draft guard span Fluent's shadow DOM and a real
@@ -709,6 +720,8 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await amount.FillAsync("700");
         await amount.PressAsync("Tab");
         await page.Locator(".hero-amount").Filter(new() { HasText = "$0.00" }).WaitForAsync();
+        // The committed assignment selects the category; its editor changes the layout under test.
+        await CloseCategoryEditorAsync(page);
         // The browser's default focus scroll does not account for the sticky
         // summary. Position the field near the bottom of the viewport before
         // measuring; the assertion below still requires it to clear the summary.

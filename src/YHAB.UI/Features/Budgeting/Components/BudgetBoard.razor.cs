@@ -67,6 +67,8 @@ public sealed partial class BudgetBoard
     private bool _focusMonthStep;
     private BudgetCategoryTable? _categoryTable;
     private CategoryData? _category;
+    // Inline row controls keep focus, so only a selection that owns focus moves it into the editor.
+    private bool _focusCategory = true;
     private CategoryMonth? EditingMonth => _budget.Categories.SingleOrDefault(item => item.Category.Id == _category?.Id);
     private bool HasAccounts => Plan.Accounts.Count > 0;
     // The Today action only changes what the sticky summary shows while another month is open.
@@ -276,6 +278,6 @@ public sealed partial class BudgetBoard
     }
     private void HideHelp() => _help = false;
     private Task AddCategoryAsync() { _help = false; _categoryTable?.BeginAddCategory(); return Task.CompletedTask; }
-    private void EditCategory(CategoryData category) { _move = false; _category = category; }
+    private void EditCategory(CategorySelection selection) { _move = false; _category = selection.Category; _focusCategory = selection.FocusEditor; }
     private void CloseEditors() { _move = false; _category = null; CloseTransaction(); }
 }

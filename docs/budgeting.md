@@ -172,9 +172,13 @@ library handles these cases itself.
 Each move saves atomically as one revision and one undoable change, including
 normalizing tied display orders. Moving does not change assignments or history.
 
-Select a category row or its name to open its target panel beside the table on
-wide screens or below it on smaller screens. Assignment inputs keep their own
-editing action. The panel supports targets and monthly snoozes; expand **Category
+Select a category row anywhere, including the padding around its name and its
+Assigned field, to open its target panel beside the table on wide screens or
+below it on smaller screens. The move handle, name link, inline **Rename**,
+Assigned field, and Available pill keep their own actions. Renaming a category or
+committing an assigned amount also selects that category, without moving focus out
+of the field being edited, and releasing a drag never selects. The panel supports
+targets and monthly snoozes; expand **Category
 details** for names, notes, group, and hidden status. Remove a used category by
 moving its history to another category. Account
 details support notes and closing zero-balance accounts. Loan accounts record

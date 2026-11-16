@@ -125,10 +125,27 @@ function restore(state) {
 export function initialize(table) {
     if (instances.has(table)) return;
     const controller = new AbortController();
-    const state = { table, controller, activeName: null, activeNameId: null, activeAmount: null, activeAmountId: null, focused: null };
+    const state = { table, controller, activeName: null, activeNameId: null, activeAmount: null, activeAmountId: null, focused: null, dragEnded: false, dragPress: null };
     const observer = new MutationObserver(() => restore(state));
     state.observer = observer;
     instances.set(table, state);
+    // SortableJS begins a fallback drag on the handle's pointerdown, so a click that completes a drag
+    // can still land on the row that started it. Only a press that moved is a drag: remember that and
+    // drop the trailing click, so releasing a drag never selects the row or toggles its move controls.
+    table.addEventListener('pointerdown', event => {
+        state.dragPress = event.target.closest?.('.category-list .row-move.sortable-grab') ? { x: event.clientX, y: event.clientY } : null;
+        state.dragEnded = false;
+    }, { capture: true, signal: controller.signal });
+    table.addEventListener('pointerup', event => {
+        state.dragEnded = state.dragPress !== null && Math.hypot(event.clientX - state.dragPress.x, event.clientY - state.dragPress.y) > 4;
+        state.dragPress = null;
+    }, { capture: true, signal: controller.signal });
+    // Keyboard activation emits a click without a pointer press, so it is never a drag completion.
+    table.addEventListener('click', event => {
+        if (!state.dragEnded || event.detail === 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+    }, { capture: true, signal: controller.signal });
     table.addEventListener('keydown', event => keydown(state, event), { signal: controller.signal });
     table.addEventListener('focusin', event => focusin(state, event), { signal: controller.signal });
     table.addEventListener('focusout', event => {
