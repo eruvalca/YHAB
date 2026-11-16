@@ -10,7 +10,7 @@ the CLI and editor find `global.json` and `YHAB.slnx`.
 | `YHAB.ComponentTests` | Calculator input events, month-specific assignments, invalid-input feedback, delayed workspace loading and interactive-only recurring posting, account workflows, navigation, framework-leakage copy, error page copy and request IDs, and passkey option gating, using bUnit. |
 | `YHAB.IntegrationTests` | Real PostgreSQL: migrations and legacy data upgrades, Identity, private plan isolation, cross-plan foreign keys, optimistic concurrency, category merges, editable recurring occurrence dates, durable undo/redo, and deletion of owned ledger data. |
 | `YHAB.AspireIntegrationTests` | The real AppHost, database/migration startup dependencies, readiness, resource endpoints, and cross-process HTTP behavior. |
-| `YHAB.PlaywrightTests` | Real Chromium: Fluent controls, desktop/mobile navigation, persistent themes, drawer behavior, document continuity, framework-leakage routes and auth copy, axe heading-order/dark-mode contrast and input-size accessibility checks, manual plan/purchase/undo/report workflows, and API authentication/antiforgery/revision guards. |
+| `YHAB.PlaywrightTests` | Real Chromium: Fluent controls, desktop/mobile navigation, persistent themes, drawer behavior, document continuity, framework-leakage routes and auth copy, axe heading-order/dark-mode contrast and input-size accessibility checks, manual plan/purchase/undo/report workflows, API authentication/antiforgery/revision guards, and passkey credential payloads. |
 
 `YHAB.Testing` is a shared support library, not a test project. It configures
 isolated AppHost builders for the Aspire and Playwright projects.
@@ -912,8 +912,11 @@ reachable without opting out of enhanced navigation. Account page tests render
 the static pages with their Identity substitutes, verify that external-provider
 markup appears only when a provider is configured, and assert the registration
 destination. Passkey component tests verify the option renders hidden; the
-browser module reveals it only when the browser supports passkeys, which bUnit
-cannot execute. Navigation text
+browser module reveals it only when the browser supports passkeys and builds the
+posted credential JSON, neither of which bUnit can execute. A browser case stubs
+`navigator.credentials` with a password-manager-style credential whose `toJSON()`
+omits `clientExtensionResults` and asserts the posted registration and assertion
+payloads still carry a top-level `clientExtensionResults` property. Navigation text
 assertions trim library-rendered whitespace while retaining checks for encoded
 identity text, conditional account links, and the logout POST/return URL.
 These JS stubs do not validate the web components or the static mobile drawer;
