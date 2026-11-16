@@ -178,18 +178,19 @@ public sealed class BudgetCatalogTests
     [InlineData(0, 0, 0, 25, "attention")]
     [InlineData(0, 0, 40, 0, "positive")]
     [InlineData(0, 0, 0, 0, "neutral")]
-    public void AvailablePillToneMatchesTheRowState(int assigned, int activity, int available, int targetNeeded, string expectedTone)
+    public async Task AvailablePillToneMatchesTheRowState(int assigned, int activity, int available, int targetNeeded, string expectedTone)
     {
         // The pill colors key off data-tone, so a state that loses its tone
         // silently falls back to the neutral fill.
-        using var context = CreateContext();
+        await using var context = CreateContext();
         var plan = Plan();
         var groceries = plan.Categories[0];
         var board = RenderBoard(context, plan, [], readyToAssign: 100m,
             Row(groceries, assigned, activity, available) with { TargetNeeded = targetNeeded },
             Row(plan.Categories[1], assigned: 0m, activity: 0m, available: 0m));
 
-        board.Find($"[data-category-id='{groceries.Id}'] .available-pill").GetAttribute("data-tone").ShouldBe(expectedTone);
+        await board.WaitForAssertionAsync(
+            () => board.Find($"[data-category-id='{groceries.Id}'] .available-pill").GetAttribute("data-tone").ShouldBe(expectedTone));
     }
 
     [Fact]
