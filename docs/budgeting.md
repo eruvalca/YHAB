@@ -260,12 +260,17 @@ The Available pill carries that tone in both its fill and its 1px stroke, so it
 stays distinct from the row in light and dark themes, including hovered and
 selected rows, and the amount keeps WCAG AA contrast on that fill.
 Signs, labels, and overspending messages retain the meaning without color.
-The compact monthly summary stays at the top of the viewport as you scroll the
-category table, keeping Ready to assign, all four totals, and their definitions
-within reach. Its heading sits above or beside the month, which the **Previous
-month** and **Next month** arrow buttons step through; **Today** returns to the current month
-and appears only while another month is open. The page retains normal document
-scrolling; keyboard focus and editor headings stay below the summary. On desktop, **Hide menu / Show menu** in the site header frees space
+The month band stays at the top of the viewport as you scroll the category
+table, holding Ready to assign and the funding actions within reach as a flat
+strip rather than a card. The four totals and the plan tools share one slim line
+beneath it and scroll away with the table. Its heading sits beside the month,
+which the **Previous month** and **Next month** arrow buttons step through;
+**Today** returns to the current month and appears only while another month is
+open. A phone drops the heading, which the **Plan** tab already names, so the
+pager and the amount share the band's first line and the actions wrap beneath
+them. The page retains normal document scrolling; keyboard focus and editor
+headings stay below the bar. On desktop, **Hide menu / Show menu** in the site
+header frees space
 for the plan and remembers your preference across navigation and reloads. Without
 a saved preference, the global menu is collapsed within a plan, leaving a single
 compact plan sidebar. At desktop width that sidebar stays pinned beside the

@@ -111,6 +111,30 @@ public sealed class BudgetBoardTests
     }
 
     [Fact]
+    public async Task PinnedBandCarriesOnlyTheMonthAmountAndActionsAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var plan = CreatePlan();
+        var component = context.Render<BudgetBoard>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.OnCommand, _ => { })
+            .Add(item => item.PlanActions, builder => builder.AddMarkupContent(0, "<section class=\"workspace-toolbar\"><button type=\"button\" data-refresh>Refresh</button></section>")));
+
+        // The band stays pinned while the table scrolls, so it holds only what the
+        // month needs at a glance. The totals and the plan tools share the slim row
+        // beneath it instead of claiming pinned height of their own.
+        var band = component.Find(".budget-summary");
+        band.QuerySelectorAll(".budget-total").ShouldBeEmpty();
+        band.QuerySelector(".hero-amount").ShouldNotBeNull();
+
+        var meta = component.Find(".budget-meta");
+        meta.QuerySelectorAll(".budget-total").Length.ShouldBe(4);
+        meta.QuerySelector("[data-refresh]").ShouldNotBeNull();
+    }
+
+    [Fact]
     public async Task FailedTodayReadKeepsFocusOwnershipForTheRetryAsync()
     {
         await using var context = new BunitContext();

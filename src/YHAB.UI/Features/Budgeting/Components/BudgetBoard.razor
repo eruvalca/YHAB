@@ -39,6 +39,11 @@
                 @if (HasOpenAccounts && TransactionHint is not null) { <p class="action-hint muted" id="add-transaction-hint">@TransactionHint</p> }
             </div>
         </FluentStack>
+    </section>
+    @* The totals and the plan tools stay out of the pinned band: they are reference
+       and recovery, not what the month needs at a glance, so they scroll away with
+       the table instead of holding a slice of the viewport. *@
+    <div class="budget-meta">
         <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalL)" VerticalGap="var(--spacingVerticalXS)" Class="budget-totals">
             <div class="budget-total"><BudgetTermHelp Term="@BudgetTerm.Assigned" OnExplain="ShowHelpAsync" /> <strong>@Money(_budget.Assigned)</strong></div>
             <div class="budget-total"><BudgetTermHelp Term="@BudgetTerm.Activity" OnExplain="ShowHelpAsync" /> <strong>@Money(_budget.Activity)</strong></div>
@@ -49,8 +54,8 @@
                 @if (StillNeededBreakdown is { } breakdown) { <small class="still-needed-breakdown">@breakdown</small> }
             </div>
         </FluentStack>
-    </section>
-    @PlanActions
+        @PlanActions
+    </div>
     @if (_help)
     {
         <section @ref="_helpPanel" class="budget-help" id="budget-help" aria-labelledby="budget-help-heading" tabindex="-1">
