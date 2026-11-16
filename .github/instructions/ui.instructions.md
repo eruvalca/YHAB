@@ -134,7 +134,10 @@ assets/provider setup and [build rules](../../build/README.md) for enforcement.
   its row below it — decide it in the component from the same media query the
   stylesheet uses, through that component's scoped JS module, and render one
   instance in one place. Keep the query and the CSS breakpoint identical; do not
-  duplicate a guessed pixel width or render both placements.
+  duplicate a guessed pixel width or render both placements. State that must
+  outlive a placement change — the editor's draft, its dirty flag, the focus
+  handed back on close — belongs to the selection above both placements, because
+  a resize or an inline action remounts whichever surface was showing it.
 - Shared notices use `class="notice"` with `data-kind="success"`, `"error"`,
   `"warning"`, or `"information"`. Keep meaning in the message, not just color.
 
