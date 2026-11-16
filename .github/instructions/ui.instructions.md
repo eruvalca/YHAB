@@ -41,6 +41,10 @@ assets/provider setup and [build rules](../../build/README.md) for enforcement.
   CSS Grid/Flexbox layouts. Verify APIs against the centrally pinned release and
   Fluent MCP documentation; v4 examples are not compatible and v5+ does not mean
   floating package versions. Do not introduce a second styling/component framework.
+- Bind a string-valued Fluent parameter as an expression. `Value="@_name"` passes
+  the field; `Value="_name"` is the literal text `_name`, which compiles and
+  renders the identifier in the control. Non-string parameters such as `Guid` or
+  `bool` are parsed as expressions either way.
 - Keep the shared baseline and reusable form, action, notice, and table patterns
   in `src/YHAB/wwwroot/app.css`. Keep component-specific rules in adjacent
   `.razor.css` files, with narrowly scoped `::deep` selectors only when child
