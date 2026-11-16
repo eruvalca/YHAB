@@ -133,7 +133,9 @@ assets/provider setup and [build rules](../../build/README.md) for enforcement.
   `ElementReference` throws "not configured" and a stale one, whose element a
   later render removed, throws "Unable to focus an invalid element". Both are
   unhandled in the render callback and terminate the circuit. Gate `FocusAsync`
-  on the same state that renders the element, since `Id` survives its element.
+  on the same state that renders the element, since `Id` survives its element,
+  and route the request to whichever control that state renders, because
+  dropping it strands focus on the document body.
 - CSS can restyle a pane but cannot move it in the DOM. When placement must change
   with width — the category editor sits beside the table above 75rem and beneath
   its row below it — decide it in the component from the same media query the

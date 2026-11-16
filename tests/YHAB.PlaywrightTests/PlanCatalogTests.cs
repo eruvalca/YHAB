@@ -153,10 +153,11 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
     }
 
     [Theory]
+    [InlineData(1440)]
     [InlineData(768)]
     [InlineData(390)]
     [Trait("Category", "BrowserSmoke")]
-    public async Task ClosingTheDetailsWhileRenamingKeepsTheCircuitAliveAsync(int width)
+    public async Task ClosingTheDetailsWhileRenamingKeepsTheRenameFieldFocusedAsync(int width)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         timeout.CancelAfter(TimeSpan.FromMinutes(4));
@@ -202,7 +203,10 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             await page.Locator(".editor-surface fluent-button[aria-label='Close editor']").ClickAsync();
             await page.Locator(".editor-surface").WaitForAsync(new() { State = WaitForSelectorState.Detached });
 
-            // The rename keeps working, and the circuit still answers a later selection.
+            // The close takes the focused Close button away with it, so the rename field receives
+            // focus instead of the document body, and the circuit still answers later selections.
+            await page.WaitForFunctionAsync(
+                "() => document.activeElement?.closest('.inline-name-form') !== null");
             await page.Locator(".inline-name-form").WaitForAsync();
             await FillAsync(page, "Category name", "Renamed after details closed", page.Locator(".inline-name-form"));
             await Button(page, "Cancel").ClickAsync();
