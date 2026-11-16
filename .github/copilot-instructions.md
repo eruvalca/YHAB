@@ -92,8 +92,7 @@ otherwise; Markdown links are relative to their containing file.
   `.editorconfig`, `Directory.Build.props`, `CodeMetricsConfig.txt`, and the
   `PublicAPI.*.txt` files govern diagnostics. Fix findings without weakening
   shared settings; keep necessary exceptions narrow and justified. See
-  [build rules](../build/README.md) for analyzer rules and the documented SDK
-  compatibility workaround.
+  [build rules](../build/README.md) for analyzer rules.
 - Run `dotnet build YHAB.slnx` after code changes. The Razor code-behind policy
   is checked automatically during builds; see `build/README.md` for diagnostics.
 - For every change set, including configuration and documentation changes, run

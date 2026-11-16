@@ -6,7 +6,7 @@ description: Author, review, or migrate C# extension members in YHAB using C# 14
 # C# extension members
 
 Use extension blocks for handwritten extensions when the selected language version
-supports C# 14. YHAB targets .NET 10; its selected SDK already defaults to C# 14.
+supports C# 14.
 Check `global.json` and the consuming project's evaluated `LangVersion` before
 using these instructions elsewhere. Do not enable preview or upgrade dependencies
 to adopt this syntax.
