@@ -77,12 +77,44 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
                 await page.Locator($"fluent-option[text='{destination.Name}']").ClickAsync();
                 await page.Locator($"[data-group-id='{destination.Id}'] [data-category-id='{category.Id}']").WaitForAsync();
             }
+            if (width >= 1000)
+            {
+                // Releasing a drag is not a selection.
+                (await page.Locator(".category-details").CountAsync()).ShouldBe(0);
+            }
+            // A row is one selection target, so padding beside the name and the Assigned input selects it.
+            var inline = row.Locator(".inline-name");
+            var named = (await inline.BoundingBoxAsync()).ShouldNotBeNull();
+            await inline.ClickAsync(new() { Position = new() { X = named.Width - 6, Y = named.Height / 2 } });
+            await page.Locator(".category-details h2").Filter(new() { HasText = "Adventure fund" }).WaitForAsync();
+            await page.WaitForFunctionAsync("() => document.activeElement?.matches('.category-details h2') === true");
+            await page.Locator(".category-details fluent-button[aria-label='Close editor']").ClickAsync();
+            await page.Locator(".category-details").WaitForAsync(new() { State = WaitForSelectorState.Detached });
+            await row.Locator(".assigned-cell").ClickAsync(new() { Position = new() { X = 4, Y = 4 } });
+            await page.Locator(".category-details h2").Filter(new() { HasText = "Adventure fund" }).WaitForAsync();
+            await page.WaitForFunctionAsync("() => document.activeElement?.matches('.category-details h2') === true");
+            await page.Locator(".category-details fluent-button[aria-label='Close editor']").ClickAsync();
+            await page.Locator(".category-details").WaitForAsync(new() { State = WaitForSelectorState.Detached });
+            // Renaming selects the row too, but the inline field keeps focus instead of the editor.
+            await row.GetByRole(AriaRole.Button, new() { Name = "Rename Adventure fund", Exact = true }).ClickAsync();
+            await page.Locator(".category-details h2").Filter(new() { HasText = "Adventure fund" }).WaitForAsync();
+            (await page.EvaluateAsync<bool>("() => document.activeElement?.matches('.category-details h2') !== true")).ShouldBeTrue();
+            await Button(page, "Cancel").ClickAsync();
+            await page.Locator(".inline-name-form").WaitForAsync(new() { State = WaitForSelectorState.Detached });
+            // A row click on the already open category still hands focus to the details heading.
             await row.Locator(".category-link").ClickAsync();
+            await page.WaitForFunctionAsync("() => document.activeElement?.matches('.category-details h2') === true");
+            // Selecting again from an inline control suppresses that focus, and the editor's own save
+            // then remounts it, which must still return focus to the heading.
+            await row.GetByRole(AriaRole.Button, new() { Name = "Rename Adventure fund", Exact = true }).ClickAsync();
+            await Button(page, "Cancel").ClickAsync();
+            await page.Locator(".inline-name-form").WaitForAsync(new() { State = WaitForSelectorState.Detached });
             await page.Locator(".category-details h3").Filter(new() { HasText = "Target" }).WaitForAsync();
             await page.Locator(".category-details fluent-checkbox").First.ClickAsync();
             await FillAsync(page, "Target amount", "250");
             await Input(page, "Target amount").PressAsync("Tab");
             await Button(page, "Save category").ClickAsync();
+            await page.WaitForFunctionAsync("() => document.activeElement?.matches('.category-details h2') === true");
             await row.Locator(".target-caption").Filter(new() { HasText = "$250.00 more needed" }).WaitForAsync();
             await page.ScreenshotAsync(new() { Path = Path.Combine(AppContext.BaseDirectory, "TestResults", $"plan-target-{width}.png") });
             await page.ReloadAsync();
@@ -288,7 +320,7 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             await RovingTabStopsAsync();
 
             await Row(page, categories[2].Id.ToString()).GetByRole(AriaRole.Button, new() { Name = "Rename Keyboard renamed", Exact = true }).ClickAsync();
-            await FillAsync(page, "Category name", "Pointer renamed");
+            await FillAsync(page, "Category name", "Pointer renamed", page.Locator(".inline-name-form"));
             await Button(page, "Save").ClickAsync();
             renamed = Row(page, categories[2].Id.ToString()).GetByRole(AriaRole.Button, new() { Name = "Pointer renamed", Exact = true });
             await renamed.WaitForAsync();
@@ -788,7 +820,10 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
         await page.GetByRole(AriaRole.Button, new() { Name = "Add category to Dreams", Exact = true }).ClickAsync();
         await FillAsync(page, "New category name", "Holiday");
         await Button(page, "Save").ClickAsync();
-        await page.GetByRole(AriaRole.Button, new() { Name = "Rename Holiday", Exact = true }).ClickAsync();
+        // F2 opens the inline editor without selecting the row, so this helper leaves no details pane behind.
+        var holiday = page.GetByRole(AriaRole.Button, new() { Name = "Holiday", Exact = true });
+        await holiday.FocusAsync();
+        await holiday.PressAsync("F2");
         await FillAsync(page, "Category name", "Adventure fund");
         await Input(page, "Category name").PressAsync("Enter");
         await page.GetByRole(AriaRole.Button, new() { Name = "Adventure fund", Exact = true }).WaitForAsync();
@@ -861,10 +896,12 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
     // Fluent attaches a field's immediate listener from its own interop call after the editor
     // renders, so a fill that lands first never reaches .NET and the following save writes
     // nothing. Wait for that wiring before typing: detaching it and typing proves the field
-    // drops the text, and only the wired field delivers it.
-    private static async Task FillAsync(IPage page, string label, string value)
+    // drops the text, and only the wired field delivers it. A selected category also mounts the
+    // details editor with its own fields, so a caller can scope the search to one region.
+    private static async Task FillAsync(IPage page, string label, string value, ILocator? scope = null)
     {
-        var field = page.Locator("fluent-field").Filter(new() { Has = page.GetByText(label, new() { Exact = true }) });
+        var root = scope ?? page.Locator("body");
+        var field = root.Locator("fluent-field").Filter(new() { Has = page.GetByText(label, new() { Exact = true }) });
         var host = field.Locator("fluent-text-input");
         await host.WaitForAsync();
         var id = (await host.GetAttributeAsync("id")).ShouldNotBeNull();

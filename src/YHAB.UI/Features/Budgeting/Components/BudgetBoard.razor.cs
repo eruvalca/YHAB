@@ -55,6 +55,7 @@ public sealed partial class BudgetBoard
     private bool _move;
     private bool _transaction;
     private PlanCommand? _transactionCommand;
+    private PlanCommand? _moveCommand;
     private IReadOnlyList<string>? _payees;
     private long _payeesVersion = -1;
     private long _editorEpoch;
@@ -66,7 +67,11 @@ public sealed partial class BudgetBoard
     private bool _todayFocused;
     private bool _focusMonthStep;
     private BudgetCategoryTable? _categoryTable;
+    private CategoryEditor? _categoryEditor;
+    private MoveMoneyEditor? _moveEditor;
     private CategoryData? _category;
+    // Inline row controls keep focus, so only a selection that owns focus moves it into the editor.
+    private bool _focusCategory = true;
     private CategoryMonth? EditingMonth => _budget.Categories.SingleOrDefault(item => item.Category.Id == _category?.Id);
     private bool HasAccounts => Plan.Accounts.Count > 0;
     // The Today action only changes what the sticky summary shows while another month is open.
@@ -138,7 +143,12 @@ public sealed partial class BudgetBoard
                 // keeps the open draft mounted so its typed values are not recreated.
                 if (!ExternalRefresh)
                 {
-                    _move = false;
+                    // Only the move editor's own submitted save settles its draft, so an unrelated
+                    // successful write that refreshes the plan leaves a dirty draft mounted. A clean
+                    // draft still closes with the refresh.
+                    var settledMove = _moveCommand is not null
+                        && (ReferenceEquals(AppliedCommand, _moveCommand) || ReferenceEquals(RecoveredCommand, _moveCommand));
+                    if (settledMove || _moveEditor is not { IsDirty: true }) { CloseMove(); }
                     // Only a save this editor submitted settles its draft: either the command that
                     // was applied, or the command a refresh recovered after its response was lost.
                     // A recovered write it never submitted, and an unrelated applied command, both
@@ -146,7 +156,13 @@ public sealed partial class BudgetBoard
                     var settled = _transactionCommand is not null
                         && (ReferenceEquals(AppliedCommand, _transactionCommand) || ReferenceEquals(RecoveredCommand, _transactionCommand));
                     if (settled) { CloseTransaction(); }
-                    if (ReferenceEquals(AppliedCommand, _editorCommand) && AppliedCommand is SaveCategory or RemoveCategory) { _editorEpoch++; }
+                    if (ReferenceEquals(AppliedCommand, _editorCommand) && AppliedCommand is SaveCategory or RemoveCategory)
+                    {
+                        _editorEpoch++;
+                        // The save remounts the editor, so its replacement surface takes focus back from
+                        // an inline selection that had deliberately left focus in the row.
+                        _focusCategory = true;
+                    }
                 }
                 _category = Plan.Categories.SingleOrDefault(item => item.Id == _category?.Id);
             }
@@ -266,8 +282,15 @@ public sealed partial class BudgetBoard
         _transactionCommand = command;
         return OnCommand.InvokeAsync(command);
     }
+    // Track the move editor's own command so an unrelated write cannot settle its draft.
+    private Task SendMoveCommandAsync(PlanCommand command)
+    {
+        _moveCommand = command;
+        return OnCommand.InvokeAsync(command);
+    }
     private void CloseTransaction() { _transaction = false; _transactionCommand = null; }
-    private void CloseCategory() => _category = null;
+    private void CloseMove() { _move = false; _moveEditor = null; _moveCommand = null; }
+    private void CloseCategory() { _category = null; _categoryEditor = null; }
     private Task ShowHelpAsync()
     {
         _help = true;
@@ -276,6 +299,22 @@ public sealed partial class BudgetBoard
     }
     private void HideHelp() => _help = false;
     private Task AddCategoryAsync() { _help = false; _categoryTable?.BeginAddCategory(); return Task.CompletedTask; }
-    private void EditCategory(CategoryData category) { _move = false; _category = category; }
-    private void CloseEditors() { _move = false; _category = null; CloseTransaction(); }
+    private void EditCategory(CategorySelection selection)
+    {
+        // An inline row action must not discard another draft, whether that is a category's unsaved
+        // edits or an open move-money draft; the workspace convention is to finish or close the open
+        // editor first. The action that triggered the selection still runs. A closed editor's
+        // reference outlives it because Blazor does not clear an @ref on removal, so the open-editor
+        // flags gate the references.
+        if (!selection.FocusEditor
+            && (_move && _moveEditor is { IsDirty: true }
+                || _category is not null && _categoryEditor is { IsDirty: true } && _category.Id != selection.Category.Id))
+        {
+            return;
+        }
+        CloseMove();
+        _category = selection.Category;
+        _focusCategory = selection.FocusEditor;
+    }
+    private void CloseEditors() { CloseMove(); _category = null; _categoryEditor = null; CloseTransaction(); }
 }

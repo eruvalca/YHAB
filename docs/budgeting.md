@@ -172,9 +172,15 @@ library handles these cases itself.
 Each move saves atomically as one revision and one undoable change, including
 normalizing tied display orders. Moving does not change assignments or history.
 
-Select a category row or its name to open its target panel beside the table on
-wide screens or below it on smaller screens. Assignment inputs keep their own
-editing action. The panel supports targets and monthly snoozes; expand **Category
+Select a category row anywhere, including the padding around its name and its
+Assigned field, to open its target panel beside the table on wide screens or
+below it on smaller screens. The move handle, name link, inline **Rename**,
+Assigned field, and Available pill keep their own actions. Renaming a category or
+committing an assigned amount also selects that category, without moving focus out
+of the field being edited, and releasing a drag never selects. When the open
+category has unsaved edits, an inline action on another category still saves but
+leaves that editor open rather than discarding it. The panel supports
+targets and monthly snoozes; expand **Category
 details** for names, notes, group, and hidden status. Remove a used category by
 moving its history to another category. Account
 details support notes and closing zero-balance accounts. Loan accounts record
@@ -206,9 +212,9 @@ Enter saves a transaction from its payee or amount. A plain **Refresh** applies
 the newer plan without closing an open draft: the editor keeps the typed values
 and rebuilds the accounts and categories it offers, so a refresh-retired category
 or an unavailable move-money selection now blocks the save in either direction
-instead of pointing at a stale record. A plan change applied by a command, and a
-recovery refresh after a save that committed but could not reload, still close
-the editor. A register draft also survives a refresh because the view catalog
+instead of pointing at a stale record. A plan change applied by the editor's
+own command, and a recovery refresh after a save that committed but could not
+reload, still close the editor. A register draft also survives a refresh because the view catalog
 omits the ledger, so an entry missing from it proves nothing about deletion.
 An automatic recurring post that a refresh starts is not the draft's own save, so
 its failure, recovery, and retry keep the draft, and a register read that fails

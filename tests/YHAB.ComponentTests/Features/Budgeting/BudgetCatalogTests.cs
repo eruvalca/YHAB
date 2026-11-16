@@ -52,7 +52,8 @@ public sealed class BudgetCatalogTests
         await component.Find(".inline-name-form fluent-text-input").ChangeAsync(new() { Value = "Food" });
         await component.Find(".inline-name-form").SubmitAsync();
         commands[^1].ShouldBeOfType<SaveCategory>().Category.ShouldBe(plan.Categories[0] with { Name = "Food" });
-        component.FindAll(".category-details").ShouldBeEmpty();
+        // Renaming also selects the category, so its details stay open with the target intact.
+        component.Find(".category-details h2").TextContent.ShouldBe("Groceries");
     }
 
     [Fact]
@@ -95,13 +96,183 @@ public sealed class BudgetCatalogTests
         var commands = new List<PlanCommand>();
         var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, commands.Add));
         await component.Find(".category-row fluent-text-input").ChangeAsync(new() { Value = "25" });
-        component.FindAll(".category-details").ShouldBeEmpty();
+        // Committing an assigned amount is an edit of that category, so it selects it as well.
         commands.Single().ShouldBeOfType<AssignMoney>().Amount.ShouldBe(25);
-        await component.Find(".category-row").ClickAsync();
         component.Find(".category-details h2").TextContent.ShouldBe("Groceries");
         component.Find(".category-details h3").TextContent.ShouldBe("Target");
         await component.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Save category", StringComparison.Ordinal)).ClickAsync();
         commands[^1].ShouldBeOfType<SaveCategory>().Category.Target.ShouldBe(plan.Categories[0].Target);
+    }
+
+    [Fact]
+    public async Task CategoryRowDeadSpaceSelectsWhileEachControlKeepsItsOwnActionAsync()
+    {
+        await using var context = CreateContext();
+        var plan = Plan();
+        var (groceries, utilities) = (plan.Categories[0], plan.Categories[1]);
+        var commands = new List<PlanCommand>();
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, commands.Add));
+
+        // The name cell's padding used to swallow the click before the row saw it.
+        await component.Find($"[data-category-id='{groceries.Id}'] .inline-name").ClickAsync();
+        component.Find(".category-details h2").TextContent.ShouldBe(groceries.Name);
+
+        // The Assigned cell's dead space outside the amount input reaches the row too.
+        await component.Find($"[data-category-id='{utilities.Id}'] .assigned-cell").ClickAsync();
+        component.Find(".category-details h2").TextContent.ShouldBe(utilities.Name);
+
+        // Rename selects the category and then opens its inline editor.
+        await component.Find($"button[aria-label='Rename {utilities.Name}']").ClickAsync();
+        component.Find(".category-details h2").TextContent.ShouldBe(utilities.Name);
+        component.Find(".inline-name-form").ShouldNotBeNull();
+
+        // The drag handle still toggles the move controls without moving the selection.
+        await component.Find($"[data-category-id='{groceries.Id}'] .row-move").ClickAsync();
+        component.Find(".category-move-row").ShouldNotBeNull();
+        component.Find(".category-details h2").TextContent.ShouldBe(utilities.Name);
+        commands.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task InlineRowActionKeepsAnotherCategorysUnsavedDraftAsync()
+    {
+        await using var context = CreateContext();
+        var plan = Plan();
+        var (groceries, utilities) = (plan.Categories[0], plan.Categories[1]);
+        var commands = new List<PlanCommand>();
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, commands.Add));
+
+        await component.Find($"[data-category-id='{groceries.Id}'] .category-link").ClickAsync();
+        await component.Find(".category-details .amount-input fluent-text-input").ChangeAsync(new() { Value = "250" });
+
+        // Committing an assignment from another row still saves, but it cannot replace the dirty editor.
+        await component.Find($"[data-category-id='{utilities.Id}'] fluent-text-input").ChangeAsync(new() { Value = "25" });
+        commands.Single().ShouldBeOfType<AssignMoney>().CategoryId.ShouldBe(utilities.Id);
+        component.Find(".category-details h2").TextContent.ShouldBe(groceries.Name);
+        component.Find(".category-details .amount-input fluent-text-input").GetAttribute("value").ShouldBe("250");
+
+        // Renaming another category opens its inline editor without discarding the draft either.
+        await component.Find($"button[aria-label='Rename {utilities.Name}']").ClickAsync();
+        component.Find(".inline-name-form").ShouldNotBeNull();
+        component.Find(".category-details h2").TextContent.ShouldBe(groceries.Name);
+        component.Find(".category-details .amount-input fluent-text-input").GetAttribute("value").ShouldBe("250");
+    }
+
+    [Fact]
+    public async Task InlineActionSelectsAfterDiscardingTheOpenDraftAsync()
+    {
+        await using var context = CreateContext();
+        var plan = Plan();
+        var (groceries, utilities) = (plan.Categories[0], plan.Categories[1]);
+        var commands = new List<PlanCommand>();
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, commands.Add));
+
+        await component.Find($"[data-category-id='{groceries.Id}'] .category-link").ClickAsync();
+        await component.Find(".category-details .amount-input fluent-text-input").ChangeAsync(new() { Value = "250" });
+        await component.Find("aside.category-details fluent-button[aria-label='Close editor']").ClickAsync();
+        await component.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Discard changes", StringComparison.Ordinal)).ClickAsync();
+        component.FindAll(".category-details").ShouldBeEmpty();
+
+        // No editor is open any more, so an inline action selects its own category again; the
+        // discarded editor must not keep blocking the row.
+        await component.Find($"[data-category-id='{utilities.Id}'] fluent-text-input").ChangeAsync(new() { Value = "25" });
+        commands.Single().ShouldBeOfType<AssignMoney>().CategoryId.ShouldBe(utilities.Id);
+        component.Find(".category-details h2").TextContent.ShouldBe(utilities.Name);
+    }
+
+    [Fact]
+    public async Task InlineRowActionKeepsAnOpenMoveDraftAsync()
+    {
+        await using var context = CreateContext();
+        var basePlan = Plan();
+        var plan = basePlan with { Accounts = [new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, basePlan.Today, false, "")] };
+        var (groceries, utilities) = (plan.Categories[0], plan.Categories[1]);
+        var commands = new List<PlanCommand>();
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, commands.Add));
+
+        await component.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Move money", StringComparison.Ordinal)).ClickAsync();
+        await component.Find(".editor-surface .amount-input fluent-text-input").ChangeAsync(new() { Value = "10" });
+
+        // Renaming a row still opens its inline editor, but it cannot unmount the dirty move draft.
+        await component.Find($"button[aria-label='Rename {utilities.Name}']").ClickAsync();
+        component.Find(".inline-name-form").ShouldNotBeNull();
+        component.Find(".editor-surface h2").TextContent.ShouldBe("Move money");
+        component.FindAll(".category-details").ShouldBeEmpty();
+        component.Find(".editor-surface .amount-input fluent-text-input").GetAttribute("value").ShouldBe("10");
+
+        // An assignment still saves and likewise leaves the move draft in place.
+        await component.Find($"[data-category-id='{groceries.Id}'] fluent-text-input").ChangeAsync(new() { Value = "25" });
+        commands.Single().ShouldBeOfType<AssignMoney>().CategoryId.ShouldBe(groceries.Id);
+        component.Find(".editor-surface h2").TextContent.ShouldBe("Move money");
+        component.FindAll(".category-details").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task UnrelatedWriteKeepsADirtyMoveDraftAsync()
+    {
+        await using var context = CreateContext();
+        var basePlan = Plan();
+        var plan = basePlan with { Accounts = [new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, basePlan.Today, false, "")] };
+        var commands = new List<PlanCommand>();
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, commands.Add));
+
+        await component.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Move money", StringComparison.Ordinal)).ClickAsync();
+        await component.Find(".editor-surface .amount-input fluent-text-input").ChangeAsync(new() { Value = "10" });
+
+        // Another successful write arrives; it is not the move editor's own save, so the typed
+        // draft stays mounted instead of being unmounted without its discard prompt.
+        var applied = new AssignMoney(plan.Version, plan.Categories[0].Id, plan.Today, 25);
+        component.Render(p => p.Add(item => item.Plan, plan with { Version = plan.Version + 1 })
+            .Add(item => item.OnCommand, commands.Add)
+            .Add(item => item.AppliedCommand, applied));
+
+        component.Find(".editor-surface h2").TextContent.ShouldBe("Move money");
+        component.Find(".editor-surface .amount-input fluent-text-input").GetAttribute("value").ShouldBe("10");
+        component.FindAll(".category-details").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task MoveSaveClosesItsOwnDraftAsync()
+    {
+        await using var context = CreateContext();
+        var basePlan = Plan();
+        var plan = basePlan with { Accounts = [new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, basePlan.Today, false, "")] };
+        var commands = new List<PlanCommand>();
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, commands.Add));
+
+        await component.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Move money", StringComparison.Ordinal)).ClickAsync();
+        await component.Find(".editor-surface .amount-input fluent-text-input").ChangeAsync(new() { Value = "10" });
+        await component.FindAll(".editor-surface fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Move money", StringComparison.Ordinal)).ClickAsync();
+        var applied = commands.Single().ShouldBeOfType<MoveMoney>();
+
+        // The editor's own save still settles and closes it.
+        component.Render(p => p.Add(item => item.Plan, plan with { Version = plan.Version + 1 })
+            .Add(item => item.OnCommand, commands.Add)
+            .Add(item => item.AppliedCommand, applied));
+
+        component.FindAll(".editor-surface").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task AvailablePillAndReorderDoNotSelectTheCategoryAsync()
+    {
+        await using var context = CreateContext();
+        var plan = Plan();
+        var (groceries, utilities) = (plan.Categories[0], plan.Categories[1]);
+        var commands = new List<PlanCommand>();
+        var board = RenderBoard(context, plan, commands, readyToAssign: 100m,
+            Row(groceries, assigned: 40m, activity: 0m, available: 40m),
+            Row(utilities, assigned: 0m, activity: 0m, available: 0m));
+
+        await board.Find($"[data-category-id='{groceries.Id}'] button.available-pill").ClickAsync();
+        board.Find(".money-popover").ShouldNotBeNull();
+        board.FindAll(".category-details").ShouldBeEmpty();
+        await board.FindAll(".money-popover fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Cancel", StringComparison.Ordinal)).ClickAsync();
+
+        var list = List(board, plan.Groups[0].Id);
+        await board.InvokeAsync(() => list.OnUpdateJSAsync(0, 1, ListId(plan.Groups[0].Id), ListId(plan.Groups[0].Id)));
+        commands.Single().ShouldBeOfType<ReorderCategory>();
+        board.FindAll(".category-details").ShouldBeEmpty();
     }
 
     [Fact]
@@ -295,8 +466,9 @@ public sealed class BudgetCatalogTests
         {
             await component.WaitForAssertionAsync(() => CategoryIds(component, group).ShouldBe([plan.Categories[1].Id.ToString(), plan.Categories[0].Id.ToString()]));
             component.FindAll(".inline-name-form").Count.ShouldBe(1);
-            component.FindComponents<FluentTextInput>().Single(item => string.Equals(item.Instance.Label, "Category name", StringComparison.Ordinal))
-                .Instance.Value.ShouldBe("Food");
+            // Scope to the row's inline editor: selecting the category also mounts its details editor,
+            // which carries the same field label.
+            component.Find(".inline-name-form fluent-text-input").GetAttribute("value").ShouldBe("Food");
         }
         finally
         {

@@ -11,7 +11,7 @@ public sealed partial class BudgetCategoryTable
     [Parameter, EditorRequired] public PlanSnapshot Plan { get; set; } = default!;
     [Parameter, EditorRequired] public BudgetMonth Budget { get; set; } = default!;
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
-    [Parameter, EditorRequired] public EventCallback<CategoryData> OnSelect { get; set; }
+    [Parameter, EditorRequired] public EventCallback<CategorySelection> OnSelect { get; set; }
     [Parameter] public Guid? SelectedCategoryId { get; set; }
     [Parameter] public bool Busy { get; set; }
     private static readonly string _stillNeeded = BudgetGlossary.Label(BudgetTerm.StillNeeded);

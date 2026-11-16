@@ -12,6 +12,8 @@ public sealed partial class CategoryEditor
     [Parameter, EditorRequired] public DateOnly Month { get; set; }
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
     [Parameter, EditorRequired] public EventCallback OnClose { get; set; }
+    // An inline row control that already owns focus selects without moving it into the editor.
+    [Parameter] public bool FocusOnOpen { get; set; } = true;
     [Parameter] public bool Busy { get; set; }
     private static readonly TargetKind[] _kinds = Enum.GetValues<TargetKind>();
     private static readonly TargetCadence[] _cadences = Enum.GetValues<TargetCadence>();
@@ -42,6 +44,8 @@ public sealed partial class CategoryEditor
     private Guid _replacement;
     private string _initial = "";
     private string TargetDescription => BudgetGlossary.Definition(BudgetGlossary.For(_kind));
+    // The board asks before an inline row action would replace this editor.
+    internal bool IsDirty => HasUnsavedChanges();
     private bool HasUnsavedChanges() => !string.Equals(Signature(), _initial, StringComparison.Ordinal) || _amountInput?.HasDraft is true;
     protected override void OnInitialized()
     {

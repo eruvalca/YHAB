@@ -11,11 +11,17 @@ public sealed partial class EditorSurface
     // Evaluated on demand: the keyboard path can ask before the change that made
     // the draft dirty has re-rendered this parameter.
     [Parameter] public Func<bool>? HasUnsavedChanges { get; set; }
+    // An inline row control that keeps focus selects without moving it to this editor.
+    [Parameter] public bool FocusOnOpen { get; set; } = true;
     private readonly string _discardId = $"editor-discard-{Guid.CreateVersion7():N}";
     private ElementReference _heading;
     private ElementReference _discardPrompt;
     private bool _confirmingDiscard;
     private bool _focusDiscard;
+    // An inline selection keeps focus, and a later row click on the same category asks for the
+    // heading on this already mounted surface, where firstRender never runs again.
+    private bool? _previousFocusOnOpen;
+    private bool _focusHeading;
     private bool IsDirty => HasUnsavedChanges?.Invoke() == true;
 
     protected override void OnParametersSet()
@@ -26,12 +32,18 @@ public sealed partial class EditorSurface
         {
             _confirmingDiscard = false;
         }
+        if (FocusOnOpen && _previousFocusOnOpen == false)
+        {
+            _focusHeading = true;
+        }
+        _previousFocusOnOpen = FocusOnOpen;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if ((firstRender && FocusOnOpen) || _focusHeading)
         {
+            _focusHeading = false;
             await _heading.FocusAsync();
         }
         else if (_focusDiscard)

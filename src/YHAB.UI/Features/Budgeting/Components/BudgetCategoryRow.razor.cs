@@ -10,7 +10,7 @@ public sealed partial class BudgetCategoryRow
     [Parameter, EditorRequired] public CategoryMonth Row { get; set; } = default!;
     [Parameter, EditorRequired] public DateOnly Month { get; set; }
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
-    [Parameter, EditorRequired] public EventCallback<CategoryData> OnSelect { get; set; }
+    [Parameter, EditorRequired] public EventCallback<CategorySelection> OnSelect { get; set; }
     [Parameter, EditorRequired] public EventCallback OnToggleMove { get; set; }
     [Parameter] public bool Moving { get; set; }
     [Parameter] public bool Busy { get; set; }
@@ -22,9 +22,17 @@ public sealed partial class BudgetCategoryRow
     private string Tone => Row switch { { Available: < 0 } => "negative", { TargetNeeded: > 0 } => "attention", { Available: > 0 } => "positive", _ => "neutral" };
     private string TargetCaption => Row switch { { Snoozed: true } => "Target snoozed this month", { TargetNeeded: > 0 } => $"{BudgetFacts.Money(Row.TargetNeeded)} more needed", _ => "Target funded" };
     private decimal Progress => Row.TargetTotal <= 0 ? 0 : Math.Clamp(100 * (1 - Row.TargetNeeded / Row.TargetTotal), 0, 100);
-    private Task SelectAsync() => Busy ? Task.CompletedTask : OnSelect.InvokeAsync(Row.Category);
+    private Task SelectAsync() => Busy ? Task.CompletedTask : OnSelect.InvokeAsync(new(Row.Category));
+    // The name editor and Assigned field own focus while the user is in them.
+    private Task SelectInlineAsync() => Busy ? Task.CompletedTask : OnSelect.InvokeAsync(new(Row.Category, FocusEditor: false));
     private Task RenameAsync(string name) => OnCommand.InvokeAsync(new SaveCategory(Plan.Version, Row.Category with { Name = name }));
-    private Task AssignAsync(decimal amount) => OnCommand.InvokeAsync(new AssignMoney(Plan.Version, Row.Category.Id, Month, amount));
+    // An assignment is an edit of this category, so the row selects before the write is requested.
+    private async Task AssignAsync(decimal amount)
+    {
+        var command = new AssignMoney(Plan.Version, Row.Category.Id, Month, amount);
+        await SelectInlineAsync();
+        await OnCommand.InvokeAsync(command);
+    }
     private Task ToggleMoveAsync() => OnToggleMove.InvokeAsync();
     private Task MoveUpAsync() => MoveAsync(Row.Category.GroupId, Siblings[Index - 1].Id);
     private Task MoveDownAsync() => MoveAsync(Row.Category.GroupId, Siblings.ElementAtOrDefault(Index + 2)?.Id);

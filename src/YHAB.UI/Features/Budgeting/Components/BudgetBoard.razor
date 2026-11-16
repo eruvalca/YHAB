@@ -75,7 +75,7 @@
     }
     @if (_move)
     {
-        <MoveMoneyEditor Plan="Plan" Month="_budget.Month" OnCommand="OnCommand" OnClose="CloseEditors" Busy="IsBusy" />
+        <MoveMoneyEditor @ref="_moveEditor" Plan="Plan" Month="_budget.Month" OnCommand="SendMoveCommandAsync" OnClose="CloseEditors" Busy="IsBusy" />
     }
     @if (_transaction)
     {
@@ -90,7 +90,7 @@
             @if (_category is not null)
             {
                 <aside class="category-details" aria-label="Category details">
-                    <CategoryEditor @key="(_category?.Id, _budget.Month, _editorEpoch)" Plan="Plan" Category="_category" MonthState="EditingMonth" Month="_budget.Month" OnCommand="SendCategoryCommandAsync" OnClose="CloseCategory" Busy="IsBusy" />
+                    <CategoryEditor @ref="_categoryEditor" @key="(_category?.Id, _budget.Month, _editorEpoch)" Plan="Plan" Category="_category" MonthState="EditingMonth" Month="_budget.Month" OnCommand="SendCategoryCommandAsync" OnClose="CloseCategory" Busy="IsBusy" FocusOnOpen="_focusCategory" />
                 </aside>
             }
         </FluentStack>
