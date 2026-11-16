@@ -4,6 +4,64 @@ const browserSupportsPasskeys =
     typeof window.PublicKeyCredential.parseCreationOptionsFromJSON === 'function' &&
     typeof window.PublicKeyCredential.parseRequestOptionsFromJSON === 'function';
 
+function toBase64Url(value) {
+    if (value === null || value === undefined || typeof value === 'string') {
+        return value;
+    }
+
+    const bytes = value instanceof ArrayBuffer
+        ? new Uint8Array(value)
+        : ArrayBuffer.isView(value)
+            ? new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
+            : new Uint8Array(value);
+
+    let binary = '';
+    for (const byte of bytes) {
+        binary += String.fromCharCode(byte);
+    }
+
+    return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
+}
+
+// Password managers can hand back credential-like objects whose toJSON() omits
+// clientExtensionResults, which ASP.NET Core Identity requires. Build the
+// spec-shaped payload explicitly so the posted JSON is complete either way.
+function serializeCredential(credential, operation) {
+    const response = credential.response ?? {};
+    const clientExtensionResults =
+        credential.getClientExtensionResults?.() ?? credential.clientExtensionResults ?? {};
+    const credentialJson = {
+        id: credential.id,
+        rawId: toBase64Url(credential.rawId),
+        type: credential.type,
+        clientExtensionResults,
+    };
+
+    if (credential.authenticatorAttachment) {
+        credentialJson.authenticatorAttachment = credential.authenticatorAttachment;
+    }
+
+    if (operation === 'Create') {
+        const transports = response.getTransports?.() ?? response.transports;
+        credentialJson.response = {
+            clientDataJSON: toBase64Url(response.clientDataJSON),
+            attestationObject: toBase64Url(response.attestationObject),
+        };
+        if (transports) {
+            credentialJson.response.transports = transports;
+        }
+    } else {
+        credentialJson.response = {
+            clientDataJSON: toBase64Url(response.clientDataJSON),
+            authenticatorData: toBase64Url(response.authenticatorData),
+            signature: toBase64Url(response.signature),
+            userHandle: toBase64Url(response.userHandle),
+        };
+    }
+
+    return credentialJson;
+}
+
 async function fetchWithErrorHandling(url, options = {}) {
     const response = await fetch(url, {
         credentials: 'include',
@@ -73,7 +131,7 @@ customElements.define('passkey-submit', class extends HTMLElement {
 
     async obtainCredential(useConditionalMediation, signal) {
         if (!browserSupportsPasskeys) {
-            throw new Error('Some passkey features are missing. Please update your browser.');
+            throw new Error('Your browser does not support passkeys. Please update your browser.');
         }
 
         const headers = {
@@ -98,7 +156,7 @@ customElements.define('passkey-submit', class extends HTMLElement {
         const formData = new FormData();
         try {
             const credential = await this.obtainCredential(useConditionalMediation, signal);
-            const credentialJson = JSON.stringify(credential);
+            const credentialJson = JSON.stringify(serializeCredential(credential, this.attrs.operation));
             formData.append(`${this.attrs.name}.CredentialJson`, credentialJson);
         } catch (error) {
             if (error.name === 'AbortError') {
