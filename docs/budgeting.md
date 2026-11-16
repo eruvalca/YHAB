@@ -636,7 +636,8 @@ date range, sort, revision and an opaque next-page cursor. Page size defaults to
 read remains available for internal comparisons and existing API consumers.
 See `src/YHAB/YHAB.http` for request examples. Existing Identity email delivery
 and deployment configuration still need the normal environment-specific setup
-described in the root README.
+described in the [operations guide](operations.md) and
+[deployment guide](deployment.md).
 
 ## Acceptance evidence
 
