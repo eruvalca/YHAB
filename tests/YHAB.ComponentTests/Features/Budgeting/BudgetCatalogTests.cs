@@ -134,6 +134,31 @@ public sealed class BudgetCatalogTests
     }
 
     [Fact]
+    public async Task InlineRowActionKeepsAnotherCategorysUnsavedDraftAsync()
+    {
+        await using var context = CreateContext();
+        var plan = Plan();
+        var (groceries, utilities) = (plan.Categories[0], plan.Categories[1]);
+        var commands = new List<PlanCommand>();
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, commands.Add));
+
+        await component.Find($"[data-category-id='{groceries.Id}'] .category-link").ClickAsync();
+        await component.Find(".category-details .amount-input fluent-text-input").ChangeAsync(new() { Value = "250" });
+
+        // Committing an assignment from another row still saves, but it cannot replace the dirty editor.
+        await component.Find($"[data-category-id='{utilities.Id}'] fluent-text-input").ChangeAsync(new() { Value = "25" });
+        commands.Single().ShouldBeOfType<AssignMoney>().CategoryId.ShouldBe(utilities.Id);
+        component.Find(".category-details h2").TextContent.ShouldBe(groceries.Name);
+        component.Find(".category-details .amount-input fluent-text-input").GetAttribute("value").ShouldBe("250");
+
+        // Renaming another category opens its inline editor without discarding the draft either.
+        await component.Find($"button[aria-label='Rename {utilities.Name}']").ClickAsync();
+        component.Find(".inline-name-form").ShouldNotBeNull();
+        component.Find(".category-details h2").TextContent.ShouldBe(groceries.Name);
+        component.Find(".category-details .amount-input fluent-text-input").GetAttribute("value").ShouldBe("250");
+    }
+
+    [Fact]
     public async Task AvailablePillAndReorderDoNotSelectTheCategoryAsync()
     {
         await using var context = CreateContext();

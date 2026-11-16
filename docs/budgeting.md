@@ -177,7 +177,9 @@ Assigned field, to open its target panel beside the table on wide screens or
 below it on smaller screens. The move handle, name link, inline **Rename**,
 Assigned field, and Available pill keep their own actions. Renaming a category or
 committing an assigned amount also selects that category, without moving focus out
-of the field being edited, and releasing a drag never selects. The panel supports
+of the field being edited, and releasing a drag never selects. When the open
+category has unsaved edits, an inline action on another category still saves but
+leaves that editor open rather than discarding it. The panel supports
 targets and monthly snoozes; expand **Category
 details** for names, notes, group, and hidden status. Remove a used category by
 moving its history to another category. Account

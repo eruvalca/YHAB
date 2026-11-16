@@ -130,16 +130,23 @@ export function initialize(table) {
     state.observer = observer;
     instances.set(table, state);
     // SortableJS begins a fallback drag on the handle's pointerdown, so a click that completes a drag
-    // can still land on the row that started it. Only a press that moved is a drag: remember that and
-    // drop the trailing click, so releasing a drag never selects the row or toggles its move controls.
+    // can still land on the row that started it. Movement is latched at the document level, because a
+    // drag leaves the row and can return near its starting point; a latched drag then drops the
+    // trailing click so releasing it never selects the row or toggles its move controls.
     table.addEventListener('pointerdown', event => {
-        state.dragPress = event.target.closest?.('.category-list .row-move.sortable-grab') ? { x: event.clientX, y: event.clientY } : null;
+        state.dragPress = event.target.closest?.('.category-list .row-move.sortable-grab') ? { x: event.clientX, y: event.clientY, moved: false } : null;
         state.dragEnded = false;
     }, { capture: true, signal: controller.signal });
-    table.addEventListener('pointerup', event => {
-        state.dragEnded = state.dragPress !== null && Math.hypot(event.clientX - state.dragPress.x, event.clientY - state.dragPress.y) > 4;
-        state.dragPress = null;
+    document.addEventListener('pointermove', event => {
+        const press = state.dragPress;
+        if (press && !press.moved && Math.hypot(event.clientX - press.x, event.clientY - press.y) > 4) press.moved = true;
     }, { capture: true, signal: controller.signal });
+    const release = () => {
+        state.dragEnded = state.dragPress?.moved === true;
+        state.dragPress = null;
+    };
+    document.addEventListener('pointerup', release, { capture: true, signal: controller.signal });
+    document.addEventListener('pointercancel', release, { capture: true, signal: controller.signal });
     // Keyboard activation emits a click without a pointer press, so it is never a drag completion.
     table.addEventListener('click', event => {
         if (!state.dragEnded || event.detail === 0) return;

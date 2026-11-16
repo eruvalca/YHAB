@@ -18,6 +18,10 @@ public sealed partial class EditorSurface
     private ElementReference _discardPrompt;
     private bool _confirmingDiscard;
     private bool _focusDiscard;
+    // An inline selection keeps focus, and a later row click on the same category asks for the
+    // heading on this already mounted surface, where firstRender never runs again.
+    private bool? _previousFocusOnOpen;
+    private bool _focusHeading;
     private bool IsDirty => HasUnsavedChanges?.Invoke() == true;
 
     protected override void OnParametersSet()
@@ -28,12 +32,18 @@ public sealed partial class EditorSurface
         {
             _confirmingDiscard = false;
         }
+        if (FocusOnOpen && _previousFocusOnOpen == false)
+        {
+            _focusHeading = true;
+        }
+        _previousFocusOnOpen = FocusOnOpen;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && FocusOnOpen)
+        if ((firstRender && FocusOnOpen) || _focusHeading)
         {
+            _focusHeading = false;
             await _heading.FocusAsync();
         }
         else if (_focusDiscard)

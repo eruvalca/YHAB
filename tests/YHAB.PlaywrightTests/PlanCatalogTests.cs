@@ -101,6 +101,9 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             (await page.EvaluateAsync<bool>("() => document.activeElement?.matches('.category-details h2') !== true")).ShouldBeTrue();
             await Button(page, "Cancel").ClickAsync();
             await page.Locator(".inline-name-form").WaitForAsync(new() { State = WaitForSelectorState.Detached });
+            // A row click on the already open category still hands focus to the details heading.
+            await row.Locator(".category-link").ClickAsync();
+            await page.WaitForFunctionAsync("() => document.activeElement?.matches('.category-details h2') === true");
             await page.Locator(".category-details fluent-button[aria-label='Close editor']").ClickAsync();
             await page.Locator(".category-details").WaitForAsync(new() { State = WaitForSelectorState.Detached });
             await row.Locator(".category-link").ClickAsync();

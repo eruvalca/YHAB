@@ -66,6 +66,7 @@ public sealed partial class BudgetBoard
     private bool _todayFocused;
     private bool _focusMonthStep;
     private BudgetCategoryTable? _categoryTable;
+    private CategoryEditor? _categoryEditor;
     private CategoryData? _category;
     // Inline row controls keep focus, so only a selection that owns focus moves it into the editor.
     private bool _focusCategory = true;
@@ -278,6 +279,15 @@ public sealed partial class BudgetBoard
     }
     private void HideHelp() => _help = false;
     private Task AddCategoryAsync() { _help = false; _categoryTable?.BeginAddCategory(); return Task.CompletedTask; }
-    private void EditCategory(CategorySelection selection) { _move = false; _category = selection.Category; _focusCategory = selection.FocusEditor; }
+    private void EditCategory(CategorySelection selection)
+    {
+        // An inline row action must not discard another category's unsaved draft; the workspace
+        // convention is to finish or close the open editor first. The action that triggered the
+        // selection still runs.
+        if (!selection.FocusEditor && _categoryEditor is { IsDirty: true } && _category?.Id != selection.Category.Id) { return; }
+        _move = false;
+        _category = selection.Category;
+        _focusCategory = selection.FocusEditor;
+    }
     private void CloseEditors() { _move = false; _category = null; CloseTransaction(); }
 }

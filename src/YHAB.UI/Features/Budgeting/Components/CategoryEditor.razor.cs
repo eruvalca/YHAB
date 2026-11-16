@@ -44,6 +44,8 @@ public sealed partial class CategoryEditor
     private Guid _replacement;
     private string _initial = "";
     private string TargetDescription => BudgetGlossary.Definition(BudgetGlossary.For(_kind));
+    // The board asks before an inline row action would replace this editor.
+    internal bool IsDirty => HasUnsavedChanges();
     private bool HasUnsavedChanges() => !string.Equals(Signature(), _initial, StringComparison.Ordinal) || _amountInput?.HasDraft is true;
     protected override void OnInitialized()
     {
