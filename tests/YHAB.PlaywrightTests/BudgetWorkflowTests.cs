@@ -56,7 +56,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             await page.Locator(".hero-amount").Filter(new() { HasText = "$700.00" }).WaitForAsync();
             var groceries = page.Locator(".budget-table .category-row").Filter(new() { Has = page.GetByRole(AriaRole.Button, new() { Name = "Groceries", Exact = true }) });
             (await groceries.Locator(".available-pill").InnerTextAsync()).ShouldBe("$292.23");
-            await page.GetByRole(AriaRole.Heading, new() { Name = "Plan your money", Exact = true }).ClickAsync();
+            await ClearPlanFocusAsync(page);
             await page.Keyboard.PressAsync("Control+z");
             await groceries.Locator(".available-pill").Filter(new() { HasText = "$225.00" }).WaitForAsync();
             await page.Keyboard.PressAsync("Control+z");
@@ -629,9 +629,15 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             .WaitForAsync();
     }
 
+    // Move focus and any open selection away from the amount fields. A phone hides
+    // the summary heading visually, so aim at the band's own padding: the one part
+    // of it that is not a control at either width.
+    private static Task ClearPlanFocusAsync(IPage page) =>
+        page.Locator(".budget-summary").ClickAsync(new() { Position = new() { X = 4, Y = 4 } });
+
     private static async Task VerifyWheelScrollingAsync(IPage page)
     {
-        await page.GetByRole(AriaRole.Heading, new() { Name = "Plan your money", Exact = true }).ClickAsync();
+        await ClearPlanFocusAsync(page);
         await page.Keyboard.PressAsync("Control+Home");
         await page.SetViewportSizeAsync(await page.EvaluateAsync<int>("innerWidth"), 640);
         await page.WaitForFunctionAsync("scrollY === 0");
@@ -752,9 +758,9 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         {
             summary.Y.ShouldBeInRange(0, 16);
         }
-        // The phone summary now carries three 40px actions; keep enough of the
-        // 640px viewport below it for the table.
-        summary.Height.ShouldBeLessThan(width < 768 ? 300 : 155);
+        // Only the month, the amount to assign, and the actions stay pinned; the
+        // totals and tools scroll away beneath it, so the band stays a thin strip.
+        summary.Height.ShouldBeLessThan(width < 768 ? 200 : 130);
         (await amount.BoundingBoxAsync()).ShouldNotBeNull().Y.ShouldBeGreaterThan(summary.Y + summary.Height);
         await amount.FocusAsync();
         await page.Keyboard.PressAsync("Shift+Tab");
@@ -955,6 +961,11 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             var refresh = (await Button(page, "Refresh").BoundingBoxAsync()).ShouldNotBeNull();
             var status = (await page.Locator(".workspace-status").BoundingBoxAsync()).ShouldNotBeNull();
             Math.Abs(refresh.Y + refresh.Height / 2 - status.Y - status.Height / 2).ShouldBeLessThan(1);
+            // The totals and the plan tools share one slim line under the band; a stack
+            // that claims the full width would push the tools onto a row of its own.
+            var totals = (await page.Locator(".budget-meta .budget-totals").BoundingBoxAsync()).ShouldNotBeNull();
+            var tools = (await page.Locator(".budget-meta .workspace-toolbar").BoundingBoxAsync()).ShouldNotBeNull();
+            Math.Abs(totals.Y + totals.Height / 2 - tools.Y - tools.Height / 2).ShouldBeLessThan(4);
             var filter = (await page.Locator(".table-toolbar fluent-dropdown").BoundingBoxAsync()).ShouldNotBeNull();
             var addCategory = (await Button(page, "+ Category").BoundingBoxAsync()).ShouldNotBeNull();
             Math.Abs(filter.Y + filter.Height - addCategory.Y - addCategory.Height).ShouldBeLessThanOrEqualTo(4);
