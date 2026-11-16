@@ -35,6 +35,20 @@ public sealed class PwaTests(ITestOutputHelper output)
         await RunInBrowserAsync(1280, (page, _) => VerifyAlreadyInstallingUpdateAsync(page, hasController), TestContext.Current.CancellationToken);
     }
 
+    [Fact]
+    [Trait("Category", "BrowserSmoke")]
+    public async Task AddTransactionShortcutOpensTheOnlyPlansRegisterAsync()
+    {
+        await RunInBrowserAsync(1280, VerifyAddTransactionShortcutAsync, TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    [Trait("Category", "BrowserSmoke")]
+    public async Task AddTransactionShortcutChoosesAPlanAndResumesAfterLoginAsync()
+    {
+        await RunInBrowserAsync(1280, VerifyAddTransactionChooserAsync, TestContext.Current.CancellationToken);
+    }
+
     private async Task RunInBrowserAsync(int width, Func<IPage, IBrowserContext, Task> verify, CancellationToken cancellationToken)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -92,6 +106,9 @@ public sealed class PwaTests(ITestOutputHelper output)
         manifest.GetProperty("display_override").EnumerateArray().Select(item => item.GetString()).ShouldContain(item => string.Equals(item, "standalone", StringComparison.Ordinal));
         var shortcuts = manifest.GetProperty("shortcuts").EnumerateArray().ToArray();
         shortcuts.Select(item => item.GetProperty("url").GetString()).ShouldContain(item => string.Equals(item, "/plans", StringComparison.Ordinal));
+        shortcuts.Select(item => (Name: item.GetProperty("name").GetString(), Url: item.GetProperty("url").GetString()))
+            .ShouldContain(item => string.Equals(item.Name, "Add transaction", StringComparison.Ordinal)
+                && string.Equals(item.Url, "/plans?action=add-transaction", StringComparison.Ordinal));
         shortcuts.ShouldAllBe(item => item.GetProperty("name").GetString() != null);
         foreach (var icon in manifest.GetProperty("icons").EnumerateArray())
         {
@@ -137,6 +154,74 @@ public sealed class PwaTests(ITestOutputHelper output)
         await page.GetByRole(AriaRole.Link, new() { Name = "Try again", Exact = true }).ClickAsync();
         await page.GetByRole(AriaRole.Heading, new() { Name = "Profile", Exact = true }).WaitForAsync();
         page.Url.ShouldBe(deepUrl);
+    }
+
+    private static async Task VerifyAddTransactionShortcutAsync(IPage page, IBrowserContext _)
+    {
+        await BudgetWorkflowTests.RegisterAsync(page);
+        await CreatePlanAsync(page, "Everyday plan");
+        await BudgetWorkflowTests.AddAccountAsync(page);
+
+        // The installed app's shortcut resolves the only plan and opens its register editor.
+        await page.GotoAsync("/plans?action=add-transaction");
+        await AssertNewTransactionEditorAsync(page);
+
+        // Closing leaves the register, and the cleared URL keeps a refresh closed.
+        await page.Locator(".editor-heading fluent-button").ClickAsync();
+        await page.Locator(".editor-surface").WaitForAsync(new() { State = WaitForSelectorState.Detached });
+        await page.ReloadAsync();
+        await page.Locator(".register-results[aria-busy='false']").WaitForAsync();
+        (await page.Locator(".editor-surface").CountAsync()).ShouldBe(0);
+    }
+
+    private static async Task VerifyAddTransactionChooserAsync(IPage page, IBrowserContext _)
+    {
+        var email = await BudgetWorkflowTests.RegisterAsync(page);
+        await CreatePlanAsync(page, "Shortcut primary");
+        await BudgetWorkflowTests.AddAccountAsync(page);
+        await CreatePlanAsync(page, "Shortcut second");
+
+        await page.GotoAsync("/plans?action=add-transaction");
+        await page.GetByText("Choose the plan to add a transaction to.").WaitForAsync();
+        var cards = page.Locator(".plan-card");
+        (await cards.CountAsync()).ShouldBe(2);
+        (await cards.EvaluateAllAsync<string?[]>("cards => cards.map(card => card.getAttribute('href'))"))
+            .ShouldAllBe(href => href != null && href.EndsWith("/accounts?new=true", StringComparison.Ordinal));
+        await cards.Filter(new() { HasText = "Shortcut primary" }).ClickAsync();
+        await AssertNewTransactionEditorAsync(page);
+
+        // The deep link also survives the login returnUrl round-trip.
+        await page.Locator(".editor-heading fluent-button").ClickAsync();
+        await page.Locator(".editor-surface").WaitForAsync(new() { State = WaitForSelectorState.Detached });
+        await page.Context.ClearCookiesAsync();
+        await page.GotoAsync("/plans?action=add-transaction");
+        await page.GetByLabel("Email", new() { Exact = true }).WaitForAsync();
+        page.Url.ShouldContain("returnUrl=");
+        await page.GetByLabel("Email", new() { Exact = true }).FillAsync(email);
+        await page.GetByLabel("Password", new() { Exact = true }).FillAsync(BudgetWorkflowTests.TestPassword);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Log in", Exact = true }).ClickAsync();
+        await page.GetByText("Choose the plan to add a transaction to.").WaitForAsync();
+        page.Url.ShouldContain("action=add-transaction");
+        await page.Locator(".plan-card").Filter(new() { HasText = "Shortcut primary" }).ClickAsync();
+        await AssertNewTransactionEditorAsync(page);
+    }
+
+    private static async Task CreatePlanAsync(IPage page, string name)
+    {
+        await page.GotoAsync("/plans");
+        await page.GetByLabel("Plan name", new() { Exact = true }).FillAsync(name);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Create your plan" }).ClickAsync();
+        await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+    }
+
+    private static async Task AssertNewTransactionEditorAsync(IPage page)
+    {
+        await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+        await page.GetByRole(AriaRole.Heading, new() { Name = "Add transaction", Exact = true }).WaitForAsync();
+        // A prerender/interactive handoff must not open the editor twice.
+        (await page.Locator(".editor-surface").CountAsync()).ShouldBe(1);
+        // The one-shot intent clears its query so a refresh cannot reopen the editor.
+        await page.WaitForFunctionAsync("() => !window.location.search.includes('new=true')");
     }
 
     private static async Task VerifyInstallActionAsync(IPage page)

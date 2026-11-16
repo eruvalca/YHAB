@@ -45,7 +45,10 @@ one category.
    another category; an overspent balance offers to cover that shortfall from
    Ready to assign or a category that has money.
 4. Add transactions from **Add transaction** in the monthly summary, in an
-   account, or in **All transactions**. The editor starts on Outflow and asks
+   account, or in **All transactions**. An installed app's **Add transaction**
+   shortcut enters through `/plans?action=add-transaction`: it opens the only
+   accessible plan's register with the editor already open, or asks which plan
+   to use first when there are several. The editor starts on Outflow and asks
    for a spending category whenever money leaves the budget; Ready to assign
    remains available for inflows, including transfers that put money into a
    budget account. Split amounts are signed and must total the transaction amount

@@ -26,6 +26,13 @@
       "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
+      "name": "Add transaction",
+      "short_name": "Add",
+      "description": "Record a new transaction",
+      "url": "/plans?action=add-transaction",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
       "name": "Home",
       "short_name": "Home",
       "description": "See how YHAB works",

@@ -676,6 +676,11 @@ or POSTs. It also installs a real replacement worker using a distinct script URL
 on the test's isolated origin: an update waits, cancelling the confirmation keeps
 the form, accepting reloads only that tab, and unrelated caches survive cleanup.
 This avoids modifying shared build outputs during concurrent tests.
+It asserts the **Add transaction** manifest shortcut and exercises
+`/plans?action=add-transaction` in the browser: one accessible plan opens its
+register with a single editor, several plans show a picker whose cards carry the
+intent, closing and refreshing keep the editor closed, and a signed-out launch
+resumes the same URL after login.
 A deterministic event-ordering case loads the real app/module with a controlled
 service-worker container: `updatefound` fires before `register()` resolves while
 installation is still pending. Completing that installation must offer an update

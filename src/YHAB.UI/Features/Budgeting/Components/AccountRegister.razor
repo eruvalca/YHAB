@@ -1,5 +1,9 @@
 @inherits YHAB.UI.Components.CancellableComponentBase
 @if (_error is not null) { <div class="notice" data-kind="error" role="alert">@_error</div> }
+@if (_newTransactionNeedsAccount && !Plan.Accounts.Any(item => !item.Closed))
+{
+    <div class="notice" data-kind="information" role="status">Add an account before recording a transaction. Open <strong>Plan &amp; accounts</strong>, then choose <strong>Add account</strong>.</div>
+}
 <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalM)" Class="page-heading">
     <div><p class="eyebrow">THE LITTLE DETAILS, ALL TOGETHER</p><h1>@(_account?.Name ?? "All transactions")</h1><p class="muted">@(_account is null ? "Every account in your plan." : AccountLabel(_account.Kind))</p></div>
     <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalS)">

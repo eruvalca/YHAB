@@ -13,6 +13,10 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
     [SupplyParameterFromQuery(Name = "category")] public Guid? ReportCategoryId { get; set; }
     [SupplyParameterFromQuery(Name = "from")] public DateOnly? ReportFrom { get; set; }
     [SupplyParameterFromQuery(Name = "to")] public DateOnly? ReportThrough { get; set; }
+    // One-shot intent from the installed app's "Add transaction" shortcut. The
+    // register opens the editor, then the query is cleared so a refresh or
+    // enhanced navigation does not reopen it.
+    [SupplyParameterFromQuery(Name = "new")] public bool NewTransaction { get; set; }
     // Prerendering already read the catalog and month. Carrying only the display
     // data into the interactive renderer keeps the first interactive paint
     // identical instead of flashing an empty loading state; the ledger and
@@ -39,6 +43,8 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
     private string? _error;
     private bool _accountEditor;
     private AccountData? _editingAccount;
+    private bool _newTransactionRequested;
+    private bool _newTransactionConsumed;
     private IJSObjectReference? _module;
     private DotNetObjectReference<Workspace>? _reference;
     private bool IsRegister { get; set; }
@@ -74,6 +80,7 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
 
     protected override async Task OnParametersSetAsync()
     {
+        if (NewTransaction && !_newTransactionConsumed) { _newTransactionRequested = true; }
         // A pending destination outside this workspace must not change the outgoing page.
         if (UpdatePage(navigation.Uri))
         {
@@ -411,6 +418,18 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
     private void AddAccount() { _editingAccount = null; _accountEditor = true; }
     private void EditAccount(AccountData account) { _editingAccount = account; _accountEditor = true; }
     private void CloseAccount() => _accountEditor = false;
+
+    // The register consumed the shortcut's intent. Dropping the query keeps a
+    // refresh or enhanced navigation from opening a second editor.
+    private void ConsumeNewTransaction()
+    {
+        _newTransactionConsumed = true;
+        _newTransactionRequested = false;
+        if (RendererInfo.IsInteractive && NewTransaction)
+        {
+            navigation.NavigateTo(navigation.GetUriWithQueryParameter("new", (string?)null), replace: true);
+        }
+    }
 
     protected override async ValueTask DisposeCoreAsync()
     {
