@@ -55,6 +55,7 @@ public sealed partial class BudgetBoard
     private bool _move;
     private bool _transaction;
     private PlanCommand? _transactionCommand;
+    private PlanCommand? _moveCommand;
     private IReadOnlyList<string>? _payees;
     private long _payeesVersion = -1;
     private long _editorEpoch;
@@ -142,7 +143,12 @@ public sealed partial class BudgetBoard
                 // keeps the open draft mounted so its typed values are not recreated.
                 if (!ExternalRefresh)
                 {
-                    _move = false;
+                    // Only the move editor's own submitted save settles its draft, so an unrelated
+                    // successful write that refreshes the plan leaves a dirty draft mounted. A clean
+                    // draft still closes with the refresh.
+                    var settledMove = _moveCommand is not null
+                        && (ReferenceEquals(AppliedCommand, _moveCommand) || ReferenceEquals(RecoveredCommand, _moveCommand));
+                    if (settledMove || _moveEditor is not { IsDirty: true }) { CloseMove(); }
                     // Only a save this editor submitted settles its draft: either the command that
                     // was applied, or the command a refresh recovered after its response was lost.
                     // A recovered write it never submitted, and an unrelated applied command, both
@@ -276,7 +282,14 @@ public sealed partial class BudgetBoard
         _transactionCommand = command;
         return OnCommand.InvokeAsync(command);
     }
+    // Track the move editor's own command so an unrelated write cannot settle its draft.
+    private Task SendMoveCommandAsync(PlanCommand command)
+    {
+        _moveCommand = command;
+        return OnCommand.InvokeAsync(command);
+    }
     private void CloseTransaction() { _transaction = false; _transactionCommand = null; }
+    private void CloseMove() { _move = false; _moveEditor = null; _moveCommand = null; }
     private void CloseCategory() { _category = null; _categoryEditor = null; }
     private Task ShowHelpAsync()
     {
@@ -299,10 +312,9 @@ public sealed partial class BudgetBoard
         {
             return;
         }
-        _move = false;
-        _moveEditor = null;
+        CloseMove();
         _category = selection.Category;
         _focusCategory = selection.FocusEditor;
     }
-    private void CloseEditors() { _move = false; _moveEditor = null; _category = null; _categoryEditor = null; CloseTransaction(); }
+    private void CloseEditors() { CloseMove(); _category = null; _categoryEditor = null; CloseTransaction(); }
 }

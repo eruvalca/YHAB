@@ -208,6 +208,52 @@ public sealed class BudgetCatalogTests
     }
 
     [Fact]
+    public async Task UnrelatedWriteKeepsADirtyMoveDraftAsync()
+    {
+        await using var context = CreateContext();
+        var basePlan = Plan();
+        var plan = basePlan with { Accounts = [new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, basePlan.Today, false, "")] };
+        var commands = new List<PlanCommand>();
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, commands.Add));
+
+        await component.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Move money", StringComparison.Ordinal)).ClickAsync();
+        await component.Find(".editor-surface .amount-input fluent-text-input").ChangeAsync(new() { Value = "10" });
+
+        // Another successful write arrives; it is not the move editor's own save, so the typed
+        // draft stays mounted instead of being unmounted without its discard prompt.
+        var applied = new AssignMoney(plan.Version, plan.Categories[0].Id, plan.Today, 25);
+        component.Render(p => p.Add(item => item.Plan, plan with { Version = plan.Version + 1 })
+            .Add(item => item.OnCommand, commands.Add)
+            .Add(item => item.AppliedCommand, applied));
+
+        component.Find(".editor-surface h2").TextContent.ShouldBe("Move money");
+        component.Find(".editor-surface .amount-input fluent-text-input").GetAttribute("value").ShouldBe("10");
+        component.FindAll(".category-details").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task MoveSaveClosesItsOwnDraftAsync()
+    {
+        await using var context = CreateContext();
+        var basePlan = Plan();
+        var plan = basePlan with { Accounts = [new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, basePlan.Today, false, "")] };
+        var commands = new List<PlanCommand>();
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, commands.Add));
+
+        await component.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Move money", StringComparison.Ordinal)).ClickAsync();
+        await component.Find(".editor-surface .amount-input fluent-text-input").ChangeAsync(new() { Value = "10" });
+        await component.FindAll(".editor-surface fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Move money", StringComparison.Ordinal)).ClickAsync();
+        var applied = commands.Single().ShouldBeOfType<MoveMoney>();
+
+        // The editor's own save still settles and closes it.
+        component.Render(p => p.Add(item => item.Plan, plan with { Version = plan.Version + 1 })
+            .Add(item => item.OnCommand, commands.Add)
+            .Add(item => item.AppliedCommand, applied));
+
+        component.FindAll(".editor-surface").ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task AvailablePillAndReorderDoNotSelectTheCategoryAsync()
     {
         await using var context = CreateContext();

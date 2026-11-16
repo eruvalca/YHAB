@@ -212,9 +212,9 @@ Enter saves a transaction from its payee or amount. A plain **Refresh** applies
 the newer plan without closing an open draft: the editor keeps the typed values
 and rebuilds the accounts and categories it offers, so a refresh-retired category
 or an unavailable move-money selection now blocks the save in either direction
-instead of pointing at a stale record. A plan change applied by a command, and a
-recovery refresh after a save that committed but could not reload, still close
-the editor. A register draft also survives a refresh because the view catalog
+instead of pointing at a stale record. A plan change applied by the editor's
+own command, and a recovery refresh after a save that committed but could not
+reload, still close the editor. A register draft also survives a refresh because the view catalog
 omits the ledger, so an entry missing from it proves nothing about deletion.
 An automatic recurring post that a refresh starts is not the draft's own save, so
 its failure, recovery, and retry keep the draft, and a register read that fails
