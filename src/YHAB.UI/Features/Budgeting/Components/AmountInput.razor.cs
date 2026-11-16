@@ -40,13 +40,19 @@ public sealed partial class AmountInput
     protected override void OnParametersSet()
     {
         SynchronizeValue();
-        // A recreated editor restores the raw text it had not committed; SynchronizeValue above
-        // has already anchored _lastValue, so later renders leave the restored text alone.
-        if (!_initialTextApplied && !string.IsNullOrEmpty(InitialText))
+        // A recreated editor restores the raw text it had not committed. The owner only supplies
+        // draft text at mount, so this applies once: a later render carries a newer draft that
+        // must not overwrite what the person is typing.
+        if (!_initialTextApplied)
         {
             _initialTextApplied = true;
-            _text = InitialText;
-            _lastValue = Value;
+            if (!string.IsNullOrEmpty(InitialText))
+            {
+                _text = InitialText;
+                _lastValue = Value;
+                // Unfinished text is restored as the invalid amount it is, not presented as valid.
+                if (!TryGetAmount(_text, out _, out var restoredError)) { _error = restoredError; }
+            }
         }
         if (_pointerGesture && _pointerReleased && (Disabled || ReadOnly))
         {

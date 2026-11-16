@@ -81,6 +81,15 @@ public sealed partial class BudgetBoard(IJSRuntime javascript)
     private IJSObjectReference? _layoutModule;
     // Inline row controls keep focus, so only a selection that owns focus moves it into the editor.
     private bool _focusCategory = true;
+    // The details draft belongs to the selection, not to whichever surface renders it, so a
+    // reorder that recreates the row or a resize that moves the editor restores the typed values.
+    private CategoryEditorDraft? _categoryDraft;
+    private Guid? _categoryDraftCategory;
+    private DateOnly _categoryDraftMonth;
+    private long _categoryDraftEpoch = -1;
+    // Bumped by every selection and close, so a layout lookup that finishes late cannot
+    // override a newer choice or reopen a closed editor.
+    private long _selectionEpoch;
     private CategoryMonth? EditingMonth => _budget.Categories.SingleOrDefault(item => item.Category.Id == _category?.Id);
     private bool HasAccounts => Plan.Accounts.Count > 0;
     // The Today action only changes what the sticky summary shows while another month is open.
@@ -308,7 +317,15 @@ public sealed partial class BudgetBoard(IJSRuntime javascript)
     }
     private void CloseTransaction() { _transaction = false; _transactionCommand = null; }
     private void CloseMove() { _move = false; _moveEditor = null; _moveCommand = null; }
-    private void CloseCategory() { _category = null; _categoryEditor = null; _inlineEditor = null; _inlineEditorCategory = null; }
+    private void CloseCategory()
+    {
+        _selectionEpoch++;
+        _category = null;
+        _categoryEditor = null;
+        _inlineEditor = null;
+        _inlineEditorCategory = null;
+        _categoryDraft = null;
+    }
     private Task ShowHelpAsync()
     {
         _help = true;
@@ -328,11 +345,13 @@ public sealed partial class BudgetBoard(IJSRuntime javascript)
         {
             return;
         }
+        // A continuation that finishes after a newer selection or a close must not win.
+        var epoch = ++_selectionEpoch;
         // The placement follows the breakpoint the stylesheet already stacks the
         // workspace on, so a wide screen keeps its side pane and a narrow one opens
         // the editor beneath the row instead of after the whole table.
         var inline = await InlineDetailsAsync();
-        if (IsDisposed) { return; }
+        if (IsDisposed || epoch != _selectionEpoch) { return; }
         // The lookup waits on the browser, so the plan can refresh under it. Select the record the
         // current plan has rather than the snapshot the click captured.
         var category = Plan.Categories.SingleOrDefault(item => item.Id == selection.Category.Id);
@@ -341,6 +360,23 @@ public sealed partial class BudgetBoard(IJSRuntime javascript)
         CloseMove();
         _category = category;
         _focusCategory = selection.FocusEditor;
+    }
+    // The selection's draft, shared by both placements, so moving the editor never loses what was
+    // typed. It is replaced when the category, the month, or a settled save's remount changes.
+    private CategoryEditorDraft? CategoryDraft()
+    {
+        if (_category is not { } category) { return null; }
+        if (_categoryDraft is null
+            || _categoryDraftCategory != category.Id
+            || _categoryDraftMonth != _budget.Month
+            || _categoryDraftEpoch != _editorEpoch)
+        {
+            _categoryDraft = new();
+            _categoryDraftCategory = category.Id;
+            _categoryDraftMonth = _budget.Month;
+            _categoryDraftEpoch = _editorEpoch;
+        }
+        return _categoryDraft;
     }
     // The mounted inline editor reports itself so the selection guard can see its live draft,
     // including uncommitted amount text.
@@ -392,5 +428,15 @@ public sealed partial class BudgetBoard(IJSRuntime javascript)
 
         await base.DisposeCoreAsync();
     }
-    private void CloseEditors() { CloseMove(); _category = null; _categoryEditor = null; _inlineEditor = null; _inlineEditorCategory = null; CloseTransaction(); }
+    private void CloseEditors()
+    {
+        _selectionEpoch++;
+        CloseMove();
+        _category = null;
+        _categoryEditor = null;
+        _inlineEditor = null;
+        _inlineEditorCategory = null;
+        _categoryDraft = null;
+        CloseTransaction();
+    }
 }

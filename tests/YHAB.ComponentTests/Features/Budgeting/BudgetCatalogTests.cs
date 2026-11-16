@@ -1,7 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 using Bunit;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.FluentUI.AspNetCore.Components;
+using Microsoft.JSInterop;
 using Shouldly;
 using Xunit;
 using YHAB.SharedKernel.Budgeting;
@@ -471,6 +473,70 @@ public sealed class BudgetCatalogTests
     }
 
     [Fact]
+    public async Task ResizingAndReselectingKeepsTheDetailsDraftAsync()
+    {
+        using var javascript = new PlacementJSRuntime { Inline = true };
+        await using var context = CreateContext(javascript);
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, Plan()).Add(item => item.OnCommand, _ => { }));
+
+        await component.Find(".category-row .category-link").ClickAsync();
+        await component.Find(".category-inline-editor .amount-input fluent-text-input").ChangeAsync(new() { Value = "250" });
+
+        // The window widens to a layout with the side pane. Reselecting the same row moves the
+        // editor there, and the typed target has to travel with it.
+        javascript.Inline = false;
+        await component.Find(".category-row .category-link").ClickAsync();
+
+        component.FindAll(".category-inline-editor").ShouldBeEmpty();
+        component.Find("aside.category-details .editor-surface").ShouldNotBeNull();
+        component.Find("aside.category-details .amount-input fluent-text-input").GetAttribute("value").ShouldBe("250");
+    }
+
+    [Fact]
+    public async Task RestoringAnUnfinishedAmountKeepsItInvalidAsync()
+    {
+        await using var context = CreateContext();
+        context.JSInterop.SetupModule(ModulePath).Setup<bool>("inlineCategoryDetails").SetResult(true);
+        var plan = Plan();
+        var (groceries, utilities) = (plan.Categories[0], plan.Categories[1]);
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, _ => { }));
+
+        await component.Find($"[data-category-id='{groceries.Id}'] .category-link").ClickAsync();
+        await component.Find(".category-inline-editor .amount-input fluent-text-input").ChangeAsync(new() { Value = "25 +" });
+
+        // The reorder recreates the editor. The unfinished expression must come back as the invalid
+        // amount it is rather than as a valid one ready to save.
+        var moved = plan with { Version = plan.Version + 1, Categories = [groceries with { SortOrder = 5 }, utilities] };
+        component.Render(p => p.Add(item => item.Plan, moved).Add(item => item.OnCommand, _ => { }));
+
+        component.FindAll(".category-inline-editor .validation-message").ShouldNotBeEmpty();
+        var save = component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Save category", StringComparison.Ordinal));
+        save.HasAttribute("disabled").ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ClosingDuringAPendingSelectionKeepsTheEditorClosedAsync()
+    {
+        using var javascript = new PlacementJSRuntime { Inline = true };
+        await using var context = CreateContext(javascript);
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, Plan()).Add(item => item.OnCommand, _ => { }));
+
+        await component.Find(".category-row .category-link").ClickAsync();
+        component.Find(".category-inline-editor .editor-surface").ShouldNotBeNull();
+
+        // A second selection is still waiting on the browser when the editor closes; its answer
+        // must not reopen the panel the person just dismissed.
+        var hold = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        javascript.Hold = hold;
+        var pending = component.Find(".category-row .category-link").ClickAsync();
+        await component.Find(".category-inline-editor fluent-button[aria-label='Close editor']").ClickAsync();
+        hold.SetResult(true);
+        await pending;
+
+        component.FindAll(".editor-surface").ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task ReorderingKeepsTheInlineDetailsDraftAsync()
     {
         await using var context = CreateContext();
@@ -855,10 +921,57 @@ public sealed class BudgetCatalogTests
         component.FindAll($"[data-group-id='{group}'] .category-row .category-link").Select(item => item.TextContent.Trim()).ToArray();
     private static string[] CategoryIds(IRenderedComponent<BudgetBoard> component, Guid group) =>
         component.FindAll($"[data-group-id='{group}'] .category-row[data-category-id]").Select(item => item.GetAttribute("data-category-id")!).ToArray();
-    private static BunitContext CreateContext()
+    // The board reads its editor placement from a media query; this answers it per selection, and
+    // can hold the answer so a test can act while the lookup is still pending.
+#pragma warning disable BL0016 // The double stands in for JavaScript; every call it answers is local.
+    private sealed class PlacementJSRuntime : IJSRuntime, IDisposable
+    {
+        private readonly Module _module;
+        public PlacementJSRuntime() => _module = new Module(this);
+        public bool Inline { get; set; }
+        public TaskCompletionSource<bool>? Hold { get; set; }
+
+        public void Dispose() => _module.DisposeAsync().AsTask().GetAwaiter().GetResult();
+
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
+            => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
+            => string.Equals(identifier, "import", StringComparison.Ordinal)
+                ? ValueTask.FromResult((TValue)(object)_module)
+                : ValueTask.FromResult(default(TValue)!);
+
+        private sealed class Module(PlacementJSRuntime owner) : IJSObjectReference
+        {
+            public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
+                => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+
+            public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
+            {
+                if (!string.Equals(identifier, "inlineCategoryDetails", StringComparison.Ordinal))
+                {
+                    return ValueTask.FromResult(default(TValue)!);
+                }
+
+                return owner.Hold is { } hold
+                    ? new ValueTask<TValue>(AnswerAsync<TValue>(hold.Task))
+                    : ValueTask.FromResult((TValue)(object)owner.Inline);
+            }
+
+            public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+
+            private static async Task<TValue> AnswerAsync<TValue>(Task<bool> answer)
+                => (TValue)(object)await answer;
+        }
+    }
+#pragma warning restore BL0016
+
+    private static BunitContext CreateContext(IJSRuntime? javascript = null)
     {
         var context = new BunitContext();
         context.Services.AddFluentUIComponents();
+        // The runtime has to be registered before anything resolves a service from the provider.
+        if (javascript is not null) { context.Services.AddSingleton(javascript); }
         context.JSInterop.Mode = JSRuntimeMode.Loose;
         context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
         return context;

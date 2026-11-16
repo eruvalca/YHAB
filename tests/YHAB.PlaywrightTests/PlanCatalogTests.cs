@@ -388,7 +388,7 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
                 }
                 """);
             await page.Mouse.ClickAsync((float)point[0], (float)point[1]);
-            await page.Locator(".category-details h3").Filter(new() { HasText = "Target" }).WaitForAsync();
+            await page.Locator(".editor-surface h3").Filter(new() { HasText = "Target" }).WaitForAsync();
             (await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth")).ShouldBeTrue();
             errors.ShouldBeEmpty();
         }

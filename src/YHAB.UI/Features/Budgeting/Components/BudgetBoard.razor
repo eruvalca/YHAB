@@ -85,12 +85,12 @@
         <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalM)" VerticalGap="var(--spacingVerticalM)" Class="budget-workspace">
             <FirstRunChecklist Plan="_budgetPlan!" Budget="_budget" Hidden="@(_category is not null)" OnAddAccount="AddAccountAsync" OnAddCategory="AddCategoryAsync" OnShowHelp="ShowHelpAsync" Busy="IsBusy" />
             <div class="budget-categories">
-                <BudgetCategoryTable @ref="_categoryTable" Plan="_budgetPlan!" Budget="_budget" OnCommand="OnCommand" OnSelect="EditCategoryAsync" Busy="IsBusy" SelectedCategoryId="_category?.Id" InlineEditor="_inlineDetails" OnCloseEditor="CloseCategory" OnEditorCommand="SendCategoryCommandAsync" FocusEditor="_focusCategory" EditorEpoch="_editorEpoch" OnEditorRegistered="RegisterInlineEditor" DismissSelection="TryDismissCategory" />
+                <BudgetCategoryTable @ref="_categoryTable" Plan="_budgetPlan!" Budget="_budget" OnCommand="OnCommand" OnSelect="EditCategoryAsync" Busy="IsBusy" SelectedCategoryId="_category?.Id" InlineEditor="_inlineDetails" OnCloseEditor="CloseCategory" OnEditorCommand="SendCategoryCommandAsync" FocusEditor="_focusCategory" EditorEpoch="_editorEpoch" OnEditorRegistered="RegisterInlineEditor" DismissSelection="TryDismissCategory" CategoryDraft="@CategoryDraft()" />
             </div>
             @if (_category is not null && !_inlineDetails)
             {
                 <aside class="category-details" aria-label="Category details">
-                    <CategoryEditor @ref="_categoryEditor" @key="(_category?.Id, _budget.Month, _editorEpoch)" Plan="Plan" Category="_category" MonthState="EditingMonth" Month="_budget.Month" OnCommand="SendCategoryCommandAsync" OnClose="CloseCategory" Busy="IsBusy" FocusOnOpen="_focusCategory" />
+                    <CategoryEditor @ref="_categoryEditor" @key="(_category?.Id, _budget.Month, _editorEpoch)" Plan="Plan" Category="_category" MonthState="EditingMonth" Month="_budget.Month" OnCommand="SendCategoryCommandAsync" OnClose="CloseCategory" Busy="IsBusy" FocusOnOpen="_focusCategory" Draft="@CategoryDraft()" />
                 </aside>
             }
         </FluentStack>

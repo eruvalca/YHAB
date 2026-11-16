@@ -89,10 +89,18 @@ public sealed partial class CategoryEditor : IDisposable
         _weekday = draft.Weekday;
         _replacement = draft.Replacement;
         _initial = Signature();
+        // The draft can hold amount text the person had not finished typing, so the restored
+        // editor reports it as invalid instead of offering to save it as a valid amount.
+        _valid = !draft.HasTarget
+            || string.IsNullOrWhiteSpace(draft.AmountText)
+            || AmountExpression.TryEvaluate(draft.AmountText, out _);
     }
-    // The editor can be recreated for a reorder at any time, before an explicit close, so every
-    // disposal hands the live draft back to the owner outside the sortable rows.
-    public void Dispose()
+    // Keep the owning draft current after every render, so a remount never depends on when the
+    // old editor is disposed. The editor can be recreated for a reorder, a move, or a placement
+    // change before an explicit close.
+    protected override void OnAfterRender(bool firstRender) => SaveDraft();
+    public void Dispose() => SaveDraft();
+    private void SaveDraft()
     {
         if (Draft is not { } draft) { return; }
         draft.Initialized = true;
