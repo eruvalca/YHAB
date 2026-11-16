@@ -132,6 +132,10 @@ public sealed class BudgetBoardTests
         var meta = component.Find(".budget-meta");
         meta.QuerySelectorAll(".budget-total").Length.ShouldBe(4);
         meta.QuerySelector("[data-refresh]").ShouldNotBeNull();
+        // Fluent's stack claims the full row by default, which would push the tools
+        // onto a second line instead of sharing this one with the totals.
+        var totals = meta.QuerySelector(".budget-totals").ShouldNotBeNull();
+        totals.GetAttribute("style").ShouldNotBeNull().ShouldContain("width: auto");
     }
 
     [Fact]

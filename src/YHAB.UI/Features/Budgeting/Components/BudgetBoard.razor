@@ -44,7 +44,7 @@
        and recovery, not what the month needs at a glance, so they scroll away with
        the table instead of holding a slice of the viewport. *@
     <div class="budget-meta">
-        <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalL)" VerticalGap="var(--spacingVerticalXS)" Class="budget-totals">
+        <FluentStack Width="auto" Wrap="true" HorizontalGap="var(--spacingHorizontalL)" VerticalGap="var(--spacingVerticalXS)" Class="budget-totals">
             <div class="budget-total"><BudgetTermHelp Term="@BudgetTerm.Assigned" OnExplain="ShowHelpAsync" /> <strong>@Money(_budget.Assigned)</strong></div>
             <div class="budget-total"><BudgetTermHelp Term="@BudgetTerm.Activity" OnExplain="ShowHelpAsync" /> <strong>@Money(_budget.Activity)</strong></div>
             <div class="budget-total"><BudgetTermHelp Term="@BudgetTerm.Available" OnExplain="ShowHelpAsync" /> <strong>@Money(_budget.Available)</strong></div>
