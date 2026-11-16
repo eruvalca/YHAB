@@ -960,6 +960,11 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             var refresh = (await Button(page, "Refresh").BoundingBoxAsync()).ShouldNotBeNull();
             var status = (await page.Locator(".workspace-status").BoundingBoxAsync()).ShouldNotBeNull();
             Math.Abs(refresh.Y + refresh.Height / 2 - status.Y - status.Height / 2).ShouldBeLessThan(1);
+            // The totals and the plan tools share one slim line under the band; a stack
+            // that claims the full width would push the tools onto a row of its own.
+            var totals = (await page.Locator(".budget-meta .budget-totals").BoundingBoxAsync()).ShouldNotBeNull();
+            var tools = (await page.Locator(".budget-meta .workspace-toolbar").BoundingBoxAsync()).ShouldNotBeNull();
+            Math.Abs(totals.Y + totals.Height / 2 - tools.Y - tools.Height / 2).ShouldBeLessThan(4);
             var filter = (await page.Locator(".table-toolbar fluent-dropdown").BoundingBoxAsync()).ShouldNotBeNull();
             var addCategory = (await Button(page, "+ Category").BoundingBoxAsync()).ShouldNotBeNull();
             Math.Abs(filter.Y + filter.Height - addCategory.Y - addCategory.Height).ShouldBeLessThanOrEqualTo(4);
