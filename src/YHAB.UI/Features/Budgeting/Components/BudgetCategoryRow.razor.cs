@@ -33,7 +33,7 @@ public sealed partial class BudgetCategoryRow
     /// The editor just closed and this row opened it, so its name regains focus.
     /// </summary>
     [Parameter] public bool RestoreFocus { get; set; }
-    [Parameter] public Action<CategoryEditor?>? OnEditorRegistered { get; set; }
+    [Parameter] public Action<Guid, CategoryEditor?>? OnEditorRegistered { get; set; }
     [Parameter] public CategoryEditorDraft? EditorDraft { get; set; }
     [Parameter] public EventCallback OnFocusRestored { get; set; }
     private CategoryEditor? _editor;
@@ -53,7 +53,7 @@ public sealed partial class BudgetCategoryRow
         var mounted = InlineEditor && Selected ? _editor : null;
         if (ReferenceEquals(_reportedEditor, mounted)) { return; }
         _reportedEditor = mounted;
-        OnEditorRegistered?.Invoke(mounted);
+        OnEditorRegistered?.Invoke(Row.Category.Id, mounted);
     }
     private int Index => Array.FindIndex(Siblings, item => item.Id == Row.Category.Id);
     private string Tone => Row switch { { Available: < 0 } => "negative", { TargetNeeded: > 0 } => "attention", { Available: > 0 } => "positive", _ => "neutral" };

@@ -36,11 +36,11 @@ public sealed partial class BudgetCategoryTable
     /// </summary>
     [Parameter] public long EditorEpoch { get; set; }
     /// <summary>
-    /// Reports the mounted inline editor so the board's selection guard can see its
-    /// live draft, including uncommitted amount text. A plain delegate, because the
-    /// board reads it synchronously and it must not schedule another render.
+    /// Reports the mounted inline editor, with its category, so the board's selection guard
+    /// can see its live draft, including uncommitted amount text. A plain delegate, because
+    /// the board reads it synchronously and it must not schedule another render.
     /// </summary>
-    [Parameter] public Action<CategoryEditor?>? OnEditorRegistered { get; set; }
+    [Parameter] public Action<Guid, CategoryEditor?>? OnEditorRegistered { get; set; }
     /// <summary>
     /// Closes the selected details editor unless it has unsaved edits, so a row's move
     /// controls can reuse its place.

@@ -72,6 +72,7 @@ public sealed partial class BudgetBoard(IJSRuntime javascript)
     private BudgetCategoryTable? _categoryTable;
     private CategoryEditor? _categoryEditor;
     private CategoryEditor? _inlineEditor;
+    private Guid? _inlineEditorCategory;
     private MoveMoneyEditor? _moveEditor;
     private CategoryData? _category;
     // Below the desktop breakpoint the editor opens beneath its row instead of in
@@ -307,7 +308,7 @@ public sealed partial class BudgetBoard(IJSRuntime javascript)
     }
     private void CloseTransaction() { _transaction = false; _transactionCommand = null; }
     private void CloseMove() { _move = false; _moveEditor = null; _moveCommand = null; }
-    private void CloseCategory() { _category = null; _categoryEditor = null; _inlineEditor = null; }
+    private void CloseCategory() { _category = null; _categoryEditor = null; _inlineEditor = null; _inlineEditorCategory = null; }
     private Task ShowHelpAsync()
     {
         _help = true;
@@ -343,7 +344,20 @@ public sealed partial class BudgetBoard(IJSRuntime javascript)
     }
     // The mounted inline editor reports itself so the selection guard can see its live draft,
     // including uncommitted amount text.
-    private void RegisterInlineEditor(CategoryEditor? editor) { _inlineEditor = editor; }
+    private void RegisterInlineEditor(Guid categoryId, CategoryEditor? editor)
+    {
+        if (editor is null)
+        {
+            // A row that is leaving can report after the next row has already registered; only
+            // the stored editor's own category may clear it.
+            if (_inlineEditorCategory == categoryId) { _inlineEditor = null; _inlineEditorCategory = null; }
+            return;
+        }
+        // Only the row for the open selection may become the guard's editor.
+        if (_category?.Id != categoryId) { return; }
+        _inlineEditor = editor;
+        _inlineEditorCategory = categoryId;
+    }
     // A row's move controls replace its details editor only when that editor has no unsaved edits.
     private bool TryDismissCategory()
     {
@@ -378,5 +392,5 @@ public sealed partial class BudgetBoard(IJSRuntime javascript)
 
         await base.DisposeCoreAsync();
     }
-    private void CloseEditors() { CloseMove(); _category = null; _categoryEditor = null; _inlineEditor = null; CloseTransaction(); }
+    private void CloseEditors() { CloseMove(); _category = null; _categoryEditor = null; _inlineEditor = null; _inlineEditorCategory = null; CloseTransaction(); }
 }

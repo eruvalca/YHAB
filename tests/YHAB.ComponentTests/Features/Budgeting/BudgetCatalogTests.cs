@@ -443,6 +443,34 @@ public sealed class BudgetCatalogTests
     }
 
     [Fact]
+    public async Task SwitchingRowsStillGuardsTheNewInlineDraftAsync()
+    {
+        await using var context = CreateContext();
+        context.JSInterop.SetupModule(ModulePath).Setup<bool>("inlineCategoryDetails").SetResult(true);
+        var plan = Plan();
+        var (groceries, utilities) = (plan.Categories[0], plan.Categories[1]);
+        // Both categories need a target so each details editor has an amount field to dirty.
+        var both = plan with { Categories = [groceries, utilities with { Target = groceries.Target }] };
+        var commands = new List<PlanCommand>();
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, both).Add(item => item.OnCommand, commands.Add));
+
+        await component.Find($"[data-category-id='{utilities.Id}'] .category-link").ClickAsync();
+        await component.Find(".category-inline-editor .amount-input fluent-text-input").ChangeAsync(new() { Value = "250" });
+
+        // The row click moves the editor from the later row to the earlier one. The editor that
+        // left reports after the replacement registers, and must not clear it.
+        await component.Find($"[data-category-id='{groceries.Id}'] .category-link").ClickAsync();
+        component.Find(".category-inline-editor .editor-surface h2").TextContent.ShouldBe(groceries.Name);
+        await component.Find(".category-inline-editor .amount-input fluent-text-input").ChangeAsync(new() { Value = "75" });
+
+        // An inline action on the other row still saves, but the guard has to keep the new draft.
+        await component.Find($"[data-category-id='{utilities.Id}'] fluent-text-input").ChangeAsync(new() { Value = "25" });
+        commands.Single().ShouldBeOfType<AssignMoney>().CategoryId.ShouldBe(utilities.Id);
+        component.Find(".category-inline-editor .editor-surface h2").TextContent.ShouldBe(groceries.Name);
+        component.Find(".category-inline-editor .amount-input fluent-text-input").GetAttribute("value").ShouldBe("75");
+    }
+
+    [Fact]
     public async Task ReorderingKeepsTheInlineDetailsDraftAsync()
     {
         await using var context = CreateContext();
