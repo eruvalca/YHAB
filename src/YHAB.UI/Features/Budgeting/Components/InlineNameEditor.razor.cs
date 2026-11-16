@@ -10,6 +10,8 @@ public sealed partial class InlineNameEditor
     [Parameter] public string Value { get; set; } = string.Empty;
     [Parameter, EditorRequired] public EventCallback<string> OnSave { get; set; }
     [Parameter] public EventCallback OnSelect { get; set; }
+    // A category row selects itself here without moving focus, because the inline field keeps it.
+    [Parameter] public EventCallback OnBeginRename { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
     [Parameter] public bool Creating { get; set; }
     [Parameter] public bool Busy { get; set; }
@@ -102,6 +104,13 @@ public sealed partial class InlineNameEditor
     }
     private void NameKeyDown(KeyboardEventArgs args) { if (string.Equals(args.Key, "F2", StringComparison.Ordinal)) { BeginEdit(); } }
     private Task SelectAsync() { if (OnSelect.HasDelegate) { return OnSelect.InvokeAsync(); } BeginEdit(); return Task.CompletedTask; }
+    // Renaming is a way of choosing the category, so the row selects before the editor opens.
+    private async Task RenameAsync()
+    {
+        if (Busy) { return; }
+        if (OnBeginRename.HasDelegate) { await OnBeginRename.InvokeAsync(); }
+        BeginEdit();
+    }
     private Task SaveAsync()
     {
         if (Busy || string.IsNullOrWhiteSpace(_name)) { return Task.CompletedTask; }

@@ -11,7 +11,7 @@ public sealed partial class BudgetCategoryTable
     [Parameter, EditorRequired] public PlanSnapshot Plan { get; set; } = default!;
     [Parameter, EditorRequired] public BudgetMonth Budget { get; set; } = default!;
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
-    [Parameter, EditorRequired] public EventCallback<CategoryData> OnSelect { get; set; }
+    [Parameter, EditorRequired] public EventCallback<CategorySelection> OnSelect { get; set; }
     [Parameter] public Guid? SelectedCategoryId { get; set; }
     [Parameter] public bool Busy { get; set; }
     /// <summary>
@@ -25,6 +25,11 @@ public sealed partial class BudgetCategoryTable
     /// its draft the way the side pane's does.
     /// </summary>
     [Parameter] public EventCallback<PlanCommand> OnEditorCommand { get; set; }
+    /// <summary>
+    /// The selection that opened the editor owns focus, so only a selection that
+    /// claims it moves focus into the editor.
+    /// </summary>
+    [Parameter] public bool FocusEditor { get; set; } = true;
     /// <summary>
     /// Changes when a save settles the open editor's draft, remounting it against
     /// the plan the command produced.
@@ -42,7 +47,7 @@ public sealed partial class BudgetCategoryTable
     private Guid? _movingGroup;
     private Guid? _movingCategory;
     private Guid? _selectedCategory;
-    private Guid? _focusCategory;
+    private Guid? _restoreFocusCategory;
     private Guid? _newCategoryGroup;
     private bool _newGroup;
     private long _version = -1;
@@ -56,7 +61,7 @@ public sealed partial class BudgetCategoryTable
         // A focus request belongs to the render that closed the editor. Clearing it
         // here drops a request no row could consume and keeps a later filter or
         // group change from moving focus unexpectedly.
-        _focusCategory = null;
+        _restoreFocusCategory = null;
         if (firstRender)
         {
             _interop = new(JS);
@@ -86,7 +91,7 @@ public sealed partial class BudgetCategoryTable
             // A row shows one panel at a time: selecting it collapses the move
             // controls it had open, and closing the editor hands focus back to the
             // row that opened it instead of dropping focus on the document body.
-            _focusCategory = SelectedCategoryId is null ? _selectedCategory : null;
+            _restoreFocusCategory = SelectedCategoryId is null ? _selectedCategory : null;
             _movingCategory = null;
             _selectedCategory = SelectedCategoryId;
         }
@@ -216,7 +221,7 @@ public sealed partial class BudgetCategoryTable
     }
 
     private void ClearDrag() => _dragGroup = null;
-    private void ClearFocusCategory() => _focusCategory = null;
+    private void ClearFocusCategory() => _restoreFocusCategory = null;
     private void DragGroup(Guid id) { ClearDrag(); if (!Busy) { _dragGroup = id; } }
     private Task DropGroupAsync(Guid group) => DropAsync(group);
     private Task DropGroupAtEndAsync() => DropAsync(null);

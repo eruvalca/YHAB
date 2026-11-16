@@ -19,6 +19,8 @@ public sealed partial class MoveMoneyEditor
     private bool _saving;
     private AmountInput? _amountInput;
     private string _initial = "";
+    // The board asks before an inline row action would replace this editor.
+    internal bool IsDirty => HasUnsavedChanges();
     private bool HasUnsavedChanges() => !string.Equals(Signature(), _initial, StringComparison.Ordinal) || _amountInput?.HasDraft is true;
 
     protected override void OnInitialized()
