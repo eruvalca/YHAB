@@ -83,8 +83,11 @@ public sealed partial class InlineNameEditor
         if (FocusName)
         {
             // A batch can replace the name with its rename form, so the request
-            // clears even when there is no rendered name to focus.
-            if (_nameControl.Id is not null) { await _nameControl.FocusAsync(); }
+            // clears even when there is no rendered name to focus. A reference also
+            // outlives the element it pointed at, and focusing a stale one throws
+            // "Unable to focus an invalid element", which takes the circuit down with
+            // it, so only the form-less render may focus the name.
+            if (!_editing && !Creating && _nameControl.Id is not null) { await _nameControl.FocusAsync(); }
             await OnNameFocused.InvokeAsync();
         }
         if ((_focus || (firstRender && Creating)) && _input is not null)

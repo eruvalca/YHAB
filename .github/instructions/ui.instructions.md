@@ -129,6 +129,11 @@ assets/provider setup and [build rules](../../build/README.md) for enforcement.
 - Make layouts shrink and wrap on narrow screens, preserve visible keyboard
   focus, and put form labels before their controls. Preserve semantic links,
   buttons, tables, and all Blazor/Identity form and reconnect hooks.
+- Focus a captured element only on a render that produced it. A default
+  `ElementReference` throws "not configured" and a stale one, whose element a
+  later render removed, throws "Unable to focus an invalid element". Both are
+  unhandled in the render callback and terminate the circuit. Gate `FocusAsync`
+  on the same state that renders the element, since `Id` survives its element.
 - CSS can restyle a pane but cannot move it in the DOM. When placement must change
   with width — the category editor sits beside the table above 75rem and beneath
   its row below it — decide it in the component from the same media query the

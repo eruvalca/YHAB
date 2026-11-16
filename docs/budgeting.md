@@ -173,28 +173,30 @@ Each move saves atomically as one revision and one undoable change, including
 normalizing tied display orders. Moving does not change assignments or history.
 
 Select a category row anywhere, including the padding around its name and its
-Assigned field, to open its target panel beside the table above 75rem or directly
-beneath the selected row below it. The move handle, name link, inline **Rename**,
-Assigned field, and Available pill keep their own actions. Renaming a category or
-committing an assigned amount also selects that category, without moving focus out
-of the field being edited, and releasing a drag never selects. The inline panel
-grows with the page, keeps the row it belongs to in view, reports the row's
-expanded state, and returns focus to the row when it closes. The editor's draft
-belongs to the selection rather than to the panel showing it, so a reorder or
-cross-group move that recreates the row, a resize that moves the panel between the
-table and the side pane, and a rejected move all restore the typed values,
+Assigned field, to open its target panel beside the table above 75rem or
+directly beneath the selected row below it. The move handle, name link, inline
+**Rename**, Assigned field, and Available pill keep their own actions. Renaming
+a category or committing an assigned amount also selects that category, without
+moving focus out of the field being edited, and releasing a drag never selects.
+The inline panel grows with the page, keeps the row it belongs to in view,
+reports the row's expanded state, and returns focus to the row when it closes.
+A row left in its rename form keeps the field's focus, because that form
+replaced the name the close would otherwise focus. The editor's draft belongs
+to the selection rather than to the panel showing it, so a reorder or
+cross-group move that recreates the row, a resize that moves the panel between
+the table and the side pane, and a rejected move all restore the typed values,
 including uncommitted amount text; text that is not a usable amount comes back
 reported as invalid rather than ready to save. A selection that finishes its
 layout lookup after the panel was closed does not reopen it, and one that
 finishes after an editor gained unsaved edits leaves that editor open instead
 of replacing it. A row's move controls replace its editor unless that editor
 has unsaved edits, and a filter or a collapsed group that hides the selected
-row closes the panel so the board's other editors stay reachable. When the
-open category has unsaved edits, an inline action on another category still
-saves but leaves that editor open rather than discarding it. The panel
-supports targets and monthly snoozes; expand **Category details** for names,
-notes, group, and hidden status. Remove a used category by moving its history
-to another category. Account details support notes and closing zero-balance
+row closes the panel so the board's other editors stay reachable. When the open
+category has unsaved edits, an inline action on another category still saves
+but leaves that editor open rather than discarding it. The panel supports
+targets and monthly snoozes; expand **Category details** for names, notes,
+group, and hidden status. Remove a used category by moving its history to
+another category. Account details support notes and closing zero-balance
 accounts. Loan accounts record rates and minimum payments; interest and
 payments are entered manually.
 
@@ -664,7 +666,7 @@ isolated AppHosts. Browser tests exercise both desktop and phone widths.
 | In-app plan sharing, editing, and access removal | `ShareCodeGrantsEditingAndReadAccessUntilTheOwnerRemovesItAsync`, `JoinRejectsInvalidExpiredEmptyAndOwnerCodesAsync`, `ASharedMemberCanLeaveButAnOwnerCannotAsync`, `CodesAreSingleUseAndRedemptionRetriesAreIdempotentAsync`, `ConcurrentRedemptionIsIdempotentAndConcurrentRemovalHasOneWinnerAsync`, `MissingDisplayNameFallsBackToAFriendlyNameInsteadOfTheEmailAsync`, `DisplayNameThatEqualsTheCurrentAccountEmailFallsBackToMemberAsync`, `PlansPageSeparatesOwnedAndSharedPlansAndShowsJoinFormAsync`, `OwnerCreatesShareCodeAndRemovesACollaboratorAsync`, `DuplicateCollaboratorNamesAreNumberedSoTheOwnerCanRemoveTheRightAccountAsync`, `GeneratedDuplicateLabelsDoNotCollideWithLiteralDisplayNamesAsync`, `SharedMemberSeesOwnerAndRejectsUnconfirmedLeaveAsync`, `PlansPageJoinsWithACodeAsync`, `JoinServiceErrorIsShownAsync` |
 | Plan deletion and ownership transfer | `OwnerDeletesPlanAndCollaboratorsLoseAccessAsync`, `TransferOwnershipMakesTheCollaboratorOwnerAndKeepsThePreviousOwnerAsAMemberAsync`, `OwnerDeletingAPlanRequiresItsExactNameAsync`, `OwnerDeletesPlanWithItsExactNameAsync`, `CollaboratorCannotDeleteOrTransferAPlanAsync`, `OwnerTransfersOwnershipAndKeepsEditingAccessAsync`, `TransferringWithoutSelectionMarksPersonFieldInvalidAsync` |
 | Manual browser workflow, calculator entry, keyboard undo/redo, reports, and API guards | `ManualPlanPurchaseUndoAndReportsAgreeAsync` at 1440px and 390px, including the phone amount keypad, the Available-pill move flow, editor tap size, and sticky editor chrome; `TappingAvailableMovesMoneyOutOfTheCategoryAsync` covers the touch move flow |
-| Category details placement and row selection | `CategoryRowDeadSpaceSelectsWhileEachControlKeepsItsOwnActionAsync`, `AvailablePillAndReorderDoNotSelectTheCategoryAsync`, `CompactLayoutOpensTheEditorBeneathItsRowAsync`, `WideLayoutKeepsTheEditorBesideTheTableAsync`, `SelectingARowCollapsesTheMoveControlsItHadOpenAsync`, `OpeningMoveControlsReplacesACleanInlineEditorAsync`, `ADirtyInlineDraftKeepsItsEditorAndRefusesMoveControlsAsync`, `HidingTheSelectedRowClosesTheInlineEditorAsync`, `InlineRowActionKeepsADirtyInlineDraftAsync`, `ReorderingKeepsTheInlineDetailsDraftAsync`, `ResizingAndReselectingKeepsTheDetailsDraftAsync`, `RestoringAnUnfinishedAmountKeepsItInvalidAsync`, `ClosingDuringAPendingSelectionKeepsTheEditorClosedAsync`, `ADraftTypedDuringAPendingSelectionKeepsItsEditorAsync`, `SavingFromTheInlineEditorSettlesItsDraftBeforeClosingAsync`; `InlineCatalogEditingOrderingAndTargetsPersistAsync` at 1440px, 768px, and 390px checks the pane or inline placement, the selected row staying in view, save settling the draft, and focus returning to the row |
+| Category details placement and row selection | `CategoryRowDeadSpaceSelectsWhileEachControlKeepsItsOwnActionAsync`, `AvailablePillAndReorderDoNotSelectTheCategoryAsync`, `CompactLayoutOpensTheEditorBeneathItsRowAsync`, `WideLayoutKeepsTheEditorBesideTheTableAsync`, `SelectingARowCollapsesTheMoveControlsItHadOpenAsync`, `OpeningMoveControlsReplacesACleanInlineEditorAsync`, `ADirtyInlineDraftKeepsItsEditorAndRefusesMoveControlsAsync`, `HidingTheSelectedRowClosesTheInlineEditorAsync`, `InlineRowActionKeepsADirtyInlineDraftAsync`, `ReorderingKeepsTheInlineDetailsDraftAsync`, `ResizingAndReselectingKeepsTheDetailsDraftAsync`, `RestoringAnUnfinishedAmountKeepsItInvalidAsync`, `ClosingDuringAPendingSelectionKeepsTheEditorClosedAsync`, `ADraftTypedDuringAPendingSelectionKeepsItsEditorAsync`, `ClosingTheDetailsWhileRenamingKeepsTheCircuitAliveAsync` at 768px and 390px, `SavingFromTheInlineEditorSettlesItsDraftBeforeClosingAsync`; `InlineCatalogEditingOrderingAndTargetsPersistAsync` at 1440px, 768px, and 390px checks the pane or inline placement, the selected row staying in view, save settling the draft, and focus returning to the row |
 | Available pill tone mapping and contrast | `AvailablePillToneMatchesTheRowState` covers the negative, attention, positive, and neutral tones; `AvailablePillTonesKeepContrastInBothThemesAndRowStatesAsync` measures rendered light and dark pills in default, hover, and selected rows for at least 4.5:1 amount-to-fill text contrast and 3:1 fill-or-stroke boundary contrast |
 | Editor draft guard, Enter-to-save, and refresh-safe drafts | `ClosingADirtyEditorAsksBeforeDiscardingAsync`, `ClosingACleanEditorClosesWithoutAskingAsync`, `EscapeAsksOnADirtyEditorAndNeverDiscardsByItselfAsync`, `OtherKeysDoNotCloseTheEditorAsync`, `CancelAsksBeforeDiscardingTypedAccountDetailsAsync`, `CancelClosesAnUnchangedAccountWithoutAskingAsync`, `EnterInTheAmountFieldSavesTheTransactionAsync`, `EnterInThePayeeFieldSavesTheTypedPayeeAsync`, `EnterDoesNotSaveAnIncompleteTransactionAsync`, `InflowRetainsARetiredCategoryAsInvalidAsync`, `InflowSplitsRetainARetiredCategoryAsInvalidAsync`, `RefreshKeepsARemovedDestinationAndBlocksSavingAsync`, `RefreshKeepsAnOpenDraftAndACommandClosesItAsync`, `RefreshKeepsAnEditedDraftWhenTheCatalogOmitsTheLedgerAsync`, `RefreshAfterAConfirmedSaveClosesTheDraftAsync`, `RefreshKeepsTheCategoryEditorWhileACommandResetsItAsync`, `ARefreshedReorderKeepsThePositionWhenATargetSavesAsync`, `AnEditedGroupSurvivesARefreshAsync`, `AnotherCategorySaveKeepsTheTargetDraftAsync`, `RenamingTheOpenCategoryKeepsItsTargetDraftAndNameAsync`, `AnUntouchedGroupMoveDoesNotDirtyTheDraftAsync`, `ReselectingTheOpenedGroupKeepsTheDraftDirtyAsync`, `AHiddenRefreshFollowsTheRecordWithoutPromptingAsync`, `AHiddenRefreshIsSavedInsteadOfRevertedAsync`, `RefreshKeepsADraftWhileAFailedReadRecoversAsync`, `GuardTreatsSeparatorTextInFieldsAsAnEditAsync`, `RefreshPostedCommandKeepsItsDraftIntentThroughFailureAndRetry`, `ActionsStayReachableWhenTheMonthReadFailsAsync`, `PlanActionsFollowThePageHeadingInDocumentOrder`; `EditorKeepsDraftsAndSavesWithEnterAsync` covers the real keyboard and refresh flow in a browser |
 | Themes, mobile navigation, and SSR document continuity | `FluentNavigationPreservesDocumentAndThemeChoice` at 1280px and 390px |

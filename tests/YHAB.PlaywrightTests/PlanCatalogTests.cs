@@ -153,6 +153,71 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
     }
 
     [Theory]
+    [InlineData(768)]
+    [InlineData(390)]
+    [Trait("Category", "BrowserSmoke")]
+    public async Task ClosingTheDetailsWhileRenamingKeepsTheCircuitAliveAsync(int width)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(4));
+        await using var builder = await TestAppHost.CreateAsync(timeout.Token);
+        await using var app = await builder.BuildAsync(timeout.Token);
+        await app.StartAsync(timeout.Token);
+        await app.ResourceNotifications.WaitForResourceHealthyAsync("yhab", timeout.Token);
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync();
+        await using var context = await browser.NewContextAsync(new()
+        {
+            BaseURL = app.GetEndpoint("yhab", "https").ToString(),
+            IgnoreHTTPSErrors = true,
+            ViewportSize = new() { Width = width, Height = 960 },
+        });
+        await context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = true });
+        var page = await context.NewPageAsync();
+        var errors = new ConcurrentQueue<string>();
+        page.PageError += (_, error) => errors.Enqueue(error);
+        try
+        {
+            await BudgetWorkflowTests.RegisterAndLoginAsync(page);
+            await page.GotoAsync("/plans");
+            await page.GetByLabel("Plan name", new() { Exact = true }).FillAsync("Renaming during details");
+            await page.GetByRole(AriaRole.Button, new() { Name = "Create your plan" }).ClickAsync();
+            await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+            var path = new Uri(page.Url).AbsolutePath;
+            await SeedTargetsAsync(page, path);
+            await page.ReloadAsync();
+            await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+            var plan = await ReadAsync(page, path);
+            var category = plan.Categories[0];
+            var row = Row(page, category.Id.ToString());
+
+            // Open the details beneath the row and leave the row's name in its rename form, which
+            // replaces the name control the close hands focus back to.
+            await row.Locator(".category-link").ClickAsync();
+            await page.Locator(".editor-surface h2").Filter(new() { HasText = category.Name }).WaitForAsync();
+            await row.GetByRole(AriaRole.Button, new() { Name = $"Rename {category.Name}", Exact = true }).ClickAsync();
+            await page.Locator(".inline-name-form").WaitForAsync();
+            await page.Locator(".editor-surface h2").Filter(new() { HasText = category.Name }).WaitForAsync();
+
+            await page.Locator(".editor-surface fluent-button[aria-label='Close editor']").ClickAsync();
+            await page.Locator(".editor-surface").WaitForAsync(new() { State = WaitForSelectorState.Detached });
+
+            // The rename keeps working, and the circuit still answers a later selection.
+            await page.Locator(".inline-name-form").WaitForAsync();
+            await FillAsync(page, "Category name", "Renamed after details closed", page.Locator(".inline-name-form"));
+            await Button(page, "Cancel").ClickAsync();
+            await page.Locator(".inline-name-form").WaitForAsync(new() { State = WaitForSelectorState.Detached });
+            await row.Locator(".category-link").ClickAsync();
+            await page.Locator(".editor-surface h2").Filter(new() { HasText = category.Name }).WaitForAsync();
+            errors.ShouldBeEmpty();
+        }
+        finally
+        {
+            await BrowserArtifacts.CaptureAsync(page, context, Path.Combine(AppContext.BaseDirectory, "TestResults", $"plan-rename-details-{width}"), output.WriteLine);
+        }
+    }
+
+    [Theory]
     [InlineData(320)]
     [InlineData(390)]
     [Trait("Category", "BrowserSmoke")]
