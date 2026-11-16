@@ -52,9 +52,10 @@
                                 @if (_rows.TryGetValue(context, out var row))
                                 {
                                     <BudgetCategoryRow @key="context" Plan="Plan" Budget="Budget" Row="row" Month="Budget.Month" OnCommand="OnCommand" OnSelect="OnSelect"
-                                                       Moving="@(_movingCategory == context)" OnToggleMove="() => ToggleCategoryMove(context)"
+                                                       Moving="@(_movingCategory == context)" OnToggleMove="() => ToggleCategoryMoveAsync(context)"
                                                        Busy="Busy" Selected="@(SelectedCategoryId == context)" Draft="Draft(context)"
                                                        InlineEditor="InlineEditor" OnCloseEditor="OnCloseEditor" OnEditorCommand="OnEditorCommand" FocusEditor="FocusEditor" EditorEpoch="EditorEpoch"
+                                                       OnEditorRegistered="OnEditorRegistered"
                                                        RestoreFocus="@(_restoreFocusCategory == context)" OnFocusRestored="ClearFocusCategory" />
                                 }
                             </ItemTemplate>

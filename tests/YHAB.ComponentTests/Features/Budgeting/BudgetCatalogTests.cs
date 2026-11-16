@@ -191,6 +191,87 @@ public sealed class BudgetCatalogTests
     }
 
     [Fact]
+    public async Task OpeningMoveControlsReplacesACleanInlineEditorAsync()
+    {
+        await using var context = CreateContext();
+        context.JSInterop.SetupModule(ModulePath).Setup<bool>("inlineCategoryDetails").SetResult(true);
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, Plan()).Add(item => item.OnCommand, _ => { }));
+
+        await component.Find(".category-row .category-link").ClickAsync();
+        component.Find(".category-inline-editor .editor-surface").ShouldNotBeNull();
+
+        // The other direction of one-panel-per-row: an untouched editor gives way to the
+        // move controls instead of both rendering under the row.
+        await component.Find(".category-row .row-move").ClickAsync();
+        component.FindAll(".category-inline-editor").ShouldBeEmpty();
+        component.Find(".category-move-row").ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task ADirtyInlineDraftKeepsItsEditorAndRefusesMoveControlsAsync()
+    {
+        await using var context = CreateContext();
+        context.JSInterop.SetupModule(ModulePath).Setup<bool>("inlineCategoryDetails").SetResult(true);
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, Plan()).Add(item => item.OnCommand, _ => { }));
+
+        await component.Find(".category-row .category-link").ClickAsync();
+        await component.Find(".category-inline-editor .amount-input fluent-text-input").ChangeAsync(new() { Value = "250" });
+
+        // The move controls wait for an unsaved draft to be finished or closed, so the typed
+        // target is never discarded to make room for them.
+        await component.Find(".category-row .row-move").ClickAsync();
+        component.FindAll(".category-move-row").ShouldBeEmpty();
+        component.Find(".category-inline-editor .amount-input fluent-text-input").GetAttribute("value").ShouldBe("250");
+    }
+
+    [Fact]
+    public async Task HidingTheSelectedRowClosesTheInlineEditorAsync()
+    {
+        await using var context = CreateContext();
+        context.JSInterop.SetupModule(ModulePath).Setup<bool>("inlineCategoryDetails").SetResult(true);
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, Plan()).Add(item => item.OnCommand, _ => { }));
+
+        await component.Find(".category-row .category-link").ClickAsync();
+        component.Find(".category-inline-editor").ShouldNotBeNull();
+
+        // Collapsing the group removes the selected row and its editor. The selection has to
+        // clear too, or the board keeps blocking its other editors behind a panel nobody can reach.
+        await component.Find(".group-toggle").ClickAsync();
+        await component.WaitForAssertionAsync(() => component.FindAll(".category-inline-editor").ShouldBeEmpty());
+
+        await component.Find(".group-toggle").ClickAsync();
+        component.FindAll(".category-inline-editor").ShouldBeEmpty();
+        component.FindAll("[data-selected='true']").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task InlineRowActionKeepsADirtyInlineDraftAsync()
+    {
+        await using var context = CreateContext();
+        context.JSInterop.SetupModule(ModulePath).Setup<bool>("inlineCategoryDetails").SetResult(true);
+        var plan = Plan();
+        var (groceries, utilities) = (plan.Categories[0], plan.Categories[1]);
+        var commands = new List<PlanCommand>();
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, commands.Add));
+
+        await component.Find($"[data-category-id='{groceries.Id}'] .category-link").ClickAsync();
+        await component.Find(".category-inline-editor .amount-input fluent-text-input").ChangeAsync(new() { Value = "250" });
+
+        // Committing an assignment from another row still saves, but it cannot replace the
+        // dirty editor the inline placement mounted under the first row.
+        await component.Find($"[data-category-id='{utilities.Id}'] fluent-text-input").ChangeAsync(new() { Value = "25" });
+        commands.Single().ShouldBeOfType<AssignMoney>().CategoryId.ShouldBe(utilities.Id);
+        component.Find(".category-inline-editor .editor-surface h2").TextContent.ShouldBe(groceries.Name);
+        component.Find(".category-inline-editor .amount-input fluent-text-input").GetAttribute("value").ShouldBe("250");
+
+        // Renaming another category opens its inline name editor without discarding the draft either.
+        await component.Find($"button[aria-label='Rename {utilities.Name}']").ClickAsync();
+        component.Find(".inline-name-form").ShouldNotBeNull();
+        component.Find(".category-inline-editor .editor-surface h2").TextContent.ShouldBe(groceries.Name);
+        component.Find(".category-inline-editor .amount-input fluent-text-input").GetAttribute("value").ShouldBe("250");
+    }
+
+    [Fact]
     public async Task CategoryRowDeadSpaceSelectsWhileEachControlKeepsItsOwnActionAsync()
     {
         await using var context = CreateContext();

@@ -35,6 +35,17 @@ public sealed partial class BudgetCategoryTable
     /// the plan the command produced.
     /// </summary>
     [Parameter] public long EditorEpoch { get; set; }
+    /// <summary>
+    /// Reports the mounted inline editor so the board's selection guard can see its
+    /// live draft, including uncommitted amount text. A plain delegate, because the
+    /// board reads it synchronously and it must not schedule another render.
+    /// </summary>
+    [Parameter] public Action<CategoryEditor?>? OnEditorRegistered { get; set; }
+    /// <summary>
+    /// Closes the selected details editor unless it has unsaved edits, so a row's move
+    /// controls can reuse its place.
+    /// </summary>
+    [Parameter] public Func<bool>? DismissSelection { get; set; }
     private static readonly string _stillNeeded = BudgetGlossary.Label(BudgetTerm.StillNeeded);
     private static readonly string[] _filters = ["All categories", _stillNeeded, "Overspent", "Available", "Hidden"];
     private string _filter = "All categories";
@@ -62,11 +73,31 @@ public sealed partial class BudgetCategoryTable
         // here drops a request no row could consume and keeps a later filter or
         // group change from moving focus unexpectedly.
         _restoreFocusCategory = null;
+        if (InlineEditor && !ShowsSelectedCategory())
+        {
+            // A filter, a collapsed group, or a saved hidden status took the selected row out
+            // of the table. Its editor unmounted with it, so the board has to drop the
+            // selection; otherwise the open-editor hints block the other board actions.
+            await OnCloseEditor.InvokeAsync();
+        }
         if (firstRender)
         {
             _interop = new(JS);
             await _interop.InitializeAsync(_table, _disposal.Token);
         }
+    }
+
+    private bool ShowsSelectedCategory()
+    {
+        if (SelectedCategoryId is not { } selected) { return true; }
+        foreach (var group in Groups)
+        {
+            if (_collapsed.Contains(group.Id)) { continue; }
+            var rows = Rows(group.Id);
+            if (!ShowGroup(group, rows.Length)) { continue; }
+            if (rows.Any(item => item.Category.Id == selected)) { return true; }
+        }
+        return false;
     }
 
     async ValueTask IAsyncDisposable.DisposeAsync()
@@ -139,7 +170,25 @@ public sealed partial class BudgetCategoryTable
     private void ToggleGroup(Guid id) { if (!_collapsed.Add(id)) { _collapsed.Remove(id); } }
     private void ToggleAll() { if (_collapsed.Count > 0) { _collapsed.Clear(); } else { _collapsed.UnionWith(Plan.Groups.Select(item => item.Id)); } }
     private void ToggleGroupMove(Guid id) => _movingGroup = _movingGroup == id ? null : id;
-    private void ToggleCategoryMove(Guid id) => _movingCategory = _movingCategory == id ? null : id;
+    private Task ToggleCategoryMoveAsync(Guid id)
+    {
+        if (_movingCategory == id)
+        {
+            _movingCategory = null;
+            return Task.CompletedTask;
+        }
+        // One panel per row: the move controls replace the details editor. A dirty draft keeps
+        // the editor open and the controls closed, the way another editor's entry point waits.
+        if (InlineEditor && SelectedCategoryId == id)
+        {
+            if (DismissSelection is null || !DismissSelection()) { return Task.CompletedTask; }
+            // The board reports no selection on the next render; remembering that here keeps
+            // the selection-change branch from collapsing the controls we are opening.
+            _selectedCategory = null;
+        }
+        _movingCategory = id;
+        return Task.CompletedTask;
+    }
     private void AddGroup() { CancelCreate(); _filter = "All categories"; _newGroup = true; }
     internal void BeginAddCategory()
     {

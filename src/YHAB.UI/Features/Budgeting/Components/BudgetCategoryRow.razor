@@ -38,7 +38,7 @@
        with the page instead of being pinned or height-capped. *@
     <div class="category-inline-editor" id="@DetailsId" role="row">
         <div role="cell" aria-colspan="4">
-            <CategoryEditor @key="(Row.Category.Id, Month, EditorEpoch)" Plan="Plan" Category="Row.Category" MonthState="Row" Month="Month"
+            <CategoryEditor @ref="_editor" @key="(Row.Category.Id, Month, EditorEpoch)" Plan="Plan" Category="Row.Category" MonthState="Row" Month="Month"
                             OnCommand="OnEditorCommand" OnClose="OnCloseEditor" Busy="Busy" FocusOnOpen="FocusEditor" />
         </div>
     </div>

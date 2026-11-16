@@ -22,6 +22,13 @@
 .budget-table ::deep .category-inline-editor { padding: var(--spacingVerticalXS) var(--spacingHorizontalS) var(--spacingVerticalM); border-bottom: 1px solid var(--yh-border-subtle); }
 .budget-table ::deep .category-inline-editor .editor-surface { margin-block: var(--spacingVerticalS) 0; padding: var(--spacingVerticalM) var(--spacingHorizontalM); border-radius: var(--yh-control-radius); box-shadow: none; }
 .budget-table ::deep .category-inline-editor .editor-surface h2 { font-size: var(--fontSizeBase400); overflow-wrap: anywhere; }
+/* The inline panel scrolls with its row. A phone pins an editor's heading and action
+   row to the viewport, and the sticky summary keeps its own offset for an inline editor,
+   so the panel must not pin them or the summary would cover them. */
+@media (max-width: 43.75rem) {
+    .budget-table ::deep .category-inline-editor .editor-heading,
+    .budget-table ::deep .category-inline-editor .editor-actions { position: static; }
+}
 .budget-table ::deep .category-row { cursor: pointer; }
 .budget-table ::deep .category-row:hover { background: var(--colorSubtleBackgroundHover); }
 .budget-table ::deep .category-row[data-selected="true"] { background: var(--yh-surface-accent-soft); box-shadow: inset 3px 0 var(--colorBrandStroke1); }

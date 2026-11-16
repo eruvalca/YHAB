@@ -33,7 +33,10 @@ public sealed partial class BudgetCategoryRow
     /// The editor just closed and this row opened it, so its name regains focus.
     /// </summary>
     [Parameter] public bool RestoreFocus { get; set; }
+    [Parameter] public Action<CategoryEditor?>? OnEditorRegistered { get; set; }
     [Parameter] public EventCallback OnFocusRestored { get; set; }
+    private CategoryEditor? _editor;
+    private CategoryEditor? _reportedEditor;
     private string DetailsId => $"category-details-{Row.Category.Id:N}";
     // Only the inline panel is announced as a disclosure; the desktop pane is a
     // separate landmark that the row does not control.
@@ -42,6 +45,15 @@ public sealed partial class BudgetCategoryRow
     private static string ExpandedText(bool expanded) => expanded ? "true" : "false";
     private CategoryData[] Siblings { get; set; } = [];
     protected override void OnParametersSet() => Siblings = Plan.Categories.Where(item => item.GroupId == Row.Category.GroupId).OrderBy(item => item.SortOrder).ThenBy(item => item.Id).ToArray();
+    protected override void OnAfterRender(bool firstRender)
+    {
+        // The board's selection guard asks the mounted inline editor whether its draft has
+        // unsaved edits, so report the instance and clear it when the panel closes.
+        var mounted = InlineEditor && Selected ? _editor : null;
+        if (ReferenceEquals(_reportedEditor, mounted)) { return; }
+        _reportedEditor = mounted;
+        OnEditorRegistered?.Invoke(mounted);
+    }
     private int Index => Array.FindIndex(Siblings, item => item.Id == Row.Category.Id);
     private string Tone => Row switch { { Available: < 0 } => "negative", { TargetNeeded: > 0 } => "attention", { Available: > 0 } => "positive", _ => "neutral" };
     private string TargetCaption => Row switch { { Snoozed: true } => "Target snoozed this month", { TargetNeeded: > 0 } => $"{BudgetFacts.Money(Row.TargetNeeded)} more needed", _ => "Target funded" };

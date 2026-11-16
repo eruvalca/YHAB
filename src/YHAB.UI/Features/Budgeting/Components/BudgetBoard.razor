@@ -85,7 +85,7 @@
         <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalM)" VerticalGap="var(--spacingVerticalM)" Class="budget-workspace">
             <FirstRunChecklist Plan="_budgetPlan!" Budget="_budget" Hidden="@(_category is not null)" OnAddAccount="AddAccountAsync" OnAddCategory="AddCategoryAsync" OnShowHelp="ShowHelpAsync" Busy="IsBusy" />
             <div class="budget-categories">
-                <BudgetCategoryTable @ref="_categoryTable" Plan="_budgetPlan!" Budget="_budget" OnCommand="OnCommand" OnSelect="EditCategoryAsync" Busy="IsBusy" SelectedCategoryId="_category?.Id" InlineEditor="_inlineDetails" OnCloseEditor="CloseCategory" OnEditorCommand="SendCategoryCommandAsync" FocusEditor="_focusCategory" EditorEpoch="_editorEpoch" />
+                <BudgetCategoryTable @ref="_categoryTable" Plan="_budgetPlan!" Budget="_budget" OnCommand="OnCommand" OnSelect="EditCategoryAsync" Busy="IsBusy" SelectedCategoryId="_category?.Id" InlineEditor="_inlineDetails" OnCloseEditor="CloseCategory" OnEditorCommand="SendCategoryCommandAsync" FocusEditor="_focusCategory" EditorEpoch="_editorEpoch" OnEditorRegistered="RegisterInlineEditor" DismissSelection="TryDismissCategory" />
             </div>
             @if (_category is not null && !_inlineDetails)
             {
