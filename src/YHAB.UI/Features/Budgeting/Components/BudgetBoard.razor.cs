@@ -339,12 +339,7 @@ public sealed partial class BudgetBoard(IJSRuntime javascript)
         // An inline row action must not discard another draft, whether that is a category's unsaved
         // edits or an open move-money draft; the workspace convention is to finish or close the open
         // editor first. The action that triggered the selection still runs.
-        if (!selection.FocusEditor
-            && (_move && _moveEditor is { IsDirty: true }
-                || DirtyCategoryId is { } dirtyCategory && dirtyCategory != selection.Category.Id))
-        {
-            return;
-        }
+        if (WouldDiscardDraft(selection)) { return; }
         // A continuation that finishes after a newer selection or a close must not win.
         var epoch = ++_selectionEpoch;
         // The placement follows the breakpoint the stylesheet already stacks the
@@ -352,6 +347,9 @@ public sealed partial class BudgetBoard(IJSRuntime javascript)
         // the editor beneath the row instead of after the whole table.
         var inline = await InlineDetailsAsync();
         if (IsDisposed || epoch != _selectionEpoch) { return; }
+        // The lookup waits on the browser, so the open editor can gain unsaved edits under it.
+        // Replacing that editor now would drop them without ever offering the discard prompt.
+        if (WouldDiscardDraft(selection)) { return; }
         // The lookup waits on the browser, so the plan can refresh under it. Select the record the
         // current plan has rather than the snapshot the click captured.
         var category = Plan.Categories.SingleOrDefault(item => item.Id == selection.Category.Id);
@@ -361,6 +359,12 @@ public sealed partial class BudgetBoard(IJSRuntime javascript)
         _category = category;
         _focusCategory = selection.FocusEditor;
     }
+    // A selection that would replace an editor holding unsaved edits has to wait for the person to
+    // finish or close it; the board never discards a draft on another row's action.
+    private bool WouldDiscardDraft(CategorySelection selection)
+        => !selection.FocusEditor
+            && (_move && _moveEditor is { IsDirty: true }
+                || DirtyCategoryId is { } dirtyCategory && dirtyCategory != selection.Category.Id);
     // The selection's draft, shared by both placements, so moving the editor never loses what was
     // typed. It is replaced when the category, the month, or a settled save's remount changes.
     private CategoryEditorDraft? CategoryDraft()

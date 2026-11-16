@@ -537,6 +537,39 @@ public sealed class BudgetCatalogTests
     }
 
     [Fact]
+    public async Task ADraftTypedDuringAPendingSelectionKeepsItsEditorAsync()
+    {
+        using var javascript = new PlacementJSRuntime { Inline = true };
+        await using var context = CreateContext(javascript);
+        var plan = Plan();
+        var (groceries, utilities) = (plan.Categories[0], plan.Categories[1]);
+        var commands = new List<PlanCommand>();
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, commands.Add));
+
+        await component.Find($"[data-category-id='{groceries.Id}'] .category-link").ClickAsync();
+        component.Find(".category-inline-editor .editor-surface h2").TextContent.ShouldBe(groceries.Name);
+
+        // The other row's Assigned field selects that row through the placement lookup, which is
+        // still waiting on the browser when the open editor gains unsaved edits underneath it.
+        var hold = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        javascript.Hold = hold;
+        var pending = component.Find($"[data-category-id='{utilities.Id}'] fluent-text-input").ChangeAsync(new() { Value = "25" });
+        await component.Find(".category-inline-editor .amount-input fluent-text-input").ChangeAsync(new() { Value = "75" });
+        javascript.Hold = null;
+        hold.SetResult(true);
+        await pending;
+
+        // The action still saves the other row, and the editor holding the typed target stays open
+        // instead of dropping edits the person made after the row action was requested.
+        await component.WaitForAssertionAsync(() =>
+        {
+            commands.Single().ShouldBeOfType<AssignMoney>().CategoryId.ShouldBe(utilities.Id);
+            component.Find(".category-inline-editor .editor-surface h2").TextContent.ShouldBe(groceries.Name);
+            component.Find(".category-inline-editor .amount-input fluent-text-input").GetAttribute("value").ShouldBe("75");
+        });
+    }
+
+    [Fact]
     public async Task ReorderingKeepsTheInlineDetailsDraftAsync()
     {
         await using var context = CreateContext();
