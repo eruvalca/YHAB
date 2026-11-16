@@ -459,11 +459,17 @@ body { background: var(--colorNeutralBackground2); color: var(--colorNeutralFore
 [data-money-tone="negative"] { color: var(--colorPaletteRedForeground1); }
 [data-money-tone="attention"] { color: var(--colorPaletteMarigoldForeground2); }
 .nowrap { white-space: nowrap; }
-.available-pill { display: inline-flex; align-items: center; justify-content: center; min-height: var(--yh-control-compact); padding: var(--spacingVerticalXS) var(--spacingHorizontalM); border-radius: var(--yh-radius-pill); background: var(--yh-surface-sunken); font-weight: var(--fontWeightSemibold); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.available-pill[data-tone="positive"] { background: var(--colorPaletteGreenBackground1); color: var(--colorPaletteGreenForeground1); }
-.available-pill[data-tone="attention"] { background: var(--colorPaletteMarigoldBackground1); color: var(--colorPaletteMarigoldForeground2); }
-.available-pill[data-tone="negative"] { background: var(--colorPaletteRedBackground1); color: var(--colorPaletteRedForeground1); }
-button.available-pill { border: 0; color: inherit; font-family: inherit; font-size: inherit; line-height: inherit; font-variant-numeric: tabular-nums; cursor: pointer; }
+/* The fill and boundary carry budget state, so each tone uses the palette's
+   Background2 fill instead of the palest Background1, and pairs it with the
+   darker Foreground2 for both the amount and the 1px stroke. Foreground2 keeps
+   the amount above WCAG AA on that fill and the stroke above 3:1 against light
+   rows, while the fill itself clears 3:1 against the dark rows; the neutral
+   pill carries no state and keeps the shared control border. */
+.available-pill { display: inline-flex; align-items: center; justify-content: center; min-height: var(--yh-control-compact); padding: var(--spacingVerticalXS) var(--spacingHorizontalM); border: 1px solid var(--yh-border-control); border-radius: var(--yh-radius-pill); background: var(--yh-surface-sunken); font-weight: var(--fontWeightSemibold); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.available-pill[data-tone="positive"] { border-color: var(--colorPaletteGreenForeground2); background: var(--colorPaletteGreenBackground2); color: var(--colorPaletteGreenForeground2); }
+.available-pill[data-tone="attention"] { border-color: var(--colorPaletteMarigoldForeground2); background: var(--colorPaletteMarigoldBackground2); color: var(--colorPaletteMarigoldForeground2); }
+.available-pill[data-tone="negative"] { border-color: var(--colorPaletteRedForeground2); background: var(--colorPaletteRedBackground2); color: var(--colorPaletteRedForeground2); }
+button.available-pill { color: inherit; font-family: inherit; font-size: inherit; line-height: inherit; font-variant-numeric: tabular-nums; cursor: pointer; }
 button.available-pill:hover { text-decoration: underline; }
 button.available-pill:focus-visible { outline: 2px solid var(--colorStrokeFocus2); outline-offset: 2px; }
 .history-panel, .danger-zone { margin-top: var(--spacingVerticalXXXL); padding-block: var(--spacingVerticalL); border-top: 1px solid var(--colorNeutralStroke2); }

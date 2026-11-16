@@ -233,6 +233,9 @@ Assignment saves preserve the existing inputs and keyboard focus. Amount fields
 are temporarily read-only while a save is pending; a failed save restores the
 last confirmed amount alongside the workspace error. Green marks positive money,
 red marks negative balances/outflows, and amber marks funding still needed.
+The Available pill carries that tone in both its fill and its 1px stroke, so it
+stays distinct from the row in light and dark themes, including hovered and
+selected rows, and the amount keeps WCAG AA contrast on that fill.
 Signs, labels, and overspending messages retain the meaning without color.
 The compact monthly summary stays at the top of the viewport as you scroll the
 category table, keeping Ready to assign, all four totals, and their definitions
