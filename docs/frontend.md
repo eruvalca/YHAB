@@ -13,9 +13,14 @@ An installed app opens **Your plans** in its own window; normal authentication
 still applies. Browser and OS support determine the installation experience.
 `manifest.webmanifest` declares standalone display with a `display_override`,
 `orientation: any`, finance/productivity categories, a neutral white splash
-background, and shortcuts to **Your plans** and **Home**. The shell reserves the
-safe-area insets for the header, content, footer, and reconnect notice so an
-installed window clears notches and home indicators.
+background, and shortcuts to **Your plans**, **Add transaction**, and **Home**.
+**Add transaction** enters through `/plans?action=add-transaction`: it opens the
+only accessible plan's register with the transaction editor ready, and asks which
+plan to use first when there are several. A signed-out launch returns through
+login to the same shortcut. Android and desktop Chromium surface manifest
+shortcuts on the installed icon, while an iPhone/iPad home screen does not. The
+shell reserves the safe-area insets for the header, content, footer, and
+reconnect notice so an installed window clears notches and home indicators.
 
 This is an online application with an offline fallback. After one successful
 visit and service-worker installation, failed full-page and Blazor enhanced GET

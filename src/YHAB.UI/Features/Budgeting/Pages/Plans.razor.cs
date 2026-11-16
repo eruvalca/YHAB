@@ -7,15 +7,21 @@ namespace YHAB.UI.Features.Budgeting.Pages;
 
 public sealed partial class Plans(IBudgetClient budgets, NavigationManager navigation)
 {
+    // The installed app's "Add transaction" shortcut enters here, so the intent
+    // has one stable URL regardless of how many plans the user can open.
+    public const string AddTransactionAction = "add-transaction";
     private const string ConnectionError = "We couldn't reach your plans. Check your connection and refresh.";
     private IReadOnlyList<PlanSummary> _ownedPlans = [];
     private IReadOnlyList<PlanSummary> _sharedPlans = [];
     private string? _error;
     private string? _createError;
+    private bool _choosePlanForTransaction;
     private EditContext _joinEditContext = default!;
     private ValidationMessageStore _joinMessages = default!;
+    [SupplyParameterFromQuery(Name = "action")] public string? ShortcutAction { get; set; }
     [SupplyParameterFromForm(FormName = "CreatePlan")] private PlanInput Input { get; set; } = default!;
     [SupplyParameterFromForm(FormName = "JoinPlan")] private JoinInput Join { get; set; } = default!;
+    private bool IsAddTransaction => string.Equals(ShortcutAction, AddTransactionAction, StringComparison.OrdinalIgnoreCase);
 
     protected override async Task OnInitializedAsync()
     {
@@ -36,7 +42,24 @@ public sealed partial class Plans(IBudgetClient budgets, NavigationManager navig
         {
             _error = exception.Message;
         }
+
+        if (!IsDisposed && _error is null && IsAddTransaction)
+        {
+            var plans = _ownedPlans.Concat(_sharedPlans).ToArray();
+            if (plans.Length == 1)
+            {
+                // The register owns the one-shot intent; this page only resolves the plan.
+                navigation.NavigateTo(PlanHref(plans[0].Id));
+                return;
+            }
+
+            _choosePlanForTransaction = plans.Length > 1;
+        }
     }
+
+    private string PlanHref(Guid planId) => IsAddTransaction ? $"/plans/{planId}/accounts?new=true" : $"/plans/{planId}";
+
+    private string PlanActionLabel => IsAddTransaction ? "Add transaction" : "Open plan";
 
     private async Task CreateAsync()
     {

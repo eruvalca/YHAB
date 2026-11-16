@@ -169,21 +169,29 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         }
     }
 
+    internal const string TestPassword = "Local-test-Only!7926";
+
+    internal static async Task<string> RegisterAsync(IPage page, Uri? origin = null)
+    {
+        string Address(string path) => origin is null ? path : new Uri(origin, path).AbsoluteUri;
+        var email = $"budget-{Guid.NewGuid():N}@example.test";
+        await page.GotoAsync(Address("/Account/Register"));
+        await page.GetByLabel("Email", new() { Exact = true }).FillAsync(email);
+        await page.GetByLabel("Password", new() { Exact = true }).FillAsync(TestPassword);
+        await page.GetByLabel("Confirm Password", new() { Exact = true }).FillAsync(TestPassword);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Create your account", Exact = true }).ClickAsync();
+        await page.GetByRole(AriaRole.Heading, new() { Name = "Make room for what matters.", Exact = true }).WaitForAsync();
+        page.Url.ShouldEndWith("/plans");
+        return email;
+    }
+
     internal static async Task RegisterAndLoginAsync(IPage page, Uri? origin = null)
     {
         string Address(string path) => origin is null ? path : new Uri(origin, path).AbsoluteUri;
         var anonymousPlans = await page.APIRequest.GetAsync(Address("/api/plans"), new() { IgnoreHTTPSErrors = true });
         anonymousPlans.Status.ShouldBe(401);
         await anonymousPlans.DisposeAsync();
-        var email = $"budget-{Guid.NewGuid():N}@example.test";
-        const string Password = "Local-test-Only!7926";
-        await page.GotoAsync(Address("/Account/Register"));
-        await page.GetByLabel("Email", new() { Exact = true }).FillAsync(email);
-        await page.GetByLabel("Password", new() { Exact = true }).FillAsync(Password);
-        await page.GetByLabel("Confirm Password", new() { Exact = true }).FillAsync(Password);
-        await page.GetByRole(AriaRole.Button, new() { Name = "Create your account", Exact = true }).ClickAsync();
-        await page.GetByRole(AriaRole.Heading, new() { Name = "Make room for what matters.", Exact = true }).WaitForAsync();
-        page.Url.ShouldEndWith("/plans");
+        var email = await RegisterAsync(page, origin);
         await using (var plans = await page.APIRequest.GetAsync(Address("/api/plans"), new() { IgnoreHTTPSErrors = true }))
         {
             plans.Status.ShouldBe(200);
@@ -192,7 +200,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await page.Context.ClearCookiesAsync();
         await page.GotoAsync(Address("/Account/Login"));
         await page.GetByLabel("Email", new() { Exact = true }).FillAsync(email);
-        await page.GetByLabel("Password", new() { Exact = true }).FillAsync(Password);
+        await page.GetByLabel("Password", new() { Exact = true }).FillAsync(TestPassword);
         await page.GetByRole(AriaRole.Button, new() { Name = "Log in", Exact = true }).ClickAsync();
         await page.Locator(".welcome h1").WaitForAsync();
     }

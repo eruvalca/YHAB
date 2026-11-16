@@ -637,6 +637,32 @@ public sealed class WorkspaceTests
         });
     }
 
+    [Fact]
+    public async Task AddTransactionShortcutOpensTheRegisterEditorAndClearsTheQueryAsync()
+    {
+        await using var context = new BunitContext();
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], true, false, []) { Today = today };
+        var (budgets, _) = Configure(context, plan);
+        budgets.ReadRegisterAsync(plan.Id, Arg.Any<RegisterQuery>(), Arg.Any<CancellationToken>())
+            .Returns(call => new RegisterPage(call.Arg<RegisterQuery>().Version!.Value, [], 0, null));
+        budgets.ReadPayeesAsync(plan.Id, Arg.Any<CancellationToken>()).Returns([]);
+        var navigation = context.Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo($"/plans/{plan.Id}/accounts?new=true");
+        var workspace = context.Render<Workspace>(parameters => parameters.Add(item => item.PlanId, plan.Id));
+
+        await workspace.WaitForAssertionAsync(() => workspace.FindAll(".editor-surface").Count.ShouldBe(1));
+        navigation.Uri.ShouldBe($"http://localhost/plans/{plan.Id}/accounts");
+
+        await workspace.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Close", StringComparison.Ordinal)).ClickAsync();
+        workspace.FindAll(".editor-surface").ShouldBeEmpty();
+
+        // The intent is one-shot: a later render that still supplies it must not reopen the editor.
+        workspace.Render(parameters => parameters.Add(item => item.PlanId, plan.Id));
+        workspace.FindAll(".editor-surface").ShouldBeEmpty();
+    }
+
     private static (IBudgetClient Budgets, PlanSnapshot Plan) Configure(BunitContext context)
     {
         var today = new DateOnly(2026, 10, 3);

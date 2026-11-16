@@ -12,6 +12,13 @@ public sealed partial class AccountRegister
     [Parameter] public Guid? InitialCategoryId { get; set; }
     [Parameter] public DateOnly? InitialFrom { get; set; }
     [Parameter] public DateOnly? InitialThrough { get; set; }
+    /// <summary>
+    /// The app-icon shortcut asked for a new transaction. It opens the editor once,
+    /// on the first interactive render, and reports back so the caller can clear
+    /// the intent from the URL.
+    /// </summary>
+    [Parameter] public bool InitialNewTransaction { get; set; }
+    [Parameter] public EventCallback OnNewTransactionConsumed { get; set; }
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
     [Parameter, EditorRequired] public EventCallback<AccountData> OnEditAccount { get; set; }
     [Parameter] public bool Busy { get; set; }
@@ -38,6 +45,9 @@ public sealed partial class AccountRegister
     private TransactionData? _transaction;
     private bool _editing;
     private bool _deleting;
+    private bool _newTransactionPending;
+    private bool _newTransactionHandled;
+    private bool _newTransactionNeedsAccount;
     private Guid _editKey;
     private long _version = -1;
     private PlanSnapshot? _loadedPlan;
@@ -66,6 +76,7 @@ public sealed partial class AccountRegister
 
     protected override async Task OnParametersSetAsync()
     {
+        if (InitialNewTransaction && !_newTransactionHandled) { _newTransactionPending = true; }
         _account = Plan.Accounts.SingleOrDefault(item => item.Id == AccountId);
         var initialFilter = (InitialCategoryId, InitialFrom, InitialThrough);
         var filterChanged = _initialFilter != initialFilter;
@@ -101,6 +112,21 @@ public sealed partial class AccountRegister
             _loadedPlan = Plan;
             await ResetPageAsync();
         }
+    }
+
+    // Prerendering must not open the editor: the interactive renderer starts over
+    // and would produce a second one. The intent opens the editor here, once.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await base.OnAfterRenderAsync(firstRender);
+        if (!_newTransactionPending || !RendererInfo.IsInteractive) { return; }
+        _newTransactionPending = false;
+        _newTransactionHandled = true;
+        // An editor with no account to record against would be unusable.
+        if (Plan.Accounts.Any(item => !item.Closed)) { Add(); }
+        else { _newTransactionNeedsAccount = true; }
+        if (OnNewTransactionConsumed.HasDelegate) { await OnNewTransactionConsumed.InvokeAsync(); }
+        if (!IsDisposed) { StateHasChanged(); }
     }
 
     // Refresh keeps an open transaction draft. The catalog deliberately omits the ledger, so the

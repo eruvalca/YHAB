@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Bunit;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Shouldly;
@@ -369,5 +370,84 @@ public sealed class AccountRegisterTests
 
         component.FindAll(".editor-surface").Count.ShouldBe(1);
         component.Find(".add-transaction-dock").GetAttribute("data-editing").ShouldBe("true");
+    }
+
+    [Fact]
+    public async Task ShortcutIntentOpensTheEditorOnceAndReportsItConsumedAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], false, false, []) { Today = today };
+        var consumed = 0;
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(plan.Version, [], 0, null)))
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([]))
+            .Add(item => item.InitialNewTransaction, true)
+            .Add(item => item.OnNewTransactionConsumed, () => consumed++));
+
+        await component.WaitForAssertionAsync(() => component.FindAll(".editor-surface").Count.ShouldBe(1));
+        component.Find(".editor-heading h2").TextContent.ShouldBe("Add transaction");
+        consumed.ShouldBe(1);
+
+        await component.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Close", StringComparison.Ordinal)).ClickAsync();
+        component.FindAll(".editor-surface").ShouldBeEmpty();
+
+        // A later render from the same caller must not reopen the consumed intent.
+        component.Render(parameters => parameters.Add(item => item.InitialNewTransaction, true));
+        component.FindAll(".editor-surface").ShouldBeEmpty();
+        consumed.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ShortcutIntentWithoutAnAccountExplainsHowToAddOneAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var today = new DateOnly(2026, 10, 3);
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [], [], [], [], [], false, false, []) { Today = today };
+        var consumed = 0;
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(plan.Version, [], 0, null)))
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([]))
+            .Add(item => item.InitialNewTransaction, true)
+            .Add(item => item.OnNewTransactionConsumed, () => consumed++));
+
+        await component.WaitForAssertionAsync(() => component.Find(".notice[role='status']").TextContent.ShouldContain("Add an account"));
+        component.FindAll(".editor-surface").ShouldBeEmpty();
+        consumed.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task PrerenderedShortcutIntentLeavesTheEditorClosedAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", false));
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], false, false, []) { Today = today };
+        var consumed = 0;
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(plan.Version, [], 0, null)))
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([]))
+            .Add(item => item.InitialNewTransaction, true)
+            .Add(item => item.OnNewTransactionConsumed, () => consumed++));
+
+        await component.WaitForAssertionAsync(() => component.Find(".empty-state").ShouldNotBeNull());
+        component.FindAll(".editor-surface").ShouldBeEmpty();
+        consumed.ShouldBe(0);
     }
 }
