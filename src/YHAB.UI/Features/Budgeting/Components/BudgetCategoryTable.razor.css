@@ -69,7 +69,9 @@
        and fill with window colors here. */
     .budget-table ::deep .target-progress { border: 1px solid CanvasText; background: Canvas; }
     .budget-table ::deep .target-progress::-webkit-progress-bar { background: Canvas; }
-    .budget-table ::deep .target-progress::-webkit-progress-value,
+    /* Vendor-specific pseudo-elements stay in separate rules: an engine that
+       does not recognize one drops the whole selector list. */
+    .budget-table ::deep .target-progress::-webkit-progress-value { background: Highlight; }
     .budget-table ::deep .target-progress::-moz-progress-bar { background: Highlight; }
 }
 
