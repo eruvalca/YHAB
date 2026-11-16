@@ -20,6 +20,8 @@ public sealed partial class AmountInput
     [Parameter] public bool CommitOnSave { get; set; }
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public bool ReadOnly { get; set; }
+    // Restores text a recreated editor had typed but not committed yet.
+    [Parameter] public string? InitialText { get; set; }
     // Saving editors commit from Enter in their amount field, as in the manual entry flow.
     [Parameter] public EventCallback OnEnter { get; set; }
     private const string ExpressionError = "Enter an amount or expression using + − * / and parentheses.";
@@ -27,6 +29,7 @@ public sealed partial class AmountInput
     private string _text = string.Empty;
     private string? _error;
     private decimal? _lastValue;
+    private bool _initialTextApplied;
     private bool _evaluating;
     private bool _negateCommit;
     private bool _pointerGesture;
@@ -37,6 +40,20 @@ public sealed partial class AmountInput
     protected override void OnParametersSet()
     {
         SynchronizeValue();
+        // A recreated editor restores the raw text it had not committed. The owner only supplies
+        // draft text at mount, so this applies once: a later render carries a newer draft that
+        // must not overwrite what the person is typing.
+        if (!_initialTextApplied)
+        {
+            _initialTextApplied = true;
+            if (!string.IsNullOrEmpty(InitialText))
+            {
+                _text = InitialText;
+                _lastValue = Value;
+                // Unfinished text is restored as the invalid amount it is, not presented as valid.
+                if (!TryGetAmount(_text, out _, out var restoredError)) { _error = restoredError; }
+            }
+        }
         if (_pointerGesture && _pointerReleased && (Disabled || ReadOnly))
         {
             // The released gesture cannot deliver its click while disabled.
@@ -114,6 +131,8 @@ public sealed partial class AmountInput
     // Unsaved text does not reach Value until the editor saves, so drafts are
     // compared against the value the field would commit right now.
     internal bool HasDraft => !TryGetAmount(_text, out var amount, out _) || amount != Value;
+    // The raw text a recreated editor hands back to its owner.
+    internal string CurrentText() => _text;
 
     private async Task KeyDownAsync(KeyboardEventArgs args)
     {

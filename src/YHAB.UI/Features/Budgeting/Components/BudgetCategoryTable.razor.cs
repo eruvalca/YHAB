@@ -14,6 +14,43 @@ public sealed partial class BudgetCategoryTable
     [Parameter, EditorRequired] public EventCallback<CategorySelection> OnSelect { get; set; }
     [Parameter] public Guid? SelectedCategoryId { get; set; }
     [Parameter] public bool Busy { get; set; }
+    /// <summary>
+    /// The details editor opens beneath its row rather than in a pane beside the
+    /// table, so the row stays visible on phone and tablet widths.
+    /// </summary>
+    [Parameter] public bool InlineEditor { get; set; }
+    [Parameter] public EventCallback OnCloseEditor { get; set; }
+    /// <summary>
+    /// Carries the editor's own commands, so a save this editor submitted settles
+    /// its draft the way the side pane's does.
+    /// </summary>
+    [Parameter] public EventCallback<PlanCommand> OnEditorCommand { get; set; }
+    /// <summary>
+    /// The selection that opened the editor owns focus, so only a selection that
+    /// claims it moves focus into the editor.
+    /// </summary>
+    [Parameter] public bool FocusEditor { get; set; } = true;
+    /// <summary>
+    /// Changes when a save settles the open editor's draft, remounting it against
+    /// the plan the command produced.
+    /// </summary>
+    [Parameter] public long EditorEpoch { get; set; }
+    /// <summary>
+    /// Reports the mounted inline editor, with its category, so the board's selection guard
+    /// can see its live draft, including uncommitted amount text. A plain delegate, because
+    /// the board reads it synchronously and it must not schedule another render.
+    /// </summary>
+    [Parameter] public Action<Guid, CategoryEditor?>? OnEditorRegistered { get; set; }
+    /// <summary>
+    /// The selection's details draft, owned by the board so both placements and a recreated
+    /// row restore the same typed values.
+    /// </summary>
+    [Parameter] public CategoryEditorDraft? CategoryDraft { get; set; }
+    /// <summary>
+    /// Closes the selected details editor unless it has unsaved edits, so a row's move
+    /// controls can reuse its place.
+    /// </summary>
+    [Parameter] public Func<bool>? DismissSelection { get; set; }
     private static readonly string _stillNeeded = BudgetGlossary.Label(BudgetTerm.StillNeeded);
     private static readonly string[] _filters = ["All categories", _stillNeeded, "Overspent", "Available", "Hidden"];
     private string _filter = "All categories";
@@ -25,6 +62,8 @@ public sealed partial class BudgetCategoryTable
     private Guid? _dragGroup;
     private Guid? _movingGroup;
     private Guid? _movingCategory;
+    private Guid? _selectedCategory;
+    private Guid? _restoreFocusCategory;
     private Guid? _newCategoryGroup;
     private bool _newGroup;
     private long _version = -1;
@@ -35,11 +74,35 @@ public sealed partial class BudgetCategoryTable
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        // A focus request belongs to the render that closed the editor. Clearing it
+        // here drops a request no row could consume and keeps a later filter or
+        // group change from moving focus unexpectedly.
+        _restoreFocusCategory = null;
+        if (InlineEditor && !ShowsSelectedCategory())
+        {
+            // A filter, a collapsed group, or a saved hidden status took the selected row out
+            // of the table. Its editor unmounted with it, so the board has to drop the
+            // selection; otherwise the open-editor hints block the other board actions.
+            await OnCloseEditor.InvokeAsync();
+        }
         if (firstRender)
         {
             _interop = new(JS);
             await _interop.InitializeAsync(_table, _disposal.Token);
         }
+    }
+
+    private bool ShowsSelectedCategory()
+    {
+        if (SelectedCategoryId is not { } selected) { return true; }
+        foreach (var group in Groups)
+        {
+            if (_collapsed.Contains(group.Id)) { continue; }
+            var rows = Rows(group.Id);
+            if (!ShowGroup(group, rows.Length)) { continue; }
+            if (rows.Any(item => item.Category.Id == selected)) { return true; }
+        }
+        return false;
     }
 
     async ValueTask IAsyncDisposable.DisposeAsync()
@@ -59,6 +122,15 @@ public sealed partial class BudgetCategoryTable
     {
         Groups = Plan.Groups.OrderBy(item => item.SortOrder).ThenBy(item => item.Id).ToArray();
         _rows = Budget.Categories.ToDictionary(item => item.Category.Id);
+        if (_selectedCategory != SelectedCategoryId)
+        {
+            // A row shows one panel at a time: selecting it collapses the move
+            // controls it had open, and closing the editor hands focus back to the
+            // row that opened it instead of dropping focus on the document body.
+            _restoreFocusCategory = SelectedCategoryId is null ? _selectedCategory : null;
+            _movingCategory = null;
+            _selectedCategory = SelectedCategoryId;
+        }
         if (_version != Plan.Version)
         {
             _version = Plan.Version;
@@ -103,7 +175,25 @@ public sealed partial class BudgetCategoryTable
     private void ToggleGroup(Guid id) { if (!_collapsed.Add(id)) { _collapsed.Remove(id); } }
     private void ToggleAll() { if (_collapsed.Count > 0) { _collapsed.Clear(); } else { _collapsed.UnionWith(Plan.Groups.Select(item => item.Id)); } }
     private void ToggleGroupMove(Guid id) => _movingGroup = _movingGroup == id ? null : id;
-    private void ToggleCategoryMove(Guid id) => _movingCategory = _movingCategory == id ? null : id;
+    private Task ToggleCategoryMoveAsync(Guid id)
+    {
+        if (_movingCategory == id)
+        {
+            _movingCategory = null;
+            return Task.CompletedTask;
+        }
+        // One panel per row: the move controls replace the details editor. A dirty draft keeps
+        // the editor open and the controls closed, the way another editor's entry point waits.
+        if (InlineEditor && SelectedCategoryId == id)
+        {
+            if (DismissSelection is null || !DismissSelection()) { return Task.CompletedTask; }
+            // The board reports no selection on the next render; remembering that here keeps
+            // the selection-change branch from collapsing the controls we are opening.
+            _selectedCategory = null;
+        }
+        _movingCategory = id;
+        return Task.CompletedTask;
+    }
     private void AddGroup() { CancelCreate(); _filter = "All categories"; _newGroup = true; }
     internal void BeginAddCategory()
     {
@@ -185,6 +275,7 @@ public sealed partial class BudgetCategoryTable
     }
 
     private void ClearDrag() => _dragGroup = null;
+    private void ClearFocusCategory() => _restoreFocusCategory = null;
     private void DragGroup(Guid id) { ClearDrag(); if (!Busy) { _dragGroup = id; } }
     private Task DropGroupAsync(Guid group) => DropAsync(group);
     private Task DropGroupAtEndAsync() => DropAsync(null);

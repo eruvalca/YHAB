@@ -184,8 +184,8 @@ public sealed class LayoutAndSharingTests(ITestOutputHelper output)
         await BudgetWorkflowTests.Input(page, "Assign to Groceries").PressAsync("Tab");
         await groceries.Locator("button.available-pill").Filter(new() { HasText = "$125.00" }).WaitForAsync();
         await groceries.Locator(".category-link").ClickAsync();
-        await page.Locator(".category-details h3").Filter(new() { HasText = "Target" }).WaitForAsync();
-        await page.Locator(".category-details fluent-checkbox").First.ClickAsync();
+        await page.Locator(".editor-surface h3").Filter(new() { HasText = "Target" }).WaitForAsync();
+        await page.Locator(".editor-surface fluent-checkbox").First.ClickAsync();
         await BudgetWorkflowTests.Input(page, "Target amount").FillAsync("250");
         await BudgetWorkflowTests.Input(page, "Target amount").PressAsync("Tab");
         await BudgetWorkflowTests.Button(page, "Save category").ClickAsync();

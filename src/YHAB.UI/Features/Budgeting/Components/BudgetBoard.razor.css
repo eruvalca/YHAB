@@ -49,6 +49,8 @@
 .still-needed-breakdown { margin-inline-start: var(--spacingHorizontalXS); color: var(--yh-text-muted); font-size: var(--fontSizeBase100); }
 .summary-actions { display: flex; flex-direction: column; align-items: flex-end; gap: var(--spacingVerticalXXS); }
 .action-hint { margin: 0; font-size: var(--fontSizeBase100); text-align: end; }
+/* The board asks the browser for this breakpoint and renders the editor beneath
+   its row instead, so the stacked rule only covers a query that never answered. */
 @media (max-width: 75rem) { .category-details { flex-basis: 100%; position: static; max-height: none; overflow-y: visible; } }
 @media (max-width: 37.5rem) {
     .summary-actions { align-items: flex-start; }

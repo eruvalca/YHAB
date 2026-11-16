@@ -5,7 +5,9 @@
                 aria-label="@($"Move {Row.Category.Name}")" title="Drag to reorder, or click for move controls"
                 @onclick="ToggleMoveAsync" @onclick:stopPropagation="true"><FluentIcon Value="@(new Icons.Regular.Size16.ReOrderDotsVertical())" aria-hidden="true" /></button>
         <div class="category-name">
-            <InlineNameEditor Label="Category name" Value="@Row.Category.Name" OnSave="RenameAsync" OnSelect="SelectAsync" OnBeginRename="SelectInlineAsync" Busy="Busy" Draft="Draft" />
+            <InlineNameEditor Label="Category name" Value="@Row.Category.Name" OnSave="RenameAsync" OnSelect="SelectAsync" OnBeginRename="SelectInlineAsync" Busy="Busy" Draft="Draft"
+                              AriaExpanded="@ExpandedState" AriaControls="@ExpandedControls"
+                              FocusName="RestoreFocus" OnNameFocused="OnFocusRestored" />
             @if (Row.Category.Target is not null)
             {
                 <small class="target-caption">@TargetCaption</small>
@@ -27,6 +29,17 @@
                 <FluentSelect TOption="GroupData" TValue="Guid" Label="Move to group" Items="Plan.Groups.OrderBy(item => item.SortOrder)" OptionText="item => item.Name" OptionValue="item => item.Id" Value="Row.Category.GroupId" ValueChanged="MoveToGroupAsync" Disabled="Busy" Margin="0" />
                 <FluentButton Size="ButtonSize.Small" OnClick="ToggleMoveAsync" Appearance="ButtonAppearance.Subtle">Done</FluentButton>
             </FluentStack>
+        </div>
+    </div>
+}
+@if (InlineEditor && Selected)
+{
+    @* The panel follows the row so a tap keeps the category in view; it grows
+       with the page instead of being pinned or height-capped. *@
+    <div class="category-inline-editor" id="@DetailsId" role="row">
+        <div role="cell" aria-colspan="4">
+            <CategoryEditor @ref="_editor" @key="(Row.Category.Id, Month, EditorEpoch)" Plan="Plan" Category="Row.Category" MonthState="Row" Month="Month"
+                            OnCommand="OnEditorCommand" OnClose="OnCloseEditor" Busy="Busy" FocusOnOpen="FocusEditor" Draft="CategoryDraft" />
         </div>
     </div>
 }

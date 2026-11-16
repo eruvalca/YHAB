@@ -374,10 +374,10 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
 
     private static async Task CloseCategoryEditorAsync(IPage page)
     {
-        var close = page.Locator(".category-details fluent-button[aria-label='Close editor']");
+        var close = page.Locator(".editor-surface fluent-button[aria-label='Close editor']");
         if (await close.CountAsync() == 0) { return; }
         await close.ClickAsync();
-        await page.Locator(".category-details").WaitForAsync(new() { State = WaitForSelectorState.Detached });
+        await page.Locator(".editor-surface").WaitForAsync(new() { State = WaitForSelectorState.Detached });
     }
 
     // The keyboard flow and draft guard span Fluent's shadow DOM and a real
@@ -670,6 +670,12 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         // A zero balance has nothing to move, so the assignment field is the last
         // focusable control before the next row.
         (await page.Locator("fluent-button[aria-label='Change the sign of Assign to Groceries']").CountAsync()).ShouldBe(0);
+        // Committing the assignment selects the category, and the compact layout renders
+        // its panel between the rows. Close it and restart from the field so the table's
+        // own keyboard order is what this section checks.
+        await CloseCategoryEditorAsync(page);
+        await amount.ClickAsync();
+        await page.Keyboard.PressAsync("Tab");
         var move = page.GetByRole(AriaRole.Button, new() { Name = "Move Utilities", Exact = true });
         (await move.EvaluateAsync<bool>("button => document.activeElement === button.closest('.sortable-item')")).ShouldBeTrue();
         await page.Keyboard.PressAsync("Tab");

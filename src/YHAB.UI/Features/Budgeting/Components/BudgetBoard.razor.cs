@@ -1,12 +1,15 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Components;
 using Microsoft.FluentUI.AspNetCore.Components;
+using Microsoft.JSInterop;
 using YHAB.SharedKernel.Budgeting;
 
 namespace YHAB.UI.Features.Budgeting.Components;
 
-public sealed partial class BudgetBoard
+public sealed partial class BudgetBoard(IJSRuntime javascript)
 {
+    private const string LayoutModulePath = "./_content/YHAB.UI/Features/Budgeting/Components/BudgetBoard.razor.js";
+
     [Parameter, EditorRequired] public PlanSnapshot Plan { get; set; } = default!;
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
     /// <summary>
@@ -68,18 +71,42 @@ public sealed partial class BudgetBoard
     private bool _focusMonthStep;
     private BudgetCategoryTable? _categoryTable;
     private CategoryEditor? _categoryEditor;
+    private CategoryEditor? _inlineEditor;
+    private Guid? _inlineEditorCategory;
     private MoveMoneyEditor? _moveEditor;
     private CategoryData? _category;
+    // Below the desktop breakpoint the editor opens beneath its row instead of in
+    // a pane after the table, so the row that was tapped stays in view.
+    private bool _inlineDetails;
+    private IJSObjectReference? _layoutModule;
     // Inline row controls keep focus, so only a selection that owns focus moves it into the editor.
     private bool _focusCategory = true;
+    // The details draft belongs to the selection, not to whichever surface renders it, so a
+    // reorder that recreates the row or a resize that moves the editor restores the typed values.
+    private CategoryEditorDraft? _categoryDraft;
+    private Guid? _categoryDraftCategory;
+    private DateOnly _categoryDraftMonth;
+    private long _categoryDraftEpoch = -1;
+    // Bumped by every selection and close, so a layout lookup that finishes late cannot
+    // override a newer choice or reopen a closed editor.
+    private long _selectionEpoch;
     private CategoryMonth? EditingMonth => _budget.Categories.SingleOrDefault(item => item.Category.Id == _category?.Id);
     private bool HasAccounts => Plan.Accounts.Count > 0;
     // The Today action only changes what the sticky summary shows while another month is open.
     private bool IsCurrentMonth => _budget.Month == BudgetFacts.Month(Plan.Today);
     private bool HasOpenAccounts => Plan.Accounts.Any(item => !item.Closed);
     // A phone's editor pins its own heading to the top of the viewport, so the
-    // sticky summary steps aside instead of covering it.
+    // sticky summary steps aside instead of covering it. The inline category
+    // editor scrolls with its row and pins nothing, so the summary stays.
     private bool IsEditing => _transaction || _move || _category is not null;
+    private bool IsPinnedEditor => _transaction || _move || (_category is not null && !_inlineDetails);
+    // The category whose details draft has unsaved edits, whichever placement is open.
+    // A closed editor's reference outlives it, so the open category gates this.
+    private Guid? DirtyCategoryId => (_category, _inlineDetails ? _inlineEditor : _categoryEditor) switch
+    {
+        ({ } category, { IsDirty: true }) => category.Id,
+        _ => null,
+    };
     // A phone keeps the sticky summary on screen, so this action docks to the
     // viewport instead of adding a row that would shrink the category table, and
     // it steps aside for every board editor so it cannot cover their actions.
@@ -290,7 +317,15 @@ public sealed partial class BudgetBoard
     }
     private void CloseTransaction() { _transaction = false; _transactionCommand = null; }
     private void CloseMove() { _move = false; _moveEditor = null; _moveCommand = null; }
-    private void CloseCategory() { _category = null; _categoryEditor = null; }
+    private void CloseCategory()
+    {
+        _selectionEpoch++;
+        _category = null;
+        _categoryEditor = null;
+        _inlineEditor = null;
+        _inlineEditorCategory = null;
+        _categoryDraft = null;
+    }
     private Task ShowHelpAsync()
     {
         _help = true;
@@ -299,22 +334,113 @@ public sealed partial class BudgetBoard
     }
     private void HideHelp() => _help = false;
     private Task AddCategoryAsync() { _help = false; _categoryTable?.BeginAddCategory(); return Task.CompletedTask; }
-    private void EditCategory(CategorySelection selection)
+    private async Task EditCategoryAsync(CategorySelection selection)
     {
         // An inline row action must not discard another draft, whether that is a category's unsaved
         // edits or an open move-money draft; the workspace convention is to finish or close the open
-        // editor first. The action that triggered the selection still runs. A closed editor's
-        // reference outlives it because Blazor does not clear an @ref on removal, so the open-editor
-        // flags gate the references.
-        if (!selection.FocusEditor
-            && (_move && _moveEditor is { IsDirty: true }
-                || _category is not null && _categoryEditor is { IsDirty: true } && _category.Id != selection.Category.Id))
-        {
-            return;
-        }
+        // editor first. The action that triggered the selection still runs.
+        if (WouldDiscardDraft(selection)) { return; }
+        // A continuation that finishes after a newer selection or a close must not win.
+        var epoch = ++_selectionEpoch;
+        // The placement follows the breakpoint the stylesheet already stacks the
+        // workspace on, so a wide screen keeps its side pane and a narrow one opens
+        // the editor beneath the row instead of after the whole table.
+        var inline = await InlineDetailsAsync();
+        if (IsDisposed || epoch != _selectionEpoch) { return; }
+        // The lookup waits on the browser, so the open editor can gain unsaved edits under it.
+        // Replacing that editor now would drop them without ever offering the discard prompt.
+        if (WouldDiscardDraft(selection)) { return; }
+        // The lookup waits on the browser, so the plan can refresh under it. Select the record the
+        // current plan has rather than the snapshot the click captured.
+        var category = Plan.Categories.SingleOrDefault(item => item.Id == selection.Category.Id);
+        if (category is null) { return; }
+        _inlineDetails = inline;
         CloseMove();
-        _category = selection.Category;
+        _category = category;
         _focusCategory = selection.FocusEditor;
     }
-    private void CloseEditors() { CloseMove(); _category = null; _categoryEditor = null; CloseTransaction(); }
+    // A selection that would replace an editor holding unsaved edits has to wait for the person to
+    // finish or close it; the board never discards a draft on another row's action.
+    private bool WouldDiscardDraft(CategorySelection selection)
+        => !selection.FocusEditor
+            && (_move && _moveEditor is { IsDirty: true }
+                || DirtyCategoryId is { } dirtyCategory && dirtyCategory != selection.Category.Id);
+    // The selection's draft, shared by both placements, so moving the editor never loses what was
+    // typed. It is replaced when the category, the month, or a settled save's remount changes.
+    private CategoryEditorDraft? CategoryDraft()
+    {
+        if (_category is not { } category) { return null; }
+        if (_categoryDraft is null
+            || _categoryDraftCategory != category.Id
+            || _categoryDraftMonth != _budget.Month
+            || _categoryDraftEpoch != _editorEpoch)
+        {
+            _categoryDraft = new();
+            _categoryDraftCategory = category.Id;
+            _categoryDraftMonth = _budget.Month;
+            _categoryDraftEpoch = _editorEpoch;
+        }
+        return _categoryDraft;
+    }
+    // The mounted inline editor reports itself so the selection guard can see its live draft,
+    // including uncommitted amount text.
+    private void RegisterInlineEditor(Guid categoryId, CategoryEditor? editor)
+    {
+        if (editor is null)
+        {
+            // A row that is leaving can report after the next row has already registered; only
+            // the stored editor's own category may clear it.
+            if (_inlineEditorCategory == categoryId) { _inlineEditor = null; _inlineEditorCategory = null; }
+            return;
+        }
+        // Only the row for the open selection may become the guard's editor.
+        if (_category?.Id != categoryId) { return; }
+        _inlineEditor = editor;
+        _inlineEditorCategory = categoryId;
+    }
+    // A row's move controls replace its details editor only when that editor has no unsaved edits.
+    private bool TryDismissCategory()
+    {
+        if (DirtyCategoryId is not null) { return false; }
+        CloseCategory();
+        // The row invokes this from its own handler, so the board has to render again for the
+        // cleared selection to reach the table.
+        StateHasChanged();
+        return true;
+    }
+    private async Task<bool> InlineDetailsAsync()
+    {
+        using var operation = CreateOperation();
+        var token = operation.Token;
+        try
+        {
+            _layoutModule ??= await javascript.InvokeAsync<IJSObjectReference>("import", token, LayoutModulePath);
+            token.ThrowIfCancellationRequested();
+            return await _layoutModule.InvokeAsync<bool>("inlineCategoryDetails", token);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { return false; }
+        catch (JSDisconnectedException) { return false; }
+        catch (JSException) { return false; }
+    }
+    protected override async ValueTask DisposeCoreAsync()
+    {
+        if (_layoutModule is not null)
+        {
+            try { await _layoutModule.DisposeAsync(); }
+            catch (JSDisconnectedException) { /* The circuit already released its JavaScript references. */ }
+        }
+
+        await base.DisposeCoreAsync();
+    }
+    private void CloseEditors()
+    {
+        _selectionEpoch++;
+        CloseMove();
+        _category = null;
+        _categoryEditor = null;
+        _inlineEditor = null;
+        _inlineEditorCategory = null;
+        _categoryDraft = null;
+        CloseTransaction();
+    }
 }

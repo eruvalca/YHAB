@@ -18,6 +18,7 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
 {
     [Theory]
     [InlineData(1440)]
+    [InlineData(768)]
     [InlineData(390)]
     [Trait("Category", "BrowserSmoke")]
     public async Task InlineCatalogEditingOrderingAndTargetsPersistAsync(int width)
@@ -80,43 +81,54 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
             if (width >= 1000)
             {
                 // Releasing a drag is not a selection.
-                (await page.Locator(".category-details").CountAsync()).ShouldBe(0);
+                (await page.Locator(".editor-surface").CountAsync()).ShouldBe(0);
             }
             // A row is one selection target, so padding beside the name and the Assigned input selects it.
             var inline = row.Locator(".inline-name");
             var named = (await inline.BoundingBoxAsync()).ShouldNotBeNull();
             await inline.ClickAsync(new() { Position = new() { X = named.Width - 6, Y = named.Height / 2 } });
-            await page.Locator(".category-details h2").Filter(new() { HasText = "Adventure fund" }).WaitForAsync();
-            await page.WaitForFunctionAsync("() => document.activeElement?.matches('.category-details h2') === true");
-            await page.Locator(".category-details fluent-button[aria-label='Close editor']").ClickAsync();
-            await page.Locator(".category-details").WaitForAsync(new() { State = WaitForSelectorState.Detached });
+            await page.Locator(".editor-surface h2").Filter(new() { HasText = "Adventure fund" }).WaitForAsync();
+            await page.WaitForFunctionAsync("() => document.activeElement?.matches('.editor-surface h2') === true");
+            await page.Locator(".editor-surface fluent-button[aria-label='Close editor']").ClickAsync();
+            await page.Locator(".editor-surface").WaitForAsync(new() { State = WaitForSelectorState.Detached });
             await row.Locator(".assigned-cell").ClickAsync(new() { Position = new() { X = 4, Y = 4 } });
-            await page.Locator(".category-details h2").Filter(new() { HasText = "Adventure fund" }).WaitForAsync();
-            await page.WaitForFunctionAsync("() => document.activeElement?.matches('.category-details h2') === true");
-            await page.Locator(".category-details fluent-button[aria-label='Close editor']").ClickAsync();
-            await page.Locator(".category-details").WaitForAsync(new() { State = WaitForSelectorState.Detached });
+            await page.Locator(".editor-surface h2").Filter(new() { HasText = "Adventure fund" }).WaitForAsync();
+            await page.WaitForFunctionAsync("() => document.activeElement?.matches('.editor-surface h2') === true");
+            await page.Locator(".editor-surface fluent-button[aria-label='Close editor']").ClickAsync();
+            await page.Locator(".editor-surface").WaitForAsync(new() { State = WaitForSelectorState.Detached });
             // Renaming selects the row too, but the inline field keeps focus instead of the editor.
             await row.GetByRole(AriaRole.Button, new() { Name = "Rename Adventure fund", Exact = true }).ClickAsync();
-            await page.Locator(".category-details h2").Filter(new() { HasText = "Adventure fund" }).WaitForAsync();
-            (await page.EvaluateAsync<bool>("() => document.activeElement?.matches('.category-details h2') !== true")).ShouldBeTrue();
+            await page.Locator(".editor-surface h2").Filter(new() { HasText = "Adventure fund" }).WaitForAsync();
+            (await page.EvaluateAsync<bool>("() => document.activeElement?.matches('.editor-surface h2') !== true")).ShouldBeTrue();
             await Button(page, "Cancel").ClickAsync();
             await page.Locator(".inline-name-form").WaitForAsync(new() { State = WaitForSelectorState.Detached });
             // A row click on the already open category still hands focus to the details heading.
             await row.Locator(".category-link").ClickAsync();
-            await page.WaitForFunctionAsync("() => document.activeElement?.matches('.category-details h2') === true");
+            await page.WaitForFunctionAsync("() => document.activeElement?.matches('.editor-surface h2') === true");
+            await VerifyCategoryEditorPlacementAsync(page, row, category.Id, width);
             // Selecting again from an inline control suppresses that focus, and the editor's own save
             // then remounts it, which must still return focus to the heading.
             await row.GetByRole(AriaRole.Button, new() { Name = "Rename Adventure fund", Exact = true }).ClickAsync();
             await Button(page, "Cancel").ClickAsync();
             await page.Locator(".inline-name-form").WaitForAsync(new() { State = WaitForSelectorState.Detached });
-            await page.Locator(".category-details h3").Filter(new() { HasText = "Target" }).WaitForAsync();
-            await page.Locator(".category-details fluent-checkbox").First.ClickAsync();
+            await page.Locator(".editor-surface h3").Filter(new() { HasText = "Target" }).WaitForAsync();
+            await page.Locator(".editor-surface fluent-checkbox").First.ClickAsync();
             await FillAsync(page, "Target amount", "250");
             await Input(page, "Target amount").PressAsync("Tab");
             await Button(page, "Save category").ClickAsync();
-            await page.WaitForFunctionAsync("() => document.activeElement?.matches('.category-details h2') === true");
+            await page.WaitForFunctionAsync("() => document.activeElement?.matches('.editor-surface h2') === true");
             await row.Locator(".target-caption").Filter(new() { HasText = "$250.00 more needed" }).WaitForAsync();
             await page.ScreenshotAsync(new() { Path = Path.Combine(AppContext.BaseDirectory, "TestResults", $"plan-target-{width}.png") });
+            // Closing the inline panel hands focus back to the row that opened it.
+            await page.Locator(".editor-surface fluent-button[aria-label='Close editor']").ClickAsync();
+            await page.Locator(".editor-surface").WaitForAsync(new() { State = WaitForSelectorState.Detached });
+            if (width < 1200)
+            {
+                await page.WaitForFunctionAsync(
+                    "id => document.activeElement === document.querySelector(`[data-category-id='${id}'] .category-link`)",
+                    category.Id.ToString());
+                (await row.Locator(".category-link").GetAttributeAsync("aria-expanded")).ShouldBe("false");
+            }
             await page.ReloadAsync();
             await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
             plan = await ReadAsync(page, path);
@@ -137,6 +149,75 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
         finally
         {
             await BrowserArtifacts.CaptureAsync(page, context, Path.Combine(AppContext.BaseDirectory, "TestResults", $"plan-catalog-{width}"), output.WriteLine);
+        }
+    }
+
+    [Theory]
+    [InlineData(1440)]
+    [InlineData(768)]
+    [InlineData(390)]
+    [Trait("Category", "BrowserSmoke")]
+    public async Task ClosingTheDetailsWhileRenamingKeepsTheRenameFieldFocusedAsync(int width)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(4));
+        await using var builder = await TestAppHost.CreateAsync(timeout.Token);
+        await using var app = await builder.BuildAsync(timeout.Token);
+        await app.StartAsync(timeout.Token);
+        await app.ResourceNotifications.WaitForResourceHealthyAsync("yhab", timeout.Token);
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync();
+        await using var context = await browser.NewContextAsync(new()
+        {
+            BaseURL = app.GetEndpoint("yhab", "https").ToString(),
+            IgnoreHTTPSErrors = true,
+            ViewportSize = new() { Width = width, Height = 960 },
+        });
+        await context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = true });
+        var page = await context.NewPageAsync();
+        var errors = new ConcurrentQueue<string>();
+        page.PageError += (_, error) => errors.Enqueue(error);
+        try
+        {
+            await BudgetWorkflowTests.RegisterAndLoginAsync(page);
+            await page.GotoAsync("/plans");
+            await page.GetByLabel("Plan name", new() { Exact = true }).FillAsync("Renaming during details");
+            await page.GetByRole(AriaRole.Button, new() { Name = "Create your plan" }).ClickAsync();
+            await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+            var path = new Uri(page.Url).AbsolutePath;
+            await SeedTargetsAsync(page, path);
+            await page.ReloadAsync();
+            await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+            var plan = await ReadAsync(page, path);
+            var category = plan.Categories[0];
+            var row = Row(page, category.Id.ToString());
+
+            // Open the details beneath the row and leave the row's name in its rename form, which
+            // replaces the name control the close hands focus back to.
+            await row.Locator(".category-link").ClickAsync();
+            await page.Locator(".editor-surface h2").Filter(new() { HasText = category.Name }).WaitForAsync();
+            await row.GetByRole(AriaRole.Button, new() { Name = $"Rename {category.Name}", Exact = true }).ClickAsync();
+            await page.Locator(".inline-name-form").WaitForAsync();
+            await page.Locator(".editor-surface h2").Filter(new() { HasText = category.Name }).WaitForAsync();
+
+            await page.Locator(".editor-surface fluent-button[aria-label='Close editor']").ClickAsync();
+            await page.Locator(".editor-surface").WaitForAsync(new() { State = WaitForSelectorState.Detached });
+
+            // The close takes the focused Close button away with it, so the rename field receives
+            // focus instead of the document body, and the circuit still answers later selections.
+            await page.WaitForFunctionAsync(
+                "() => document.activeElement?.closest('.inline-name-form') !== null");
+            await page.Locator(".inline-name-form").WaitForAsync();
+            await FillAsync(page, "Category name", "Renamed after details closed", page.Locator(".inline-name-form"));
+            await Button(page, "Cancel").ClickAsync();
+            await page.Locator(".inline-name-form").WaitForAsync(new() { State = WaitForSelectorState.Detached });
+            await row.Locator(".category-link").ClickAsync();
+            await page.Locator(".editor-surface h2").Filter(new() { HasText = category.Name }).WaitForAsync();
+            errors.ShouldBeEmpty();
+        }
+        finally
+        {
+            await BrowserArtifacts.CaptureAsync(page, context, Path.Combine(AppContext.BaseDirectory, "TestResults", $"plan-rename-details-{width}"), output.WriteLine);
         }
     }
 
@@ -376,7 +457,7 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
                 }
                 """);
             await page.Mouse.ClickAsync((float)point[0], (float)point[1]);
-            await page.Locator(".category-details h3").Filter(new() { HasText = "Target" }).WaitForAsync();
+            await page.Locator(".editor-surface h3").Filter(new() { HasText = "Target" }).WaitForAsync();
             (await page.EvaluateAsync<bool>("document.documentElement.scrollWidth <= innerWidth")).ShouldBeTrue();
             errors.ShouldBeEmpty();
         }
@@ -1019,6 +1100,30 @@ public sealed class PlanCatalogTests(ITestOutputHelper output)
         await page.Mouse.MoveAsync(to.X + to.Width / 2, to.Y + to.Height / 4, new() { Steps = 12 });
         await GhostBesideAsync(page, target, after: false);
         await page.Mouse.UpAsync();
+    }
+
+    private static async Task VerifyCategoryEditorPlacementAsync(IPage page, ILocator row, Guid categoryId, int width)
+    {
+        if (width >= 1200)
+        {
+            // A wide screen keeps the editor in a side pane beside the table.
+            await page.Locator("aside.category-details .editor-surface").WaitForAsync();
+            (await page.Locator(".category-inline-editor").CountAsync()).ShouldBe(0);
+            return;
+        }
+
+        // Below the breakpoint the editor follows the row that opened it, so the
+        // tapped category stays on screen while the form grows with the page.
+        var panel = page.Locator(".category-inline-editor");
+        await panel.WaitForAsync();
+        (await panel.EvaluateAsync<bool>(
+            "(panel, id) => panel.previousElementSibling?.getAttribute('data-category-id') === id",
+            categoryId.ToString())).ShouldBeTrue();
+        var box = (await row.BoundingBoxAsync()).ShouldNotBeNull();
+        box.Y.ShouldBeGreaterThanOrEqualTo(0);
+        (box.Y + box.Height).ShouldBeLessThanOrEqualTo(await page.EvaluateAsync<int>("innerHeight"));
+        (await row.Locator(".category-link").GetAttributeAsync("aria-expanded")).ShouldBe("true");
+        (await row.Locator(".category-link").GetAttributeAsync("aria-controls")).ShouldBe(await panel.GetAttributeAsync("id"));
     }
 
     private static async Task VerifyDensityAsync(IPage page, int width)

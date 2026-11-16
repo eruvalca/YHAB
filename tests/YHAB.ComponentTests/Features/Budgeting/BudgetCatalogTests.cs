@@ -1,7 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 using Bunit;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.FluentUI.AspNetCore.Components;
+using Microsoft.JSInterop;
 using Shouldly;
 using Xunit;
 using YHAB.SharedKernel.Budgeting;
@@ -12,6 +14,7 @@ namespace YHAB.ComponentTests.Features.Budgeting;
 [SuppressMessage("Maintainability", "CA1515:Consider making public types internal", Justification = "xUnit requires public test classes for discovery.")]
 public sealed class BudgetCatalogTests
 {
+    private const string ModulePath = "./_content/YHAB.UI/Features/Budgeting/Components/BudgetBoard.razor.js";
     [Fact]
     public async Task CreatesCategoryInsideEmptyGroupAndRetainsDraftUntilSavedAsync()
     {
@@ -102,6 +105,172 @@ public sealed class BudgetCatalogTests
         component.Find(".category-details h3").TextContent.ShouldBe("Target");
         await component.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Save category", StringComparison.Ordinal)).ClickAsync();
         commands[^1].ShouldBeOfType<SaveCategory>().Category.Target.ShouldBe(plan.Categories[0].Target);
+    }
+
+    [Fact]
+    public async Task CompactLayoutOpensTheEditorBeneathItsRowAsync()
+    {
+        await using var context = CreateContext();
+        context.JSInterop.SetupModule(ModulePath).Setup<bool>("inlineCategoryDetails").SetResult(true);
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, Plan()).Add(item => item.OnCommand, _ => { }));
+
+        await component.Find(".category-row").ClickAsync();
+
+        // The panel follows the row it belongs to instead of trailing the whole table,
+        // so a tapped category stays in view while the form grows with the page.
+        component.FindAll("aside.category-details").ShouldBeEmpty();
+        var row = component.Find(".category-row");
+        var panel = component.Find(".category-inline-editor");
+        panel.ParentElement.ShouldBe(row.ParentElement);
+        row.NextElementSibling.ShouldBe(panel);
+        panel.GetAttribute("role").ShouldBe("row");
+        panel.Children.Single().GetAttribute("role").ShouldBe("cell");
+        panel.Children.Single().GetAttribute("aria-colspan").ShouldBe("4");
+        panel.QuerySelector(".editor-surface").ShouldNotBeNull();
+        var name = row.QuerySelector(".category-link").ShouldNotBeNull();
+        name.GetAttribute("aria-expanded").ShouldBe("true");
+        name.GetAttribute("aria-controls").ShouldBe(panel.Id);
+    }
+
+    [Fact]
+    public async Task WideLayoutKeepsTheEditorBesideTheTableAsync()
+    {
+        await using var context = CreateContext();
+        context.JSInterop.SetupModule(ModulePath).Setup<bool>("inlineCategoryDetails").SetResult(false);
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, Plan()).Add(item => item.OnCommand, _ => { }));
+
+        await component.Find(".category-row").ClickAsync();
+
+        component.FindAll(".category-inline-editor").ShouldBeEmpty();
+        component.Find("aside.category-details .editor-surface").ShouldNotBeNull();
+        // The side pane is its own landmark, so the row does not claim to control it.
+        component.Find(".category-row .category-link").GetAttribute("aria-expanded").ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task SavingFromTheInlineEditorSettlesItsDraftBeforeClosingAsync()
+    {
+        await using var context = CreateContext();
+        context.JSInterop.SetupModule(ModulePath).Setup<bool>("inlineCategoryDetails").SetResult(true);
+        var commands = new List<PlanCommand>();
+        var plan = Plan();
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, commands.Add));
+
+        await component.Find(".category-row").ClickAsync();
+        var draft = component.FindComponent<CategoryEditor>().Instance;
+        await component.Find(".category-inline-editor .amount-input fluent-text-input").ChangeAsync(new() { Value = "250" });
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Save category", StringComparison.Ordinal)).ClickAsync();
+        var submitted = commands.ShouldHaveSingleItem().ShouldBeOfType<SaveCategory>();
+
+        // The command this editor submitted settles its draft and remounts it against the
+        // refreshed record, exactly as the side pane does, so closing never asks to
+        // discard a value that was already saved.
+        var refreshed = plan with { Version = plan.Version + 1, Categories = [plan.Categories[0] with { Target = submitted.Category.Target }, .. plan.Categories.Skip(1)] };
+        component.Render(p => p.Add(item => item.Plan, refreshed).Add(item => item.OnCommand, commands.Add).Add(item => item.AppliedCommand, submitted));
+
+        component.FindComponent<CategoryEditor>().Instance.ShouldNotBeSameAs(draft);
+        await component.Find(".category-inline-editor fluent-button[aria-label='Close editor']").ClickAsync();
+
+        component.FindAll(".editor-surface").ShouldBeEmpty();
+        component.FindAll(".editor-discard").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task SelectingARowCollapsesTheMoveControlsItHadOpenAsync()
+    {
+        await using var context = CreateContext();
+        context.JSInterop.SetupModule(ModulePath).Setup<bool>("inlineCategoryDetails").SetResult(true);
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, Plan()).Add(item => item.OnCommand, _ => { }));
+
+        await component.Find(".category-row .row-move").ClickAsync();
+        component.Find(".category-move-row").ShouldNotBeNull();
+
+        // One panel per row: selecting the row that has its move controls open
+        // collapses them before the editor takes that place.
+        await component.Find(".category-row .category-link").ClickAsync();
+        component.FindAll(".category-move-row").ShouldBeEmpty();
+        component.Find(".category-inline-editor .editor-surface").ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task OpeningMoveControlsReplacesACleanInlineEditorAsync()
+    {
+        await using var context = CreateContext();
+        context.JSInterop.SetupModule(ModulePath).Setup<bool>("inlineCategoryDetails").SetResult(true);
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, Plan()).Add(item => item.OnCommand, _ => { }));
+
+        await component.Find(".category-row .category-link").ClickAsync();
+        component.Find(".category-inline-editor .editor-surface").ShouldNotBeNull();
+
+        // The other direction of one-panel-per-row: an untouched editor gives way to the
+        // move controls instead of both rendering under the row.
+        await component.Find(".category-row .row-move").ClickAsync();
+        component.FindAll(".category-inline-editor").ShouldBeEmpty();
+        component.Find(".category-move-row").ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task ADirtyInlineDraftKeepsItsEditorAndRefusesMoveControlsAsync()
+    {
+        await using var context = CreateContext();
+        context.JSInterop.SetupModule(ModulePath).Setup<bool>("inlineCategoryDetails").SetResult(true);
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, Plan()).Add(item => item.OnCommand, _ => { }));
+
+        await component.Find(".category-row .category-link").ClickAsync();
+        await component.Find(".category-inline-editor .amount-input fluent-text-input").ChangeAsync(new() { Value = "250" });
+
+        // The move controls wait for an unsaved draft to be finished or closed, so the typed
+        // target is never discarded to make room for them.
+        await component.Find(".category-row .row-move").ClickAsync();
+        component.FindAll(".category-move-row").ShouldBeEmpty();
+        component.Find(".category-inline-editor .amount-input fluent-text-input").GetAttribute("value").ShouldBe("250");
+    }
+
+    [Fact]
+    public async Task HidingTheSelectedRowClosesTheInlineEditorAsync()
+    {
+        await using var context = CreateContext();
+        context.JSInterop.SetupModule(ModulePath).Setup<bool>("inlineCategoryDetails").SetResult(true);
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, Plan()).Add(item => item.OnCommand, _ => { }));
+
+        await component.Find(".category-row .category-link").ClickAsync();
+        component.Find(".category-inline-editor").ShouldNotBeNull();
+
+        // Collapsing the group removes the selected row and its editor. The selection has to
+        // clear too, or the board keeps blocking its other editors behind a panel nobody can reach.
+        await component.Find(".group-toggle").ClickAsync();
+        await component.WaitForAssertionAsync(() => component.FindAll(".category-inline-editor").ShouldBeEmpty());
+
+        await component.Find(".group-toggle").ClickAsync();
+        component.FindAll(".category-inline-editor").ShouldBeEmpty();
+        component.FindAll("[data-selected='true']").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task InlineRowActionKeepsADirtyInlineDraftAsync()
+    {
+        await using var context = CreateContext();
+        context.JSInterop.SetupModule(ModulePath).Setup<bool>("inlineCategoryDetails").SetResult(true);
+        var plan = Plan();
+        var (groceries, utilities) = (plan.Categories[0], plan.Categories[1]);
+        var commands = new List<PlanCommand>();
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, commands.Add));
+
+        await component.Find($"[data-category-id='{groceries.Id}'] .category-link").ClickAsync();
+        await component.Find(".category-inline-editor .amount-input fluent-text-input").ChangeAsync(new() { Value = "250" });
+
+        // Committing an assignment from another row still saves, but it cannot replace the
+        // dirty editor the inline placement mounted under the first row.
+        await component.Find($"[data-category-id='{utilities.Id}'] fluent-text-input").ChangeAsync(new() { Value = "25" });
+        commands.Single().ShouldBeOfType<AssignMoney>().CategoryId.ShouldBe(utilities.Id);
+        component.Find(".category-inline-editor .editor-surface h2").TextContent.ShouldBe(groceries.Name);
+        component.Find(".category-inline-editor .amount-input fluent-text-input").GetAttribute("value").ShouldBe("250");
+
+        // Renaming another category opens its inline name editor without discarding the draft either.
+        await component.Find($"button[aria-label='Rename {utilities.Name}']").ClickAsync();
+        component.Find(".inline-name-form").ShouldNotBeNull();
+        component.Find(".category-inline-editor .editor-surface h2").TextContent.ShouldBe(groceries.Name);
+        component.Find(".category-inline-editor .amount-input fluent-text-input").GetAttribute("value").ShouldBe("250");
     }
 
     [Fact]
@@ -273,6 +442,160 @@ public sealed class BudgetCatalogTests
         await board.InvokeAsync(() => list.OnUpdateJSAsync(0, 1, ListId(plan.Groups[0].Id), ListId(plan.Groups[0].Id)));
         commands.Single().ShouldBeOfType<ReorderCategory>();
         board.FindAll(".category-details").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task SwitchingRowsStillGuardsTheNewInlineDraftAsync()
+    {
+        await using var context = CreateContext();
+        context.JSInterop.SetupModule(ModulePath).Setup<bool>("inlineCategoryDetails").SetResult(true);
+        var plan = Plan();
+        var (groceries, utilities) = (plan.Categories[0], plan.Categories[1]);
+        // Both categories need a target so each details editor has an amount field to dirty.
+        var both = plan with { Categories = [groceries, utilities with { Target = groceries.Target }] };
+        var commands = new List<PlanCommand>();
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, both).Add(item => item.OnCommand, commands.Add));
+
+        await component.Find($"[data-category-id='{utilities.Id}'] .category-link").ClickAsync();
+        await component.Find(".category-inline-editor .amount-input fluent-text-input").ChangeAsync(new() { Value = "250" });
+
+        // The row click moves the editor from the later row to the earlier one. The editor that
+        // left reports after the replacement registers, and must not clear it.
+        await component.Find($"[data-category-id='{groceries.Id}'] .category-link").ClickAsync();
+        component.Find(".category-inline-editor .editor-surface h2").TextContent.ShouldBe(groceries.Name);
+        await component.Find(".category-inline-editor .amount-input fluent-text-input").ChangeAsync(new() { Value = "75" });
+
+        // An inline action on the other row still saves, but the guard has to keep the new draft.
+        await component.Find($"[data-category-id='{utilities.Id}'] fluent-text-input").ChangeAsync(new() { Value = "25" });
+        commands.Single().ShouldBeOfType<AssignMoney>().CategoryId.ShouldBe(utilities.Id);
+        component.Find(".category-inline-editor .editor-surface h2").TextContent.ShouldBe(groceries.Name);
+        component.Find(".category-inline-editor .amount-input fluent-text-input").GetAttribute("value").ShouldBe("75");
+    }
+
+    [Fact]
+    public async Task ResizingAndReselectingKeepsTheDetailsDraftAsync()
+    {
+        using var javascript = new PlacementJSRuntime { Inline = true };
+        await using var context = CreateContext(javascript);
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, Plan()).Add(item => item.OnCommand, _ => { }));
+
+        await component.Find(".category-row .category-link").ClickAsync();
+        await component.Find(".category-inline-editor .amount-input fluent-text-input").ChangeAsync(new() { Value = "250" });
+
+        // The window widens to a layout with the side pane. Reselecting the same row moves the
+        // editor there, and the typed target has to travel with it.
+        javascript.Inline = false;
+        await component.Find(".category-row .category-link").ClickAsync();
+
+        component.FindAll(".category-inline-editor").ShouldBeEmpty();
+        component.Find("aside.category-details .editor-surface").ShouldNotBeNull();
+        component.Find("aside.category-details .amount-input fluent-text-input").GetAttribute("value").ShouldBe("250");
+    }
+
+    [Fact]
+    public async Task RestoringAnUnfinishedAmountKeepsItInvalidAsync()
+    {
+        await using var context = CreateContext();
+        context.JSInterop.SetupModule(ModulePath).Setup<bool>("inlineCategoryDetails").SetResult(true);
+        var plan = Plan();
+        var (groceries, utilities) = (plan.Categories[0], plan.Categories[1]);
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, _ => { }));
+
+        await component.Find($"[data-category-id='{groceries.Id}'] .category-link").ClickAsync();
+        await component.Find(".category-inline-editor .amount-input fluent-text-input").ChangeAsync(new() { Value = "25 +" });
+
+        // The reorder recreates the editor. The unfinished expression must come back as the invalid
+        // amount it is rather than as a valid one ready to save.
+        var moved = plan with { Version = plan.Version + 1, Categories = [groceries with { SortOrder = 5 }, utilities] };
+        component.Render(p => p.Add(item => item.Plan, moved).Add(item => item.OnCommand, _ => { }));
+
+        component.FindAll(".category-inline-editor .validation-message").ShouldNotBeEmpty();
+        var save = component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Save category", StringComparison.Ordinal));
+        save.HasAttribute("disabled").ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task ClosingDuringAPendingSelectionKeepsTheEditorClosedAsync()
+    {
+        using var javascript = new PlacementJSRuntime { Inline = true };
+        await using var context = CreateContext(javascript);
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, Plan()).Add(item => item.OnCommand, _ => { }));
+
+        await component.Find(".category-row .category-link").ClickAsync();
+        component.Find(".category-inline-editor .editor-surface").ShouldNotBeNull();
+
+        // A second selection is still waiting on the browser when the editor closes; its answer
+        // must not reopen the panel the person just dismissed.
+        var hold = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        javascript.Hold = hold;
+        var pending = component.Find(".category-row .category-link").ClickAsync();
+        await component.Find(".category-inline-editor fluent-button[aria-label='Close editor']").ClickAsync();
+        hold.SetResult(true);
+        await pending;
+
+        component.FindAll(".editor-surface").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ADraftTypedDuringAPendingSelectionKeepsItsEditorAsync()
+    {
+        using var javascript = new PlacementJSRuntime { Inline = true };
+        await using var context = CreateContext(javascript);
+        var plan = Plan();
+        var (groceries, utilities) = (plan.Categories[0], plan.Categories[1]);
+        var commands = new List<PlanCommand>();
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, commands.Add));
+
+        await component.Find($"[data-category-id='{groceries.Id}'] .category-link").ClickAsync();
+        component.Find(".category-inline-editor .editor-surface h2").TextContent.ShouldBe(groceries.Name);
+
+        // The other row's Assigned field selects that row through the placement lookup, which is
+        // still waiting on the browser when the open editor gains unsaved edits underneath it.
+        var hold = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        javascript.Hold = hold;
+        var pending = component.Find($"[data-category-id='{utilities.Id}'] fluent-text-input").ChangeAsync(new() { Value = "25" });
+        await component.Find(".category-inline-editor .amount-input fluent-text-input").ChangeAsync(new() { Value = "75" });
+        javascript.Hold = null;
+        hold.SetResult(true);
+        await pending;
+
+        // The action still saves the other row, and the editor holding the typed target stays open
+        // instead of dropping edits the person made after the row action was requested.
+        await component.WaitForAssertionAsync(() =>
+        {
+            commands.Single().ShouldBeOfType<AssignMoney>().CategoryId.ShouldBe(utilities.Id);
+            component.Find(".category-inline-editor .editor-surface h2").TextContent.ShouldBe(groceries.Name);
+            component.Find(".category-inline-editor .amount-input fluent-text-input").GetAttribute("value").ShouldBe("75");
+        });
+    }
+
+    [Fact]
+    public async Task ReorderingKeepsTheInlineDetailsDraftAsync()
+    {
+        await using var context = CreateContext();
+        context.JSInterop.SetupModule(ModulePath).Setup<bool>("inlineCategoryDetails").SetResult(true);
+        var plan = Plan();
+        var (groceries, utilities) = (plan.Categories[0], plan.Categories[1]);
+        var component = context.Render<BudgetBoard>(p => p.Add(item => item.Plan, plan).Add(item => item.OnCommand, command => { }));
+
+        await component.Find($"[data-category-id='{groceries.Id}'] .category-link").ClickAsync();
+        await component.Find(".category-inline-editor .amount-input fluent-text-input").ChangeAsync(new() { Value = "250" });
+        var draft = component.FindComponent<CategoryEditor>().Instance;
+
+        // A reorder recreates the row and its editor. The table-owned draft restores the typed
+        // amount instead of the saved record.
+        var moved = plan with { Version = plan.Version + 1, Categories = [groceries with { SortOrder = 5 }, utilities] };
+        component.Render(p => p.Add(item => item.Plan, moved).Add(item => item.OnCommand, command => { }));
+
+        component.FindComponent<CategoryEditor>().Instance.ShouldNotBeSameAs(draft);
+        component.Find(".category-inline-editor .editor-surface h2").TextContent.ShouldBe(groceries.Name);
+        component.Find(".category-inline-editor .amount-input fluent-text-input").GetAttribute("value").ShouldBe("250");
+
+        // A rejected move refreshes the original order again; the draft still survives.
+        var rolledBack = moved with { Version = moved.Version + 1, Categories = plan.Categories };
+        component.Render(p => p.Add(item => item.Plan, rolledBack).Add(item => item.OnCommand, command => { }));
+
+        component.Find(".category-inline-editor .amount-input fluent-text-input").GetAttribute("value").ShouldBe("250");
     }
 
     [Fact]
@@ -631,10 +954,57 @@ public sealed class BudgetCatalogTests
         component.FindAll($"[data-group-id='{group}'] .category-row .category-link").Select(item => item.TextContent.Trim()).ToArray();
     private static string[] CategoryIds(IRenderedComponent<BudgetBoard> component, Guid group) =>
         component.FindAll($"[data-group-id='{group}'] .category-row[data-category-id]").Select(item => item.GetAttribute("data-category-id")!).ToArray();
-    private static BunitContext CreateContext()
+    // The board reads its editor placement from a media query; this answers it per selection, and
+    // can hold the answer so a test can act while the lookup is still pending.
+#pragma warning disable BL0016 // The double stands in for JavaScript; every call it answers is local.
+    private sealed class PlacementJSRuntime : IJSRuntime, IDisposable
+    {
+        private readonly Module _module;
+        public PlacementJSRuntime() => _module = new Module(this);
+        public bool Inline { get; set; }
+        public TaskCompletionSource<bool>? Hold { get; set; }
+
+        public void Dispose() => _module.DisposeAsync().AsTask().GetAwaiter().GetResult();
+
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
+            => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
+            => string.Equals(identifier, "import", StringComparison.Ordinal)
+                ? ValueTask.FromResult((TValue)(object)_module)
+                : ValueTask.FromResult(default(TValue)!);
+
+        private sealed class Module(PlacementJSRuntime owner) : IJSObjectReference
+        {
+            public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
+                => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+
+            public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
+            {
+                if (!string.Equals(identifier, "inlineCategoryDetails", StringComparison.Ordinal))
+                {
+                    return ValueTask.FromResult(default(TValue)!);
+                }
+
+                return owner.Hold is { } hold
+                    ? new ValueTask<TValue>(AnswerAsync<TValue>(hold.Task))
+                    : ValueTask.FromResult((TValue)(object)owner.Inline);
+            }
+
+            public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+
+            private static async Task<TValue> AnswerAsync<TValue>(Task<bool> answer)
+                => (TValue)(object)await answer;
+        }
+    }
+#pragma warning restore BL0016
+
+    private static BunitContext CreateContext(IJSRuntime? javascript = null)
     {
         var context = new BunitContext();
         context.Services.AddFluentUIComponents();
+        // The runtime has to be registered before anything resolves a service from the provider.
+        if (javascript is not null) { context.Services.AddSingleton(javascript); }
         context.JSInterop.Mode = JSRuntimeMode.Loose;
         context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
         return context;
