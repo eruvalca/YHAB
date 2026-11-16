@@ -60,14 +60,18 @@ public sealed partial class BudgetCategoryRow
     private string TargetCaption => Row switch { { Snoozed: true } => "Target snoozed this month", { TargetNeeded: > 0 } => $"{BudgetFacts.Money(Row.TargetNeeded)} more needed", _ => "Target funded" };
     private decimal Progress => Row.TargetTotal <= 0 ? 0 : Math.Clamp(100 * (1 - Row.TargetNeeded / Row.TargetTotal), 0, 100);
     private Task SelectAsync() => Busy ? Task.CompletedTask : OnSelect.InvokeAsync(new(Row.Category));
-    // The name editor and Assigned field own focus while the user is in them.
+    // Controls that own focus while the person is in them — the name editor, the Assigned
+    // field, and the Available move flow — select without handing focus to the editor.
     private Task SelectInlineAsync() => Busy ? Task.CompletedTask : OnSelect.InvokeAsync(new(Row.Category, FocusEditor: false));
+    // Working in a row's amount or money controls is intent to edit that category, so the
+    // first such action selects it and later actions in the same row need not repeat it.
+    private Task SelectForEditAsync() => Selected ? Task.CompletedTask : SelectInlineAsync();
     private Task RenameAsync(string name) => OnCommand.InvokeAsync(new SaveCategory(Plan.Version, Row.Category with { Name = name }));
     // An assignment is an edit of this category, so the row selects before the write is requested.
     private async Task AssignAsync(decimal amount)
     {
         var command = new AssignMoney(Plan.Version, Row.Category.Id, Month, amount);
-        await SelectInlineAsync();
+        await SelectForEditAsync();
         await OnCommand.InvokeAsync(command);
     }
     private Task ToggleMoveAsync() => OnToggleMove.InvokeAsync();

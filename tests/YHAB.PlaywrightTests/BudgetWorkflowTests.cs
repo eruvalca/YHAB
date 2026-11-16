@@ -680,9 +680,10 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         (await page.Locator("fluent-button[aria-label='Change the sign of Assign to Groceries']").CountAsync()).ShouldBe(0);
         // Committing the assignment selects the category, and the compact layout renders
         // its panel between the rows. Close it and restart from the field so the table's
-        // own keyboard order is what this section checks.
+        // own keyboard order is what this section checks. Focusing the field must not click
+        // it: a click selects the row and would reopen the panel in the middle of the tab order.
         await CloseCategoryEditorAsync(page);
-        await amount.ClickAsync();
+        await amount.FocusAsync();
         await page.Keyboard.PressAsync("Tab");
         var move = page.GetByRole(AriaRole.Button, new() { Name = "Move Utilities", Exact = true });
         (await move.EvaluateAsync<bool>("button => document.activeElement === button.closest('.sortable-item')")).ShouldBeTrue();

@@ -11,6 +11,9 @@ public sealed partial class AvailablePill
     [Parameter, EditorRequired] public BudgetMonth Budget { get; set; } = default!;
     [Parameter, EditorRequired] public CategoryMonth Row { get; set; } = default!;
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
+    // Opening the move flow is intent to work on this category, so the row selects it
+    // while the popover keeps focus.
+    [Parameter] public EventCallback OnSelect { get; set; }
     [Parameter] public string Tone { get; set; } = "neutral";
     [Parameter] public bool Busy { get; set; }
     private CategoryData[] _targets = [];
@@ -111,7 +114,7 @@ public sealed partial class AvailablePill
         }
     }
 
-    private void Toggle()
+    private async Task ToggleAsync()
     {
         if (_open)
         {
@@ -121,6 +124,10 @@ public sealed partial class AvailablePill
 
         ResetDraft();
         _open = true;
+        if (OnSelect.HasDelegate)
+        {
+            await OnSelect.InvokeAsync();
+        }
     }
 
     private void ResetDraft()

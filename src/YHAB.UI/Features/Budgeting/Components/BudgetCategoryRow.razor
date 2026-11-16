@@ -15,9 +15,9 @@
             }
         </div>
     </FluentStack>
-    <div class="numeric assigned-cell" role="cell"><span class="visually-hidden">Assigned </span><AmountInput @key="(Row.Category.Id, Month)" Label="@($"Assign to {Row.Category.Name}")" Value="Row.Assigned" ValueChanged="AssignAsync" InputMode="TextInputMode.Decimal" RejectNegative="true" Disabled="@(!RendererInfo.IsInteractive)" ReadOnly="Busy" /></div>
+    <div class="numeric assigned-cell" role="cell"><span class="visually-hidden">Assigned </span><AmountInput @key="(Row.Category.Id, Month)" Label="@($"Assign to {Row.Category.Name}")" Value="Row.Assigned" ValueChanged="AssignAsync" InputMode="TextInputMode.Decimal" RejectNegative="true" Disabled="@(!RendererInfo.IsInteractive)" ReadOnly="Busy" OnActivate="SelectForEditAsync" /></div>
     <div class="numeric money" role="cell" data-money-tone="@MoneyTone(Row.Activity)"><span class="visually-hidden">Activity </span>@Money(Row.Activity)</div>
-    <div class="numeric" role="cell"><span class="visually-hidden">Available </span><AvailablePill Plan="Plan" Budget="Budget" Row="Row" OnCommand="OnCommand" Tone="@Tone" Busy="Busy" />@if (Row.Available < 0) { <small>@(Row.CashOverspending > 0 ? "Cash overspent" : "Credit overspent")</small> }</div>
+    <div class="numeric" role="cell"><span class="visually-hidden">Available </span><AvailablePill Plan="Plan" Budget="Budget" Row="Row" OnCommand="OnCommand" OnSelect="SelectForEditAsync" Tone="@Tone" Busy="Busy" />@if (Row.Available < 0) { <small>@(Row.CashOverspending > 0 ? "Cash overspent" : "Credit overspent")</small> }</div>
 </div>
 @if (Moving)
 {
