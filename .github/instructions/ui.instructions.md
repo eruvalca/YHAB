@@ -72,6 +72,11 @@ assets/provider setup and [build rules](../../build/README.md) for enforcement.
   tokens so light and dark stay theme-driven. `--yh-accent` aliases the brand
   ramp; only `--yh-accent-warm*` carries literal values, with a dark override.
   Use these instead of new hex colors or raw radii.
+- Give an icon-only `FluentButton` inside a pill-shaped grouped container
+  `Shape="ButtonShape.Circular"`. Fluent paints the subtle hover, pressed, and
+  focus fills on the button host, whose default control radius exposes a
+  rectangle inside the pill; the circular shape keeps every interaction state
+  inside the container's curve.
 - Use `rem` for type, spacing, control sizes, radii, and shadow offsets; `px`
   only for `1px`/`2px` hairlines, focus-ring widths, and the pill radius. Media
   queries use `rem` (for example `62.4375rem`) so breakpoints follow the user's

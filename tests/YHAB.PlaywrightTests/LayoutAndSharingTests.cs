@@ -68,6 +68,7 @@ public sealed class LayoutAndSharingTests(ITestOutputHelper output)
             await page.GetByLabel("Plan name", new() { Exact = true }).FillAsync("A shared plan");
             await page.GetByRole(AriaRole.Button, new() { Name = "Create your plan" }).ClickAsync();
             await page.Locator(".workspace[data-interactive='true']").WaitForAsync();
+            await VerifyMonthPagerShapeAsync(page);
             await VerifyBudgetPhoneGeometryAsync(page, width);
             var settingsPath = new Uri(page.Url).AbsolutePath + "/settings";
             await page.GotoAsync(settingsPath);
@@ -110,6 +111,64 @@ public sealed class LayoutAndSharingTests(ITestOutputHelper output)
             var artifacts = Path.Combine(AppContext.BaseDirectory, "TestResults", $"layout-sharing-{width}-{Guid.NewGuid():N}");
             await BrowserArtifacts.CaptureAsync(page, context, artifacts, output.WriteLine);
         }
+    }
+
+    // Fluent paints a subtle button's hover, pressed, and focus fills on the host,
+    // so the pager chevrons must stay circular at every breakpoint instead of
+    // exposing their rectangle inside the pill. Only a browser resolves the web
+    // component's paint.
+    private static async Task VerifyMonthPagerShapeAsync(IPage page)
+    {
+        var pager = page.Locator(".month-navigation");
+        await pager.WaitForAsync();
+        var steps = pager.Locator("fluent-button[icon-only]");
+        (await steps.CountAsync()).ShouldBe(2);
+        var previous = steps.First;
+        var month = await page.Locator(".month-label").InnerTextAsync();
+        var pill = (await pager.BoundingBoxAsync()).ShouldNotBeNull();
+        var box = (await previous.BoundingBoxAsync()).ShouldNotBeNull();
+        box.X.ShouldBeGreaterThanOrEqualTo(pill.X);
+        box.Y.ShouldBeGreaterThanOrEqualTo(pill.Y);
+        (box.X + box.Width).ShouldBeLessThanOrEqualTo(pill.X + pill.Width);
+        (box.Y + box.Height).ShouldBeLessThanOrEqualTo(pill.Y + pill.Height);
+        await VerifyCircularFillAsync(previous, "at rest");
+
+        await page.Mouse.MoveAsync(box.X + box.Width / 2, box.Y + box.Height / 2);
+        await VerifyCircularFillAsync(previous, "hovered");
+
+        await page.Mouse.DownAsync();
+        try
+        {
+            await VerifyCircularFillAsync(previous, "pressed");
+        }
+        finally
+        {
+            // Release at the viewport corner so the pager does not step a month.
+            await page.Mouse.MoveAsync(0, 0);
+            await page.Mouse.UpAsync();
+        }
+
+        // The preceding key press makes the script focus match :focus-visible, so
+        // the assertion covers the focus ring's shape rather than plain focus.
+        await page.Keyboard.PressAsync("Shift");
+        await previous.FocusAsync();
+        (await previous.EvaluateAsync<bool>("element => element.matches(':focus-visible')")).ShouldBeTrue();
+        await VerifyCircularFillAsync(previous, "focused");
+        (await page.Locator(".month-label").InnerTextAsync()).ShouldBe(month);
+    }
+
+    private static async Task VerifyCircularFillAsync(ILocator control, string state)
+    {
+        // A circular radius is at least half the box, which also clamps to a pill
+        // when a narrow, full-width pager stretches the control.
+        var circular = await control.EvaluateAsync<bool>("""
+            element => {
+                const box = element.getBoundingClientRect();
+                const radius = Number.parseFloat(getComputedStyle(element).borderRadius);
+                return radius >= Math.min(box.width, box.height) / 2;
+            }
+            """);
+        circular.ShouldBeTrue($"the pager chevron must stay round while {state}");
     }
 
     private static async Task VerifyBudgetPhoneGeometryAsync(IPage page, int width)

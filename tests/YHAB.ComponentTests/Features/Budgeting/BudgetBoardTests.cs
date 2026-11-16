@@ -89,6 +89,28 @@ public sealed class BudgetBoardTests
     }
 
     [Fact]
+    public async Task MonthStepButtonsStayCircularInsideThePillPagerAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var plan = CreatePlan();
+        var component = context.Render<BudgetBoard>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.OnCommand, _ => { }));
+
+        // Fluent paints a subtle button's hover, pressed, and focus fills on the
+        // host, whose default rounded corner would show a square block inside the
+        // pill pager. The circular shape keeps every interaction state in the pill.
+        var steps = component.FindAll(".month-navigation fluent-button[icon-only]");
+        steps.Count.ShouldBe(2);
+        foreach (var step in steps)
+        {
+            step.GetAttribute("shape").ShouldBe("circular");
+        }
+    }
+
+    [Fact]
     public async Task FailedTodayReadKeepsFocusOwnershipForTheRetryAsync()
     {
         await using var context = new BunitContext();
