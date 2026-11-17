@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Sockets;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
@@ -76,7 +77,9 @@ public sealed class ServiceDefaultsExtensionsTests
         builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, 0));
         builder.ConfigureOpenTelemetry();
         await using var app = builder.Build();
-        app.MapGet("/telemetry-exception", () => throw new IOException("Telemetry exception test"));
+        _ = app.Services.GetRequiredService<TracerProvider>();
+        app.MapGet("/telemetry-exception", static context =>
+            throw new IOException($"Telemetry exception test for {context.Request.Path}"));
         await app.StartAsync(TestContext.Current.CancellationToken);
 
         var addresses = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()?.Addresses;
@@ -91,14 +94,14 @@ public sealed class ServiceDefaultsExtensionsTests
 
         var exceptionEvent = activities
             .SelectMany(activity => activity.Events)
-            .Single(activityEvent => string.Equals(activityEvent.Name, "exception", StringComparison.Ordinal)
+            .First(activityEvent => string.Equals(activityEvent.Name, "exception", StringComparison.Ordinal)
                 && activityEvent.Tags.Any(tag => string.Equals(tag.Key, "exception.type", StringComparison.Ordinal)
                     && tag.Value?.ToString()?.EndsWith(nameof(IOException), StringComparison.Ordinal) == true));
         var tags = exceptionEvent.Tags.ToDictionary(tag => tag.Key, tag => tag.Value?.ToString(), StringComparer.Ordinal);
 
         tags["exception.type"].ShouldBe(typeof(IOException).FullName);
-        tags["exception.message"].ShouldBe("Telemetry exception test");
-        tags["exception.stacktrace"].ShouldContain(nameof(IOException));
+        tags["exception.message"].ShouldBe("Telemetry exception test for /telemetry-exception");
+        tags["exception.stacktrace"].ShouldNotBeNull().ShouldContain(nameof(IOException));
     }
 
     [Fact]
@@ -116,6 +119,7 @@ public sealed class ServiceDefaultsExtensionsTests
         var builder = CreateBuilder(Environments.Development);
         builder.ConfigureOpenTelemetry();
         await using var app = builder.Build();
+        _ = app.Services.GetRequiredService<TracerProvider>();
 
         using var tcpListener = new TcpListener(IPAddress.Loopback, 0);
         tcpListener.Start();
@@ -131,16 +135,19 @@ public sealed class ServiceDefaultsExtensionsTests
 
         app.Services.GetRequiredService<TracerProvider>().ForceFlush();
 
-        var exceptionEvent = activities
+        var exceptionEvents = activities
             .SelectMany(activity => activity.Events)
-            .Single(activityEvent => string.Equals(activityEvent.Name, "exception", StringComparison.Ordinal)
+            .Where(activityEvent => string.Equals(activityEvent.Name, "exception", StringComparison.Ordinal)
                 && activityEvent.Tags.Any(tag => string.Equals(tag.Key, "exception.type", StringComparison.Ordinal)
-                    && tag.Value?.ToString()?.EndsWith(nameof(HttpRequestException), StringComparison.Ordinal) == true));
+                    && tag.Value?.ToString()?.EndsWith(nameof(HttpRequestException), StringComparison.Ordinal) == true))
+            .ToArray();
+        exceptionEvents.ShouldNotBeEmpty();
+        var exceptionEvent = exceptionEvents[0];
         var tags = exceptionEvent.Tags.ToDictionary(tag => tag.Key, tag => tag.Value?.ToString(), StringComparer.Ordinal);
 
         tags["exception.type"].ShouldBe(typeof(HttpRequestException).FullName);
         tags["exception.message"].ShouldNotBeNullOrEmpty();
-        tags["exception.stacktrace"].ShouldContain(nameof(HttpRequestException));
+        tags["exception.stacktrace"].ShouldNotBeNull().ShouldContain(nameof(HttpRequestException));
     }
 
     [Theory]
