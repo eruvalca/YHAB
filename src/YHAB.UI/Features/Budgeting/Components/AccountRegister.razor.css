@@ -24,7 +24,7 @@
 .register-loading > span[aria-hidden] { display: block; height: 3.5rem; margin-block: var(--spacingVerticalS); border-radius: var(--yh-control-radius); background: var(--yh-surface-sunken); }
 .register-table small { color: var(--yh-text-muted); font-weight: var(--fontWeightRegular); }
 .register-table .mobile-meta { display: none; }
-.register-table .mobile-direction { display: none; }
+.register-table .mobile-direction-label { display: none; }
 .register-table .repeat-label,
 .register-table .account-label,
 .register-table .memo-label {
@@ -123,7 +123,7 @@
         grid-row: 1 / span 2;
         align-self: center;
     }
-    .register-table .mobile-direction {
+    .register-table .mobile-direction-label {
         display: block;
         font-size: var(--fontSizeBase100);
         font-weight: var(--fontWeightRegular);
@@ -131,20 +131,6 @@
     }
     .register-table tbody td[data-money-tone="neutral"] {
         display: none;
-    }
-    .register-table tbody td:nth-child(5)[data-money-tone="negative"]::before {
-        content: "Outflow";
-        display: block;
-        color: var(--yh-text-muted);
-        font-size: var(--fontSizeBase100);
-        font-weight: var(--fontWeightRegular);
-    }
-    .register-table tbody td:nth-child(6)[data-money-tone="positive"]::before {
-        content: "Inflow";
-        display: block;
-        color: var(--yh-text-muted);
-        font-size: var(--fontSizeBase100);
-        font-weight: var(--fontWeightRegular);
     }
     .register-table .category-link {
         max-width: 100%;

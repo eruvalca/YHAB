@@ -56,6 +56,8 @@ public sealed class AccountRegisterTests
         row.QuerySelectorAll("fluent-button").ShouldBeEmpty();
         row.QuerySelectorAll(".row-actions-menu button").Select(button => button.TextContent.Trim()).ShouldBe(["Duplicate…"]);
         menu.QuerySelector(".visually-hidden").ShouldNotBeNull().TextContent.ShouldBe("Actions for Visible payee");
+        row.QuerySelector("fluent-checkbox").ShouldNotBeNull();
+        row.QuerySelectorAll("td")[4].TextContent.ShouldContain("Outflow");
         row.QuerySelector(".mobile-meta").ShouldNotBeNull().TextContent.ShouldContain("10/03");
         row.QuerySelector(".mobile-meta").ShouldNotBeNull().TextContent.ShouldContain("Transfer / adjustment");
         row.QuerySelector(".mobile-meta").ShouldNotBeNull().TextContent.ShouldContain("Bus fare");
