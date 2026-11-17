@@ -42,7 +42,7 @@ public sealed class AccountRegisterTests
         context.JSInterop.Mode = JSRuntimeMode.Loose;
         var today = new DateOnly(2026, 10, 3);
         var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
-        var entry = new TransactionData(Guid.NewGuid(), account.Id, today, "Visible payee", "Bus fare", -10, null, "", []);
+        var entry = new TransactionData(Guid.NewGuid(), account.Id, new DateOnly(2025, 10, 3), "Visible payee", "Bus fare", -10, null, "", []);
         var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], false, false, []) { Today = today };
         var component = context.Render<AccountRegister>(parameters => parameters
             .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
@@ -58,7 +58,7 @@ public sealed class AccountRegisterTests
         menu.QuerySelector(".visually-hidden").ShouldNotBeNull().TextContent.ShouldBe("Actions for Visible payee");
         row.QuerySelector("fluent-checkbox").ShouldNotBeNull();
         row.QuerySelectorAll("td")[4].TextContent.ShouldContain("Outflow");
-        row.QuerySelector(".mobile-meta").ShouldNotBeNull().TextContent.ShouldContain("10/03");
+        row.QuerySelector(".mobile-meta").ShouldNotBeNull().TextContent.ShouldContain("10/03/2025");
         row.QuerySelector(".mobile-meta").ShouldNotBeNull().TextContent.ShouldContain("Transfer / adjustment");
         row.QuerySelector(".mobile-meta").ShouldNotBeNull().TextContent.ShouldContain("Bus fare");
     }

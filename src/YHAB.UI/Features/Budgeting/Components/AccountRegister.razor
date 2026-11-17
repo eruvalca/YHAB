@@ -92,7 +92,7 @@ else if (_result.Rows.Count > 0)
                                 </div>
                             </details>
                             <span class="mobile-meta">
-                                <span>@entry.Date.ToString("MM/dd", Culture)</span>
+                                <span>@MobileDate(entry)</span>
                                 @if (entry.Repeat != RepeatFrequency.None) { <span>@TransactionEditor.FrequencyLabel(entry.Repeat)</span> }
                                 <span>@CategoryLabel(entry)</span>
                                 @if (!string.IsNullOrWhiteSpace(entry.Memo)) { <span class="mobile-memo">@entry.Memo</span> }

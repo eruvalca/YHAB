@@ -211,6 +211,7 @@ flags, duplication, and bulk deletion. It displays 50 rows per
 page. On phones, the register becomes compact two-line rows without horizontal
 scrolling: payee/account and actions lead, date/category/memo fill the second
 line, and only the applicable outflow or inflow amount appears at the edge.
+Dates show the year when they fall outside the current year.
 Desktop retains the full ruled table.
 Filtering, sorting and cursor paging run in PostgreSQL. The browser receives the
 current page and its split details, not the entire transaction history. Running
