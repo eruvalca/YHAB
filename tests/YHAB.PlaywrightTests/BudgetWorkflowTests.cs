@@ -523,6 +523,8 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             Has = page.GetByRole(AriaRole.Button, new() { Name = "Neighborhood market", Exact = true }),
         });
         await transaction.WaitForAsync();
+        var transactionRow = (await transaction.BoundingBoxAsync()).ShouldNotBeNull();
+        transactionRow.Height.ShouldBeLessThanOrEqualTo(48);
         await transaction.GetByRole(AriaRole.Button, new() { Name = "Neighborhood market", Exact = true }).ClickAsync();
         await Input(page, "Amount").FillAsync("7.77");
         await Button(page, "Save transaction").ClickAsync();
@@ -928,12 +930,6 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         {
             var box = (await dropdown.BoundingBoxAsync()).ShouldNotBeNull();
             Math.Abs(search.Y - box.Y).ShouldBeLessThan(1);
-        }
-        var rows = page.Locator(".register-table tbody tr");
-        if (await rows.CountAsync() > 0)
-        {
-            var row = (await rows.First.BoundingBoxAsync()).ShouldNotBeNull();
-            row.Height.ShouldBeLessThanOrEqualTo(48);
         }
     }
 

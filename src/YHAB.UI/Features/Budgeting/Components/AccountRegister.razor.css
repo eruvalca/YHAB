@@ -16,10 +16,10 @@
     border-bottom: 1px solid var(--yh-border-subtle);
 }
 
-.register-table tbody tr { background: var(--yh-surface-raised); }
+.register-table tbody tr { height: 3rem; background: var(--yh-surface-raised); }
 /* Selected rows keep their selection fill; the hover tint is for the rest. */
 .register-table tbody tr:not([data-selected="true"]):hover { background: var(--yh-surface-sunken); }
-.register-table tbody td { padding-block: var(--spacingVerticalXS); border-bottom: 1px solid var(--yh-border-subtle); line-height: 1.25; }
+.register-table tbody td { height: 3rem; padding-block: 0; border-bottom: 1px solid var(--yh-border-subtle); line-height: 1.25; }
 .register-loading { padding: var(--spacingVerticalM); border: 1px solid var(--yh-border-subtle); border-radius: var(--yh-control-radius); }
 .register-loading > span[aria-hidden] { display: block; height: 3.5rem; margin-block: var(--spacingVerticalS); border-radius: var(--yh-control-radius); background: var(--yh-surface-sunken); }
 .register-table small { color: var(--yh-text-muted); font-weight: var(--fontWeightRegular); }
@@ -40,7 +40,7 @@
 .row-actions > summary {
     display: flex;
     align-items: center;
-    min-height: 1.25rem;
+    min-height: var(--yh-control-compact);
     color: var(--yh-text-muted);
     font-size: var(--fontSizeBase100);
     cursor: pointer;
