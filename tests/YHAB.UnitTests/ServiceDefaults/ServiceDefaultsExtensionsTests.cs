@@ -7,6 +7,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using OpenTelemetry.Instrumentation.AspNetCore;
+using OpenTelemetry.Instrumentation.Http;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using Shouldly;
@@ -35,10 +36,22 @@ public sealed class ServiceDefaultsExtensionsTests
         await using var app = builder.Build();
         _ = app.Services.GetRequiredService<TracerProvider>();
         var options = app.Services.GetRequiredService<IOptions<AspNetCoreTraceInstrumentationOptions>>().Value;
+        options.RecordException.ShouldBeTrue();
         var http = new DefaultHttpContext();
         http.Request.Path = path;
 
         options.Filter.ShouldNotBeNull()(http).ShouldBe(expected);
+    }
+
+    [Fact]
+    public async Task ExceptionRecordingIsEnabledForIncomingAndOutgoingHttpAsync()
+    {
+        var builder = CreateBuilder(Environments.Development);
+        builder.ConfigureOpenTelemetry();
+        await using var app = builder.Build();
+
+        app.Services.GetRequiredService<IOptions<AspNetCoreTraceInstrumentationOptions>>().Value.RecordException.ShouldBeTrue();
+        app.Services.GetRequiredService<IOptions<HttpClientTraceInstrumentationOptions>>().Value.RecordException.ShouldBeTrue();
     }
 
     [Theory]

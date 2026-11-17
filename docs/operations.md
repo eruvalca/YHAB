@@ -17,7 +17,9 @@ application operations retain Aspire's retry behavior. Outside Development, thes
 endpoints are disabled unless `HealthChecks:ExposeEndpoints` is true. The production
 AppHost deliberately sets this flag for Container Apps' probes. Application Insights
 export is enabled when `APPLICATIONINSIGHTS_CONNECTION_STRING` is configured; OTLP
-export remains available for the Aspire dashboard.
+export remains available for the Aspire dashboard. ASP.NET Core and outbound HTTP
+traces record exception events, including exception type and stack details, so
+handled request and dependency failures have the same context as the runtime metric.
 
 The deployed dashboard, Application Insights history, and Log Analytics console
 logs are described in the [deployment guide](deployment.md#deployed-logs-and-telemetry).
