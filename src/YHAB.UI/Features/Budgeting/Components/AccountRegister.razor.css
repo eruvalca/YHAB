@@ -1,14 +1,13 @@
-/* Rows read as calm surfaces rather than ruled table lines: the table keeps
-   its semantics, the spacing provides the separation. */
 .register-table {
     min-width: 53rem;
     font-size: var(--fontSizeBase200);
-    border-collapse: separate;
-    border-spacing: 0 var(--spacingVerticalXS);
+    border-collapse: collapse;
+    border-spacing: 0;
 }
 
 .register-table thead th {
     padding-block: var(--spacingVerticalS);
+    background: var(--yh-surface-raised);
     color: var(--yh-text-muted);
     font-size: var(--yh-font-eyebrow);
     font-weight: var(--fontWeightSemibold);
@@ -17,25 +16,33 @@
     border-bottom: 1px solid var(--yh-border-subtle);
 }
 
-.register-table tbody tr { background: var(--yh-surface-raised); }
+.register-table tbody tr { height: 3rem; background: var(--yh-surface-raised); }
 /* Selected rows keep their selection fill; the hover tint is for the rest. */
 .register-table tbody tr:not([data-selected="true"]):hover { background: var(--yh-surface-sunken); }
-.register-table tbody td { border-bottom: 0; }
-.register-table tbody td:first-child { border-start-start-radius: var(--yh-radius-md); border-end-start-radius: var(--yh-radius-md); }
-.register-table tbody td:last-child { border-start-end-radius: var(--yh-radius-md); border-end-end-radius: var(--yh-radius-md); }
+.register-table tbody td { height: 3rem; padding-block: 0; border-bottom: 1px solid var(--yh-border-subtle); line-height: 1.25; }
 .register-loading { padding: var(--spacingVerticalM); border: 1px solid var(--yh-border-subtle); border-radius: var(--yh-control-radius); }
 .register-loading > span[aria-hidden] { display: block; height: 3.5rem; margin-block: var(--spacingVerticalS); border-radius: var(--yh-control-radius); background: var(--yh-surface-sunken); }
-.register-table small { display: block; margin-top: var(--spacingVerticalXS); color: var(--yh-text-muted); font-weight: var(--fontWeightRegular); }
-.register-table th, .register-table td { padding-block: var(--spacingVerticalM); }
+.register-table small { color: var(--yh-text-muted); font-weight: var(--fontWeightRegular); }
+.register-table .repeat-label,
+.register-table .account-label,
+.register-table .memo-label {
+    margin-inline-start: var(--spacingHorizontalXS);
+}
+.register-table .category-label { white-space: nowrap; }
+.register-table th, .register-table td { padding-inline: var(--spacingHorizontalS); }
 .register-table th.numeric { white-space: nowrap; }
 .register-table tr[data-selected="true"] { background: var(--yh-surface-accent-soft); }
-.row-actions { margin-top: var(--spacingVerticalXS); }
+.row-actions {
+    display: inline-block;
+    margin-inline-start: var(--spacingHorizontalXS);
+    vertical-align: middle;
+}
 .row-actions > summary {
     display: flex;
     align-items: center;
     min-height: var(--yh-control-compact);
     color: var(--yh-text-muted);
-    font-size: var(--fontSizeBase200);
+    font-size: var(--fontSizeBase100);
     cursor: pointer;
 }
 .row-actions-menu { padding-block: var(--spacingVerticalXS); }
@@ -43,7 +50,12 @@
 .date-filters { margin-block: var(--spacingVerticalM); }
 .date-filters summary { cursor: pointer; margin-bottom: var(--spacingVerticalS); }
 .date-filters .form-field { max-width: 13rem; }
-.flag { font-size: var(--fontSizeBase100); border-inline-start: 3px solid var(--colorBrandStroke1); padding-inline-start: var(--spacingHorizontalXS); }
+.flag {
+    margin-inline-start: var(--spacingHorizontalXS);
+    font-size: var(--fontSizeBase100);
+    border-inline-start: 3px solid var(--colorBrandStroke1);
+    padding-inline-start: var(--spacingHorizontalXS);
+}
 .flag[data-flag="Red"] { border-color: var(--colorPaletteRedForeground1); }
 .flag[data-flag="Orange"] { border-color: var(--colorPaletteDarkOrangeForeground1); }
 .flag[data-flag="Yellow"] { border-color: var(--colorPaletteMarigoldForeground1); }
