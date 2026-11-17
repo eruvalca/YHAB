@@ -91,6 +91,12 @@ else if (_result.Rows.Count > 0)
                                     <button type="button" disabled="@IsBusy" @onclick="() => Duplicate(entry)">Duplicate…</button>
                                 </div>
                             </details>
+                            <span class="mobile-meta">
+                                <span>@entry.Date.ToString("MM/dd", Culture)</span>
+                                @if (entry.Repeat != RepeatFrequency.None) { <span>@TransactionEditor.FrequencyLabel(entry.Repeat)</span> }
+                                <span>@CategoryLabel(entry)</span>
+                                @if (!string.IsNullOrWhiteSpace(entry.Memo)) { <span class="mobile-memo">@entry.Memo</span> }
+                            </span>
                         </td>
                         <td><span class="category-label">@CategoryLabel(entry)</span>@if (!string.IsNullOrWhiteSpace(entry.Memo)) { <small class="memo-label">@entry.Memo</small> }</td>
                         <td class="numeric money" data-money-tone="@(amount < 0 ? "negative" : "neutral")">@(amount < 0 ? Money(-amount) : "—")</td>

@@ -23,6 +23,7 @@
 .register-loading { padding: var(--spacingVerticalM); border: 1px solid var(--yh-border-subtle); border-radius: var(--yh-control-radius); }
 .register-loading > span[aria-hidden] { display: block; height: 3.5rem; margin-block: var(--spacingVerticalS); border-radius: var(--yh-control-radius); background: var(--yh-surface-sunken); }
 .register-table small { color: var(--yh-text-muted); font-weight: var(--fontWeightRegular); }
+.register-table .mobile-meta { display: none; }
 .register-table .repeat-label,
 .register-table .account-label,
 .register-table .memo-label {
@@ -65,6 +66,104 @@
 /* Rows have no rule of their own; restore one where the system forces colors. */
 @media (forced-colors: active) {
     .register-table tbody td { border-bottom: 1px solid CanvasText; }
+}
+
+@media (max-width: 43.75rem) {
+    .table-container {
+        overflow-x: visible;
+    }
+    .register-table {
+        width: 100%;
+        min-width: 0;
+        table-layout: fixed;
+    }
+    .register-table thead { display: none; }
+    .register-table tbody {
+        display: block;
+    }
+    .register-table tbody tr {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-rows: min-content min-content;
+        column-gap: var(--spacingHorizontalXS);
+        min-height: 3.5rem;
+        height: auto;
+        padding: var(--spacingVerticalXS) var(--spacingHorizontalS);
+    }
+    .register-table tbody td {
+        height: auto;
+        min-width: 0;
+        padding: 0;
+        border-bottom: 0;
+    }
+    .register-table tbody td:nth-child(1) {
+        display: none;
+    }
+    .register-table tbody td:nth-child(2),
+    .register-table tbody td:nth-child(4),
+    .register-table tbody td:nth-child(7) {
+        display: none;
+    }
+    .register-table tbody td:nth-child(3) {
+        grid-column: 1;
+        grid-row: 1 / span 2;
+        align-self: center;
+    }
+    .register-table tbody td:nth-child(5),
+    .register-table tbody td:nth-child(6) {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+        align-self: center;
+    }
+    .register-table tbody td[data-money-tone="neutral"] {
+        display: none;
+    }
+    .register-table .category-link {
+        max-width: 100%;
+        overflow-wrap: anywhere;
+    }
+    .register-table .mobile-meta {
+        display: flex;
+        flex-wrap: wrap;
+        min-width: 0;
+        margin-top: var(--spacingVerticalXS);
+        color: var(--yh-text-muted);
+        font-size: var(--fontSizeBase100);
+    }
+    .register-table .mobile-meta span + span::before {
+        content: "·";
+        margin-inline: var(--spacingHorizontalXS);
+        color: var(--yh-text-muted);
+    }
+    .register-table .mobile-meta .mobile-memo {
+        max-width: 100%;
+        overflow-wrap: anywhere;
+    }
+    .register-table .flag {
+        display: block;
+        width: fit-content;
+        margin-block-start: var(--spacingVerticalXXS);
+    }
+    .register-table .account-label {
+        display: inline;
+        margin-inline-start: var(--spacingHorizontalXS);
+    }
+    .row-actions {
+        float: inline-end;
+        margin-inline-start: var(--spacingHorizontalXS);
+        position: relative;
+    }
+    .row-actions-menu {
+        position: absolute;
+        z-index: 10;
+        inset-block-start: 100%;
+        inset-inline-end: 0;
+        width: 9rem;
+        border: 1px solid var(--yh-border-subtle);
+        border-radius: var(--yh-radius-md);
+        background: var(--yh-surface-raised);
+        box-shadow: var(--yh-shadow-overlay);
+    }
 }
 
 /* A phone screen holds only part of the register, so the primary action stays at

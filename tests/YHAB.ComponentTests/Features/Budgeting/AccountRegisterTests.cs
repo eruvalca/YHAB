@@ -42,7 +42,7 @@ public sealed class AccountRegisterTests
         context.JSInterop.Mode = JSRuntimeMode.Loose;
         var today = new DateOnly(2026, 10, 3);
         var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
-        var entry = new TransactionData(Guid.NewGuid(), account.Id, today, "Visible payee", "", -10, null, "", []);
+        var entry = new TransactionData(Guid.NewGuid(), account.Id, today, "Visible payee", "Bus fare", -10, null, "", []);
         var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], false, false, []) { Today = today };
         var component = context.Render<AccountRegister>(parameters => parameters
             .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
@@ -56,6 +56,9 @@ public sealed class AccountRegisterTests
         row.QuerySelectorAll("fluent-button").ShouldBeEmpty();
         row.QuerySelectorAll(".row-actions-menu button").Select(button => button.TextContent.Trim()).ShouldBe(["Duplicate…"]);
         menu.QuerySelector(".visually-hidden").ShouldNotBeNull().TextContent.ShouldBe("Actions for Visible payee");
+        row.QuerySelector(".mobile-meta").ShouldNotBeNull().TextContent.ShouldContain("10/03");
+        row.QuerySelector(".mobile-meta").ShouldNotBeNull().TextContent.ShouldContain("Transfer / adjustment");
+        row.QuerySelector(".mobile-meta").ShouldNotBeNull().TextContent.ShouldContain("Bus fare");
     }
 
     [Fact]
