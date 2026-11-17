@@ -929,6 +929,12 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             var box = (await dropdown.BoundingBoxAsync()).ShouldNotBeNull();
             Math.Abs(search.Y - box.Y).ShouldBeLessThan(1);
         }
+        var rows = page.Locator(".register-table tbody tr");
+        if (await rows.CountAsync() > 0)
+        {
+            var row = (await rows.First.BoundingBoxAsync()).ShouldNotBeNull();
+            row.Height.ShouldBeLessThanOrEqualTo(48);
+        }
     }
 
     private static async Task VerifyDropdownChromeAsync(IPage page)

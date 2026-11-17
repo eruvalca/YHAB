@@ -81,8 +81,10 @@ else if (_result.Rows.Count > 0)
                     var amount = DisplayAmount(entry);
                     <tr @key="entry.Id" data-selected="@(_selected.Contains(entry.Id) ? "true" : "false")">
                         <td><FluentCheckbox Label="Select" LabelPosition="LabelPosition.Before" Value="_selected.Contains(entry.Id)" ValueChanged="value => Select(entry.Id, value)" Disabled="IsBusy" /></td>
-                        <td class="nowrap">@entry.Date.ToString("MM/dd/yyyy", Culture) @if (entry.Repeat != RepeatFrequency.None) { <small>@TransactionEditor.FrequencyLabel(entry.Repeat)</small> }</td>
-                        <td><button class="category-link" disabled="@IsBusy" @onclick="() => Edit(entry)">@PayeeLabel(entry)</button><small>@AccountName(entry.AccountId) @if (entry.Flag.Length > 0) { <span class="flag" data-flag="@entry.Flag">@entry.Flag flag</span> }</small>
+                        <td class="nowrap">@entry.Date.ToString("MM/dd/yyyy", Culture)@if (entry.Repeat != RepeatFrequency.None) { <small class="repeat-label">@TransactionEditor.FrequencyLabel(entry.Repeat)</small> }</td>
+                        <td><button class="category-link" disabled="@IsBusy" @onclick="() => Edit(entry)">@PayeeLabel(entry)</button>
+                            @if (_account is null) { <small class="account-label">@AccountName(entry.AccountId)</small> }
+                            @if (entry.Flag.Length > 0) { <span class="flag" data-flag="@entry.Flag">@entry.Flag flag</span> }
                             <details class="row-actions">
                                 <summary><span class="visually-hidden">Actions for @PayeeLabel(entry)</span><span aria-hidden="true">Actions</span></summary>
                                 <div class="row-actions-menu">
@@ -90,7 +92,7 @@ else if (_result.Rows.Count > 0)
                                 </div>
                             </details>
                         </td>
-                        <td>@CategoryLabel(entry)<small>@entry.Memo</small></td>
+                        <td><span class="category-label">@CategoryLabel(entry)</span>@if (!string.IsNullOrWhiteSpace(entry.Memo)) { <small class="memo-label">@entry.Memo</small> }</td>
                         <td class="numeric money" data-money-tone="@(amount < 0 ? "negative" : "neutral")">@(amount < 0 ? Money(-amount) : "—")</td>
                         <td class="numeric money" data-money-tone="@(amount > 0 ? "positive" : "neutral")">@(amount > 0 ? Money(amount) : "—")</td>
                         @if (_account is not null) { <td class="numeric money" data-money-tone="@(entry.Repeat == RepeatFrequency.None ? MoneyTone(_running.GetValueOrDefault(entry.Id)) : "neutral")">@(entry.Repeat == RepeatFrequency.None ? Money(_running.GetValueOrDefault(entry.Id)) : "—")</td> }
