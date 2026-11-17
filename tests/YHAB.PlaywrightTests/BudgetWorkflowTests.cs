@@ -529,6 +529,8 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         {
             (await page.Locator(".register-table").EvaluateAsync<bool>("table => table.scrollWidth <= table.clientWidth")).ShouldBeTrue();
             (await transaction.Locator(".mobile-meta").InnerTextAsync()).ShouldContain("Groceries");
+            await transaction.GetByRole(AriaRole.Checkbox, new() { Name = "Select", Exact = true }).WaitForAsync();
+            (await transaction.Locator("td:nth-child(5)").EvaluateAsync<string>("td => getComputedStyle(td, '::before').content")).ShouldContain("Outflow");
         }
         await transaction.GetByRole(AriaRole.Button, new() { Name = "Neighborhood market", Exact = true }).ClickAsync();
         await Input(page, "Amount").FillAsync("7.77");
