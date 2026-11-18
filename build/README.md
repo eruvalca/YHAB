@@ -56,9 +56,12 @@ dotnet restore YHAB.slnx --force --no-cache
 dotnet build YHAB.slnx
 ```
 
-Do not run cleanup while another build or Aspire is using the checkout. Confirm
-that the errors are not caused by source changes before treating them as stale
-state.
+Do not run cleanup while another build or Aspire is using the checkout.
+`dotnet build-server shutdown` also stops build servers shared with other
+worktrees and projects, so let other local builds finish first. If the failing
+command used a non-default configuration, such as `-Configuration Release`, pass
+the same `-c` value to `dotnet clean` and `dotnet build`. Confirm that the errors
+are not caused by source changes before treating them as stale state.
 
 Install Git, PowerShell 7, the SDK selected by `global.json`, and the
 repository-pinned Aspire CLI for Fast. Even its headless solution build requires

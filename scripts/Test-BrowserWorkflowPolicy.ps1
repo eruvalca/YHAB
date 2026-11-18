@@ -12,19 +12,23 @@ Assert-True ($deploy -notmatch '(?m)^[ \t]{2,}browser-(smoke|full|requested|gate
 Assert-True ($deploy -notmatch 'Browser validation gate|Browser smoke|Category=BrowserSmoke|run-full-browser|run-full-browser/action') 'The main workflow must not select or require browser validation.'
 Assert-True ($deploy -match '(?m)^[ \t]{4,}needs:\s*\[\s*fast\s*,\s*tests\s*,\s*publish\s*\]\s*$') 'Main deployment must not depend on a browser job.'
 
-Assert-True (
-    $request -match 'types:\s*\[[^\]]*\blabeled\b[^\]]*\]' -and
-    $request -match 'types:\s*\[[^\]]*\bsynchronize\b[^\]]*\]' -and
-    $request -match 'types:\s*\[[^\]]*\breopened\b[^\]]*\]' -and
-    $request -match 'types:\s*\[[^\]]*\bready_for_review\b[^\]]*\]'
-) 'Opt-in browser runs must support labels and subsequent commits.'
+$types = [regex]::Matches($request, '(?m)^[ \t]*types[ \t]*:[ \t]*\[([^\]#]*)\][ \t]*(#[^\r\n]*)?\r?$')
+$events = if ($types.Count -eq 1) {
+    @($types[0].Groups[1].Value -split ',' | ForEach-Object { $_.Trim().Trim('''', '"') } | Where-Object { $_ } | Sort-Object)
+}
+Assert-True ($types.Count -eq 1 -and ($events -join ',') -ceq 'labeled,ready_for_review,reopened,synchronize') 'Opt-in browser runs must support labels and subsequent commits, and only those events.'
 Assert-True ($request -match "contains\s*\(\s*github\.event\.pull_request\.labels\.\*\.name\s*,\s*['`"]run-full-browser['`"]\s*\)") 'The PR browser job must require the explicit opt-in label.'
 Assert-True ($request -match "github\.event\.action\s*!=\s*['`"]labeled['`"]\s*\|\|\s*github\.event\.label\.name\s*==\s*['`"]run-full-browser['`"]") 'Unrelated label events must not start or replace a requested browser run.'
-Assert-True ($request -notmatch '(?m)^concurrency\s*:' -and $request -match '(?m)^[ \t]{2,}concurrency\s*:') 'Only a job that passes the opt-in guard may acquire the browser concurrency group.'
-Assert-True ($request -match '\buses:\s*\.\/\.github\/actions\/run-full-browser\b') 'The request workflow must reuse the full-browser action.'
+$job = [regex]::Match($request, '(?m)^([ \t]*)browser-full[ \t]*:')
+$concurrency = @([regex]::Matches($request, '(?m)^([ \t]*)concurrency[ \t]*:'))
+Assert-True (
+    $job.Success -and $concurrency.Count -gt 0 -and
+    @($concurrency | Where-Object { $_.Index -lt $job.Index -or $_.Groups[1].Length -le $job.Groups[1].Length }).Count -eq 0
+) 'Only a job that passes the opt-in guard may acquire the browser concurrency group.'
+Assert-True ($request -match '(?m)^[ \t]*(-[ \t]*)?uses[ \t]*:[ \t]*([''"]?)\./\.github/actions/run-full-browser\2[ \t]*(#[^\r\n]*)?\r?$') 'The request workflow must reuse the full-browser action.'
 Assert-True ($request -notmatch '(?m)^[ \t]{2}(push|schedule)\s*:') 'The PR request workflow must not run on pushes or a schedule.'
 
-Assert-True ($nightly -match '(?m)^[ \t]{4,}-\s*cron:\s*[''"]?\d+\s+\d+\s+\*\s+\*\s+\*[''"]?\s*$') 'Nightly validation must have a daily schedule.'
+Assert-True ($nightly -match '(?m)^[ \t]*-[ \t]*cron[ \t]*:[ \t]*([''"]?)\d+[ \t]+\d+[ \t]+\*[ \t]+\*[ \t]+\*\1[ \t]*(#[^\r\n]*)?\r?$') 'Nightly validation must have a daily schedule.'
 Assert-True ($nightly -match '(?m)^[ \t]{2,}browser-full\s*:' -and $nightly -match '(?m)^[ \t]{2,}performance\s*:') 'Nightly validation must include both suites.'
 Assert-True ($nightly -match '--filter-not-trait Category=Performance' -or $nightly -match 'run-full-browser') 'Nightly browser validation must cover the non-performance suite.'
 Assert-True ($nightly -match '--filter-trait Category=Performance') 'Nightly performance validation must select performance cases.'
