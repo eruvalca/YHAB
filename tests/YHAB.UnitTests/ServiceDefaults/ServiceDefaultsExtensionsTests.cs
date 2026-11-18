@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
@@ -64,12 +63,24 @@ public sealed class ServiceDefaultsExtensionsTests
     [Fact]
     public async Task IncomingHttpExceptionIsExportedAsAnOpenTelemetryExceptionEventAsync()
     {
-        var activities = new ConcurrentQueue<Activity>();
+        var exceptionEvent = new TaskCompletionSource<ActivityEvent>(TaskCreationOptions.RunContinuationsAsynchronously);
         using var listener = new ActivityListener
         {
-            ShouldListenTo = _ => true,
+            ShouldListenTo = source => string.Equals(source.Name, "Microsoft.AspNetCore", StringComparison.Ordinal),
             Sample = static (ref _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = activities.Enqueue,
+            ActivityStopped = activity =>
+            {
+                foreach (var candidate in activity.Events)
+                {
+                    if (string.Equals(candidate.Name, "exception", StringComparison.Ordinal)
+                        && candidate.Tags.Any(tag => string.Equals(tag.Key, "exception.type", StringComparison.Ordinal)
+                            && tag.Value?.ToString()?.EndsWith(nameof(IOException), StringComparison.Ordinal) == true))
+                    {
+                        exceptionEvent.TrySetResult(candidate);
+                        break;
+                    }
+                }
+            },
         };
         ActivitySource.AddActivityListener(listener);
 
@@ -92,12 +103,10 @@ public sealed class ServiceDefaultsExtensionsTests
         response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
         app.Services.GetRequiredService<TracerProvider>().ForceFlush();
 
-        var exceptionEvent = activities
-            .SelectMany(activity => activity.Events)
-            .First(activityEvent => string.Equals(activityEvent.Name, "exception", StringComparison.Ordinal)
-                && activityEvent.Tags.Any(tag => string.Equals(tag.Key, "exception.type", StringComparison.Ordinal)
-                    && tag.Value?.ToString()?.EndsWith(nameof(IOException), StringComparison.Ordinal) == true));
-        var tags = exceptionEvent.Tags.ToDictionary(tag => tag.Key, tag => tag.Value?.ToString(), StringComparer.Ordinal);
+        var recordedEvent = await exceptionEvent.Task.WaitAsync(
+            TimeSpan.FromSeconds(10),
+            TestContext.Current.CancellationToken);
+        var tags = recordedEvent.Tags.ToDictionary(tag => tag.Key, tag => tag.Value?.ToString(), StringComparer.Ordinal);
 
         tags["exception.type"].ShouldBe(typeof(IOException).FullName);
         tags["exception.message"].ShouldBe("Telemetry exception test for /telemetry-exception");
@@ -107,12 +116,24 @@ public sealed class ServiceDefaultsExtensionsTests
     [Fact]
     public async Task OutgoingHttpExceptionIsExportedAsAnOpenTelemetryExceptionEventAsync()
     {
-        var activities = new ConcurrentQueue<Activity>();
+        var exceptionEvent = new TaskCompletionSource<ActivityEvent>(TaskCreationOptions.RunContinuationsAsynchronously);
         using var listener = new ActivityListener
         {
             ShouldListenTo = _ => true,
             Sample = static (ref _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = activities.Enqueue,
+            ActivityStopped = activity =>
+            {
+                foreach (var candidate in activity.Events)
+                {
+                    if (string.Equals(candidate.Name, "exception", StringComparison.Ordinal)
+                        && candidate.Tags.Any(tag => string.Equals(tag.Key, "exception.type", StringComparison.Ordinal)
+                            && tag.Value?.ToString()?.EndsWith(nameof(HttpRequestException), StringComparison.Ordinal) == true))
+                    {
+                        exceptionEvent.TrySetResult(candidate);
+                        break;
+                    }
+                }
+            },
         };
         ActivitySource.AddActivityListener(listener);
 
@@ -129,21 +150,19 @@ public sealed class ServiceDefaultsExtensionsTests
         var responseUri = new Uri($"http://{endpoint}/telemetry-exception", UriKind.Absolute);
         var responseTask = httpClient.GetAsync(responseUri,
             TestContext.Current.CancellationToken);
-        using var accepted = await acceptTask;
+        using var accepted = await acceptTask.AsTask().WaitAsync(
+            TimeSpan.FromSeconds(10),
+            TestContext.Current.CancellationToken);
         accepted.Close();
+        tcpListener.Stop();
         await Should.ThrowAsync<HttpRequestException>(() => responseTask);
 
         app.Services.GetRequiredService<TracerProvider>().ForceFlush();
 
-        var exceptionEvents = activities
-            .SelectMany(activity => activity.Events)
-            .Where(activityEvent => string.Equals(activityEvent.Name, "exception", StringComparison.Ordinal)
-                && activityEvent.Tags.Any(tag => string.Equals(tag.Key, "exception.type", StringComparison.Ordinal)
-                    && tag.Value?.ToString()?.EndsWith(nameof(HttpRequestException), StringComparison.Ordinal) == true))
-            .ToArray();
-        exceptionEvents.ShouldNotBeEmpty();
-        var exceptionEvent = exceptionEvents[0];
-        var tags = exceptionEvent.Tags.ToDictionary(tag => tag.Key, tag => tag.Value?.ToString(), StringComparer.Ordinal);
+        var recordedEvent = await exceptionEvent.Task.WaitAsync(
+            TimeSpan.FromSeconds(10),
+            TestContext.Current.CancellationToken);
+        var tags = recordedEvent.Tags.ToDictionary(tag => tag.Key, tag => tag.Value?.ToString(), StringComparer.Ordinal);
 
         tags["exception.type"].ShouldBe(typeof(HttpRequestException).FullName);
         tags["exception.message"].ShouldNotBeNullOrEmpty();
