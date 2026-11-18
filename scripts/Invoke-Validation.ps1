@@ -12,6 +12,40 @@ param(
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 $repoRoot = Split-Path $PSScriptRoot
+$validationLockModule = Join-Path $PSScriptRoot 'ValidationLock.psm1'
+Import-Module -Name $validationLockModule -Force
+$validationMutex = $null
+
+function Invoke-CapturedDotnet([string[]] $Arguments) {
+    Write-Host "> dotnet $($Arguments -join ' ')"
+    $output = & dotnet @Arguments 2>&1
+    $exitCode = $LASTEXITCODE
+    return [pscustomobject] @{
+        ExitCode = $exitCode
+        Output = ($output | Out-String)
+    }
+}
+
+function Invoke-SolutionBuild([string] $Configuration) {
+    Invoke-CheckedCommand 'dotnet' @('build-server', 'shutdown')
+    $buildArguments = @('build', 'YHAB.slnx', '--configuration', $Configuration, '--disable-build-servers')
+    $result = Invoke-CapturedDotnet $buildArguments
+    if ($result.ExitCode -eq 0) {
+        return
+    }
+
+    Write-Host $result.Output
+    if (Test-WidespreadRazorParserFailure $result.Output) {
+        Write-Warning 'Widespread Razor parser failures detected. Cleaning, restoring, and rebuilding before reporting failure.'
+        Invoke-CheckedCommand 'dotnet' @('build-server', 'shutdown')
+        Invoke-CheckedCommand 'dotnet' @('clean', 'YHAB.slnx', '--configuration', $Configuration)
+        Invoke-CheckedCommand 'dotnet' @('restore', 'YHAB.slnx', '--force', '--no-cache')
+        Invoke-CheckedCommand 'dotnet' @('build', 'YHAB.slnx', '--configuration', $Configuration, '--no-restore', '--disable-build-servers')
+        return
+    }
+
+    throw "dotnet build failed with exit code $($result.ExitCode)."
+}
 
 function Invoke-CheckedCommand([string] $Command, [string[]] $Arguments) {
     Write-Host "> $Command $($Arguments -join ' ')"
@@ -30,9 +64,29 @@ try {
     try {
         Invoke-CheckedCommand 'git' @('diff', '--cached', '--check')
         if ($Scope -ne 'Quick') {
+            $validationMutex = Enter-ValidationLock -RepoRoot $repoRoot -TimeoutSeconds 600
             Invoke-CheckedCommand 'git' @('diff', '--check')
-            Invoke-CheckedCommand 'dotnet' @('format', 'YHAB.slnx', '--severity', 'warn', '--verify-no-changes')
-            Invoke-CheckedCommand 'dotnet' @('build', 'YHAB.slnx', '--configuration', $Configuration)
+            Invoke-CheckedCommand 'dotnet' @('build-server', 'shutdown')
+            $formatArguments = @('format', 'YHAB.slnx', '--severity', 'warn', '--verify-no-changes')
+            $formatResult = Invoke-CapturedDotnet $formatArguments
+            if ($formatResult.ExitCode -ne 0) {
+                Write-Host $formatResult.Output
+                if (Test-WidespreadRazorParserFailure $formatResult.Output) {
+                    Write-Warning 'Widespread Razor parser failures detected during formatting. Cleaning, restoring, and rebuilding before retrying verification.'
+                    Invoke-CheckedCommand 'dotnet' @('build-server', 'shutdown')
+                    Invoke-CheckedCommand 'dotnet' @('clean', 'YHAB.slnx', '--configuration', $Configuration)
+                    Invoke-CheckedCommand 'dotnet' @('restore', 'YHAB.slnx', '--force', '--no-cache')
+                    $formatResult = Invoke-CapturedDotnet $formatArguments
+                    if ($formatResult.ExitCode -ne 0) {
+                        Write-Host $formatResult.Output
+                        throw "dotnet format failed with exit code $($formatResult.ExitCode)."
+                    }
+                }
+                else {
+                    throw "dotnet format failed with exit code $($formatResult.ExitCode)."
+                }
+            }
+            Invoke-SolutionBuild $Configuration
 
             if ($Scope -eq 'Full') {
                 Invoke-CheckedCommand 'dotnet' @('test', '--solution', 'YHAB.slnx', '--configuration', $Configuration, '--no-build', '--max-parallel-test-modules', '1')
@@ -60,6 +114,10 @@ try {
     }
     finally {
         Pop-Location
+        if ($null -ne $validationMutex) {
+            Exit-ValidationLock $validationMutex
+        }
+        Remove-Module ValidationLock -Force -ErrorAction SilentlyContinue
     }
 }
 catch {
