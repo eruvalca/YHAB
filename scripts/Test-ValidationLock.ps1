@@ -148,9 +148,9 @@ catch {
 
     $subdirectory = Join-Path $fixtureRoot 'subdirectory'
     New-Item -ItemType Directory -Path $subdirectory -Force | Out-Null
-    $rootLockPath = Get-ValidationLockPath $fixtureRoot
-    Assert-Result 'Checkout aliases resolve to the same lock file' (
-        $rootLockPath -eq (Get-ValidationLockPath $subdirectory))
+    $rootMutexName = Get-ValidationMutexName $fixtureRoot
+    Assert-Result 'Checkout aliases resolve to the same mutex name' (
+        $rootMutexName -eq (Get-ValidationMutexName $subdirectory))
 
     $parserOutput = @'
 src/YHAB.UI/Features/Account.razor(1,1): error RZ1021

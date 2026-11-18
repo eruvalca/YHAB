@@ -12,31 +12,53 @@ function Get-CanonicalRepoRoot([string] $RepoRoot) {
     return [IO.Path]::GetFullPath($resolved).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
 }
 
-function Get-ValidationLockPath([string] $RepoRoot) {
+function Get-ValidationMutexName([string] $RepoRoot) {
     $root = Get-CanonicalRepoRoot $RepoRoot
-    return Join-Path $root 'artifacts/validation.lock'
+    $bytes = [Text.Encoding]::UTF8.GetBytes($root)
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try {
+        $hex = -join ($sha.ComputeHash($bytes) | ForEach-Object { $_.ToString('x2') })
+    }
+    finally {
+        $sha.Dispose()
+    }
+    return "YHAB-Validation-$($hex.Substring(0,32))"
 }
 
 function Enter-ValidationLock([string] $RepoRoot, [double] $TimeoutSeconds = 60) {
-    $lockPath = Get-ValidationLockPath $RepoRoot
-    $lockDirectory = Split-Path $lockPath
-    New-Item -ItemType Directory -Path $lockDirectory -Force | Out-Null
-    $deadline = [DateTime]::UtcNow.AddSeconds([Math]::Max(0.1, $TimeoutSeconds))
-    while ($true) {
+    $mutexName = Get-ValidationMutexName $RepoRoot
+    $createdNew = $false
+    $mutex = [Threading.Mutex]::new($false, $mutexName, [ref] $createdNew)
+    try {
         try {
-            return [IO.File]::Open($lockPath, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+            $acquired = $mutex.WaitOne([TimeSpan]::FromSeconds([Math]::Max(0.1, $TimeoutSeconds)))
         }
-        catch [IO.IOException] {
-            if ([DateTime]::UtcNow -ge $deadline) {
-                throw "Another YHAB validation is still running for $RepoRoot."
-            }
-            Start-Sleep -Milliseconds 50
+        catch [Threading.AbandonedMutexException] {
+            $acquired = $true
         }
+        catch {
+            $mutex.Dispose()
+            throw
+        }
+        if (-not $acquired) {
+            $mutex.Dispose()
+            throw "Another YHAB validation is still running for $RepoRoot."
+        }
+        return $mutex
+    }
+    catch {
+        $mutex.Dispose()
+        throw
     }
 }
 
-function Exit-ValidationLock([IO.FileStream] $Lock) {
-    $Lock.Dispose()
+function Exit-ValidationLock([Threading.Mutex] $Mutex) {
+    try {
+        $Mutex.ReleaseMutex()
+    }
+    finally {
+        $Mutex.Dispose()
+    }
 }
 
 function Test-WidespreadRazorParserFailure([string] $Output) {
@@ -55,4 +77,4 @@ function Test-WidespreadRazorParserFailure([string] $Output) {
     return $paths.Count -ge 2
 }
 
-Export-ModuleMember -Function Get-CanonicalRepoRoot, Get-ValidationLockPath, Enter-ValidationLock, Exit-ValidationLock, Test-WidespreadRazorParserFailure
+Export-ModuleMember -Function Get-CanonicalRepoRoot, Get-ValidationMutexName, Enter-ValidationLock, Exit-ValidationLock, Test-WidespreadRazorParserFailure
