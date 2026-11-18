@@ -8,6 +8,7 @@ import re
 import sys
 import tempfile
 import unittest
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +25,10 @@ EXPECTED_REQUEST_EVENTS = {
 }
 EXPECTED_NIGHTLY_CRON = "17 6 * * *"
 FULL_BROWSER_ACTION = "./.github/actions/run-full-browser"
+BROWSER_SELECTOR = re.compile(
+    r"YHAB\.PlaywrightTests|Category=BrowserSmoke|run-full-browser", re.IGNORECASE
+)
+REPORTED_SUITES = {"Browser": "browser-full", "Performance": "performance"}
 
 
 class UniqueKeyLoader(yaml.SafeLoader):
@@ -95,28 +100,54 @@ def _job(workflow: dict[str, Any], name: str, description: str) -> dict[str, Any
     return _mapping(jobs.get(name), f"{description} job {name!r}")
 
 
-def _unconditional_step_uses(job: dict[str, Any], action: str) -> int:
-    steps = _sequence(job.get("steps"), "job.steps")
+def _expression(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    if value.startswith("${{") and value.endswith("}}"):
+        value = value[3:-2].strip()
+    return value
+
+
+def _steps(job: dict[str, Any]) -> list[dict[str, Any]]:
+    steps = job.get("steps", [])
+    if not isinstance(steps, list):
+        return []
+    return [step for step in steps if isinstance(step, dict)]
+
+
+def _step_uses(job: dict[str, Any], action: str, *, unconditional: bool) -> int:
     return sum(
-        isinstance(step, dict)
-        and step.get("uses") == action
-        and "if" not in step
-        for step in steps
+        step.get("uses") == action and (not unconditional or "if" not in step)
+        for step in _steps(job)
     )
-
-
-def _run_values(job: dict[str, Any]) -> list[str]:
-    steps = _sequence(job.get("steps"), "job.steps")
-    return [
-        step["run"]
-        for step in steps
-        if isinstance(step, dict) and isinstance(step.get("run"), str)
-    ]
 
 
 def _has_active_command(job: dict[str, Any], expression: str) -> bool:
     pattern = re.compile(rf"(?m)^[ \t]*{expression}")
-    return any(pattern.search(run) is not None for run in _run_values(job))
+    return any(
+        isinstance(step.get("run"), str)
+        and "if" not in step
+        and pattern.search(step["run"]) is not None
+        for step in _steps(job)
+    )
+
+
+def _policy_strings(value: Any, key: Any = None) -> Iterator[str]:
+    """Yield parsed string values, omitting comment lines from shell scripts."""
+    if isinstance(value, dict):
+        for child_key, child in value.items():
+            yield from _policy_strings(child, child_key)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _policy_strings(child, key)
+    elif isinstance(value, str):
+        if key == "run":
+            yield from (
+                line for line in value.splitlines() if not line.lstrip().startswith("#")
+            )
+        else:
+            yield value
 
 
 def validate_workflows(workflows: dict[str, dict[str, Any]]) -> None:
@@ -140,28 +171,10 @@ def validate_workflows(workflows: dict[str, dict[str, Any]]) -> None:
         == {"fast", "tests", "publish"},
         "Main deployment must not depend on a browser job.",
     )
-    for job_name, job_value in deploy_jobs.items():
-        job = _mapping(job_value, f"deploy job {job_name!r}")
-        steps = job.get("steps", [])
-        if not isinstance(steps, list):
-            continue
-        for step in steps:
-            if not isinstance(step, dict):
-                continue
-            value = step.get("uses")
-            _require(
-                not isinstance(value, str)
-                or value != FULL_BROWSER_ACTION,
-                "The main workflow must not select or require browser validation.",
-            )
-        _require(
-            not _has_active_command(
-                job,
-                r"(?:dotnet\s+test\b[^\r\n]*(?:YHAB\.PlaywrightTests|Category=BrowserSmoke)|"
-                r"(?:\.\/)?\.github\/actions\/run-full-browser\b)",
-            ),
-            "The main workflow must not select or require browser validation.",
-        )
+    _require(
+        not any(BROWSER_SELECTOR.search(value) for value in _policy_strings(deploy)),
+        "The main workflow must not select or require browser validation.",
+    )
 
     request_triggers = _mapping(request.get("on"), "browser-request.on")
     _require(
@@ -183,11 +196,8 @@ def validate_workflows(workflows: dict[str, dict[str, Any]]) -> None:
 
     request_jobs = _mapping(request.get("jobs"), "browser-request.jobs")
     browser_job = _mapping(request_jobs.get("browser-full"), "browser-full job")
-    condition = browser_job.get("if")
-    _require(isinstance(condition, str), "The browser job must have an active opt-in condition.")
-    condition = condition.strip()
-    if condition.startswith("${{") and condition.endswith("}}"):
-        condition = condition[3:-2].strip()
+    condition = _expression(browser_job.get("if"))
+    _require(condition is not None, "The browser job must have an active opt-in condition.")
     guard = re.compile(
         r"\s*contains\s*\(\s*github\.event\.pull_request\.labels\.\*\.name\s*,\s*"
         r"['\"]run-full-browser['\"]\s*\)\s*&&\s*"
@@ -217,14 +227,23 @@ def validate_workflows(workflows: dict[str, dict[str, Any]]) -> None:
         "Only the guarded browser job may acquire the browser concurrency group.",
     )
     _require(
-        _unconditional_step_uses(browser_job, FULL_BROWSER_ACTION) == 1,
+        _step_uses(browser_job, FULL_BROWSER_ACTION, unconditional=True) == 1,
         "The browser request must reuse the full-browser action exactly once.",
+    )
+    _require(
+        all(
+            not isinstance(job, dict)
+            or _step_uses(job, FULL_BROWSER_ACTION, unconditional=False) == 0
+            for name, job in request_jobs.items()
+            if name != "browser-full"
+        ),
+        "Only the guarded browser job may run the full-browser action.",
     )
 
     nightly_triggers = _mapping(nightly.get("on"), "nightly-browser.on")
     _require(
-        "workflow_dispatch" in nightly_triggers,
-        "Nightly validation must remain manually runnable.",
+        set(nightly_triggers) == {"schedule", "workflow_dispatch"},
+        "Nightly validation must run only on its schedule and manual dispatch.",
     )
     schedules = _sequence(nightly_triggers.get("schedule"), "nightly-browser schedule")
     _require(
@@ -238,7 +257,11 @@ def validate_workflows(workflows: dict[str, dict[str, Any]]) -> None:
     browser_full = _mapping(nightly_jobs.get("browser-full"), "nightly browser-full job")
     performance = _mapping(nightly_jobs.get("performance"), "nightly performance job")
     _require(
-        _unconditional_step_uses(browser_full, FULL_BROWSER_ACTION) == 1,
+        "if" not in browser_full and "if" not in performance,
+        "Both nightly validation suites must run on every scheduled and manual run.",
+    )
+    _require(
+        _step_uses(browser_full, FULL_BROWSER_ACTION, unconditional=True) == 1,
         "Nightly browser validation must reuse the full-browser action.",
     )
     _require(
@@ -255,11 +278,7 @@ def validate_workflows(workflows: dict[str, dict[str, Any]]) -> None:
         {"browser-full", "performance"}.issubset(set(report_needs)),
         "Nightly failure reporting must depend on both validation suites.",
     )
-    report_condition = reporting.get("if")
-    if isinstance(report_condition, str):
-        report_condition = report_condition.strip()
-        if report_condition.startswith("${{") and report_condition.endswith("}}"):
-            report_condition = report_condition[3:-2].strip()
+    report_condition = _expression(reporting.get("if"))
     report_condition_pattern = re.compile(
         r"\s*!\s*cancelled\s*\(\s*\)\s*&&\s*"
         r"github\.ref\s*==\s*['\"]refs/heads/main['\"]\s*&&\s*"
@@ -276,17 +295,20 @@ def validate_workflows(workflows: dict[str, dict[str, Any]]) -> None:
         permissions.get("issues") == "write",
         "Nightly reporting must be able to create issues.",
     )
-    runs = _run_values(reporting)
-    for suite in ("Browser", "Performance"):
+    for suite, job_name in REPORTED_SUITES.items():
+        publisher = re.compile(
+            rf"(?m)^[ \t]*(?:\.\/)?scripts/Publish-NightlyValidationIssue\.ps1"
+            rf"\b[^\r\n]*-Suite\s+['\"]?{suite}\b"
+        )
+        suite_failed = re.compile(
+            rf"\s*needs\.{re.escape(job_name)}\.result\s*==\s*['\"]failure['\"]\s*"
+        )
         _require(
             any(
-                re.search(
-                    rf"(?m)^[ \t]*(?:\.\/)?scripts/Publish-NightlyValidationIssue\.ps1"
-                    rf"\b[^\r\n]*-Suite\s+['\"]?{suite}\b",
-                    run,
-                )
-                is not None
-                for run in runs
+                isinstance(step.get("run"), str)
+                and publisher.search(step["run"]) is not None
+                and suite_failed.fullmatch(_expression(step.get("if")) or "") is not None
+                for step in _steps(reporting)
             ),
             f"{suite} failures and regressions must be reported.",
         )
@@ -400,6 +422,70 @@ class BrowserWorkflowPolicyTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(PolicyViolation, "must select performance cases"):
             validate_workflows(self.workflows)
+
+    def test_conditionally_skipped_performance_command_does_not_satisfy_policy(self) -> None:
+        performance = self.workflows["nightly-browser"]["jobs"]["performance"]
+        step = next(
+            step
+            for step in performance["steps"]
+            if "--filter-trait Category=Performance" in step.get("run", "")
+        )
+        step["if"] = "false"
+        with self.assertRaisesRegex(PolicyViolation, "must select performance cases"):
+            validate_workflows(self.workflows)
+
+    def test_failure_report_must_be_guarded_by_its_own_suite(self) -> None:
+        reporting = self.workflows["nightly-browser"]["jobs"]["report-failures"]
+        step = next(step for step in reporting["steps"] if "-Suite Browser" in step.get("run", ""))
+        for condition in ("false", "needs.performance.result == 'failure'"):
+            with self.subTest(condition=condition):
+                step["if"] = condition
+                with self.assertRaisesRegex(PolicyViolation, "Browser failures"):
+                    validate_workflows(self.workflows)
+
+    def _deploy_test_step(self) -> dict[str, Any]:
+        tests_job = self.workflows["deploy"]["jobs"]["tests"]
+        return next(step for step in tests_job["steps"] if "dotnet test" in step.get("run", ""))
+
+    def test_matrix_selected_browser_project_is_rejected(self) -> None:
+        tests_job = self.workflows["deploy"]["jobs"]["tests"]
+        tests_job["strategy"]["matrix"]["project"].append("YHAB.PlaywrightTests")
+        with self.assertRaisesRegex(PolicyViolation, "must not select or require browser"):
+            validate_workflows(self.workflows)
+
+    def test_continued_browser_filter_is_rejected(self) -> None:
+        step = self._deploy_test_step()
+        step["run"] = step["run"].replace(
+            "--no-build", "--no-build `\n  --filter-trait Category=BrowserSmoke", 1
+        )
+        with self.assertRaisesRegex(PolicyViolation, "must not select or require browser"):
+            validate_workflows(self.workflows)
+
+    def test_browser_text_in_shell_comment_is_ignored(self) -> None:
+        step = self._deploy_test_step()
+        step["run"] = "# YHAB.PlaywrightTests run in browser-request.yml\n" + step["run"]
+        validate_workflows(self.workflows)
+
+    def test_unguarded_job_cannot_run_full_browser_action(self) -> None:
+        self.workflows["browser-request"]["jobs"]["other"] = {
+            "runs-on": "ubuntu-24.04",
+            "steps": [{"uses": FULL_BROWSER_ACTION}],
+        }
+        with self.assertRaisesRegex(PolicyViolation, "Only the guarded browser job"):
+            validate_workflows(self.workflows)
+
+    def test_nightly_extra_trigger_is_rejected(self) -> None:
+        self.workflows["nightly-browser"]["on"]["push"] = {}
+        with self.assertRaisesRegex(PolicyViolation, "only on its schedule"):
+            validate_workflows(self.workflows)
+
+    def test_disabled_nightly_job_is_rejected(self) -> None:
+        for job_name in ("browser-full", "performance"):
+            with self.subTest(job_name):
+                self.workflows = _fixture_workflows()
+                self.workflows["nightly-browser"]["jobs"][job_name]["if"] = "${{ false }}"
+                with self.assertRaisesRegex(PolicyViolation, "every scheduled and manual run"):
+                    validate_workflows(self.workflows)
 
     def test_duplicate_yaml_keys_are_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
