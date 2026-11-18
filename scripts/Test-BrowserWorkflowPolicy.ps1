@@ -26,9 +26,9 @@ Assert-True (
     @($concurrency | Where-Object { $_.Index -lt $job.Index -or $_.Groups[1].Length -le $job.Groups[1].Length }).Count -eq 0
 ) 'Only a job that passes the opt-in guard may acquire the browser concurrency group.'
 Assert-True ($request -match '(?m)^[ \t]*(-[ \t]*)?uses[ \t]*:[ \t]*([''"]?)\./\.github/actions/run-full-browser\2[ \t]*(#[^\r\n]*)?\r?$') 'The request workflow must reuse the full-browser action.'
-Assert-True ($request -notmatch '(?m)^[ \t]{2}(push|schedule)\s*:') 'The PR request workflow must not run on pushes or a schedule.'
+Assert-True ($request -notmatch '(?m)^[ \t]+(push|schedule)[ \t]*:') 'The PR request workflow must not run on pushes or a schedule.'
 
-Assert-True ($nightly -match '(?m)^[ \t]*-[ \t]*cron[ \t]*:[ \t]*([''"]?)\d+[ \t]+\d+[ \t]+\*[ \t]+\*[ \t]+\*\1[ \t]*(#[^\r\n]*)?\r?$') 'Nightly validation must have a daily schedule.'
+Assert-True ($nightly -match '(?m)^[ \t]*-[ \t]*cron[ \t]*:[ \t]*([''"]?)17[ \t]+6[ \t]+\*[ \t]+\*[ \t]+\*\1[ \t]*(#[^\r\n]*)?\r?$') 'Both suites must share the documented daily schedule.'
 Assert-True ($nightly -match '(?m)^[ \t]{2,}browser-full\s*:' -and $nightly -match '(?m)^[ \t]{2,}performance\s*:') 'Nightly validation must include both suites.'
 Assert-True ($nightly -match '--filter-not-trait Category=Performance' -or $nightly -match 'run-full-browser') 'Nightly browser validation must cover the non-performance suite.'
 Assert-True ($nightly -match '--filter-trait Category=Performance') 'Nightly performance validation must select performance cases.'
