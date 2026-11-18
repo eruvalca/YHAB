@@ -18,11 +18,16 @@ $validationMutex = $null
 
 function Invoke-CapturedDotnet([string[]] $Arguments) {
     Write-Host "> dotnet $($Arguments -join ' ')"
-    $output = & dotnet @Arguments 2>&1
+    $captured = [Text.StringBuilder]::new()
+    & dotnet @Arguments 2>&1 | ForEach-Object {
+        $line = $_.ToString()
+        [void] $captured.AppendLine($line)
+        [Console]::Out.WriteLine($line)
+    }
     $exitCode = $LASTEXITCODE
     return [pscustomobject] @{
         ExitCode = $exitCode
-        Output = ($output | Out-String)
+        Output = $captured.ToString()
     }
 }
 
