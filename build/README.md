@@ -40,21 +40,30 @@ the [test guide](../tests/README.md) first. These checks inspect the working tre
 not an isolated commit snapshot, and do not cover untracked-file whitespace.
 Quick is not a test gate and does not prove the staged snapshot builds.
 
-Fast, Infrastructure and Full validation acquire a repository-specific file lock
-before formatting/building. This prevents two local validation processes from
-running concurrent solution builds against the same `bin`/`obj` outputs. Each
-solution build also shuts down reusable build servers and adds
-`--disable-build-servers`, keeping generated Razor/C# state out of a reused
-compiler process. The lock timeout is 60 seconds; a conflicting process should
-finish or be stopped before the next validation starts.
+Fast, Infrastructure and Full validation acquire an exclusive handle on the
+checkout's ignored `artifacts/.validation.lock` file before formatting/building.
+This prevents local validation processes from concurrently writing the
+checkout's `bin`/`obj` outputs, including across separate sessions. The lock
+timeout is 60 seconds; a conflicting process should finish or be stopped before
+the next validation starts. The lock file is persistent; only its open handle
+represents ownership. Solution builds shut down reusable build
+servers and use `--disable-build-servers` to avoid reusing compiler processes.
 
-The validation entry point has narrow parser-failure recovery for format and
-build. If verification reports Razor parser codes such as `RZ1021`, `RZ1009`,
-`RZ9981`, `RZ1034`, or `RZ1026` across at least two `.razor` files, it shuts down
-build servers, cleans, force-restores, then retries verification or rebuilds once
-without restoring. Genuine failures contained to one source file or ordinary
-compiler/analyzer failures stop normally. The recovery never deletes worktrees,
-stops Aspire, removes developer data, or runs on Quick validation.
+Validation reports build and formatting failures directly; it does not
+automatically clean or force-restore. If a build produces widespread Razor parser
+errors that appear to come from stale generated state, stop the active build,
+then recover manually from the repository root:
+
+```powershell
+dotnet build-server shutdown
+dotnet clean YHAB.slnx
+dotnet restore YHAB.slnx --force --no-cache
+dotnet build YHAB.slnx
+```
+
+Do not run cleanup while another build or Aspire is using the checkout. Confirm
+that the errors are not caused by source changes before treating them as stale
+state.
 
 Install Git and PowerShell 7 on `PATH`, plus the SDK selected by `global.json`
 and the repository-pinned Aspire CLI for Fast. Even its headless solution build

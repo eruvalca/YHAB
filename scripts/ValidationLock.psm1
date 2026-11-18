@@ -12,69 +12,36 @@ function Get-CanonicalRepoRoot([string] $RepoRoot) {
     return [IO.Path]::GetFullPath($resolved).TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
 }
 
-function Get-ValidationMutexName([string] $RepoRoot) {
+function Get-ValidationLockPath([string] $RepoRoot) {
     $root = Get-CanonicalRepoRoot $RepoRoot
-    $bytes = [Text.Encoding]::UTF8.GetBytes($root)
-    $sha = [Security.Cryptography.SHA256]::Create()
-    try {
-        $hex = -join ($sha.ComputeHash($bytes) | ForEach-Object { $_.ToString('x2') })
-    }
-    finally {
-        $sha.Dispose()
-    }
-    return "YHAB-Validation-$($hex.Substring(0,32))"
+    return Join-Path (Join-Path $root 'artifacts') '.validation.lock'
 }
 
 function Enter-ValidationLock([string] $RepoRoot, [double] $TimeoutSeconds = 60) {
-    $mutexName = Get-ValidationMutexName $RepoRoot
-    $createdNew = $false
-    $mutex = [Threading.Mutex]::new($false, $mutexName, [ref] $createdNew)
+    $lockPath = Get-ValidationLockPath $RepoRoot
+    $lockDirectory = Split-Path -Parent $lockPath
+    New-Item -ItemType Directory -Path $lockDirectory -Force | Out-Null
+    $timer = [Diagnostics.Stopwatch]::StartNew()
     try {
-        try {
-            $acquired = $mutex.WaitOne([TimeSpan]::FromSeconds([Math]::Max(0.1, $TimeoutSeconds)))
-        }
-        catch [Threading.AbandonedMutexException] {
-            $acquired = $true
-        }
-        catch {
-            $mutex.Dispose()
-            throw
-        }
-        if (-not $acquired) {
-            $mutex.Dispose()
-            throw "Another YHAB validation is still running for $RepoRoot."
-        }
-        return $mutex
-    }
-    catch {
-        $mutex.Dispose()
-        throw
-    }
-}
-
-function Exit-ValidationLock([Threading.Mutex] $Mutex) {
-    try {
-        $Mutex.ReleaseMutex()
-    }
-    finally {
-        $Mutex.Dispose()
-    }
-}
-
-function Test-WidespreadRazorParserFailure([string] $Output) {
-    if ($Output -notmatch 'RZ1021|RZ1009|RZ9981|RZ1034|RZ1026') {
-        return $false
-    }
-    $paths = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-    foreach ($line in ($Output -split "`r?`n")) {
-        if ($line -match 'RZ1021|RZ1009|RZ9981|RZ1034|RZ1026') {
-            $match = [regex]::Match($line, '(.+\.razor)\(\d+,\d+\)')
-            if ($match.Success) {
-                [void] $paths.Add($match.Groups[1].Value.Trim())
+        while ($true) {
+            try {
+                return [IO.File]::Open($lockPath, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+            }
+            catch [IO.IOException] {
+                if ($timer.Elapsed.TotalSeconds -ge [Math]::Max(0.1, $TimeoutSeconds)) {
+                    throw "Could not acquire the YHAB validation lock at '$lockPath' within $TimeoutSeconds seconds."
+                }
+                Start-Sleep -Milliseconds 250
             }
         }
     }
-    return $paths.Count -ge 2
+    finally {
+        $timer.Stop()
+    }
 }
 
-Export-ModuleMember -Function Get-CanonicalRepoRoot, Get-ValidationMutexName, Enter-ValidationLock, Exit-ValidationLock, Test-WidespreadRazorParserFailure
+function Exit-ValidationLock([IO.FileStream] $FileLock) {
+    $FileLock.Dispose()
+}
+
+Export-ModuleMember -Function Get-CanonicalRepoRoot, Get-ValidationLockPath, Enter-ValidationLock, Exit-ValidationLock
