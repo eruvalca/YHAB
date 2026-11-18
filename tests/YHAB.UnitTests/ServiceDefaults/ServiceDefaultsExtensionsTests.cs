@@ -1,5 +1,11 @@
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Net;
+using System.Net.Sockets;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -7,6 +13,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using OpenTelemetry.Instrumentation.AspNetCore;
+using OpenTelemetry.Instrumentation.Http;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using Shouldly;
@@ -35,10 +42,131 @@ public sealed class ServiceDefaultsExtensionsTests
         await using var app = builder.Build();
         _ = app.Services.GetRequiredService<TracerProvider>();
         var options = app.Services.GetRequiredService<IOptions<AspNetCoreTraceInstrumentationOptions>>().Value;
+        options.RecordException.ShouldBeTrue();
         var http = new DefaultHttpContext();
         http.Request.Path = path;
 
         options.Filter.ShouldNotBeNull()(http).ShouldBe(expected);
+    }
+
+    [Fact]
+    public async Task ExceptionRecordingIsEnabledForIncomingAndOutgoingHttpAsync()
+    {
+        var builder = CreateBuilder(Environments.Development);
+        builder.ConfigureOpenTelemetry();
+        await using var app = builder.Build();
+
+        app.Services.GetRequiredService<IOptions<AspNetCoreTraceInstrumentationOptions>>().Value.RecordException.ShouldBeTrue();
+        app.Services.GetRequiredService<IOptions<HttpClientTraceInstrumentationOptions>>().Value.RecordException.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task IncomingHttpExceptionIsExportedAsAnOpenTelemetryExceptionEventAsync()
+    {
+        var exceptionEvent = new TaskCompletionSource<ActivityEvent>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => string.Equals(source.Name, "Microsoft.AspNetCore", StringComparison.Ordinal),
+            Sample = static (ref _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity =>
+            {
+                foreach (var candidate in activity.Events)
+                {
+                    if (string.Equals(candidate.Name, "exception", StringComparison.Ordinal)
+                        && candidate.Tags.Any(tag => string.Equals(tag.Key, "exception.type", StringComparison.Ordinal)
+                            && tag.Value?.ToString()?.EndsWith(nameof(IOException), StringComparison.Ordinal) == true))
+                    {
+                        exceptionEvent.TrySetResult(candidate);
+                        break;
+                    }
+                }
+            },
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var builder = CreateBuilder(Environments.Development);
+        builder.WebHost.ConfigureKestrel(options => options.Listen(IPAddress.Loopback, 0));
+        builder.ConfigureOpenTelemetry();
+        await using var app = builder.Build();
+        _ = app.Services.GetRequiredService<TracerProvider>();
+        app.MapGet("/telemetry-exception", static context =>
+            throw new IOException($"Telemetry exception test for {context.Request.Path}"));
+        await app.StartAsync(TestContext.Current.CancellationToken);
+
+        var addresses = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()?.Addresses;
+        addresses.ShouldNotBeNull();
+        using var httpClient = new HttpClient();
+        var exceptionUri = new Uri($"{addresses.Single()}/telemetry-exception", UriKind.Absolute);
+        using var response = await httpClient.GetAsync(exceptionUri,
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
+        app.Services.GetRequiredService<TracerProvider>().ForceFlush();
+
+        var recordedEvent = await exceptionEvent.Task.WaitAsync(
+            TimeSpan.FromSeconds(10),
+            TestContext.Current.CancellationToken);
+        var tags = recordedEvent.Tags.ToDictionary(tag => tag.Key, tag => tag.Value?.ToString(), StringComparer.Ordinal);
+
+        tags["exception.type"].ShouldBe(typeof(IOException).FullName);
+        tags["exception.message"].ShouldBe("Telemetry exception test for /telemetry-exception");
+        tags["exception.stacktrace"].ShouldNotBeNull().ShouldContain(nameof(IOException));
+    }
+
+    [Fact]
+    public async Task OutgoingHttpExceptionIsExportedAsAnOpenTelemetryExceptionEventAsync()
+    {
+        var exceptionEvent = new TaskCompletionSource<ActivityEvent>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = _ => true,
+            Sample = static (ref _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = activity =>
+            {
+                foreach (var candidate in activity.Events)
+                {
+                    if (string.Equals(candidate.Name, "exception", StringComparison.Ordinal)
+                        && candidate.Tags.Any(tag => string.Equals(tag.Key, "exception.type", StringComparison.Ordinal)
+                            && tag.Value?.ToString()?.EndsWith(nameof(HttpRequestException), StringComparison.Ordinal) == true))
+                    {
+                        exceptionEvent.TrySetResult(candidate);
+                        break;
+                    }
+                }
+            },
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var builder = CreateBuilder(Environments.Development);
+        builder.ConfigureOpenTelemetry();
+        await using var app = builder.Build();
+        _ = app.Services.GetRequiredService<TracerProvider>();
+
+        using var tcpListener = new TcpListener(IPAddress.Loopback, 0);
+        tcpListener.Start();
+        var endpoint = (IPEndPoint)tcpListener.LocalEndpoint;
+        var acceptTask = tcpListener.AcceptTcpClientAsync(TestContext.Current.CancellationToken);
+        using var httpClient = new HttpClient();
+        var responseUri = new Uri($"http://{endpoint}/telemetry-exception", UriKind.Absolute);
+        var responseTask = httpClient.GetAsync(responseUri,
+            TestContext.Current.CancellationToken);
+        using var accepted = await acceptTask.AsTask().WaitAsync(
+            TimeSpan.FromSeconds(10),
+            TestContext.Current.CancellationToken);
+        accepted.Close();
+        tcpListener.Stop();
+        await Should.ThrowAsync<HttpRequestException>(() => responseTask);
+
+        app.Services.GetRequiredService<TracerProvider>().ForceFlush();
+
+        var recordedEvent = await exceptionEvent.Task.WaitAsync(
+            TimeSpan.FromSeconds(10),
+            TestContext.Current.CancellationToken);
+        var tags = recordedEvent.Tags.ToDictionary(tag => tag.Key, tag => tag.Value?.ToString(), StringComparer.Ordinal);
+
+        tags["exception.type"].ShouldBe(typeof(HttpRequestException).FullName);
+        tags["exception.message"].ShouldNotBeNullOrEmpty();
+        tags["exception.stacktrace"].ShouldNotBeNull().ShouldContain(nameof(HttpRequestException));
     }
 
     [Theory]

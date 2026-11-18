@@ -62,12 +62,19 @@ public static class Extensions
                         .AddMeter(MemoryCacheMeterName))
                 .WithTracing(tracing => tracing.AddSource(builder.Environment.ApplicationName)
                         .AddAspNetCoreInstrumentation(tracing =>
-                            // Exclude health check requests from tracing
+                        {
+                            // Preserve exception type and stack details in server telemetry.
+                            tracing.RecordException = true;
+                            // Exclude health check requests from tracing.
                             tracing.Filter = context =>
                                 !context.Request.Path.StartsWithSegments(HealthEndpointPath, StringComparison.OrdinalIgnoreCase)
-                                && !context.Request.Path.StartsWithSegments(AlivenessEndpointPath, StringComparison.OrdinalIgnoreCase)
-                        )
-                        .AddHttpClientInstrumentation());
+                                && !context.Request.Path.StartsWithSegments(AlivenessEndpointPath, StringComparison.OrdinalIgnoreCase);
+                        })
+                        .AddHttpClientInstrumentation(tracing =>
+                        {
+                            // Preserve exception type and stack details for failed outbound calls.
+                            tracing.RecordException = true;
+                        }));
 
             return builder.AddOpenTelemetryExporters();
         }
