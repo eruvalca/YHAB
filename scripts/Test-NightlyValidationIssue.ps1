@@ -70,4 +70,6 @@ try {
 }
 finally {
     Remove-Item -Path Function:\gh -ErrorAction SilentlyContinue
+    # The failed-search case leaves a mocked nonzero exit code; do not leak it to the caller.
+    $global:LASTEXITCODE = 0
 }

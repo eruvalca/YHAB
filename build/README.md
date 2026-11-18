@@ -10,7 +10,7 @@ SDK updates also update the compiler, built-in analyzers, and Razor parser used 
 the code-behind validator. Run the solution build and Razor policy checks after
 an SDK update.
 
-## Local validation and opt-in Git hooks
+## Local validation
 
 Run the shared entry point from any directory using PowerShell 7 (`pwsh`):
 
@@ -40,46 +40,42 @@ the [test guide](../tests/README.md) first. These checks inspect the working tre
 not an isolated commit snapshot, and do not cover untracked-file whitespace.
 Quick is not a test gate and does not prove the staged snapshot builds.
 
-Install Git and PowerShell 7 on `PATH`, plus the SDK selected by `global.json`
-and the repository-pinned Aspire CLI for Fast. Even its headless solution build
-requires `aspire` on `PATH` to build the AppHost; no running Aspire application is
-needed. Follow the [root setup guide](../README.md) for the pinned tooling.
-On Windows, use Git for Windows (its `sh` runs Git hooks), not Windows
-PowerShell 5.1; ensure GUI Git clients inherit a `PATH` containing `pwsh`,
-`dotnet`, and `aspire`. Stop any development Aspire instance before formatting/full builds on
+Avoid running overlapping builds or differently configured builds in the same
+checkout, since they share `bin`/`obj` and generated Razor outputs. Use a
+separate worktree for concurrent experiments.
+
+Validation reports build and formatting failures directly; it does not
+automatically clean or force-restore. If a build produces widespread Razor parser
+errors that appear to come from stale generated state, stop the active build,
+then recover manually from the repository root:
+
+```powershell
+dotnet build-server shutdown
+dotnet clean YHAB.slnx
+dotnet restore YHAB.slnx --force --no-cache
+dotnet build YHAB.slnx
+```
+
+Do not run cleanup while another build or Aspire is using the checkout.
+`dotnet build-server shutdown` also stops build servers shared with other
+worktrees and projects, so let other local builds finish first. If the failing
+command used a non-default configuration, such as `-Configuration Release`, pass
+the same `-c` value to `dotnet clean` and `dotnet build`. Confirm that the errors
+are not caused by source changes before treating them as stale state.
+
+Install Git, PowerShell 7, the SDK selected by `global.json`, and the
+repository-pinned Aspire CLI for Fast. Even its headless solution build requires
+`aspire` on `PATH` to build the AppHost; no running Aspire application is needed.
+Follow the [root setup guide](../README.md) for the pinned tooling.
+Stop any development Aspire instance before formatting/full builds on
 Windows to avoid locked outputs. The scripts never stop or delete developer
 resources automatically. Format verification does not replace the required
 [formatter fix-and-review pass](#formatting).
 
-Git hooks are **off by default**. Enable explicitly per checkout:
-
-```powershell
-pwsh ./scripts/Install-GitHooks.ps1
-git config --local --get core.hooksPath
-# Disable (does not delete hook files or change global settings):
-pwsh ./scripts/Install-GitHooks.ps1 -Uninstall
-```
-
-The installer sets only local `core.hooksPath=.githooks`, makes hook files
-executable on Unix, and does not stage files. In a linked worktree, that local
-value belongs to the repository's shared Git config, so the hooks apply to every
-worktree unless a worktree-specific `core.hooksPath` overrides it. Pre-commit runs
-Quick; pre-push runs Fast once, regardless of pushed ref count. Existing effective hooks-path settings
-(including global ones) and custom default `.git/hooks` files are protected:
-installation refuses to replace them without `-Force`. Hooks are not chained.
-Before forcing, record `git config --show-origin --get-all core.hooksPath` and
-review existing hooks. Uninstall removes only a local `.githooks` value, exposing
-inherited settings again; restore any overwritten **local** value manually with
-`git config --local core.hooksPath '<previous-value>'`. If worktree-specific Git
-configuration overrides the local value, resolve it explicitly rather than
-assuming installation enabled the hooks. Hooks remain advisory and can be bypassed
-by Git's normal options; CI remains authoritative.
-
 VS Code's **Tasks: Run Task** exposes **Test: Unit**, **Test: Components**, and
 **Validate: Fast**. The project tasks build their selected project normally; Fast
 builds once before its no-build tests. None is a watcher or launches an external
-application. Agent completion can use the same entry point through the separate
-[opt-in validation hook](agent-hooks.md#opt-in-agent-validation).
+application.
 
 ## Nullable reference types
 

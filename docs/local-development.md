@@ -261,9 +261,7 @@ Repository instructions start in
 [`.github/copilot-instructions.md`](../.github/copilot-instructions.md). It keeps
 shared rules and names the path-specific files per scope. Follow those routes even
 when behavior spans directories or the operation edits no file in the owning
-directory, such as running Aspire or validating a source change. The documentation
-hook runs for Copilot and reminds agents to maintain this organization; it does not
-otherwise inject guidance.
+directory, such as running Aspire or validating a source change.
 
 Each path-specific file in [`.github/instructions`](../.github/instructions) carries
 an `applyTo` glob, so Copilot loads it for matching files whatever the session
@@ -272,7 +270,7 @@ path-specific rules, which is why the repository-wide file names each one. A
 path-specific file owns its scoped rules or routes the reader to the owning guide;
 none may repeat a rule stated elsewhere, because Copilot merges instruction sources
 without a precedence rule and duplicated or conflicting text is unsafe. See
-[instruction sources and scope](../build/agent-hooks.md#instruction-sources-and-scope).
+[instruction sources and scope](../build/agent-instructions.md#instruction-sources-and-scope).
 
 Shared repository skills live only in `.agents/skills`, supported by Copilot CLI.
 Copilot desktop inherits repository/CLI skills and MCP configuration.

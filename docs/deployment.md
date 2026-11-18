@@ -93,8 +93,7 @@ user account. The workflow supports non-browser validation on `merge_group`, so
 moving the repository to an organization lets native merge queue use the same
 required checks without further workflow changes. A successful main run signs into Azure with OIDC and
 runs `aspire deploy --environment Production --non-interactive`, preserving
-migration-before-web ordering. `scripts/Get-ValidationScope.ps1` is shared by CI
-and local agent/validation hooks. SDK setup caches downloaded NuGet packages using SDK, central
+migration-before-web ordering. SDK setup caches downloaded NuGet packages using SDK, central
 build/dependency manifests and project files as inputs; it does not reuse compiled
 test results, credentials or Aspire runtime/deployment state. The browser jobs
 cache the Playwright Chromium download keyed by the central package manifest and
