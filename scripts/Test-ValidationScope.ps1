@@ -4,7 +4,7 @@ $cases = @(
     @{ Paths = @('README.md'); Application = $false; Deploy = $false },
     @{ Paths = @('tests/README.md', '.github/instructions/ui.instructions.md'); Application = $false; Deploy = $false },
     @{ Paths = @('.github/hooks/documentation-review.json', 'scripts/Test-DocumentationReviewHook.ps1'); Application = $false; Deploy = $false },
-    @{ Paths = @('scripts/Test-AgentValidationHook.ps1'); Application = $false; Deploy = $false },
+    @{ Paths = @('.githooks/pre-commit', 'scripts/Install-GitHooks.ps1'); Application = $false; Deploy = $false },
     @{ Paths = @("README.md`n"); Application = $true; Deploy = $true },
     @{ Paths = @('src/YHAB.UI/Page.razor'); Application = $true; Deploy = $true },
     @{ Paths = @('src/YHAB.Client/Program.cs'); Application = $true; Deploy = $true },

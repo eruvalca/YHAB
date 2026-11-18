@@ -78,7 +78,6 @@ jobs:
           ./scripts/Test-BrowserWorkflowPolicy.ps1
           ./scripts/Test-NightlyValidationIssue.ps1
           ./scripts/Test-DocumentationReviewHook.ps1
-          ./scripts/Test-AgentValidationHook.ps1
       - name: Check project-reference policy
         shell: pwsh
         run: ./scripts/Test-ArchitectureProjectReferences.ps1

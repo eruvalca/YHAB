@@ -158,12 +158,9 @@ dotnet test --solution YHAB.slnx --max-parallel-test-modules 1
 ```
 
 For opt-in local feedback, `pwsh ./scripts/Invoke-Validation.ps1 -Scope Fast`
-verifies formatting, builds, and runs the headless tests; the same entry point
-backs the opt-in Git hooks and
-[agent validation](build/agent-hooks.md#opt-in-agent-validation)
-(`YHAB_AGENT_VALIDATE=1`). Install local hooks explicitly with
-`pwsh ./scripts/Install-GitHooks.ps1`: pre-commit checks staged whitespace and
-pre-push runs Fast validation. Test resources are disposable and never use the
+verifies formatting, builds, and runs the headless tests. Install the optional
+pre-commit hook explicitly with `pwsh ./scripts/Install-GitHooks.ps1`; it checks
+staged whitespace only. Test resources are disposable and never use the
 development database volumes. The solution test command matches CI's project-level
 concurrency limit so database stress does not compete with AppHost/browser startup;
 per-project xUnit settings remain unchanged. Local checks complement, not replace,

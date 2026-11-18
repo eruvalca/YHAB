@@ -56,16 +56,14 @@ try {
         }
     }
 
-    foreach ($name in @('pre-commit', 'pre-push')) {
-        $path = Join-Path $repoRoot ".githooks/$name"
-        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
-            throw "Missing hook: $path"
-        }
-        if (-not $IsWindows) {
-            & chmod +x $path
-            if ($LASTEXITCODE -ne 0) {
-                throw "Could not mark $name executable."
-            }
+    $path = Join-Path $repoRoot '.githooks/pre-commit'
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        throw "Missing hook: $path"
+    }
+    if (-not $IsWindows) {
+        & chmod +x $path
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Could not mark pre-commit executable.'
         }
     }
     if ($Force -and $null -ne $existing -and $existing -ne '.githooks') {
@@ -88,7 +86,7 @@ try {
         }
     }
     Invoke-CheckedGit @('config', '--local', '--replace-all', 'core.hooksPath', '.githooks')
-    Write-Host 'Enabled local YHAB hooks: pre-commit Quick; pre-push Fast.'
+    Write-Host 'Enabled local YHAB hook: pre-commit Quick.'
 }
 catch {
     [Console]::Error.WriteLine("Hook installation failed: $($_.Exception.Message)")

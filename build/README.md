@@ -65,8 +65,8 @@ and the repository-pinned Aspire CLI for Fast. Even its headless solution build
 requires `aspire` on `PATH` to build the AppHost; no running Aspire application is
 needed. Follow the [root setup guide](../README.md) for the pinned tooling.
 On Windows, use Git for Windows (its `sh` runs Git hooks), not Windows
-PowerShell 5.1; ensure GUI Git clients inherit a `PATH` containing `pwsh`,
-`dotnet`, and `aspire`. Stop any development Aspire instance before formatting/full builds on
+PowerShell 5.1; ensure GUI Git clients inherit a `PATH` containing `pwsh`.
+Stop any development Aspire instance before formatting/full builds on
 Windows to avoid locked outputs. The scripts never stop or delete developer
 resources automatically. Format verification does not replace the required
 [formatter fix-and-review pass](#formatting).
@@ -83,8 +83,8 @@ pwsh ./scripts/Install-GitHooks.ps1 -Uninstall
 The installer sets only local `core.hooksPath=.githooks`, makes hook files
 executable on Unix, and does not stage files. In a linked worktree, that local
 value belongs to the repository's shared Git config, so the hooks apply to every
-worktree unless a worktree-specific `core.hooksPath` overrides it. Pre-commit runs
-Quick; pre-push runs Fast once, regardless of pushed ref count. Existing effective hooks-path settings
+worktree unless a worktree-specific `core.hooksPath` overrides it. The only hook
+is pre-commit, which runs Quick. Existing effective hooks-path settings
 (including global ones) and custom default `.git/hooks` files are protected:
 installation refuses to replace them without `-Force`. Hooks are not chained.
 Before forcing, record `git config --show-origin --get-all core.hooksPath` and
@@ -98,8 +98,7 @@ by Git's normal options; CI remains authoritative.
 VS Code's **Tasks: Run Task** exposes **Test: Unit**, **Test: Components**, and
 **Validate: Fast**. The project tasks build their selected project normally; Fast
 builds once before its no-build tests. None is a watcher or launches an external
-application. Agent completion can use the same entry point through the separate
-[opt-in validation hook](agent-hooks.md#opt-in-agent-validation).
+application.
 
 ## Nullable reference types
 

@@ -23,7 +23,7 @@ Every `main` push runs non-browser validation and deploys to production; pull
 requests do not deploy. The full non-performance browser suite and extended
 performance cases run daily at 06:17 UTC and on demand in
 [Nightly browser and performance validation](../.github/workflows/nightly-browser.yml).
-`scripts/Get-ValidationScope.ps1` is shared by CI and local hooks.
+`scripts/Get-ValidationScope.ps1` is used only by CI.
 On its Ubuntu runner, it exports the test user's public HTTPS development
 certificate, adds it to the system CA store and Chromium's NSS database, and
 verifies both before testing. Only the public certificate is imported, using
