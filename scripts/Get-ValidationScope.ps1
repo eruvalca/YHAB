@@ -13,7 +13,7 @@ foreach ($path in $Paths) {
     if ($path -cmatch '^(README\.md|build/(README|agent-hooks)\.md|tests/README\.md|\.github/copilot-instructions\.md|\.github/instructions/[^/]+\.instructions\.md)\z') {
         continue
     }
-    if ($path -cmatch '^(\.github/hooks/[^/]+\.json|\.githooks/(pre-commit|pre-push)|\.vscode/tasks\.json|scripts/(Invoke-DocumentationReviewHook|Test-DocumentationReviewHook|Invoke-Validation|Install-GitHooks|Invoke-AgentValidationHook|Test-AgentValidationHook)\.ps1|scripts/ValidationLock\.psm1|scripts/Test-ValidationLock\.ps1)\z') {
+    if ($path -cmatch '^(\.github/hooks/[^/]+\.json|\.githooks/(pre-commit|pre-push)|\.vscode/tasks\.json|scripts/(Invoke-DocumentationReviewHook|Test-DocumentationReviewHook|Invoke-Validation|Install-GitHooks|Invoke-AgentValidationHook|Test-AgentValidationHook)\.ps1)\z') {
         continue
     }
     $application = $true

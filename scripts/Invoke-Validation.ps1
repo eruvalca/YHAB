@@ -12,14 +12,6 @@ param(
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 $repoRoot = Split-Path $PSScriptRoot
-$validationLockModule = Join-Path $PSScriptRoot 'ValidationLock.psm1'
-Import-Module -Name $validationLockModule -Force
-$validationMutex = $null
-
-function Invoke-SolutionBuild([string] $Configuration) {
-    Invoke-CheckedCommand 'dotnet' @('build-server', 'shutdown')
-    Invoke-CheckedCommand 'dotnet' @('build', 'YHAB.slnx', '--configuration', $Configuration, '--disable-build-servers')
-}
 
 function Invoke-CheckedCommand([string] $Command, [string[]] $Arguments) {
     Write-Host "> $Command $($Arguments -join ' ')"
@@ -38,11 +30,9 @@ try {
     try {
         Invoke-CheckedCommand 'git' @('diff', '--cached', '--check')
         if ($Scope -ne 'Quick') {
-            $validationMutex = Enter-ValidationLock -RepoRoot $repoRoot -TimeoutSeconds 60
             Invoke-CheckedCommand 'git' @('diff', '--check')
-            Invoke-CheckedCommand 'dotnet' @('build-server', 'shutdown')
             Invoke-CheckedCommand 'dotnet' @('format', 'YHAB.slnx', '--severity', 'warn', '--verify-no-changes')
-            Invoke-SolutionBuild $Configuration
+            Invoke-CheckedCommand 'dotnet' @('build', 'YHAB.slnx', '--configuration', $Configuration)
 
             if ($Scope -eq 'Full') {
                 Invoke-CheckedCommand 'dotnet' @('test', '--solution', 'YHAB.slnx', '--configuration', $Configuration, '--no-build', '--max-parallel-test-modules', '1')
@@ -70,10 +60,6 @@ try {
     }
     finally {
         Pop-Location
-        if ($null -ne $validationMutex) {
-            Exit-ValidationLock $validationMutex
-        }
-        Remove-Module ValidationLock -Force -ErrorAction SilentlyContinue
     }
 }
 catch {

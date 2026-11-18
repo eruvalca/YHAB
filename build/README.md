@@ -40,14 +40,9 @@ the [test guide](../tests/README.md) first. These checks inspect the working tre
 not an isolated commit snapshot, and do not cover untracked-file whitespace.
 Quick is not a test gate and does not prove the staged snapshot builds.
 
-Fast, Infrastructure and Full validation acquire an exclusive handle on the
-checkout's ignored `artifacts/.validation.lock` file before formatting/building.
-This prevents local validation processes from concurrently writing the
-checkout's `bin`/`obj` outputs, including across separate sessions. The lock
-timeout is 60 seconds; a conflicting process should finish or be stopped before
-the next validation starts. The lock file is persistent; only its open handle
-represents ownership. Solution builds shut down reusable build
-servers and use `--disable-build-servers` to avoid reusing compiler processes.
+Avoid running overlapping builds or differently configured builds in the same
+checkout, since they share `bin`/`obj` and generated Razor outputs. Use a
+separate worktree for concurrent experiments.
 
 Validation reports build and formatting failures directly; it does not
 automatically clean or force-restore. If a build produces widespread Razor parser
