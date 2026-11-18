@@ -91,10 +91,16 @@ else if (_result.Rows.Count > 0)
                                     <button type="button" disabled="@IsBusy" @onclick="() => Duplicate(entry)">Duplicate…</button>
                                 </div>
                             </details>
+                            <span class="mobile-meta">
+                                <span>@MobileDate(entry)</span>
+                                @if (entry.Repeat != RepeatFrequency.None) { <span>@TransactionEditor.FrequencyLabel(entry.Repeat)</span> }
+                                <span>@CategoryLabel(entry)</span>
+                                @if (!string.IsNullOrWhiteSpace(entry.Memo)) { <span class="mobile-memo">@entry.Memo</span> }
+                            </span>
                         </td>
                         <td><span class="category-label">@CategoryLabel(entry)</span>@if (!string.IsNullOrWhiteSpace(entry.Memo)) { <small class="memo-label">@entry.Memo</small> }</td>
-                        <td class="numeric money" data-money-tone="@(amount < 0 ? "negative" : "neutral")">@(amount < 0 ? Money(-amount) : "—")</td>
-                        <td class="numeric money" data-money-tone="@(amount > 0 ? "positive" : "neutral")">@(amount > 0 ? Money(amount) : "—")</td>
+                        <td class="numeric money" data-money-tone="@(amount < 0 ? "negative" : "neutral")"><span class="mobile-direction-label">Outflow: </span>@(amount < 0 ? Money(-amount) : "—")</td>
+                        <td class="numeric money" data-money-tone="@(amount > 0 ? "positive" : "neutral")"><span class="mobile-direction-label">Inflow: </span>@(amount > 0 ? Money(amount) : "—")</td>
                         @if (_account is not null) { <td class="numeric money" data-money-tone="@(entry.Repeat == RepeatFrequency.None ? MoneyTone(_running.GetValueOrDefault(entry.Id)) : "neutral")">@(entry.Repeat == RepeatFrequency.None ? Money(_running.GetValueOrDefault(entry.Id)) : "—")</td> }
                     </tr>
                 }
