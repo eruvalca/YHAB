@@ -16,7 +16,7 @@ no matching file — running tests, operating Aspire, deploying, authoring migra
 — loads none of them and you must read the owning file yourself. Do not preload
 unrelated guidance. The pointers below and inside those files cover cross-scope
 changes. Where a new rule belongs is documented in
-[instruction placement](../build/agent-hooks.md#instruction-placement).
+[instruction placement](../build/agent-instructions.md#instruction-placement).
 Bare paths and commands are relative to the repository root unless stated
 otherwise; Markdown links are relative to their containing file.
 
@@ -118,7 +118,7 @@ otherwise; Markdown links are relative to their containing file.
   This does not authorize a commit or broaden a read-only task.
 - Keep durable agent conventions in this file or in a path-scoped
   `.github/instructions` file, following the
-  [instruction placement](../build/agent-hooks.md#instruction-placement) rules.
+  [instruction placement](../build/agent-instructions.md#instruction-placement) rules.
   Setup and runtime workflows belong in `README.md`, build rules in
   `build/README.md`, and test conventions in `tests/README.md`.
   Update existing feature and workflow documentation rather than duplicating it.

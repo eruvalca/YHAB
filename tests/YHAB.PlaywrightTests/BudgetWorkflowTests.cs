@@ -524,7 +524,16 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         });
         await transaction.WaitForAsync();
         var transactionRow = (await transaction.BoundingBoxAsync()).ShouldNotBeNull();
-        transactionRow.Height.ShouldBeLessThanOrEqualTo(48);
+        transactionRow.Height.ShouldBeLessThanOrEqualTo(width <= 700 ? 64 : 48);
+        if (width <= 700)
+        {
+            (await page.Locator(".register-table").EvaluateAsync<bool>("table => table.scrollWidth <= table.clientWidth")).ShouldBeTrue();
+            (await transaction.Locator(".mobile-meta").InnerTextAsync()).ShouldContain("Groceries");
+            var selection = transaction.Locator("fluent-checkbox");
+            await selection.WaitForAsync();
+            (await selection.IsVisibleAsync()).ShouldBeTrue();
+            (await transaction.Locator("td:nth-child(5)").InnerTextAsync()).ShouldContain("Outflow");
+        }
         await transaction.GetByRole(AriaRole.Button, new() { Name = "Neighborhood market", Exact = true }).ClickAsync();
         await Input(page, "Amount").FillAsync("7.77");
         await Button(page, "Save transaction").ClickAsync();

@@ -2,9 +2,12 @@ $ErrorActionPreference = 'Stop'
 
 $cases = @(
     @{ Paths = @('README.md'); Application = $false; Deploy = $false },
-    @{ Paths = @('tests/README.md', '.github/instructions/ui.instructions.md'); Application = $false; Deploy = $false },
-    @{ Paths = @('.github/hooks/documentation-review.json', 'scripts/Test-DocumentationReviewHook.ps1'); Application = $false; Deploy = $false },
-    @{ Paths = @('scripts/Test-AgentValidationHook.ps1'); Application = $false; Deploy = $false },
+    @{
+        Paths = @('tests/README.md', '.github/instructions/ui.instructions.md', 'build/agent-instructions.md', 'build/agent-hooks.md')
+        Application = $false
+        Deploy = $false
+    },
+    @{ Paths = @('.vscode/tasks.json', 'scripts/Invoke-Validation.ps1'); Application = $false; Deploy = $false },
     @{ Paths = @("README.md`n"); Application = $true; Deploy = $true },
     @{ Paths = @('src/YHAB.UI/Page.razor'); Application = $true; Deploy = $true },
     @{ Paths = @('src/YHAB.Client/Program.cs'); Application = $true; Deploy = $true },
@@ -23,6 +26,12 @@ $cases = @(
     @{ Paths = @('README.md', 'deleted.cs'); Application = $true; Deploy = $true },
     @{ Paths = @(); Application = $true; Deploy = $true }
 )
+# Removed hook paths are no longer tooling-only; each must select full validation on its own.
+$cases += @(
+    '.githooks/pre-commit', '.githooks/pre-push', '.github/hooks/documentation-review.json', '.github/hooks/validation.json',
+    'scripts/Install-GitHooks.ps1', 'scripts/Invoke-DocumentationReviewHook.ps1', 'scripts/Test-DocumentationReviewHook.ps1',
+    'scripts/Invoke-AgentValidationHook.ps1', 'scripts/Test-AgentValidationHook.ps1'
+) | ForEach-Object { @{ Paths = @($_); Application = $true; Deploy = $true } }
 foreach ($case in $cases) {
     $scope = & "$PSScriptRoot/Get-ValidationScope.ps1" -Paths $case.Paths
     if ($scope.application -ne $case.Application -or $scope.deploy -ne $case.Deploy) {

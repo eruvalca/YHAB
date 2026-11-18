@@ -208,7 +208,11 @@ payments are entered manually.
 Plan settings rename the plan, store notes, rename payees throughout posted
 and recurring entries, and manage who can open the plan. The register supports search, date filters, sorting,
 flags, duplication, and bulk deletion. It displays 50 rows per
-page. Horizontal table scrolling preserves the surrounding mobile layout.
+page. On phones, the register becomes compact two-line rows without horizontal
+scrolling: payee/account and actions lead, date/category/memo fill the second
+line, and only the applicable outflow or inflow amount appears at the edge.
+Dates show the year when they fall outside the current year.
+Desktop retains the full ruled table.
 Filtering, sorting and cursor paging run in PostgreSQL. The browser receives the
 current page and its split details, not the entire transaction history. Running
 balances include earlier entries even when a search or date filter hides them.

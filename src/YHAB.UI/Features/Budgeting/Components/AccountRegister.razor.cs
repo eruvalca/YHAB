@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using YHAB.SharedKernel.Budgeting;
 
@@ -186,6 +187,9 @@ public sealed partial class AccountRegister
         }
     }
     private decimal DisplayAmount(TransactionData entry) => AccountId == entry.TransferAccountId && AccountId.HasValue ? -entry.Amount : entry.Amount;
+    private string MobileDate(TransactionData entry) => entry.Date.Year == Plan.Today.Year
+        ? entry.Date.ToString("MM/dd", CultureInfo.InvariantCulture)
+        : entry.Date.ToString("MM/dd/yyyy", CultureInfo.InvariantCulture);
     private string AccountName(Guid id) => (_rowPlan ?? Plan).Accounts.Single(item => item.Id == id).Name;
     private string PayeeLabel(TransactionData entry)
     {
