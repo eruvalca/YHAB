@@ -158,13 +158,12 @@ dotnet test --solution YHAB.slnx --max-parallel-test-modules 1
 ```
 
 For opt-in local feedback, `pwsh ./scripts/Invoke-Validation.ps1 -Scope Fast`
-verifies formatting, builds, and runs the headless tests. Install the optional
-pre-commit hook explicitly with `pwsh ./scripts/Install-GitHooks.ps1`; it checks
-staged whitespace only. Test resources are disposable and never use the
-development database volumes. The solution test command matches CI's project-level
-concurrency limit so database stress does not compete with AppHost/browser startup;
-per-project xUnit settings remain unchanged. Local checks complement, not replace,
-CI. See [local validation](build/README.md#local-validation-and-opt-in-git-hooks),
+verifies formatting, builds, and runs the headless tests. Test resources are
+disposable and never use the development database volumes. The solution test
+command matches CI's project-level concurrency limit so database stress does not
+compete with AppHost/browser startup; per-project xUnit settings remain unchanged.
+Local checks complement, not replace, CI. See
+[local validation](build/README.md#local-validation),
 [build rules](build/README.md) for formatting scope, analyzer rules, architecture
 checks, and the Razor code-behind policy, and
 [tests/README.md](tests/README.md) for test projects, prerequisites, layer
@@ -212,6 +211,6 @@ provisioning, the workflow sequence, and deployed diagnostics.
 | [docs/operations.md](docs/operations.md) | Health and telemetry, Identity account policy, password recovery, protected data. |
 | [docs/frontend.md](docs/frontend.md) | Fluent UI setup, typography, design tokens, render boundaries, installable app. |
 | [build/README.md](build/README.md) | SDK, package, formatting, analyzer, architecture, and Razor code-behind rules. |
-| [build/agent-hooks.md](build/agent-hooks.md) | Agent documentation hooks, instruction placement, and opt-in validation. |
+| [build/agent-instructions.md](build/agent-instructions.md) | Instruction sources, scope, and placement. |
 | [tests/README.md](tests/README.md) | Test projects, browser policy, architecture boundaries, assertions, runner settings. |
 | [.github/copilot-instructions.md](.github/copilot-instructions.md) | Repository-wide agent rules and routing to path-scoped instruction files. |

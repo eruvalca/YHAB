@@ -71,13 +71,12 @@ jobs:
       - uses: ./.github/actions/setup-dotnet
       - name: Check formatting
         run: dotnet format YHAB.slnx --severity warn --verify-no-changes
-      - name: Check workflow selection and documentation hooks
+      - name: Check workflow selection and script policies
         shell: pwsh
         run: |
           ./scripts/Test-ValidationScope.ps1
           ./scripts/Test-BrowserWorkflowPolicy.ps1
           ./scripts/Test-NightlyValidationIssue.ps1
-          ./scripts/Test-DocumentationReviewHook.ps1
       - name: Check project-reference policy
         shell: pwsh
         run: ./scripts/Test-ArchitectureProjectReferences.ps1
