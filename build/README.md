@@ -40,12 +40,12 @@ the [test guide](../tests/README.md) first. These checks inspect the working tre
 not an isolated commit snapshot, and do not cover untracked-file whitespace.
 Quick is not a test gate and does not prove the staged snapshot builds.
 
-Fast, Infrastructure and Full validation acquire a repository-specific named mutex
+Fast, Infrastructure and Full validation acquire a repository-specific file lock
 before formatting/building. This prevents two local validation processes from
 running concurrent solution builds against the same `bin`/`obj` outputs. Each
 solution build also shuts down reusable build servers and adds
 `--disable-build-servers`, keeping generated Razor/C# state out of a reused
-compiler process. The mutex timeout is 10 minutes; a conflicting process should
+compiler process. The lock timeout is 60 seconds; a conflicting process should
 finish or be stopped before the next validation starts.
 
 The validation entry point has narrow parser-failure recovery for format and

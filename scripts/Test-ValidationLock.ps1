@@ -1,6 +1,6 @@
 #requires -Version 7.0
 [CmdletBinding()]
-param()
+param([switch] $BuildSmoke)
 
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
@@ -45,6 +45,12 @@ catch {
     $freeExit = $LASTEXITCODE
     Assert-Result 'Validation lock succeeds after the holder releases it' ($freeExit -eq 0)
 
+    $subdirectory = Join-Path $fixtureRoot 'subdirectory'
+    New-Item -ItemType Directory -Path $subdirectory -Force | Out-Null
+    $rootLockPath = Get-ValidationLockPath $fixtureRoot
+    Assert-Result 'Checkout aliases resolve to the same lock file' (
+        $rootLockPath -eq (Get-ValidationLockPath $subdirectory))
+
     $parserOutput = @'
 src/YHAB.UI/Features/Account.razor(1,1): error RZ1021
 src/YHAB.UI/Features/Budget.razor(2,2): error RZ1009
@@ -66,13 +72,21 @@ src/YHAB.UI/Features/Plan.razor(3,3): error RZ9981
         $validationScript -match 'formatResult' -and
         $validationScript -match 'Widespread Razor parser failures detected during formatting')
 
-    Push-Location $repoRoot
-    try {
-        & dotnet build YHAB.slnx --configuration Debug --disable-build-servers
-        Assert-Result 'Solution build accepts build-server isolation' ($LASTEXITCODE -eq 0)
-    }
-    finally {
-        Pop-Location
+    if ($BuildSmoke) {
+        $repoLock = Enter-ValidationLock -RepoRoot $repoRoot -TimeoutSeconds 60
+        try {
+            Push-Location $repoRoot
+            try {
+                & dotnet build YHAB.slnx --configuration Debug --disable-build-servers
+                Assert-Result 'Solution build accepts build-server isolation while holding the checkout lock' ($LASTEXITCODE -eq 0)
+            }
+            finally {
+                Pop-Location
+            }
+        }
+        finally {
+            Exit-ValidationLock $repoLock
+        }
     }
 
     Write-Host "Validation lock checks: $passed passed, 0 failed, 0 skipped."

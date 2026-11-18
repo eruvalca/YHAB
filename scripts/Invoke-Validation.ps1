@@ -64,7 +64,7 @@ try {
     try {
         Invoke-CheckedCommand 'git' @('diff', '--cached', '--check')
         if ($Scope -ne 'Quick') {
-            $validationMutex = Enter-ValidationLock -RepoRoot $repoRoot -TimeoutSeconds 600
+            $validationMutex = Enter-ValidationLock -RepoRoot $repoRoot -TimeoutSeconds 60
             Invoke-CheckedCommand 'git' @('diff', '--check')
             Invoke-CheckedCommand 'dotnet' @('build-server', 'shutdown')
             $formatArguments = @('format', 'YHAB.slnx', '--severity', 'warn', '--verify-no-changes')

@@ -79,7 +79,12 @@ jobs:
           ./scripts/Test-NightlyValidationIssue.ps1
           ./scripts/Test-DocumentationReviewHook.ps1
           ./scripts/Test-AgentValidationHook.ps1
-          ./scripts/Test-ValidationLock.ps1
+          if ('${{ needs.changes.outputs.application }}' -eq 'true') {
+            ./scripts/Test-ValidationLock.ps1 -BuildSmoke
+          }
+          else {
+            ./scripts/Test-ValidationLock.ps1
+          }
       - name: Check project-reference policy
         shell: pwsh
         run: ./scripts/Test-ArchitectureProjectReferences.ps1
