@@ -39,7 +39,7 @@ A first session is short:
 | Web app | .NET 11 Blazor: server project with a hosted WebAssembly client; the budgeting workspace runs `InteractiveAuto`, other pages use static SSR with enhanced navigation. |
 | UI | Fluent UI Blazor 5.0.1, self-hosted Plus Jakarta Sans, application CSS design tokens. |
 | Data | PostgreSQL 18 through EF Core 10, Npgsql, and ASP.NET Core Identity. |
-| Orchestration | .NET Aspire 13.6 AppHost; Docker for local PostgreSQL, Azure Container Apps in production. |
+| Orchestration | .NET Aspire 17 path-based AppHost; Docker for local PostgreSQL, Azure Container Apps in production. |
 | Tests | xUnit v3 on Microsoft.Testing.Platform, bUnit, Testcontainers, and Playwright. |
 
 Project boundaries and dependency direction:
@@ -54,11 +54,25 @@ Project boundaries and dependency direction:
 | `YHAB.AppHost` | Aspire resource graph, migrations resource, and Azure deployment model. |
 
 `YHAB.Client` and `YHAB.UI` never reference the server project, and
-`YHAB.SharedKernel` references no other project. Aspire starts the graph in this
-order:
+`YHAB.SharedKernel` references no other project. The live Aspire 17 resource graph
+below was generated with `aspire describe --format mermaid`. It shows the active
+application resources; optional pgAdmin and hidden build/tool helpers are omitted
+by that command's default view. Edge direction records Aspire relationships, not
+only startup order, so the reciprocal web/migration edges represent the migration
+resource's startup-project relationship and the web resource's wait for migration
+completion.
 
-```text
-postgres → yhabdb → yhab-migrations → yhab (server + WebAssembly client)
+```mermaid
+flowchart LR
+    resource0["postgres"]
+    resource1["yhab-migrations"]
+    resource2["yhab"]
+    resource3["yhabdb"]
+    resource1 --> resource2
+    resource1 --> resource3
+    resource2 --> resource1
+    resource2 --> resource3
+    resource3 --> resource0
 ```
 
 See the [frontend guide](docs/frontend.md) for Fluent UI setup, styling tokens,
@@ -70,8 +84,10 @@ render boundaries, and the installable app.
 - A CPU that meets the .NET 11 baseline: x86-64-v2 or later on x64, or Arm64 with
   LSE atomics. The deployed Container Apps host and current development machines
   already qualify; older self-hosted runners and virtual machines may not.
-- Aspire CLI **13.6.5** on `PATH` (the version the deployment workflow pins), with
-  the AppHost SDK on **13.6.5**. Follow the
+- Aspire CLI **17.0.0** on `PATH` (the version the deployment workflow pins),
+  with stable hosting packages on 17.0.0. The experimental EF migration
+  integration uses its matching 17.0 preview, while application-side Npgsql
+  integrations remain on their latest stable 13.6.5 release. Follow the
   [Aspire installation guide](https://aspire.dev/get-started/install/).
 - Docker Desktop running Linux containers, or another Aspire-supported container runtime.
 - A trusted .NET development HTTPS certificate: `dotnet dev-certs https --trust`.

@@ -103,9 +103,9 @@ vulnerable transitive package, add a direct versionless reference with a comment
 in each affected project, then remove that reference once the owning package
 references a patched version.
 
-SDK declarations, including `Aspire.AppHost.Sdk` and `global.json`, retain their
-own version settings. SDK-provided implicit package references remain under SDK
-control. Do not introduce nested `Directory.Packages.props` files or per-project
+SDK declarations, including `global.json`, retain their own version settings.
+SDK-provided implicit package references remain under SDK control. Do not
+introduce nested `Directory.Packages.props` files or per-project
 `VersionOverride` entries without a documented need: NuGet automatically imports
 only the nearest central package file.
 

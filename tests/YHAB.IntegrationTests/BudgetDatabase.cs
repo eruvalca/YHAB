@@ -22,7 +22,7 @@ internal sealed class BudgetDatabase(PostgreSqlContainer container, ServiceProvi
         => BuildServices(container.GetConnectionString(), provider.GetRequiredService<TimeProvider>(), null, logger);
     public static async Task<BudgetDatabase> CreateAsync(CancellationToken cancellationToken, TimeProvider? timeProvider = null, IInterceptor? interceptor = null)
     {
-        var container = new PostgreSqlBuilder("postgres:18.3").Build();
+        var container = new PostgreSqlBuilder("postgres:18.6").Build();
         ServiceProvider? provider = null;
         try
         {

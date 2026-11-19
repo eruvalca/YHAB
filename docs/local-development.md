@@ -33,7 +33,7 @@ clients that do not resolve subdomains can use the internal `https://localhost`
 endpoint shown by Aspire. Do not copy ports or dashboard login tokens into source.
 
 The background command explicitly selects `https`; it is also the AppHost's first
-and default launch profile. `AddProject` selects the
+and default launch profile. `AddDotnetProject` selects the
 matching web profile and derives its endpoints from `applicationUrl`; there is no
 AppHost override for the web profile or its ports. The web profiles retain
 `yhab.dev.localhost:0`: the hostname is our local convention, and port `0` asks
@@ -41,12 +41,15 @@ Aspire to allocate an available port instead of using the template's fixed ports
 The other web launch settings preserve the template's environment and Blazor debugging.
 
 The AppHost's `https` profile omits dashboard, OTLP, and resource-service addresses:
-Aspire 13.6 supplies secure, dynamically allocated local endpoints. The optional
+Aspire 17 supplies secure, dynamically allocated local endpoints. The optional
 AppHost `http` profile sets `ASPIRE_ALLOW_UNSECURED_TRANSPORT=true`, which opts into
 HTTP endpoints with allocated ports. This opt-in applies only when that profile
 is selected; the default `https` profile keeps Aspire's secure defaults.
 
 Use the web resource's **Rebuild** command to apply compiled application changes.
+`AddDotnetProject` supports coordinated initial builds, but Aspire 17 does not yet
+provide the legacy service/AppHost watch workflow for this resource model; do not
+replace the Rebuild procedure with `aspire run --watch`.
 For AppHost changes or a full solution build, stop first to release Windows file locks:
 
 ```powershell
@@ -78,7 +81,7 @@ and volume together if preserving development data.
 ## Resource graph and database
 
 ```text
-postgres (PostgreSQL 18.3, managed data volume)
+postgres (PostgreSQL 18.6, managed data volume)
   ├─ yhabdb (physical database: yhab)
   │    └─ yhab-migrations (EF database update)
   │         └─ yhab (Blazor server + hosted WebAssembly)
@@ -101,7 +104,8 @@ An **Exited**, **Failed**, or **Unhealthy** application/database resource, or we
 startup blocked by failed migrations, does require investigation through its logs.
 
 The PostgreSQL image version is the built-in default of
-`Aspire.Hosting.PostgreSQL` 13.6.5. Container lifetime remains Aspire's default
+`Aspire.Hosting.PostgreSQL` 17.0.0: PostgreSQL 18.6 with pgAdmin 9.19.0.
+Container lifetime remains Aspire's default
 session lifetime. Data uses an Aspire-managed named volume rather than a repository
 file. This is a fresh PostgreSQL schema; the original SQLite scaffold is removed.
 
@@ -179,7 +183,7 @@ See the [Aspire VS Code extension guide](https://aspire.dev/get-started/aspire-v
 
 ## EF migrations
 
-`Aspire.Hosting.EntityFrameworkCore` **13.6.5-preview.1.26559.7** manages
+`Aspire.Hosting.EntityFrameworkCore` **17.0.0-preview.1.26567.5** manages
 `yhab-migrations` and its **dotnet-ef 10.0.14** tool. It does not alter the machine's
 global EF tool. On every start, migrations wait for PostgreSQL and the database;
 the web application starts only after migration success. Failure blocks web startup.
@@ -238,7 +242,7 @@ Useful CLI commands include `aspire logs yhab`, `aspire otel traces`, and
 visibility to agents. Database query telemetry can contain application information;
 keep exports and runtime logs out of Git.
 
-Aspire 13.6 retains dashboard run history automatically in **Run** persistence
+Aspire 17 retains dashboard run history automatically in **Run** persistence
 mode. Use the header's run selector to compare the live run with completed runs;
 historical runs are read-only. Up to ten unpinned runs are retained per application,
 and pinning keeps a useful run. Console logs are only persisted after their stream
@@ -272,14 +276,14 @@ none may repeat a rule stated elsewhere, because Copilot merges instruction sour
 without a precedence rule and duplicated or conflicting text is unsafe. See
 [instruction sources and scope](../build/agent-instructions.md#instruction-sources-and-scope).
 
-Shared repository skills live only in `.agents/skills`, supported by Copilot CLI.
-Copilot desktop inherits repository/CLI skills and MCP configuration.
-The Aspire skills use the first-party **aspire-skills v0.0.3** bundle refreshed
-with CLI 13.6.0. Local corrections document 13.6's Project v2 diagnostic changes
-and the distinction between persistent-resource cleanup and volume deletion.
-Reconcile those corrections when refreshing the skills; use installed package/API
-evidence and current documentation when upstream guidance differs. Project v2
-migration remains deferred; the AppHost continues to use `AddProject`.
+Repository-owned skills that encode YHAB-specific workflows remain in
+`.agents/skills`. Aspire workflow skills are supplied by the first-party
+`aspire@aspire-skills` plugin configured in
+[`.github/copilot/settings.json`](../.github/copilot/settings.json). Copilot CLI
+and the Copilot app load the configured plugin rather than copied skill folders.
+Do not retain or regenerate static copies of the Aspire skill bundle: they drift
+from the installed Aspire CLI and package APIs. The AppHost now uses the stable
+path-based `AddDotnetProject` model.
 
 The user-level Copilot MCP entry runs **`aspire agent mcp`**. Keep a single entry.
 No repository MCP duplicate or VS Code agent configuration is required. On a new
@@ -292,20 +296,22 @@ machine, install Aspire on `PATH`, then:
   repository and use the Aspire MCP resource-list tool to verify the connection.
   If several AppHosts are running, select this repository's AppHost explicitly.
 
-The checked-in skills require no additional installation on clone. Keep each skill
-a directory holding a `SKILL.md` whose front-matter `name` is a kebab-case slug
-matching that directory, with a short `description`. `copilot skill list` is the
-authority on what actually loads: it reports each rejected `SKILL.md` and the
-reason on standard error while still exiting 0, so check its output rather than
-assuming a skill loaded. Two failures are easy to hit: a `description` longer than
-1024 characters, and a `SKILL.md` placed directly in `.agents/skills`, which loads
-in place of the directory skills and silently hides them.
+The checked-in repository-owned skills require no additional installation on clone.
+Keep each directory's `SKILL.md` name aligned with its directory and its activation
+description concise. `copilot skill list` is the authority on what actually loads:
+it reports each rejected `SKILL.md` while still exiting 0.
 
-To refresh the Aspire skills, use the matching CLI's `aspire agent init` with the
-**standard** skill location (`.agents/skills`), then review the diff. Avoid
-creating alternate copies under `.github` or VS Code agent configuration. Keep
-user secrets, dashboard tokens, runtime `.aspire` state,
-telemetry exports, and temporary browser output out of source control.
+Refresh the Aspire plugin configuration with the matching CLI:
+
+```powershell
+aspire agent init --agents copilot --skills aspire --scope project --non-interactive
+```
+
+Review the resulting `.github/copilot/settings.json` change. If older CLI versions
+copied Aspire skill folders back into a clone, remove only those plugin-owned copies
+with `--remove-skill-copies`; preserve YHAB-authored skills such as
+`instruction-hygiene`. Keep user secrets, dashboard tokens, runtime `.aspire`
+state, telemetry exports, and temporary browser output out of source control.
 
 The repository-authored
 [instruction hygiene skill](../.agents/skills/instruction-hygiene/SKILL.md) is
