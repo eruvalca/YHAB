@@ -18,6 +18,8 @@
     <PackageReference Include="Aspire.Hosting.EntityFrameworkCore" />
     <PackageReference Include="Aspire.Hosting.PostgreSQL" />
     <PackageReference Include="Azure.ResourceManager.AppContainers" />
+    <!-- EF bundle publishing needs the startup project's restored build graph on clean runners. -->
+    <ProjectReference Include="..\YHAB\YHAB.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>
