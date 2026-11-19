@@ -12,14 +12,14 @@ IResourceBuilder<IResourceWithConnectionString> database = postgres is not null
     ? postgres.AddDatabase("yhabdb", "yhab")
     : AzureDeployment.AddDatabase(builder);
 
-var web = builder.AddProject<Projects.YHAB>("yhab")
+var web = builder.AddDotnetProject("yhab", "../YHAB/YHAB.csproj")
     .WithReference(database)
     .WaitFor(database)
     .WithExternalHttpEndpoints()
     .WithHttpHealthCheck("/health");
 
 // Pin the managed EF tool to the application's EF Core version rather than the global tool.
-#pragma warning disable ASPIREDOTNETTOOL // The agreed Aspire EF migration integration uses the experimental tool resource API.
+#pragma warning disable ASPIREDOTNETTOOL, ASPIREPROJECTS001 // The agreed Aspire EF migration integration uses experimental project/tool APIs.
 var migrations = web.AddEFMigrations("yhab-migrations", "YHAB.Data.ApplicationDbContext",
         tool => tool.WithToolVersion("10.0.14"))
     .WithReference(database)
@@ -28,7 +28,7 @@ var migrations = web.AddEFMigrations("yhab-migrations", "YHAB.Data.ApplicationDb
     .WithEnvironment("ASPNETCORE_URLS", "http://127.0.0.1:0")
     .WithMigrationOutputDirectory("Data/Migrations")
     .WithMigrationNamespace("YHAB.Migrations");
-#pragma warning restore ASPIREDOTNETTOOL
+#pragma warning restore ASPIREDOTNETTOOL, ASPIREPROJECTS001
 
 if (postgres is not null)
 {

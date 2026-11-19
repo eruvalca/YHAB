@@ -22,7 +22,7 @@ public sealed class IdentityPersistenceTests
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         timeout.CancelAfter(TimeSpan.FromMinutes(2));
-        await using var postgres = new PostgreSqlBuilder("postgres:18.3").Build();
+        await using var postgres = new PostgreSqlBuilder("postgres:18.6").Build();
         await postgres.StartAsync(timeout.Token);
         var services = new ServiceCollection();
         services.AddLogging();
@@ -68,8 +68,8 @@ public sealed class IdentityPersistenceTests
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         timeout.CancelAfter(TimeSpan.FromMinutes(2));
-        // Match Aspire.Hosting.PostgreSQL 13.6.0's default image; review together on upgrades.
-        await using var postgres = new PostgreSqlBuilder("postgres:18.3").Build();
+        // Match Aspire.Hosting.PostgreSQL 17.0's default image; review together on upgrades.
+        await using var postgres = new PostgreSqlBuilder("postgres:18.6").Build();
         await postgres.StartAsync(timeout.Token);
 
         var services = new ServiceCollection();

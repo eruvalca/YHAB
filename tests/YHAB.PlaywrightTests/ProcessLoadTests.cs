@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Text.Json;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
+using Aspire.Hosting.Dotnet;
 using Aspire.Hosting.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Playwright;
@@ -29,7 +30,7 @@ public sealed class ProcessLoadTests(ITestOutputHelper output)
         (planCount is 1 or 8).ShouldBeTrue("measure one shared plan or eight independently edited plans");
         timeout.CancelAfter(TimeSpan.FromSeconds(seconds + 240));
         await using var builder = await TestAppHost.CreateAsync(timeout.Token);
-        var web = builder.Resources.OfType<ProjectResource>().Single(item => string.Equals(item.Name, "yhab", StringComparison.Ordinal));
+        var web = builder.Resources.OfType<DotnetProjectResource>().Single(item => string.Equals(item.Name, "yhab", StringComparison.Ordinal));
         builder.CreateResourceBuilder(web).WithReplicas(2);
         await using var app = await builder.BuildAsync(timeout.Token);
         await app.StartAsync(timeout.Token);

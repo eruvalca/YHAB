@@ -1,5 +1,6 @@
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Azure;
+using Aspire.Hosting.Dotnet;
 using Aspire.Hosting.EntityFrameworkCore;
 using Aspire.Hosting.Pipelines;
 using Azure.Provisioning;
@@ -28,7 +29,7 @@ internal static class AzureDeployment
         return postgres.AddDatabase("yhabdb", "yhab");
     }
 
-    internal static void Configure(IDistributedApplicationBuilder builder, IResourceBuilder<ProjectResource> web,
+    internal static void Configure(IDistributedApplicationBuilder builder, IResourceBuilder<DotnetProjectResource> web,
         IResourceBuilder<EFMigrationResource> migrations)
     {
         var logs = builder.AddAzureLogAnalyticsWorkspace("logs");
@@ -98,8 +99,7 @@ internal static class AzureDeployment
         HttpHeaders = { new ContainerAppHttpHeaderInfo { Name = "X-Forwarded-Proto", Value = "https" } },
     };
 
-#pragma warning disable ASPIREPIPELINES001 // Aspire's deployment pipeline API is needed to gate web provisioning on a successful migration.
-    private static void ConfigureMigrationGate(IDistributedApplicationBuilder builder, ProjectResource web, EFMigrationResource migrations)
+    private static void ConfigureMigrationGate(IDistributedApplicationBuilder builder, DotnetProjectResource web, EFMigrationResource migrations)
     {
         const string MigrationStep = "apply-yhab-migrations";
         builder.Pipeline.AddStep(MigrationStep,
@@ -131,5 +131,4 @@ internal static class AzureDeployment
             return Task.CompletedTask;
         });
     }
-#pragma warning restore ASPIREPIPELINES001
 }

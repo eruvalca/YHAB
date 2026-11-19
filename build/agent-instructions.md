@@ -25,8 +25,11 @@ Verified against the installed GitHub Copilot CLI with
 - `/instructions` in an interactive session lists the discovered files and can
   disable one for that session.
 
-Project skills are discovered from `.github/skills`, `.agents/skills`, or
-`.claude/skills`; this repository keeps them only in `.agents/skills`.
+Repository-owned project skills are discovered from `.github/skills`,
+`.agents/skills`, or `.claude/skills`; YHAB keeps its own skills in
+`.agents/skills`. First-party Aspire workflow skills instead come from the plugin
+configured in `.github/copilot/settings.json`; do not copy that plugin into the
+repository.
 
 ## Instruction placement
 
@@ -42,8 +45,9 @@ Where a new rule belongs:
   `.github/copilot-instructions.md` must therefore name every rule-owning file, so
   work that touches no matching file — running tests, operating Aspire, deploying,
   authoring migrations — still finds its rules.
-- A detailed, reusable workflow belongs in a repository-owned `.agents/skills`
-  entry with a clear activation description, plus a short conditional routing
-  instruction when its use is mandatory. This also suits file-type guidance
-  spanning several directories. Reference existing setup, feature, build, and test
-  documentation instead of copying it into instructions or skills.
+- A detailed, reusable YHAB workflow belongs in a repository-owned
+  `.agents/skills` entry with a clear activation description, plus a short
+  conditional routing instruction when its use is mandatory. First-party product
+  workflows should come from their configured plugin instead of a copied bundle.
+  Reference existing setup, feature, build, and test documentation instead of
+  copying it into instructions or skills.

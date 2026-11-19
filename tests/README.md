@@ -399,7 +399,8 @@ Existing stack selected September 26, 2026; infrastructure/browser additions
 verified October 2, 2026; all versions re-verified against the repository
 manifests (`Directory.Packages.props`, `global.json`) and the extension baseline
 on November 5, 2026; stack updated for the .NET 11 migration and follow-up
-package upgrades on November 11, 2026:
+package upgrades on November 11, 2026, then migrated to Aspire 17 on
+November 18, 2026:
 
 | Component | Version |
 | --- | --- |
@@ -415,7 +416,7 @@ package upgrades on November 11, 2026:
 | Microsoft.Testing.Extensions.TrxReport | 2.5.3 |
 | Microsoft.Testing.Extensions.CodeCoverage | 18.12.0 |
 | xunit.analyzers | 2.3.0 |
-| Aspire.Hosting.Testing (matches AppHost) | 13.6.5 |
+| Aspire.Hosting.Testing (matches AppHost) | 17.0.0 |
 | Testcontainers.PostgreSql | 4.16.0 |
 | Microsoft.Playwright | 1.64.1 |
 | C# Dev Kit (stable baseline) | 3.40.210 |
@@ -603,7 +604,7 @@ PostgreSQL SQL translation, migrations, constraints, transactions, Identity stor
 or a service whose dependency injection you need to control. The initial test
 applies real migrations, writes an Identity user, reads it in a fresh scope, and
 checks normalized duplicate-name handling. Each test owns a disposable container
-with dynamic ports, using `postgres:18.3` to match Aspire 13.6. Keep the resource
+with dynamic ports, using `postgres:18.6` to match Aspire 17. Keep the resource
 reaper enabled; do not use development connection strings or container reuse.
 For future in-process HTTP tests, `WebApplicationFactory` can be combined with
 these containers. This project does not verify AppHost wiring or browser behavior.
@@ -611,7 +612,7 @@ these containers. This project does not verify AppHost wiring or browser behavio
 Use **Aspire integration tests** when the subject is the assembled application:
 resource references, connection injection, migrations before web startup, readiness,
 service discovery and HTTP contracts across process boundaries. These use
-`Aspire.Hosting.Testing` 13.6.5, matching the AppHost rather than independently
+`Aspire.Hosting.Testing` 17.0.0, matching the AppHost rather than independently
 upgrading its testing package. The initial test waits for the real web health
 check and migration completion, then checks health, liveness, Home and Login.
 Aspire starts actual processes, so test DI does not replace services in the web

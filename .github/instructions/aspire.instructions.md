@@ -29,8 +29,8 @@ running tests. Detailed setup and runtime procedures remain in the
   Stop Aspire before formatting/full builds on Windows and when agent validation
   is finished. Ordinary shutdown uses `aspire stop`; `--force` removes persistent
   resource instances and requires explicit destructive intent for one AppHost.
-  In 13.6, named volumes are preserved unless `--volumes` is also requested;
-  never add either cleanup flag to routine validation.
+  Ordinary `aspire stop` preserves named volumes; never add `--force` or
+  `--volumes` to routine validation.
 - Keep the Aspire CLI workflow pin, the compatible Aspire package set including
   the explicitly selected `Aspire.Hosting.EntityFrameworkCore` preview, and the
   managed EF tool version in `AppHost.cs` aligned with each other and with the
@@ -39,8 +39,10 @@ running tests. Detailed setup and runtime procedures remain in the
   on the runtime image matching the projects' target framework: the EF bundle is
   framework-dependent, so a stale image fails the migration job and blocks web
   deployment.
-  Use `.agents/skills` as the shared skill location; retain the single user-level
-  `aspire agent mcp` entry for each agent rather than adding repository duplicates.
+  Aspire workflow skills come from the plugin configured in
+  `.github/copilot/settings.json`; do not retain static copies of that plugin.
+  Retain the single user-level `aspire agent mcp` entry for each agent rather
+  than adding repository duplicates.
 - pgAdmin is an explicit-start, run-mode developer tool. See `README.md` for
   endpoint discovery, data persistence, and telemetry. PostgreSQL's **REPL**
   command opens `psql`; use `\connect yhab` to select the application database

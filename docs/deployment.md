@@ -147,7 +147,7 @@ aspire deploy --environment Production --non-interactive
 Publishing generates a preview and migration bundle without applying infrastructure.
 The diagnostics step shows the fully initialized dependency graph, including
 `apply-yhab-migrations` before `provision-yhab-containerapp`; `--list-steps` alone
-does not materialize all Azure targets in Aspire 13.6. Deploy reads the AppHost
+does not materialize all Azure targets. Deploy reads the AppHost
 model again. Keep generated artifacts, deployment state and telemetry out of Git
 and public workflow artifacts. Local deploys must not overlap a GitHub deploy.
 
