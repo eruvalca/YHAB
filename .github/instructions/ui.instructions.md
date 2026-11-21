@@ -99,7 +99,7 @@ assets/provider setup and [build rules](../../build/README.md) for enforcement.
   must work without an interactive form. Do not bulk-convert them to web components.
 - A decimal keypad has no minus key, so a field that must accept a negative amount
   sets `AllowNegative` on `AmountInput` and uses the `±` control it renders; a
-  dense column with no room for that control keeps `InputMode="Text"` instead.
+  dense column with no room for that control keeps `InputMode="TextInputMode.Text"` instead.
   Leaving it unset silently removes touch entry for that field. A positive-only
   field sets `RejectNegative`, which rejects typed negative literals and expression
   results without hiding a stored negative value. The budget table's monthly
