@@ -58,6 +58,49 @@ public sealed class TransactionEditorTests
     }
 
     [Fact]
+    public void InlineEditorDisplaysTheSelectedStoredCategory()
+    {
+        using var context = CreateContext();
+        var plan = CreatePlan();
+        var category = plan.Categories[0];
+        var transaction = new TransactionData(Guid.CreateVersion7(), plan.Accounts[0].Id, plan.Today, "Shop", "", -10, null, "",
+            [new SplitData(Guid.CreateVersion7(), category.Id, -10, "")]);
+        var component = context.Render<TransactionEditor>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.Payees, []).Add(item => item.Transaction, transaction)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnClose, () => { })
+            .Add(item => item.Inline, true));
+
+        component.Find("fluent-dropdown[placeholder='Choose a category']")
+            .QuerySelector($"fluent-option[value='{category.Id}'][selected]")
+            .ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task InlineEditorCanSaveAfterAnInvalidColumnIsReplacedByTheOppositeDirectionAsync()
+    {
+        await using var context = CreateContext();
+        var plan = CreatePlan();
+        var transaction = new TransactionData(Guid.CreateVersion7(), plan.Accounts[0].Id, plan.Today, "Shop", "", -10, null, "",
+            [new SplitData(Guid.CreateVersion7(), plan.Categories[0].Id, -10, "")]);
+        var commands = new List<PlanCommand>();
+        var component = context.Render<TransactionEditor>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.Payees, []).Add(item => item.Transaction, transaction)
+            .Add(item => item.OnCommand, commands.Add).Add(item => item.OnClose, () => { })
+            .Add(item => item.Inline, true));
+
+        await component.FindAll(".transaction-ledger-amount fluent-text-input")[0]
+            .ChangeAsync(new() { Value = "invalid" });
+        SaveButton(component).HasAttribute("disabled").ShouldBeTrue();
+
+        await component.FindAll(".transaction-ledger-amount fluent-text-input")[1]
+            .ChangeAsync(new() { Value = "12.50" });
+
+        SaveButton(component).HasAttribute("disabled").ShouldBeFalse();
+        await SaveButton(component).ClickAsync();
+        commands.Single().ShouldBeOfType<SaveTransaction>().Transaction.Amount.ShouldBe(12.50m);
+    }
+
+    [Fact]
     public async Task InlineEditorSavesFromOutflowColumnAsync()
     {
         await using var context = CreateContext();

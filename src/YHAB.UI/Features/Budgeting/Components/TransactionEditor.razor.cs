@@ -58,6 +58,26 @@ public sealed partial class TransactionEditor
     private decimal InflowAmount => IsOutflow ? 0 : Amount;
     private static string CategoryText(CategoryData? category) => category?.Name ?? string.Empty;
     private static Guid CategoryValue(CategoryData? category) => category?.Id ?? Guid.Empty;
+    private IEnumerable<CategoryData> SelectedCategories()
+    {
+        var selected = CategoryOptions.SingleOrDefault(item => item.Id == _category);
+        return selected is null ? [] : [selected];
+    }
+    private IEnumerable<CategoryData> SelectedSplitCategories(SplitInput split)
+    {
+        var selected = SplitCategoryOptions(split).SingleOrDefault(item => item.Id == split.Category);
+        return selected is null ? [] : [selected];
+    }
+    private Task SelectCategoryAsync(IEnumerable<CategoryData> selected)
+    {
+        _category = selected.SingleOrDefault()?.Id ?? Guid.Empty;
+        return Task.CompletedTask;
+    }
+    private static Task SelectSplitAsync(SplitInput split, IEnumerable<CategoryData> selected)
+    {
+        split.Category = selected.SingleOrDefault()?.Id ?? Guid.Empty;
+        return Task.CompletedTask;
+    }
     private decimal SignedAmount => IsOutflow ? -Math.Abs(Amount) : Math.Abs(Amount);
     private int DirectionSign => IsOutflow ? -1 : 1;
     private bool BudgetOutflow => DirectionSign * BudgetDirection < 0;

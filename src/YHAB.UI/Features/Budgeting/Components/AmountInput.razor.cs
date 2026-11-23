@@ -40,9 +40,9 @@ public sealed partial class AmountInput
     private int _signGesture;
     private int? _suppressedSignGesture;
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
-        SynchronizeValue();
+        var restoredValidity = SynchronizeValue();
         // A recreated editor restores the raw text it had not committed. The owner only supplies
         // draft text at mount, so this applies once: a later render carries a newer draft that
         // must not overwrite what the person is typing.
@@ -54,7 +54,11 @@ public sealed partial class AmountInput
                 _text = InitialText;
                 _lastValue = Value;
                 // Unfinished text is restored as the invalid amount it is, not presented as valid.
-                if (!TryGetAmount(_text, out _, out var restoredError)) { _error = restoredError; }
+                if (!TryGetAmount(_text, out _, out var restoredError))
+                {
+                    _error = restoredError;
+                    if (ValidChanged.HasDelegate) { await ValidChanged.InvokeAsync(false); }
+                }
             }
         }
         if (_pointerGesture && _pointerReleased && (Disabled || ReadOnly))
@@ -64,16 +68,21 @@ public sealed partial class AmountInput
             _pointerReleased = false;
             _suppressedSignGesture = null;
         }
+        if (restoredValidity && ValidChanged.HasDelegate) { await ValidChanged.InvokeAsync(true); }
     }
 
-    private void SynchronizeValue()
+    private bool SynchronizeValue()
     {
         if (!_evaluating && _lastValue != Value)
         {
+            var wasInvalid = _error is not null;
             _lastValue = Value;
             _text = Value.ToString("0.00", CultureInfo.InvariantCulture);
             _error = null;
+            return wasInvalid;
         }
+
+        return false;
     }
 
     // The sign button is pressed while the amount field still has focus. Its

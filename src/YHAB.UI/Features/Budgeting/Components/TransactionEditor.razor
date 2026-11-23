@@ -15,6 +15,7 @@
                 {
                     <FluentCombobox @key="BudgetOutflow" Margin="0" Size="ListSize.Large" TOption="CategoryData" TValue="Guid" Label="Category"
                                     Items="CategoryOptions" OptionText="CategoryText" OptionValue="CategoryValue" Placeholder="@ChooseCategory"
+                                    SelectedItems="SelectedCategories()" SelectedItemsChanged="SelectCategoryAsync"
                                     aria-invalid="@(CategoryMissing || CategoryUnavailable ? "true" : "false")"
                                     aria-describedby="@(CategoryMissing || CategoryUnavailable ? "transaction-category-error" : null)"
                                     @bind-Value="_category" />
@@ -65,6 +66,7 @@
                                     <FluentGridItem Xs="12" Md="5">
                                         <FluentCombobox @key="SplitNeedsCategory(split)" Margin="0" Size="ListSize.Large" TOption="CategoryData" TValue="Guid" Label="Split category"
                                                         Items="SplitCategoryOptions(split)" OptionText="CategoryText" OptionValue="CategoryValue" Placeholder="@ChooseCategory"
+                                                        SelectedItems="SelectedSplitCategories(split)" SelectedItemsChanged="items => SelectSplitAsync(split, items)"
                                                         aria-invalid="@(SplitCategoryMissing(split) || SplitCategoryUnavailable(split) ? "true" : "false")"
                                                         aria-describedby="@(SplitCategoryMissing(split) || SplitCategoryUnavailable(split) ? $"{split.Id}-category-error" : null)"
                                                         @bind-Value="split.Category" />
@@ -105,6 +107,7 @@
             {
                 <FluentCombobox @key="BudgetOutflow" Margin="0" Size="ListSize.Large" TOption="CategoryData" TValue="Guid" Label="Category"
                                 Items="CategoryOptions" OptionText="CategoryText" OptionValue="CategoryValue" Placeholder="@ChooseCategory"
+                                SelectedItems="SelectedCategories()" SelectedItemsChanged="SelectCategoryAsync"
                                 aria-invalid="@(CategoryMissing || CategoryUnavailable ? "true" : "false")"
                                 aria-describedby="@(CategoryMissing || CategoryUnavailable ? "transaction-category-error" : null)"
                                 @bind-Value="_category" />
@@ -124,6 +127,7 @@
                             <FluentGridItem Xs="12" Md="5">
                                 <FluentCombobox @key="SplitNeedsCategory(split)" Margin="0" Size="ListSize.Large" TOption="CategoryData" TValue="Guid" Label="Split category"
                                                 Items="SplitCategoryOptions(split)" OptionText="CategoryText" OptionValue="CategoryValue" Placeholder="@ChooseCategory"
+                                                SelectedItems="SelectedSplitCategories(split)" SelectedItemsChanged="items => SelectSplitAsync(split, items)"
                                                 aria-invalid="@(SplitCategoryMissing(split) || SplitCategoryUnavailable(split) ? "true" : "false")"
                                                 aria-describedby="@(SplitCategoryMissing(split) || SplitCategoryUnavailable(split) ? $"{split.Id}-category-error" : null)"
                                                 @bind-Value="split.Category" />
