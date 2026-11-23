@@ -234,6 +234,9 @@ public sealed class AccountRegisterTests
         component.Find("h1").TextContent.ShouldBe("Checking");
         queries[^1].AccountId.ShouldBe(source.Id);
 
+        component.Render(parameters => parameters
+            .Add(item => item.AccountId, source.Id)
+            .Add(item => item.InitialFrom, null));
         await component.Find(".table-toolbar fluent-text-input").ChangeAsync(new() { Value = "Draft" });
         queries[^1].AccountId.ShouldBe(source.Id);
         queries[^1].Search.ShouldBe("Draft");
@@ -241,8 +244,8 @@ public sealed class AccountRegisterTests
 
         await component.Find("fluent-button[aria-label='Cancel']").ClickAsync();
         await component.Find(".editor-discard fluent-button").ClickAsync();
-        await component.WaitForAssertionAsync(() => queries[^1].AccountId.ShouldBe(destination.Id));
-        component.Find("h1").TextContent.ShouldBe("Savings");
+        component.Find("h1").TextContent.ShouldBe("Checking");
+        queries[^1].AccountId.ShouldBe(source.Id);
     }
 
     [Fact]

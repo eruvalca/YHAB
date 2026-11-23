@@ -147,7 +147,12 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
     }
     private void UpdatePendingContext(bool contextChanged, (Guid?, DateOnly?, DateOnly?) requestedFilter)
     {
-        if (_editing && contextChanged)
+        if (!_editing) { return; }
+        if (!contextChanged)
+        {
+            _pendingContext = null;
+        }
+        else
         {
             _pendingContext = (AccountId, CategoryId: requestedFilter.Item1, From: requestedFilter.Item2, Through: requestedFilter.Item3);
         }
