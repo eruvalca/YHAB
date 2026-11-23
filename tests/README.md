@@ -712,7 +712,9 @@ that row with the editor on the second. Phone editor checks run the same draft a
 the numeric keyboard on Fluent's shadow control, editor fields must meet a 40px
 tap height, and the heading and action row must remain in the viewport while a
 long form scrolls. The browser workflow opens transaction entry from the plan
-board and verifies that the resulting draft row is first in the register.
+board and verifies that the resulting draft row is first in the register. A
+focused category type-ahead case filters the combobox, selects the only match
+with Arrow/Enter, and verifies the saved transaction category.
 Budget checks use actual mouse-wheel input to reach the document bottom; locator
 auto-scrolling and keyboard focus alone do not establish wheel scrolling works.
 Sticky-summary checks assign the remaining money in the last category, verify

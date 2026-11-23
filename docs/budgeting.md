@@ -251,7 +251,9 @@ or an unavailable move-money selection now blocks the save in either direction
 instead of pointing at a stale record. A plan change applied by the editor's
 own command, and a recovery refresh after a save that committed but could not
 reload, still close the editor. A register draft also survives a refresh because the view catalog
-omits the ledger, so an entry missing from it proves nothing about deletion.
+omits the ledger, so an entry missing from it proves nothing about deletion. An
+account or report-filter transition keeps an open transaction draft mounted and
+reloads the underlying register only after that draft closes.
 An automatic recurring post that a refresh starts is not the draft's own save, so
 its failure, recovery, and retry keep the draft, and a register read that fails
 while recovering keeps a preserved draft too. The dirty check compares

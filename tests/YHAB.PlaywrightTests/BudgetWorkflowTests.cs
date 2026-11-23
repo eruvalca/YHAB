@@ -479,6 +479,53 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         }
     }
 
+    [Fact]
+    [Trait("Category", "BrowserSmoke")]
+    public async Task CategoryComboboxFiltersAndSelectsByKeyboardAsync()
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(3));
+        await using var builder = await TestAppHost.CreateAsync(timeout.Token);
+        await using var app = await builder.BuildAsync(timeout.Token);
+        await app.StartAsync(timeout.Token);
+        await app.ResourceNotifications.WaitForResourceHealthyAsync("yhab", timeout.Token);
+        using var playwright = await Playwright.CreateAsync();
+        await using var browser = await playwright.Chromium.LaunchAsync();
+        await using var context = await browser.NewContextAsync(new()
+        {
+            BaseURL = app.GetEndpoint("yhab", "https").ToString(),
+            IgnoreHTTPSErrors = true,
+            ViewportSize = new() { Width = 1440, Height = 960 },
+        });
+        var page = await context.NewPageAsync();
+        await RegisterAndLoginAsync(page);
+        await CreatePlanAsync(page);
+        await AddAccountAsync(page);
+        await NavigateToRegisterAsync(page);
+        await Button(page, "+ Add transaction").ClickAsync();
+        await VerifyEditorFocusAsync(page);
+        await Input(page, "Payee").FillAsync("Keyboard market");
+        await Input(page, "Outflow").FillAsync("12.50");
+
+        var categoryInput = Input(page, "Category");
+        await categoryInput.ClickAsync();
+        await categoryInput.FillAsync("Gro");
+        await page.Locator("fluent-option[text='Groceries']").WaitForAsync();
+        var categoryHost = categoryInput.Locator("xpath=ancestor::fluent-dropdown[1]");
+        (await categoryHost.Locator("fluent-option").AllTextContentsAsync()).ShouldBe(["Groceries"]);
+        await categoryInput.PressAsync("ArrowDown");
+        await categoryInput.PressAsync("Enter");
+        await page.WaitForFunctionAsync("() => [...document.querySelectorAll('fluent-field')].some(field => field.querySelector('label')?.textContent === 'Category' && field.querySelector('input')?.value === 'Groceries')");
+
+        await Button(page, "Save transaction").ClickAsync();
+        var transaction = page.Locator(".register-table tbody tr").Filter(new()
+        {
+            Has = page.GetByRole(AriaRole.Button, new() { Name = "Keyboard market", Exact = true }),
+        });
+        await transaction.WaitForAsync();
+        (await transaction.Locator(".category-label").TextContentAsync() ?? "").ShouldContain("Groceries");
+    }
+
     private static async Task PurchaseAsync(IPage page, int width)
     {
         await OpenPlanNavigationAsync(page);
@@ -514,17 +561,9 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         (await category.TextContentAsync() ?? "").ShouldContain("Choose a category");
         await page.WaitForFunctionAsync("() => document.activeElement?.id === 'transaction-category-error'");
         (await page.EvaluateAsync<bool>("() => document.activeElement?.id === 'transaction-category-error'")).ShouldBeTrue();
-        var categoryInput = Input(page, "Category");
-        await categoryInput.ClickAsync();
-        await categoryInput.FillAsync("Gro");
-        await page.Locator("fluent-option[text='Groceries']").WaitForAsync();
-        var categoryHost = categoryInput.Locator("xpath=ancestor::fluent-dropdown[1]");
-        (await categoryHost.Locator("fluent-option").AllTextContentsAsync()).ShouldBe(["Groceries"]);
-        await categoryInput.PressAsync("ArrowDown");
-        await categoryInput.PressAsync("Enter");
-        await page.WaitForFunctionAsync("() => [...document.querySelectorAll('fluent-field')].some(field => field.querySelector('label')?.textContent === 'Category' && field.querySelector('input')?.value === 'Groceries')");
-        (await categoryHost.Locator("fluent-option[selected]").InnerTextAsync()).ShouldContain("Groceries");
+        await category.ClickAsync();
         (await page.Locator("fluent-option[text='Inflow: Ready to assign']").CountAsync()).ShouldBe(0);
+        await page.Locator("fluent-option[text='Groceries']").ClickAsync();
         await page.WaitForFunctionAsync("() => [...document.querySelectorAll('fluent-button')].some(button => button.textContent?.trim() === 'Save transaction' && !button.hasAttribute('disabled'))");
         (await Button(page, "Save transaction").GetAttributeAsync("disabled")).ShouldBeNull();
         await Button(page, "Save transaction").ClickAsync();
@@ -533,7 +572,6 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             Has = page.GetByRole(AriaRole.Button, new() { Name = "Neighborhood market", Exact = true }),
         });
         await transaction.WaitForAsync();
-        (await transaction.Locator(".category-label").TextContentAsync() ?? "").ShouldContain("Groceries");
         var transactionRow = (await transaction.BoundingBoxAsync()).ShouldNotBeNull();
         transactionRow.Height.ShouldBeLessThanOrEqualTo(width <= 700 ? 64 : 48);
         if (width <= 700)

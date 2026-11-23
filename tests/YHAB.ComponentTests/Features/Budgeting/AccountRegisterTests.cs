@@ -190,6 +190,36 @@ public sealed class AccountRegisterTests
     }
 
     [Fact]
+    public async Task AccountAndFilterChangesKeepAnExistingTransactionDraftAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var today = new DateOnly(2026, 10, 3);
+        var source = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var destination = new AccountData(Guid.NewGuid(), "Savings", AccountKind.Savings, 500, today, false, "");
+        var entry = new TransactionData(Guid.NewGuid(), source.Id, today, "Draft payee", "", -10, null, "", []);
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [source, destination], [], [], [], [entry], false, false, []) { Today = today };
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, source.Id)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(plan.Version, [new(entry, 990)], 1, null)))
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        await component.Find(".register-table .category-link").ClickAsync();
+        await component.Find(".register-table .category-link").ClickAsync();
+        var editor = component.FindComponent<TransactionEditor>().Instance;
+        await component.Find(".transaction-ledger-payee fluent-text-input").ChangeAsync(new() { Value = "Unsaved draft" });
+
+        component.Render(parameters => parameters
+            .Add(item => item.AccountId, destination.Id)
+            .Add(item => item.InitialFrom, today.AddDays(-7)));
+
+        component.FindComponent<TransactionEditor>().Instance.ShouldBeSameAs(editor);
+        component.Find(".transaction-ledger-payee fluent-text-input").GetAttribute("value").ShouldBe("Unsaved draft");
+    }
+
+    [Fact]
     public async Task PagingIsDisabledWhileEditingATransactionAsync()
     {
         await using var context = new BunitContext();

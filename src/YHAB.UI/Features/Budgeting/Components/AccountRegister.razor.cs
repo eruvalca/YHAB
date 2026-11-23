@@ -117,7 +117,7 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
             // Recovery after a failed read keeps a draft the refresh preserved, just as a catalog
             // change does; only the plan, account, or filter identity discards it.
             var readFailed = _error is not null && !ReferenceEquals(_loadedPlan, Plan);
-            if (planReplaced || _previousAccount != AccountId || filterChanged || ((catalogChanged || readFailed) && TransactionSettled()))
+            if (planReplaced || ((catalogChanged || readFailed) && TransactionSettled()))
             {
                 CloseEditors();
             }
@@ -125,7 +125,7 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
 
             // Keep same-account rows painted while a revision refreshes. Their
             // labels use the catalog they arrived with until replacement is ready.
-            if (planReplaced || _previousAccount != AccountId || filterChanged)
+            if (planReplaced || !_editing && (_previousAccount != AccountId || filterChanged))
             {
                 _result = null;
                 _rowPlan = null;

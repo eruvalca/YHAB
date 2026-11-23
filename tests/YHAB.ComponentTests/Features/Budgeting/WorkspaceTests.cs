@@ -275,7 +275,8 @@ public sealed class WorkspaceTests
         register.InitialCategoryId.ShouldBeNull();
         register.InitialFrom.ShouldBeNull();
         register.InitialThrough.ShouldBeNull();
-        workspace.FindComponents<TransactionEditor>().ShouldBeEmpty();
+        workspace.FindComponent<TransactionEditor>().Instance.ShouldBeSameAs(editor);
+        workspace.Find(".transaction-ledger-payee fluent-text-input").GetAttribute("value").ShouldBe("Shop");
         await budgets.Received().ReadRegisterAsync(plan.Id, Arg.Any<RegisterQuery>(), Arg.Any<CancellationToken>());
     }
 
