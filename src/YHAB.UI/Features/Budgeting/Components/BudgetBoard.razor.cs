@@ -6,7 +6,7 @@ using YHAB.SharedKernel.Budgeting;
 
 namespace YHAB.UI.Features.Budgeting.Components;
 
-public sealed partial class BudgetBoard(IJSRuntime javascript)
+public sealed partial class BudgetBoard(IJSRuntime javascript, NavigationManager navigation)
 {
     private const string LayoutModulePath = "./_content/YHAB.UI/Features/Budgeting/Components/BudgetBoard.razor.js";
 
@@ -35,10 +35,6 @@ public sealed partial class BudgetBoard(IJSRuntime javascript)
     [Parameter] public bool ExternalRefresh { get; set; }
     [Parameter] public Func<DateOnly, CancellationToken, Task<BudgetMonth>>? LoadMonth { get; set; }
     /// <summary>
-    /// Supplies payee suggestions to the transaction editor the board opens.
-    /// </summary>
-    [Parameter] public Func<CancellationToken, Task<IReadOnlyList<string>>>? LoadPayees { get; set; }
-    /// <summary>
     /// The month a remounted board should show first, so a restored projection and the
     /// board's selection agree instead of triggering a second month read.
     /// </summary>
@@ -56,11 +52,7 @@ public sealed partial class BudgetBoard(IJSRuntime javascript)
     private long _version = -1;
     private PlanSnapshot? _loadedPlan;
     private bool _move;
-    private bool _transaction;
-    private PlanCommand? _transactionCommand;
     private PlanCommand? _moveCommand;
-    private IReadOnlyList<string>? _payees;
-    private long _payeesVersion = -1;
     private long _editorEpoch;
     private PlanCommand? _editorCommand;
     private bool _help;
@@ -98,8 +90,8 @@ public sealed partial class BudgetBoard(IJSRuntime javascript)
     // A phone's editor pins its own heading to the top of the viewport, so the
     // sticky summary steps aside instead of covering it. The inline category
     // editor scrolls with its row and pins nothing, so the summary stays.
-    private bool IsEditing => _transaction || _move || _category is not null;
-    private bool IsPinnedEditor => _transaction || _move || (_category is not null && !_inlineDetails);
+    private bool IsEditing => _move || _category is not null;
+    private bool IsPinnedEditor => _move || (_category is not null && !_inlineDetails);
     // The category whose details draft has unsaved edits, whichever placement is open.
     // A closed editor's reference outlives it, so the open category gates this.
     private Guid? DirtyCategoryId => (_category, _inlineDetails ? _inlineEditor : _categoryEditor) switch
@@ -113,7 +105,7 @@ public sealed partial class BudgetBoard(IJSRuntime javascript)
     private string AddTransactionClass => IsEditing || AccountEditing ? "board-add-transaction is-editing" : "board-add-transaction";
     // Switching editors would drop the other editor's draft without its discard
     // prompt, so each entry point stays closed while one is already open.
-    private string? TransactionHint => IsEditing ? "Finish or close the open editor first." : null;
+    private string? TransactionHint => IsEditing || AccountEditing ? "Finish or close the open editor first." : null;
     private bool HasFundableNeed => _budget.Categories.Any(item =>
         !item.Snoozed && !item.Category.Hidden
         && !Plan.Groups.Any(group => group.Id == item.Category.GroupId && group.Hidden)
@@ -161,7 +153,7 @@ public sealed partial class BudgetBoard(IJSRuntime javascript)
         if (_month == default) { _month = InitialMonth ?? BudgetFacts.Month(Plan.Today); }
         if (_loadedPlan?.Id != Plan.Id || _version != Plan.Version || _budget is null || (_error is not null && !ReferenceEquals(_loadedPlan, Plan)))
         {
-            if (_loadedPlan?.Id != Plan.Id) { _help = false; _payees = null; CloseEditors(); }
+            if (_loadedPlan?.Id != Plan.Id) { _help = false; CloseEditors(); }
             else
             {
                 // A command replaces an editor's baseline only when it consumed its draft, and only
@@ -176,13 +168,6 @@ public sealed partial class BudgetBoard(IJSRuntime javascript)
                     var settledMove = _moveCommand is not null
                         && (ReferenceEquals(AppliedCommand, _moveCommand) || ReferenceEquals(RecoveredCommand, _moveCommand));
                     if (settledMove || _moveEditor is not { IsDirty: true }) { CloseMove(); }
-                    // Only a save this editor submitted settles its draft: either the command that
-                    // was applied, or the command a refresh recovered after its response was lost.
-                    // A recovered write it never submitted, and an unrelated applied command, both
-                    // leave the draft mounted with the values the person typed.
-                    var settled = _transactionCommand is not null
-                        && (ReferenceEquals(AppliedCommand, _transactionCommand) || ReferenceEquals(RecoveredCommand, _transactionCommand));
-                    if (settled) { CloseTransaction(); }
                     if (ReferenceEquals(AppliedCommand, _editorCommand) && AppliedCommand is SaveCategory or RemoveCategory)
                     {
                         _editorEpoch++;
@@ -278,36 +263,12 @@ public sealed partial class BudgetBoard(IJSRuntime javascript)
     }
     private Task AddAccountAsync() => OnAddAccount.InvokeAsync();
     private void ShowMove() { if (MoveMoneyHint is not null) { return; } CloseEditors(); _move = true; }
-    // The board is the plan's landing page, so recording money is one action from here
-    // rather than a detour through the transactions page.
-    private async Task ShowTransactionAsync()
+    // Transaction entry lives in the register, where desktop users can work in a row
+    // and phones can expand the same draft into a stacked form.
+    private void ShowTransaction()
     {
-        // Opening a second editor would discard the open draft without its discard prompt.
-        if (!HasOpenAccounts || IsEditing) { return; }
-        _transaction = true;
-        if (LoadPayees is null || (_payees is not null && _payeesVersion == Plan.Version)) { return; }
-
-        using var operation = CreateOperation();
-        var token = operation.Token;
-        var version = Plan.Version;
-        try
-        {
-            var payees = await LoadPayees(token);
-            token.ThrowIfCancellationRequested();
-            // A newer revision may already carry a payee this read could not see.
-            if (!IsDisposed && version == Plan.Version) { _payees = payees; _payeesVersion = version; }
-        }
-        catch (OperationCanceledException) when (token.IsCancellationRequested) { /* Disposed or superseded read. */ }
-        catch (OperationCanceledException) { /* Suggestions are optional; the editor still accepts any payee. */ }
-        catch (BudgetRequestException) { /* Suggestions are optional; the editor still accepts any payee. */ }
-        catch (HttpRequestException) { /* Suggestions are optional; the editor still accepts any payee. */ }
-    }
-    // Track the exact command this editor submitted, so the board can tell its own
-    // save apart from an assignment, an undo, or a rename that must leave the draft alone.
-    private Task SendTransactionCommandAsync(PlanCommand command)
-    {
-        _transactionCommand = command;
-        return OnCommand.InvokeAsync(command);
+        if (!HasOpenAccounts || IsEditing || AccountEditing) { return; }
+        navigation.NavigateTo($"/plans/{Plan.Id}/accounts?new=true");
     }
     // Track the move editor's own command so an unrelated write cannot settle its draft.
     private Task SendMoveCommandAsync(PlanCommand command)
@@ -315,7 +276,6 @@ public sealed partial class BudgetBoard(IJSRuntime javascript)
         _moveCommand = command;
         return OnCommand.InvokeAsync(command);
     }
-    private void CloseTransaction() { _transaction = false; _transactionCommand = null; }
     private void CloseMove() { _move = false; _moveEditor = null; _moveCommand = null; }
     private void CloseCategory()
     {
@@ -441,6 +401,5 @@ public sealed partial class BudgetBoard(IJSRuntime javascript)
         _inlineEditor = null;
         _inlineEditorCategory = null;
         _categoryDraft = null;
-        CloseTransaction();
     }
 }

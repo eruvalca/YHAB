@@ -8,6 +8,7 @@ public sealed partial class EditorSurface
     [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
     [Parameter, EditorRequired] public RenderFragment ChildContent { get; set; } = default!;
     [Parameter, EditorRequired] public EventCallback OnClose { get; set; }
+    [Parameter] public string CloseLabel { get; set; } = "Close";
     // Evaluated on demand: the keyboard path can ask before the change that made
     // the draft dirty has re-rendered this parameter.
     [Parameter] public Func<bool>? HasUnsavedChanges { get; set; }

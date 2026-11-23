@@ -1,0 +1,119 @@
+.transaction-editor-inline {
+    min-width: 0;
+}
+
+.transaction-editor-inline ::deep .editor-surface {
+    margin: 0;
+    padding: var(--spacingVerticalM) var(--spacingHorizontalM);
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.transaction-editor-inline ::deep .editor-heading h2 {
+    font-size: var(--fontSizeBase300);
+}
+
+.transaction-editor-inline ::deep .transaction-ledger-fields {
+    display: grid;
+    grid-template-columns: minmax(7.5rem, 0.8fr) minmax(10rem, 1.5fr) minmax(10rem, 1.5fr) minmax(6rem, 0.65fr) minmax(6rem, 0.65fr);
+    gap: var(--spacingHorizontalS);
+    align-items: start;
+}
+
+.transaction-editor-inline ::deep .transaction-ledger-date input {
+    width: 100%;
+    min-width: 0;
+    height: var(--yh-control-standard);
+}
+
+.transaction-editor-inline ::deep .inline-field-label {
+    color: var(--yh-text-muted);
+    font-size: var(--fontSizeBase200);
+    font-weight: var(--fontWeightRegular);
+}
+
+.transaction-editor-inline ::deep .inline-static-value {
+    display: flex;
+    align-items: center;
+    min-height: var(--yh-control-standard);
+    padding: var(--spacingVerticalXS) var(--spacingHorizontalS);
+    border: 1px solid var(--yh-border-control);
+    border-radius: var(--yh-control-radius);
+    background: var(--yh-surface-sunken);
+    font-size: var(--fontSizeBase200);
+    font-weight: var(--fontWeightRegular);
+}
+
+.transaction-editor-inline ::deep .transaction-more {
+    border-block-start: 1px solid var(--yh-border-subtle);
+    padding-block-start: var(--spacingVerticalS);
+}
+
+.transaction-editor-inline ::deep .transaction-more summary {
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacingHorizontalS);
+    cursor: pointer;
+    color: var(--yh-text-body);
+}
+
+.transaction-editor-inline ::deep .transaction-more summary small {
+    color: var(--yh-text-muted);
+}
+
+.transaction-editor-inline ::deep .transaction-more-fields {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--spacingHorizontalM);
+    margin-block-start: var(--spacingVerticalM);
+}
+
+.transaction-editor-inline ::deep .transaction-more-fields > fluent-textarea,
+.transaction-editor-inline ::deep .transaction-more-fields > .transaction-splits {
+    grid-column: 1 / -1;
+}
+
+.transaction-editor-inline ::deep .transaction-splits {
+    display: grid;
+    gap: var(--spacingVerticalM);
+}
+
+@media (max-width: 62.4375rem) {
+    .transaction-editor-inline ::deep .transaction-ledger-fields {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .transaction-editor-inline ::deep .transaction-ledger-date,
+    .transaction-editor-inline ::deep .transaction-ledger-payee,
+    .transaction-editor-inline ::deep .transaction-ledger-category {
+        grid-column: 1 / -1;
+    }
+
+    .transaction-editor-inline ::deep .transaction-more-fields {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 43.75rem) {
+    .transaction-editor-inline ::deep .editor-surface {
+        padding: var(--spacingVerticalL) var(--spacingHorizontalM);
+    }
+
+    .transaction-editor-inline ::deep .transaction-ledger-fields,
+    .transaction-editor-inline ::deep .transaction-more-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .transaction-editor-inline ::deep .transaction-ledger-date,
+    .transaction-editor-inline ::deep .transaction-ledger-payee,
+    .transaction-editor-inline ::deep .transaction-ledger-category {
+        grid-column: auto;
+    }
+
+    .transaction-editor-inline ::deep .transaction-more summary {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0;
+    }
+}

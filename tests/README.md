@@ -706,10 +706,13 @@ and directly beneath the selected row below it, with the row still in view and
 focus returned to it when the panel closes.
 Editor dropdown checks include the shadow control's visible border, since its
 minimum width can exceed the host without overflowing the document.
-Phone editor checks run the transaction editor at 390px: the amount field must
-request the numeric keyboard on Fluent's shadow control, editor fields must meet a
-40px tap height, and the heading and action row must remain in the viewport while a
-long form scrolls.
+Desktop register checks select a transaction on the first activation and replace
+that row with the editor on the second. Phone editor checks run the same draft at
+390px with one-tap expansion and stacked fields: the outflow field must request
+the numeric keyboard on Fluent's shadow control, editor fields must meet a 40px
+tap height, and the heading and action row must remain in the viewport while a
+long form scrolls. The browser workflow opens transaction entry from the plan
+board and verifies that the resulting draft row is first in the register.
 Budget checks use actual mouse-wheel input to reach the document bottom; locator
 auto-scrolling and keyboard focus alone do not establish wheel scrolling works.
 Sticky-summary checks assign the remaining money in the last category, verify

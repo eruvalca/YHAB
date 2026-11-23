@@ -442,11 +442,12 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             await Button(page, "Refresh").ClickAsync();
             await page.WaitForFunctionAsync("() => document.querySelector('.workspace')?.getAttribute('aria-busy') === 'false'");
             (await Input(page, "Payee").InputValueAsync()).ShouldBe("Draft payee");
+            await page.Locator(".transaction-more > summary").ClickAsync();
             var direction = page.GetByRole(AriaRole.Combobox, new() { Name = "Money direction", Exact = true });
             await direction.ClickAsync();
             await page.Locator("fluent-option[text='Inflow']").ClickAsync();
-            await Input(page, "Amount").FillAsync("12.50");
-            await Input(page, "Amount").PressAsync("Enter");
+            await Input(page, "Inflow").FillAsync("12.50");
+            await Input(page, "Inflow").PressAsync("Enter");
             await page.Locator(".register-table tbody tr").Filter(new()
             {
                 Has = page.GetByRole(AriaRole.Button, new() { Name = "Draft payee", Exact = true }),
@@ -496,7 +497,8 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await VerifyDropdownChromeAsync(page);
         await VerifyTextUndoOwnershipAsync(page);
         await Input(page, "Payee").FillAsync("Neighborhood market");
-        await Input(page, "Amount").FillAsync("50 + 25");
+        await Input(page, "Outflow").FillAsync("50 + 25");
+        await page.Locator(".transaction-more > summary").ClickAsync();
         var category = page.GetByRole(AriaRole.Combobox, new() { Name = "Category", Exact = true });
         await category.Filter(new() { HasText = "Choose a category" }).WaitForAsync();
         (await category.TextContentAsync() ?? "").ShouldContain("Choose a category");
@@ -534,8 +536,15 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             (await selection.IsVisibleAsync()).ShouldBeTrue();
             (await transaction.Locator("td:nth-child(5)").InnerTextAsync()).ShouldContain("Outflow");
         }
-        await transaction.GetByRole(AriaRole.Button, new() { Name = "Neighborhood market", Exact = true }).ClickAsync();
-        await Input(page, "Amount").FillAsync("7.77");
+        var edit = transaction.GetByRole(AriaRole.Button, new() { Name = "Neighborhood market", Exact = true });
+        await edit.ClickAsync();
+        if (width > 700)
+        {
+            await page.Locator(".register-table tbody tr[data-active='true']").WaitForAsync();
+            (await page.Locator(".transaction-editing-row").CountAsync()).ShouldBe(0);
+            await edit.ClickAsync();
+        }
+        await Input(page, "Outflow").FillAsync("7.77");
         await Button(page, "Save transaction").ClickAsync();
         await transaction.Locator("td.money").Filter(new() { HasText = "$7.77" }).WaitForAsync();
         await Button(page, "+ Add transaction").ClickAsync();
@@ -544,7 +553,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         // the native input, not both the source list and the component's copy.
         (await Input(page, "Payee").EvaluateAsync<string[]>("input => Array.from(input.list?.options ?? [], option => option.value)"))
             .ShouldBe(["Neighborhood market"]);
-        await Button(page, "Close").ClickAsync();
+        await Button(page, "Cancel").ClickAsync();
     }
 
     private static async Task VerifyPayeeRenameUndoAsync(IPage page)
@@ -566,7 +575,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await Button(page, "+ Add transaction").ClickAsync();
         (await Input(page, "Payee").EvaluateAsync<string[]>("input => Array.from(input.list?.options ?? [], option => option.value)"))
             .ShouldBe(["Community market"]);
-        await Button(page, "Close").ClickAsync();
+        await Button(page, "Cancel").ClickAsync();
     }
 
     private static async Task VerifyEditorFocusAsync(IPage page)
@@ -586,7 +595,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         {
             return;
         }
-        var amount = Input(page, "Amount");
+        var amount = Input(page, "Outflow");
         // Fluent renders `inputmode` on the host element only; the shared UI
         // initializer is what puts it on the native control the phone reads.
         (await amount.EvaluateAsync<string?>("input => input.getAttribute('inputmode')")).ShouldBe("decimal");
@@ -840,6 +849,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
     // require a detour through the transactions page first.
     private static async Task VerifyPlanBoardAddTransactionAsync(IPage page)
     {
+        var boardUrl = page.Url;
         var add = Button(page, "+ Add transaction");
         if (await page.EvaluateAsync<int>("innerWidth") < 1000)
         {
@@ -851,37 +861,21 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             (await HasOpaqueFillAsync(add)).ShouldBeTrue("the docked shortcut must have an opaque fill");
         }
         await add.ClickAsync();
+        await page.Locator(".register-table .transaction-editing-row").WaitForAsync();
         await VerifyEditorFocusAsync(page);
         (await page.Locator(".editor-surface h2").InnerTextAsync()).ShouldBe("Add transaction");
-        var summary = (await page.Locator(".budget-summary").BoundingBoxAsync()).ShouldNotBeNull();
-        var heading = (await page.Locator(".editor-surface h2").BoundingBoxAsync()).ShouldNotBeNull();
-        heading.Y.ShouldBeGreaterThanOrEqualTo(summary.Y + summary.Height);
-        if (await page.EvaluateAsync<int>("innerWidth") < 1000)
+        (await page.EvaluateAsync<string>("new URL(location.href).pathname")).ShouldEndWith("/accounts");
+        (await page.Locator(".register-table tbody > tr").First.GetAttributeAsync("class")).ShouldNotBeNull().ShouldContain("transaction-editing-row");
+        (await page.Locator(".transaction-editor-inline").CountAsync()).ShouldBe(1);
+        if (await page.EvaluateAsync<int>("innerWidth") < 700)
         {
-            // A phone pins the editor's heading and Close button to the top of the viewport.
-            // Shrink it so the form overflows, then confirm the sticky summary yields to them
-            // instead of covering the controls the form depends on.
-            var width = await page.EvaluateAsync<int>("innerWidth");
-            await page.SetViewportSizeAsync(width, 640);
-            await page.EvaluateAsync("() => window.scrollBy({ top: Math.round(innerHeight / 2), behavior: 'instant' })");
-            var tabs = (await page.Locator(".plan-page-tabs").BoundingBoxAsync()).ShouldNotBeNull();
-            var stuck = (await page.Locator(".editor-surface h2").BoundingBoxAsync()).ShouldNotBeNull();
-            stuck.Y.ShouldBeGreaterThanOrEqualTo(tabs.Y + tabs.Height - 1);
-            var close = (await Button(page, "Close").BoundingBoxAsync()).ShouldNotBeNull();
-            close.Y.ShouldBeGreaterThanOrEqualTo(0);
-            (close.Y + close.Height).ShouldBeLessThanOrEqualTo(640);
-            (await page.Locator(".editor-surface h2").EvaluateAsync<bool>("""
-                heading => {
-                    const box = heading.getBoundingClientRect();
-                    const top = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
-                    return !!top && (top === heading || heading.contains(top));
-                }
-                """)).ShouldBe(true, "the sticky summary must not cover the editor heading");
-            await page.EvaluateAsync("() => window.scrollTo({ top: 0, behavior: 'instant' })");
-            await page.SetViewportSizeAsync(width, 960);
+            var fields = (await page.Locator(".transaction-ledger-fields").BoundingBoxAsync()).ShouldNotBeNull();
+            fields.Width.ShouldBeLessThanOrEqualTo(await page.EvaluateAsync<int>("innerWidth"));
         }
-        await Button(page, "Close").ClickAsync();
+        await Button(page, "Cancel").ClickAsync();
         await page.WaitForFunctionAsync("() => !document.querySelector('.editor-surface')");
+        await page.GotoAsync(boardUrl);
+        await page.Locator(".workspace[data-interactive='true'] .budget-summary").WaitForAsync();
     }
 
     // The account editor pins Save and Cancel to the bottom of a phone screen, which is

@@ -18,7 +18,7 @@
 
 .register-table tbody tr { height: 3rem; background: var(--yh-surface-raised); }
 /* Selected rows keep their selection fill; the hover tint is for the rest. */
-.register-table tbody tr:not([data-selected="true"]):hover { background: var(--yh-surface-sunken); }
+.register-table tbody tr:not([data-selected="true"]):not([data-active="true"]):hover { background: var(--yh-surface-sunken); }
 .register-table tbody td { height: 3rem; padding-block: 0; border-bottom: 1px solid var(--yh-border-subtle); line-height: 1.25; }
 .register-loading { padding: var(--spacingVerticalM); border: 1px solid var(--yh-border-subtle); border-radius: var(--yh-control-radius); }
 .register-loading > span[aria-hidden] { display: block; height: 3.5rem; margin-block: var(--spacingVerticalS); border-radius: var(--yh-control-radius); background: var(--yh-surface-sunken); }
@@ -33,7 +33,18 @@
 .register-table .category-label { white-space: nowrap; }
 .register-table th, .register-table td { padding-inline: var(--spacingHorizontalS); }
 .register-table th.numeric { white-space: nowrap; }
-.register-table tr[data-selected="true"] { background: var(--yh-surface-accent-soft); }
+.register-table tr[data-selected="true"],
+.register-table tr[data-active="true"] { background: var(--yh-surface-accent-soft); }
+.register-table tbody tr[data-active="true"] td:first-child { box-shadow: inset 3px 0 var(--yh-accent); }
+.register-table tbody tr.transaction-editing-row {
+    height: auto;
+    background: var(--yh-surface-raised);
+}
+.register-table tbody tr.transaction-editing-row > td {
+    height: auto;
+    padding: 0;
+    border: 1px solid var(--colorBrandStroke2);
+}
 .row-actions {
     display: inline-block;
     margin-inline-start: var(--spacingHorizontalXS);
@@ -90,6 +101,17 @@
         min-height: 3.5rem;
         height: auto;
         padding: var(--spacingVerticalXS) var(--spacingHorizontalS);
+    }
+    .register-table tbody tr.transaction-editing-row {
+        display: block;
+        padding: 0;
+        border-block-start: 1px solid var(--colorBrandStroke2);
+        border-block-end: 1px solid var(--colorBrandStroke2);
+    }
+    .register-table tbody tr.transaction-editing-row > td {
+        display: block;
+        padding: 0;
+        border: 0;
     }
     .register-table tbody td {
         height: auto;

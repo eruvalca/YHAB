@@ -1,11 +1,12 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using YHAB.SharedKernel.Budgeting;
 
 namespace YHAB.UI.Features.Budgeting.Components;
 
-public sealed partial class AccountRegister
+public sealed partial class AccountRegister(IJSRuntime javascript)
 {
     private const int PageSize = 50;
     [Parameter, EditorRequired] public PlanSnapshot Plan { get; set; } = default!;
@@ -36,6 +37,7 @@ public sealed partial class AccountRegister
     private static readonly string[] _sorts = ["Newest first", "Oldest first", "Payee", "Amount"];
     private readonly HashSet<Guid> _selected = [];
     private readonly Dictionary<Guid, decimal> _running = [];
+    private const string LayoutModulePath = "./_content/YHAB.UI/Features/Budgeting/Components/AccountRegister.razor.js";
     private string _search = "";
     private string _filter = "All posted";
     private string _sort = "Newest first";
@@ -44,6 +46,7 @@ public sealed partial class AccountRegister
     private Guid? _categoryId;
     private AccountData? _account;
     private TransactionData? _transaction;
+    private Guid? _activeRowId;
     private bool _editing;
     private bool _deleting;
     private bool _newTransactionPending;
@@ -64,11 +67,14 @@ public sealed partial class AccountRegister
     private int _request;
     [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = "Borrowed reference: LoadAsync owns and disposes the source after its work completes; component disposal cancels its linked lifetime.")]
     private CancellationTokenSource? _loadCancellation;
+    private IJSObjectReference? _layoutModule;
     private bool IsBusy { get => Busy || field || _error is not null; set; }
     [Parameter, EditorRequired] public Func<RegisterQuery, CancellationToken, Task<RegisterPage>> LoadPage { get; set; } = default!;
     [Parameter, EditorRequired] public Func<CancellationToken, Task<IReadOnlyList<string>>> LoadPayees { get; set; } = default!;
     [Parameter] public IReadOnlyList<AccountBalance>? Balances { get; set; }
     private IEnumerable<TransactionData> VisibleEntries => _result?.Rows.Select(item => item.Transaction) ?? [];
+    private bool IsNewDraft => _transaction is null || _transaction.Id == Guid.Empty;
+    private int EditorColumnCount => _account is null ? 6 : 7;
     // The account editor pins its own actions to the bottom of a phone screen, so the
     // docked shortcut steps aside while it is open.
     private string DockEditingState => _editing || AccountEditing ? "true" : "false";
@@ -204,10 +210,49 @@ public sealed partial class AccountRegister
     }
     private string CategoryName(Guid? id) => CategoryName(Plan, id);
     private static string CategoryName(PlanSnapshot plan, Guid? id) => id.HasValue ? plan.Categories.SingleOrDefault(item => item.Id == id)?.Name ?? "an unavailable category" : "Ready to assign";
-    private void Add() { CloseEditors(); _transaction = null; _editKey = Guid.CreateVersion7(); _editing = true; }
-    private void Edit(TransactionData entry) { CloseEditors(); _transaction = entry; _editKey = Guid.CreateVersion7(); _editing = true; }
+    private void Add()
+    {
+        if (_editing || AccountEditing) { return; }
+        _transaction = null;
+        _activeRowId = null;
+        _editKey = Guid.CreateVersion7();
+        _editing = true;
+    }
+    private void Edit(TransactionData entry)
+    {
+        if (_editing || AccountEditing) { return; }
+        _transaction = entry;
+        _activeRowId = entry.Id;
+        _editKey = Guid.CreateVersion7();
+        _editing = true;
+    }
     private void Duplicate(TransactionData entry) => Edit(entry with { Id = Guid.Empty, Date = Plan.Today, Repeat = RepeatFrequency.None, Splits = entry.Splits.Select(item => item with { Id = Guid.CreateVersion7() }).ToArray() });
     private void CloseEditors() { _editing = false; _deleting = false; }
+    private async Task ActivateRowAsync(TransactionData entry)
+    {
+        if (IsBusy || _editing || AccountEditing) { return; }
+        if (_activeRowId == entry.Id || await IsCompactRegisterAsync())
+        {
+            Edit(entry);
+            return;
+        }
+
+        _activeRowId = entry.Id;
+    }
+    private async Task<bool> IsCompactRegisterAsync()
+    {
+        using var operation = CreateOperation();
+        var token = operation.Token;
+        try
+        {
+            _layoutModule ??= await javascript.InvokeAsync<IJSObjectReference>("import", token, LayoutModulePath);
+            token.ThrowIfCancellationRequested();
+            return await _layoutModule.InvokeAsync<bool>("compactRegister", token);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { return false; }
+        catch (JSDisconnectedException) { return false; }
+        catch (JSException) { return false; }
+    }
     private Task EditAccountAsync() => OnEditAccount.InvokeAsync(_account!);
     private void Select(Guid id, bool value) { if (value) { _selected.Add(id); } else { _selected.Remove(id); } }
     private void SelectVisible(bool value) { foreach (var entry in VisibleEntries) { Select(entry.Id, value); } }
@@ -218,4 +263,14 @@ public sealed partial class AccountRegister
     private void RequestDelete() => _deleting = true;
     private void CancelDelete() => _deleting = false;
     private Task DeleteAsync() => OnCommand.InvokeAsync(new DeleteTransactions(Plan.Version, _selected.ToArray()));
+    protected override async ValueTask DisposeCoreAsync()
+    {
+        if (_layoutModule is not null)
+        {
+            try { await _layoutModule.DisposeAsync(); }
+            catch (JSDisconnectedException) { /* The circuit already released its JavaScript references. */ }
+        }
+
+        await base.DisposeCoreAsync();
+    }
 }

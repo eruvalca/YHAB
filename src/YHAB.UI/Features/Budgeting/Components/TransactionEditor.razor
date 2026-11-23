@@ -1,61 +1,157 @@
-<EditorSurface Title="@(Transaction is null ? "Add transaction" : "Edit transaction")" OnClose="OnClose" HasUnsavedChanges="HasUnsavedChanges">
-    <FluentGrid Spacing="3">
-        <FluentGridItem Xs="12" Md="6"><div @onkeydown="SaveOnEnterAsync" data-enter-saves="true"><FluentTextInput Margin="0" Size="TextInputSize.Large" Label="Payee" Immediate="true" @bind-Value="_payee" MaxLength="200" DataList="known-payees" /></div><datalist id="known-payees">@foreach (var payee in Payees.Where(item => item.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase)) { <option value="@payee"></option> }</datalist></FluentGridItem>
-        <FluentGridItem Xs="12" Sm="6"><FluentSelect Margin="0" Size="ListSize.Large" TOption="string" TValue="string" Label="Money direction" Items="_directions" @bind-Value="_direction" @bind-Value:after="DirectionChanged" /></FluentGridItem>
-        <FluentGridItem Xs="12" Sm="6"><AmountInput @ref="_amountInput" Label="Amount" Size="TextInputSize.Large" CommitOnSave="true" OnEnter="SaveAsync" @bind-Value="Amount" ValidChanged="value => _amountValid = value" /></FluentGridItem>
-        <FluentGridItem Xs="12" Md="6"><div class="form-field"><label for="transaction-date">@(_repeat == RepeatFrequency.None ? "Date" : "Next occurrence")</label><input id="transaction-date" type="date" @bind="_date" /></div></FluentGridItem>
-        <FluentGridItem Xs="12" Md="6"><FluentSelect Margin="0" Size="ListSize.Large" TOption="AccountData" TValue="Guid" Label="Account" Items="_accounts" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="_account" /></FluentGridItem>
-        <FluentGridItem Xs="12" Md="6"><FluentSelect Margin="0" Size="ListSize.Large" TOption="AccountData" TValue="Guid" Label="Transfer to or from" Items="_destinations" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="_transfer" /></FluentGridItem>
-    </FluentGrid>
-    @if (NeedsCategory)
+<div class="@EditorClass">
+<EditorSurface Title="@(Transaction is null || Transaction.Id == Guid.Empty ? "Add transaction" : "Edit transaction")" OnClose="OnClose" HasUnsavedChanges="HasUnsavedChanges" CloseLabel="@(Inline ? "Cancel" : "Close")">
+    @if (Inline)
     {
-        @if (!_split)
+        <div class="transaction-ledger-fields">
+            <div class="form-field transaction-ledger-date">
+                <label for="@DateId">@(_repeat == RepeatFrequency.None ? "Date" : "Next occurrence")</label>
+                <input id="@DateId" type="date" @bind="_date" />
+            </div>
+            <div class="transaction-ledger-payee" @onkeydown="SaveOnEnterAsync" data-enter-saves="true">
+                <FluentTextInput Margin="0" Size="TextInputSize.Large" Label="Payee" Immediate="true" @bind-Value="_payee" MaxLength="200" DataList="@PayeeListId" Placeholder="Who is this for?" />
+            </div>
+            <div class="transaction-ledger-category">
+                @if (NeedsCategory && !_split)
+                {
+                    <FluentCombobox @key="BudgetOutflow" Margin="0" Size="ListSize.Large" TOption="CategoryData" TValue="Guid" Label="Category"
+                                    Items="CategoryOptions" OptionText="CategoryText" OptionValue="CategoryValue" Placeholder="@ChooseCategory"
+                                    aria-invalid="@(CategoryMissing || CategoryUnavailable ? "true" : "false")"
+                                    aria-describedby="@(CategoryMissing || CategoryUnavailable ? "transaction-category-error" : null)"
+                                    @bind-Value="_category" />
+                }
+                else
+                {
+                    <div class="form-field">
+                        <span class="inline-field-label">Category</span>
+                        <strong class="inline-static-value">@(_split ? $"Split across {_splits.Count} categories" : "Transfer / adjustment")</strong>
+                    </div>
+                }
+            </div>
+            <div class="transaction-ledger-amount">
+                <AmountInput @ref="_outflowInput" Label="Outflow" Size="TextInputSize.Large" CommitOnSave="true" OnEnter="SaveAsync"
+                             Value="@OutflowAmount" ValueChanged="SetOutflowAsync" ValidChanged="SetOutflowValidity" OnActivate="ActivateOutflow" />
+            </div>
+            <div class="transaction-ledger-amount">
+                <AmountInput @ref="_inflowInput" Label="Inflow" Size="TextInputSize.Large" CommitOnSave="true" OnEnter="SaveAsync"
+                             Value="@InflowAmount" ValueChanged="SetInflowAsync" ValidChanged="SetInflowValidity" OnActivate="ActivateInflow" />
+            </div>
+        </div>
+        @if (CategoryMissing || CategoryUnavailable)
         {
-            <FluentSelect @key="BudgetOutflow" Margin="0" Size="ListSize.Large" TOption="CategoryData" TValue="Guid" Label="Category"
-                          Items="CategoryOptions" OptionText="item => item.Name" OptionValue="item => item.Id" Placeholder="@ChooseCategory"
-                          aria-invalid="@(CategoryMissing || CategoryUnavailable ? "true" : "false")"
-                          aria-describedby="@(CategoryMissing || CategoryUnavailable ? "transaction-category-error" : null)"
-                          @bind-Value="_category" />
-            @if (CategoryMissing || CategoryUnavailable)
-            {
-                <p @ref="_categoryError" id="transaction-category-error" tabindex="-1" class="validation-message" role="alert">@(CategoryUnavailable ? CategoryUnavailableError : CategoryError)</p>
-            }
-            <FluentButton OnClick="StartSplit" Size="ButtonSize.Large" Appearance="ButtonAppearance.Subtle">Split across categories</FluentButton>
+            <p @ref="_categoryError" id="transaction-category-error" tabindex="-1" class="validation-message" role="alert">@(CategoryUnavailable ? CategoryUnavailableError : CategoryError)</p>
         }
-        else
-        {
-            <p class="muted">Enter signed split amounts: negative for outflows, positive for inflows. Remaining: @Money(SignedAmount - _splits.Sum(item => item.Amount))</p>
-            @foreach (var split in _splits)
-            {
-                <FluentGrid @key="split.Id" Spacing="2">
-                    <FluentGridItem Xs="12" Md="5">
-                        <FluentSelect @key="SplitNeedsCategory(split)" Margin="0" Size="ListSize.Large" TOption="CategoryData" TValue="Guid" Label="Split category"
-                                      Items="SplitCategoryOptions(split)" OptionText="item => item.Name" OptionValue="item => item.Id" Placeholder="@ChooseCategory"
-                                      aria-invalid="@(SplitCategoryMissing(split) || SplitCategoryUnavailable(split) ? "true" : "false")"
-                                      aria-describedby="@(SplitCategoryMissing(split) || SplitCategoryUnavailable(split) ? $"{split.Id}-category-error" : null)"
-                                      @bind-Value="split.Category" />
-                        @if (SplitCategoryMissing(split) || SplitCategoryUnavailable(split))
-                        {
-                            <p id="@($"{split.Id}-category-error")" class="validation-message" role="alert">@(SplitCategoryUnavailable(split) ? CategoryUnavailableError : BudgetCategoryError)</p>
-                        }
-                    </FluentGridItem>
-                    <FluentGridItem Xs="6" Md="3"><AmountInput @ref="split.AmountInput" Label="Split amount" Size="TextInputSize.Large" AllowNegative="true" CommitOnSave="true" @bind-Value="split.Amount" ValidChanged="value => split.Valid = value" /></FluentGridItem>
-                    <FluentGridItem Xs="6" Md="4">
-                        <FluentStack VerticalAlignment="VerticalAlignment.Bottom" HorizontalGap="var(--spacingHorizontalS)">
-                            <FluentTextInput Margin="0" Size="TextInputSize.Large" Label="Split memo" @bind-Value="split.Memo" MaxLength="1000" />
-                            <FluentButton OnClick="() => RemoveSplit(split)" Size="ButtonSize.Large" IconOnly="true" Appearance="ButtonAppearance.Subtle" aria-label="Remove split">×</FluentButton>
-                        </FluentStack>
-                    </FluentGridItem>
-                </FluentGrid>
-            }
-            <FluentButton OnClick="AddSplit" Size="ButtonSize.Large" Appearance="ButtonAppearance.Subtle">+ Another split</FluentButton>
-        }
+        <details class="transaction-more" open="@(_split ? "open" : null)">
+            <summary><span>More details</span><small>Account, transfer, memo, repeat, flag, and splits</small></summary>
+            <div class="transaction-more-fields">
+                <FluentSelect Margin="0" Size="ListSize.Large" TOption="AccountData" TValue="Guid" Label="Account" Items="_accounts" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="_account" />
+                <FluentSelect Margin="0" Size="ListSize.Large" TOption="AccountData" TValue="Guid" Label="Transfer to or from" Items="_destinations" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="_transfer" />
+                <FluentSelect Margin="0" Size="ListSize.Large" TOption="string" TValue="string" Label="Money direction" Items="_directions" @bind-Value="_direction" @bind-Value:after="DirectionChanged" />
+                <FluentTextArea Margin="0" Size="TextAreaSize.Large" Label="Memo" @bind-Value="_memo" MaxLength="4000" />
+                <FluentSelect Margin="0" Size="ListSize.Large" TOption="RepeatFrequency" TValue="RepeatFrequency" Label="Repeat" Items="_frequencies" OptionText="FrequencyLabel" @bind-Value="_repeat" />
+                <FluentSelect Margin="0" Size="ListSize.Large" TOption="string" TValue="string" Label="Flag" Items="_flags" @bind-Value="_flag" />
+                @if (NeedsCategory)
+                {
+                    @if (!_split)
+                    {
+                        <FluentButton OnClick="StartSplit" Size="ButtonSize.Large" Appearance="ButtonAppearance.Subtle">Split across categories</FluentButton>
+                    }
+                    else
+                    {
+                        <div class="transaction-splits">
+                            <p class="muted">Enter signed split amounts: negative for outflows, positive for inflows. Remaining: @Money(SignedAmount - _splits.Sum(item => item.Amount))</p>
+                            @foreach (var split in _splits)
+                            {
+                                <FluentGrid @key="split.Id" Spacing="2">
+                                    <FluentGridItem Xs="12" Md="5">
+                                        <FluentCombobox @key="SplitNeedsCategory(split)" Margin="0" Size="ListSize.Large" TOption="CategoryData" TValue="Guid" Label="Split category"
+                                                        Items="SplitCategoryOptions(split)" OptionText="CategoryText" OptionValue="CategoryValue" Placeholder="@ChooseCategory"
+                                                        aria-invalid="@(SplitCategoryMissing(split) || SplitCategoryUnavailable(split) ? "true" : "false")"
+                                                        aria-describedby="@(SplitCategoryMissing(split) || SplitCategoryUnavailable(split) ? $"{split.Id}-category-error" : null)"
+                                                        @bind-Value="split.Category" />
+                                        @if (SplitCategoryMissing(split) || SplitCategoryUnavailable(split))
+                                        {
+                                            <p id="@($"{split.Id}-category-error")" class="validation-message" role="alert">@(SplitCategoryUnavailable(split) ? CategoryUnavailableError : BudgetCategoryError)</p>
+                                        }
+                                    </FluentGridItem>
+                                    <FluentGridItem Xs="6" Md="3"><AmountInput @ref="split.AmountInput" Label="Split amount" Size="TextInputSize.Large" AllowNegative="true" CommitOnSave="true" @bind-Value="split.Amount" ValidChanged="value => split.Valid = value" /></FluentGridItem>
+                                    <FluentGridItem Xs="6" Md="4">
+                                        <FluentStack VerticalAlignment="VerticalAlignment.Bottom" HorizontalGap="var(--spacingHorizontalS)">
+                                            <FluentTextInput Margin="0" Size="TextInputSize.Large" Label="Split memo" @bind-Value="split.Memo" MaxLength="1000" />
+                                            <FluentButton OnClick="() => RemoveSplit(split)" Size="ButtonSize.Large" IconOnly="true" Appearance="ButtonAppearance.Subtle" aria-label="Remove split">×</FluentButton>
+                                        </FluentStack>
+                                    </FluentGridItem>
+                                </FluentGrid>
+                            }
+                            <FluentButton OnClick="AddSplit" Size="ButtonSize.Large" Appearance="ButtonAppearance.Subtle">+ Another split</FluentButton>
+                        </div>
+                    }
+                }
+            </div>
+        </details>
     }
-    <FluentGrid Spacing="3">
-        <FluentGridItem Xs="12"><FluentTextArea Margin="0" Size="TextAreaSize.Large" Label="Memo" @bind-Value="_memo" MaxLength="4000" /></FluentGridItem>
-        <FluentGridItem Xs="12" Sm="6"><FluentSelect Margin="0" Size="ListSize.Large" TOption="RepeatFrequency" TValue="RepeatFrequency" Label="Repeat" Items="_frequencies" OptionText="FrequencyLabel" @bind-Value="_repeat" /></FluentGridItem>
-        <FluentGridItem Xs="12" Sm="6"><FluentSelect Margin="0" Size="ListSize.Large" TOption="string" TValue="string" Label="Flag" Items="_flags" @bind-Value="_flag" /></FluentGridItem>
-    </FluentGrid>
+    else
+    {
+        <FluentGrid Spacing="3">
+            <FluentGridItem Xs="12" Md="6"><div @onkeydown="SaveOnEnterAsync" data-enter-saves="true"><FluentTextInput Margin="0" Size="TextInputSize.Large" Label="Payee" Immediate="true" @bind-Value="_payee" MaxLength="200" DataList="@PayeeListId" /></div></FluentGridItem>
+            <FluentGridItem Xs="12" Sm="6"><FluentSelect Margin="0" Size="ListSize.Large" TOption="string" TValue="string" Label="Money direction" Items="_directions" @bind-Value="_direction" @bind-Value:after="DirectionChanged" /></FluentGridItem>
+            <FluentGridItem Xs="12" Sm="6"><AmountInput @ref="_amountInput" Label="Amount" Size="TextInputSize.Large" CommitOnSave="true" OnEnter="SaveAsync" @bind-Value="Amount" ValidChanged="value => _amountValid = value" /></FluentGridItem>
+            <FluentGridItem Xs="12" Md="6"><div class="form-field"><label for="@DateId">@(_repeat == RepeatFrequency.None ? "Date" : "Next occurrence")</label><input id="@DateId" type="date" @bind="_date" /></div></FluentGridItem>
+            <FluentGridItem Xs="12" Md="6"><FluentSelect Margin="0" Size="ListSize.Large" TOption="AccountData" TValue="Guid" Label="Account" Items="_accounts" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="_account" /></FluentGridItem>
+            <FluentGridItem Xs="12" Md="6"><FluentSelect Margin="0" Size="ListSize.Large" TOption="AccountData" TValue="Guid" Label="Transfer to or from" Items="_destinations" OptionText="item => item.Name" OptionValue="item => item.Id" @bind-Value="_transfer" /></FluentGridItem>
+        </FluentGrid>
+        @if (NeedsCategory)
+        {
+            @if (!_split)
+            {
+                <FluentCombobox @key="BudgetOutflow" Margin="0" Size="ListSize.Large" TOption="CategoryData" TValue="Guid" Label="Category"
+                                Items="CategoryOptions" OptionText="CategoryText" OptionValue="CategoryValue" Placeholder="@ChooseCategory"
+                                aria-invalid="@(CategoryMissing || CategoryUnavailable ? "true" : "false")"
+                                aria-describedby="@(CategoryMissing || CategoryUnavailable ? "transaction-category-error" : null)"
+                                @bind-Value="_category" />
+                @if (CategoryMissing || CategoryUnavailable)
+                {
+                    <p @ref="_categoryError" id="transaction-category-error" tabindex="-1" class="validation-message" role="alert">@(CategoryUnavailable ? CategoryUnavailableError : CategoryError)</p>
+                }
+                <FluentButton OnClick="StartSplit" Size="ButtonSize.Large" Appearance="ButtonAppearance.Subtle">Split across categories</FluentButton>
+            }
+            else
+            {
+                <div class="transaction-splits">
+                    <p class="muted">Enter signed split amounts: negative for outflows, positive for inflows. Remaining: @Money(SignedAmount - _splits.Sum(item => item.Amount))</p>
+                    @foreach (var split in _splits)
+                    {
+                        <FluentGrid @key="split.Id" Spacing="2">
+                            <FluentGridItem Xs="12" Md="5">
+                                <FluentCombobox @key="SplitNeedsCategory(split)" Margin="0" Size="ListSize.Large" TOption="CategoryData" TValue="Guid" Label="Split category"
+                                                Items="SplitCategoryOptions(split)" OptionText="CategoryText" OptionValue="CategoryValue" Placeholder="@ChooseCategory"
+                                                aria-invalid="@(SplitCategoryMissing(split) || SplitCategoryUnavailable(split) ? "true" : "false")"
+                                                aria-describedby="@(SplitCategoryMissing(split) || SplitCategoryUnavailable(split) ? $"{split.Id}-category-error" : null)"
+                                                @bind-Value="split.Category" />
+                                @if (SplitCategoryMissing(split) || SplitCategoryUnavailable(split))
+                                {
+                                    <p id="@($"{split.Id}-category-error")" class="validation-message" role="alert">@(SplitCategoryUnavailable(split) ? CategoryUnavailableError : BudgetCategoryError)</p>
+                                }
+                            </FluentGridItem>
+                            <FluentGridItem Xs="6" Md="3"><AmountInput @ref="split.AmountInput" Label="Split amount" Size="TextInputSize.Large" AllowNegative="true" CommitOnSave="true" @bind-Value="split.Amount" ValidChanged="value => split.Valid = value" /></FluentGridItem>
+                            <FluentGridItem Xs="6" Md="4">
+                                <FluentStack VerticalAlignment="VerticalAlignment.Bottom" HorizontalGap="var(--spacingHorizontalS)">
+                                    <FluentTextInput Margin="0" Size="TextInputSize.Large" Label="Split memo" @bind-Value="split.Memo" MaxLength="1000" />
+                                    <FluentButton OnClick="() => RemoveSplit(split)" Size="ButtonSize.Large" IconOnly="true" Appearance="ButtonAppearance.Subtle" aria-label="Remove split">×</FluentButton>
+                                </FluentStack>
+                            </FluentGridItem>
+                        </FluentGrid>
+                    }
+                    <FluentButton OnClick="AddSplit" Size="ButtonSize.Large" Appearance="ButtonAppearance.Subtle">+ Another split</FluentButton>
+                </div>
+            }
+        }
+        <FluentGrid Spacing="3">
+            <FluentGridItem Xs="12"><FluentTextArea Margin="0" Size="TextAreaSize.Large" Label="Memo" @bind-Value="_memo" MaxLength="4000" /></FluentGridItem>
+            <FluentGridItem Xs="12" Sm="6"><FluentSelect Margin="0" Size="ListSize.Large" TOption="RepeatFrequency" TValue="RepeatFrequency" Label="Repeat" Items="_frequencies" OptionText="FrequencyLabel" @bind-Value="_repeat" /></FluentGridItem>
+            <FluentGridItem Xs="12" Sm="6"><FluentSelect Margin="0" Size="ListSize.Large" TOption="string" TValue="string" Label="Flag" Items="_flags" @bind-Value="_flag" /></FluentGridItem>
+        </FluentGrid>
+    }
+    <datalist id="@PayeeListId">@foreach (var payee in KnownPayees()) { <option value="@payee"></option> }</datalist>
     @if (_repeat == RepeatFrequency.None && _date > Plan.Today)
     {
         <div class="notice" data-kind="warning">Future transactions must repeat. One-off scheduled transactions aren't supported.</div>
@@ -68,3 +164,4 @@
         <FluentButton OnClick="SaveAsync" Disabled="@CannotSave" Size="ButtonSize.Large" Appearance="ButtonAppearance.Primary">Save transaction</FluentButton>
     </div>
 </EditorSurface>
+</div>

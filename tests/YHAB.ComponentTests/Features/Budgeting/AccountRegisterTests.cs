@@ -64,6 +64,33 @@ public sealed class AccountRegisterTests
     }
 
     [Fact]
+    public async Task DesktopRowSelectsOnceThenOpensInPlaceAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var entry = new TransactionData(Guid.NewGuid(), account.Id, today, "Visible payee", "", -10, null, "", []);
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], false, false, []) { Today = today };
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(plan.Version, [new(entry, 990)], 1, null)))
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        var rowButton = component.Find(".register-table .category-link");
+        await rowButton.ClickAsync();
+        component.Find(".register-table tbody tr").GetAttribute("data-active").ShouldBe("true");
+        component.FindAll(".transaction-editing-row").ShouldBeEmpty();
+
+        await component.Find(".register-table .category-link").ClickAsync();
+        component.FindAll(".transaction-editing-row").Count.ShouldBe(1);
+        component.Find(".transaction-editing-row .transaction-editor-inline").ShouldNotBeNull();
+        component.Find(".transaction-editing-row fluent-dropdown[placeholder='Choose a category']").ShouldNotBeNull();
+    }
+
+    [Fact]
     public async Task LoadedEmptyStateStaysPaintedWhileTheWorkspaceIsBusyAsync()
     {
         await using var context = new BunitContext();
@@ -216,7 +243,7 @@ public sealed class AccountRegisterTests
             .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
 
         await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Add transaction", StringComparison.Ordinal)).ClickAsync();
-        var payee = component.FindAll("fluent-text-input")[0];
+        var payee = component.Find(".transaction-ledger-payee fluent-text-input");
         await payee.ChangeAsync(new() { Value = "Corner shop" });
         component.FindAll(".editor-surface").Count.ShouldBe(1);
 
@@ -226,7 +253,7 @@ public sealed class AccountRegisterTests
             .Add(item => item.ExternalRefresh, true));
 
         component.FindAll(".editor-surface").Count.ShouldBe(1);
-        component.FindAll("fluent-text-input")[0].GetAttribute("value").ShouldBe("Corner shop");
+        component.Find(".transaction-ledger-payee fluent-text-input").GetAttribute("value").ShouldBe("Corner shop");
         await component.Find("fluent-button[aria-label='Close editor']").ClickAsync();
         component.Find("[role='alertdialog']").TextContent.ShouldContain("Discard your unsaved changes?");
 
@@ -256,7 +283,8 @@ public sealed class AccountRegisterTests
 
         await component.WaitForAssertionAsync(() => component.FindAll(".register-table .category-link").Count.ShouldBe(1));
         await component.Find(".register-table .category-link").ClickAsync();
-        await component.FindAll("fluent-text-input")[0].ChangeAsync(new() { Value = "Corner shop edited" });
+        await component.Find(".register-table .category-link").ClickAsync();
+        await component.Find(".transaction-ledger-payee fluent-text-input").ChangeAsync(new() { Value = "Corner shop edited" });
 
         // The workspace view loads its catalog without the ledger, so a refresh cannot prove that an
         // edited entry still exists. It must keep the draft instead of treating the omission as a delete.
@@ -290,7 +318,7 @@ public sealed class AccountRegisterTests
             : throw new HttpRequestException("offline");
 
         await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Add transaction", StringComparison.Ordinal)).ClickAsync();
-        await component.FindAll("fluent-text-input")[0].ChangeAsync(new() { Value = "Corner shop" });
+        await component.Find(".transaction-ledger-payee fluent-text-input").ChangeAsync(new() { Value = "Corner shop" });
 
         // The refresh read fails: the draft is preserved, so recovery must not consume it either.
         component.Render(parameters => parameters.Add(item => item.Plan, plan with { Version = 8 }).Add(item => item.ExternalRefresh, true));
@@ -301,7 +329,7 @@ public sealed class AccountRegisterTests
         component.Render(parameters => parameters.Add(item => item.Plan, plan with { Version = 8 }).Add(item => item.ExternalRefresh, true));
 
         component.FindAll(".editor-surface").Count.ShouldBe(1);
-        component.FindAll("fluent-text-input")[0].GetAttribute("value").ShouldBe("Corner shop");
+        component.Find(".transaction-ledger-payee fluent-text-input").GetAttribute("value").ShouldBe("Corner shop");
     }
 
     [Fact]
@@ -375,6 +403,10 @@ public sealed class AccountRegisterTests
 
         component.FindAll(".editor-surface").Count.ShouldBe(1);
         component.Find(".add-transaction-dock").GetAttribute("data-editing").ShouldBe("true");
+        component.Find(".transaction-editing-row").ParentElement.ShouldNotBeNull();
+        component.Find(".transaction-editing-row .transaction-editor-inline").ShouldNotBeNull();
+        component.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Cancel", StringComparison.Ordinal))
+            .ShouldNotBeNull();
     }
 
     [Fact]
@@ -400,7 +432,7 @@ public sealed class AccountRegisterTests
         component.Find(".editor-heading h2").TextContent.ShouldBe("Add transaction");
         consumed.ShouldBe(1);
 
-        await component.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Close", StringComparison.Ordinal)).ClickAsync();
+        await component.Find("fluent-button[aria-label='Close editor']").ClickAsync();
         component.FindAll(".editor-surface").ShouldBeEmpty();
 
         // A later render from the same caller must not reopen the consumed intent.

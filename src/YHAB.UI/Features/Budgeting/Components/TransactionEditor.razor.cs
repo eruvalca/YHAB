@@ -14,7 +14,9 @@ public sealed partial class TransactionEditor
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
     [Parameter, EditorRequired] public EventCallback OnClose { get; set; }
     [Parameter] public bool Busy { get; set; }
+    [Parameter] public bool Inline { get; set; }
     private const string ChooseCategory = "Choose a category";
+    private const string PayeeListId = "known-payees";
     private const string OutflowCategoryError = "An outflow needs a spending category. Choose one, or switch the direction to Inflow.";
     private const string BudgetCategoryError = "Money leaving your budget needs a spending category.";
     private const string CategoryUnavailableError = "That category is no longer available. Choose another category.";
@@ -42,9 +44,18 @@ public sealed partial class TransactionEditor
     private decimal Amount { get; set; }
     private string _initial = "";
     private AmountInput? _amountInput;
+    private AmountInput? _outflowInput;
+    private AmountInput? _inflowInput;
     private bool _focusCategory;
     private ElementReference _categoryError;
     private bool IsOutflow => string.Equals(_direction, "Outflow", StringComparison.Ordinal);
+    private string EditorClass => Inline ? "transaction-editor transaction-editor-inline" : "transaction-editor";
+    private string DateId { get; } = $"transaction-date-{Guid.CreateVersion7():N}";
+    private string[] KnownPayees() => Payees.Where(item => item.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase).ToArray();
+    private decimal OutflowAmount => IsOutflow ? Amount : 0;
+    private decimal InflowAmount => IsOutflow ? 0 : Amount;
+    private static string CategoryText(CategoryData? category) => category?.Name ?? string.Empty;
+    private static Guid CategoryValue(CategoryData? category) => category?.Id ?? Guid.Empty;
     private decimal SignedAmount => IsOutflow ? -Math.Abs(Amount) : Math.Abs(Amount);
     private int DirectionSign => IsOutflow ? -1 : 1;
     private bool BudgetOutflow => DirectionSign * BudgetDirection < 0;
@@ -85,6 +96,8 @@ public sealed partial class TransactionEditor
     // the committed values plus each field's uncommitted text.
     private bool HasUnsavedChanges() => !string.Equals(Signature(), _initial, StringComparison.Ordinal)
         || _amountInput?.HasDraft is true
+        || _outflowInput?.HasDraft is true
+        || _inflowInput?.HasDraft is true
         || _splits.Any(item => item.AmountInput?.HasDraft is true);
 
     protected override void OnInitialized()
@@ -150,6 +163,12 @@ public sealed partial class TransactionEditor
         _ => frequency.ToString(),
     };
     private void DirectionChanged() => _focusCategory = CategoryMissing;
+    private void ActivateOutflow() => _direction = "Outflow";
+    private void ActivateInflow() => _direction = "Inflow";
+    private Task SetOutflowAsync(decimal amount) { _direction = "Outflow"; Amount = Math.Abs(amount); return Task.CompletedTask; }
+    private Task SetInflowAsync(decimal amount) { _direction = "Inflow"; Amount = Math.Abs(amount); return Task.CompletedTask; }
+    private void SetOutflowValidity(bool valid) { if (IsOutflow) { _amountValid = valid; } }
+    private void SetInflowValidity(bool valid) { if (!IsOutflow) { _amountValid = valid; } }
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (_focusCategory)
@@ -182,7 +201,16 @@ public sealed partial class TransactionEditor
         _saving = true;
         try
         {
-            var amount = await _amountInput!.CommitAsync();
+            AmountInput amountInput;
+            if (Inline)
+            {
+                amountInput = IsOutflow ? _outflowInput! : _inflowInput!;
+            }
+            else
+            {
+                amountInput = _amountInput!;
+            }
+            var amount = await amountInput.CommitAsync();
             if (amount is null)
             {
                 return;

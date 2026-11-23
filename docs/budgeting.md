@@ -216,19 +216,31 @@ Desktop retains the full ruled table.
 Filtering, sorting and cursor paging run in PostgreSQL. The browser receives the
 current page and its split details, not the entire transaction history. Running
 balances include earlier entries even when a search or date filter hides them.
-Transaction editors load payee suggestions separately across the plan, including
-payees outside the current register page or account. Suggestions refresh with the
-catalog and remain case-insensitively deduplicated in the editor.
-Opening an editor focuses its heading and brings it into view, including when
-editing from a register row below the editor's position on a phone.
+The **Add transaction** action opens the register and inserts a draft row at the
+top. On desktop, one row activation selects it and a second successive
+activation replaces that row with editable date, payee, category, outflow, and
+inflow fields; saving or cancelling returns to the normal register row. New
+transactions use the same in-grid editor rather than a separate full-page form.
+Account, transfer, memo, recurrence, flag, and split fields stay in **More
+details** so the common entry path remains compact.
+
+On phones, a single tap opens the same draft directly beneath its position. The
+ledger columns become a stacked form with full-width controls, while the title
+and save action stay reachable as the form scrolls. The floating add action steps
+aside while this row editor is open. Transaction editors load payee suggestions
+separately across the plan, including payees outside the current register page
+or account. Payees use a filtered native suggestion list, categories use a
+type-ahead Fluent combo box, and both suggestions update with the catalog.
+Opening an editor focuses its heading and brings it into view.
 Empty category views
 explain that the selected filter has no matching categories.
 Editor fields are a comfortable tap size, and a transaction editor collects the
-payee, direction, and amount before the account and transfer. On phones a long
-editor keeps its title, **Close**, and primary save action on screen while the
+payee, category, and amount before the account and transfer. On phones a long
+editor keeps its title, **Cancel**, and primary save action on screen while the
 rest of the form scrolls.
 Closing an editor that holds unsaved changes asks **Keep editing** or **Discard
-changes** instead of discarding the draft. Escape, **Close**, and the account
+changes** instead of discarding the draft. Escape, the transaction **Cancel**,
+and the account
 editor's **Cancel** all follow that guard, and only **Discard changes** throws a
 draft away; a repeated close request while the prompt is open keeps the draft.
 Enter saves a transaction from its payee or amount. A plain **Refresh** applies

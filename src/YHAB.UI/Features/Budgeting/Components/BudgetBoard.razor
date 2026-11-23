@@ -30,7 +30,7 @@
                     }
                     @if (HasOpenAccounts)
                     {
-                        <FluentButton Class="@AddTransactionClass" OnClick="ShowTransactionAsync" Disabled="@(IsBusy || TransactionHint is not null)" Size="ButtonSize.Small" Appearance="ButtonAppearance.Primary" title="@TransactionHint" aria-describedby="@(TransactionHint is null ? null : "add-transaction-hint")">+ Add transaction</FluentButton>
+                        <FluentButton Class="@AddTransactionClass" OnClick="ShowTransaction" Disabled="@(IsBusy || TransactionHint is not null)" Size="ButtonSize.Small" Appearance="ButtonAppearance.Primary" title="@TransactionHint" aria-describedby="@(TransactionHint is null ? null : "add-transaction-hint")">+ Add transaction</FluentButton>
                     }
                     <FluentButton OnClick="ShowHelpAsync" Size="ButtonSize.Small" Appearance="ButtonAppearance.Subtle">How this works</FluentButton>
                 </FluentStack>
@@ -81,10 +81,6 @@
     @if (_move)
     {
         <MoveMoneyEditor @ref="_moveEditor" Plan="Plan" Month="_budget.Month" OnCommand="SendMoveCommandAsync" OnClose="CloseEditors" Busy="IsBusy" />
-    }
-    @if (_transaction)
-    {
-        <TransactionEditor Plan="Plan" Payees="@(_payees ?? [])" OnCommand="SendTransactionCommandAsync" OnClose="CloseTransaction" Busy="IsBusy" />
     }
     <div class="budget-workspace-scope">
         <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalM)" VerticalGap="var(--spacingVerticalM)" Class="budget-workspace">
