@@ -11,6 +11,23 @@ namespace YHAB.ComponentTests.Features.Budgeting;
 [SuppressMessage("Maintainability", "CA1515:Consider making public types internal", Justification = "xUnit requires public test classes for discovery.")]
 public sealed class AmountInputTests
 {
+    [Fact]
+    public async Task FocusDoesNotActivateTheFieldOwnerAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var activations = 0;
+        var component = context.Render<AmountInput>(parameters => parameters.Add(item => item.Label, "Assigned")
+            .Add(item => item.Value, 10m).Add(item => item.OnActivate, () => activations++));
+
+        await component.Find("fluent-text-input").TriggerEventAsync("onfocusin", new FocusEventArgs());
+        activations.ShouldBe(0);
+
+        await component.Find(".amount-field").ClickAsync();
+        activations.ShouldBe(1);
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]

@@ -38,6 +38,26 @@ public sealed class TransactionEditorTests
     }
 
     [Fact]
+    public async Task InlineEditorFocusDoesNotChangeTheExistingDirectionAsync()
+    {
+        await using var context = CreateContext();
+        var plan = CreatePlan();
+        var transaction = new TransactionData(Guid.CreateVersion7(), plan.Accounts[0].Id, plan.Today, "Shop", "", -10, null, "",
+            [new SplitData(Guid.CreateVersion7(), plan.Categories[0].Id, -10, "")]);
+        var commands = new List<PlanCommand>();
+        var component = context.Render<TransactionEditor>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.Payees, []).Add(item => item.Transaction, transaction)
+            .Add(item => item.OnCommand, commands.Add).Add(item => item.OnClose, () => { })
+            .Add(item => item.Inline, true));
+
+        await component.FindAll(".transaction-ledger-amount fluent-text-input")[1]
+            .TriggerEventAsync("onfocusin", new FocusEventArgs());
+        await SaveButton(component).ClickAsync();
+
+        commands.Single().ShouldBeOfType<SaveTransaction>().Transaction.Amount.ShouldBe(-10m);
+    }
+
+    [Fact]
     public async Task InlineEditorSavesFromOutflowColumnAsync()
     {
         await using var context = CreateContext();

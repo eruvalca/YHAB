@@ -125,9 +125,9 @@ else if (_result.Rows.Count > 0 || _editing)
     @if (_result.Rows.Count > 0)
     {
         <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalM)" Class="pagination">
-            <FluentButton OnClick="PreviousPageAsync" Disabled="@(IsBusy || _page == 0)" Appearance="ButtonAppearance.Subtle">Previous</FluentButton>
+            <FluentButton OnClick="PreviousPageAsync" Disabled="@(IsBusy || _editing || _page == 0)" Appearance="ButtonAppearance.Subtle">Previous</FluentButton>
             <span>Page @(_displayPage + 1) · @(_result.Total) transactions</span>
-            <FluentButton OnClick="NextPageAsync" Disabled="@(IsBusy || _result.Next is null)" Appearance="ButtonAppearance.Subtle">Next</FluentButton>
+            <FluentButton OnClick="NextPageAsync" Disabled="@(IsBusy || _editing || _result.Next is null)" Appearance="ButtonAppearance.Subtle">Next</FluentButton>
         </FluentStack>
     }
 }

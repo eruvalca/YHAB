@@ -382,7 +382,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
 
     private static async Task CloseCategoryEditorAsync(IPage page)
     {
-        var close = page.Locator(".editor-surface fluent-button[aria-label='Close editor']");
+        var close = page.Locator(".editor-surface fluent-button[aria-label='Cancel']");
         if (await close.CountAsync() == 0) { return; }
         await close.ClickAsync();
         await page.Locator(".editor-surface").WaitForAsync(new() { State = WaitForSelectorState.Detached });

@@ -94,7 +94,7 @@ public sealed partial class TransactionEditor
         get
         {
             if (!Inline) { return _amountValid; }
-            return IsOutflow ? _outflowValid : _inflowValid;
+            return _outflowValid && _inflowValid;
         }
     }
     private bool CannotSave => Busy || _saving || !ActiveAmountValid || _account == Guid.Empty || (_transfer != Guid.Empty && _transfer == _account)
@@ -173,8 +173,6 @@ public sealed partial class TransactionEditor
         _ => frequency.ToString(),
     };
     private void DirectionChanged() => _focusCategory = CategoryMissing;
-    private void ActivateOutflow() => _direction = "Outflow";
-    private void ActivateInflow() => _direction = "Inflow";
     private Task SetOutflowAsync(decimal amount) { _direction = "Outflow"; Amount = Math.Abs(amount); return Task.CompletedTask; }
     private Task SetInflowAsync(decimal amount) { _direction = "Inflow"; Amount = Math.Abs(amount); return Task.CompletedTask; }
     private void SetOutflowValidity(bool valid) => _outflowValid = valid;

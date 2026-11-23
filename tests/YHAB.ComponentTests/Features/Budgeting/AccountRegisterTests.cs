@@ -117,7 +117,7 @@ public sealed class AccountRegisterTests
 
         component.FindAll(".transaction-editing-row").Count.ShouldBe(1);
         component.Find(".transaction-ledger-payee fluent-text-input").GetAttribute("value").ShouldBe("Corner market");
-        await component.Find("fluent-button[aria-label='Close editor']").ClickAsync();
+        await component.Find("fluent-button[aria-label='Cancel']").ClickAsync();
         await component.Find(".editor-discard fluent-button").ClickAsync();
 
         await component.WaitForAssertionAsync(() =>
@@ -125,6 +125,30 @@ public sealed class AccountRegisterTests
             component.FindAll(".transaction-editing-row").ShouldBeEmpty();
             component.Find(".register-table .category-link").TextContent.ShouldBe("Hardware store");
         });
+    }
+
+    [Fact]
+    public async Task PagingIsDisabledWhileEditingATransactionAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var entry = new TransactionData(Guid.NewGuid(), account.Id, today, "Visible payee", "", -10, null, "", []);
+        var next = new RegisterCursor(today, 1, Guid.NewGuid(), "Another payee", -5);
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], false, false, []) { Today = today };
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(plan.Version, [new(entry, 990)], 2, next)))
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        await component.Find(".register-table .category-link").ClickAsync();
+        await component.Find(".register-table .category-link").ClickAsync();
+
+        component.FindAll(".pagination fluent-button").ShouldAllBe(button => button.HasAttribute("disabled"));
+        component.Find("fluent-button[aria-label='Cancel']").TextContent.Trim().ShouldBe("Cancel");
     }
 
     [Fact]
@@ -291,7 +315,7 @@ public sealed class AccountRegisterTests
 
         component.FindAll(".editor-surface").Count.ShouldBe(1);
         component.Find(".transaction-ledger-payee fluent-text-input").GetAttribute("value").ShouldBe("Corner shop");
-        await component.Find("fluent-button[aria-label='Close editor']").ClickAsync();
+        await component.Find("fluent-button[aria-label='Cancel']").ClickAsync();
         component.Find("[role='alertdialog']").TextContent.ShouldContain("Discard your unsaved changes?");
 
         // A saved command consumes the draft, so the editor closes.
@@ -330,7 +354,7 @@ public sealed class AccountRegisterTests
             .Add(item => item.ExternalRefresh, true));
 
         component.FindAll(".editor-surface").Count.ShouldBe(1);
-        await component.Find("fluent-button[aria-label='Close editor']").ClickAsync();
+        await component.Find("fluent-button[aria-label='Cancel']").ClickAsync();
         component.Find("[role='alertdialog']").TextContent.ShouldContain("Discard your unsaved changes?");
     }
 
@@ -469,7 +493,7 @@ public sealed class AccountRegisterTests
         component.Find(".editor-heading h2").TextContent.ShouldBe("Add transaction");
         consumed.ShouldBe(1);
 
-        await component.Find("fluent-button[aria-label='Close editor']").ClickAsync();
+        await component.Find("fluent-button[aria-label='Cancel']").ClickAsync();
         component.FindAll(".editor-surface").ShouldBeEmpty();
 
         // A later render from the same caller must not reopen the consumed intent.

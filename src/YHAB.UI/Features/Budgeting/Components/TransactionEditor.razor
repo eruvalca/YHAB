@@ -29,11 +29,11 @@
             </div>
             <div class="transaction-ledger-amount">
                 <AmountInput @ref="_outflowInput" Label="Outflow" Size="TextInputSize.Large" CommitOnSave="true" OnEnter="SaveAsync"
-                             Value="@OutflowAmount" ValueChanged="SetOutflowAsync" ValidChanged="SetOutflowValidity" OnActivate="ActivateOutflow" />
+                             Value="@OutflowAmount" ValueChanged="SetOutflowAsync" ValidChanged="SetOutflowValidity" />
             </div>
             <div class="transaction-ledger-amount">
                 <AmountInput @ref="_inflowInput" Label="Inflow" Size="TextInputSize.Large" CommitOnSave="true" OnEnter="SaveAsync"
-                             Value="@InflowAmount" ValueChanged="SetInflowAsync" ValidChanged="SetInflowValidity" OnActivate="ActivateInflow" />
+                             Value="@InflowAmount" ValueChanged="SetInflowAsync" ValidChanged="SetInflowValidity" />
             </div>
         </div>
         @if (CategoryMissing || CategoryUnavailable)

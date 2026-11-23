@@ -166,6 +166,7 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
             }
             else
             {
+                _reloadAfterClose = false;
                 _result = result;
                 _rowPlan = rowPlan;
                 _displayPage = page;
