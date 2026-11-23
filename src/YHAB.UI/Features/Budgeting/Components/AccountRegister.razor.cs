@@ -66,6 +66,7 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
     private RegisterPage? _result;
     private PlanSnapshot? _rowPlan;
     private PlanCommand? _transactionCommand;
+    private DeleteTransactions? _deleteCommand;
     private int _displayPage;
     private IReadOnlyList<string>? _payees;
     private readonly List<RegisterCursor?> _cursors = [null];
@@ -115,12 +116,11 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
             // Recovery after a failed read keeps a draft the refresh preserved, just as a catalog
             // change does; only the plan, account, or filter identity discards it.
             var readFailed = _error is not null && !ReferenceEquals(_loadedPlan, Plan);
-            var settled = _transactionCommand is not null
-                && (ReferenceEquals(AppliedCommand, _transactionCommand) || ReferenceEquals(RecoveredCommand, _transactionCommand));
-            if (planReplaced || _previousAccount != AccountId || filterChanged || ((catalogChanged || readFailed) && settled))
+            if (planReplaced || _previousAccount != AccountId || filterChanged || ((catalogChanged || readFailed) && TransactionSettled()))
             {
                 CloseEditors();
             }
+            ReconcileDelete();
 
             // Keep same-account rows painted while a revision refreshes. Their
             // labels use the catalog they arrived with until replacement is ready.
@@ -259,6 +259,24 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
         _deleting = false;
         _reloadAfterClose = false;
     }
+    private bool TransactionSettled() => _transactionCommand is not null
+        && (ReferenceEquals(AppliedCommand, _transactionCommand) || ReferenceEquals(RecoveredCommand, _transactionCommand));
+    private void ReconcileDelete()
+    {
+        var command = _deleteCommand;
+        if (command is null || !ReferenceEquals(AppliedCommand, command) && !ReferenceEquals(RecoveredCommand, command))
+        {
+            return;
+        }
+
+        _selected.Clear();
+        _deleting = false;
+        if (_transaction is not null && command.TransactionIds.Contains(_transaction.Id))
+        {
+            CloseEditors();
+        }
+        _deleteCommand = null;
+    }
     private async Task CloseEditorAsync()
     {
         var reload = _reloadAfterClose;
@@ -322,7 +340,12 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
     private async Task NextPageAsync() { if (_result?.Next is not { } next) { return; } _page++; if (_cursors.Count <= _page) { _cursors.Add(next); } else { _cursors[_page] = next; } _selected.Clear(); await LoadAsync(); }
     private void RequestDelete() => _deleting = true;
     private void CancelDelete() => _deleting = false;
-    private Task DeleteAsync() => OnCommand.InvokeAsync(new DeleteTransactions(Plan.Version, _selected.ToArray()));
+    private Task DeleteAsync()
+    {
+        if (_selected.Count == 0) { return Task.CompletedTask; }
+        _deleteCommand = new(Plan.Version, _selected.ToArray());
+        return OnCommand.InvokeAsync(_deleteCommand);
+    }
     protected override async ValueTask DisposeCoreAsync()
     {
         if (_layoutModule is not null)

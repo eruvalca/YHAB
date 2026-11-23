@@ -51,7 +51,7 @@
 @if (_deleting)
 {
     <div class="notice" data-kind="warning"><p>Delete @_selected.Count selected transactions? Transfers are removed from both accounts. You can undo this change.</p>
-        <FluentButton OnClick="DeleteAsync" Disabled="IsBusy" Appearance="ButtonAppearance.Primary">Delete selected transactions</FluentButton>
+        <FluentButton OnClick="DeleteAsync" Disabled="@(IsBusy || _selected.Count == 0)" Appearance="ButtonAppearance.Primary">Delete selected transactions</FluentButton>
         <FluentButton OnClick="CancelDelete" Appearance="ButtonAppearance.Subtle">Keep transactions</FluentButton>
     </div>
 }

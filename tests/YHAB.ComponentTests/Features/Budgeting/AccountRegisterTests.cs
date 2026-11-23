@@ -423,6 +423,100 @@ public sealed class AccountRegisterTests
     }
 
     [Fact]
+    public async Task AppliedDeleteClosesAnEditorForADeletedTransactionAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var deleted = new TransactionData(Guid.NewGuid(), account.Id, today, "Delete me", "", -10, null, "", []);
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [deleted], false, false, []) { Today = today };
+        var commands = new List<PlanCommand>();
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
+            .Add(item => item.OnCommand, commands.Add).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(plan.Version, [new(deleted, 990)], 1, null)))
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        await component.Find(".register-table .category-link").ClickAsync();
+        await component.Find(".register-table .category-link").ClickAsync();
+        await component.Find(".register-table fluent-checkbox").ChangeAsync(new() { Value = true });
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Delete…", StringComparison.Ordinal)).ClickAsync();
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Delete selected transactions", StringComparison.Ordinal)).ClickAsync();
+        var submitted = commands.Single().ShouldBeOfType<DeleteTransactions>();
+
+        component.Render(parameters => parameters
+            .Add(item => item.Plan, plan with { Version = plan.Version + 1 })
+            .Add(item => item.AppliedCommand, submitted));
+
+        component.FindAll(".editor-surface").ShouldBeEmpty();
+        component.FindAll(".notice[data-kind='warning']").ShouldBeEmpty();
+        component.FindAll(".selection-toolbar").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task AppliedDeletePreservesAnUnrelatedEditorAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var edited = new TransactionData(Guid.NewGuid(), account.Id, today, "Keep editing", "", -10, null, "", []);
+        var deleted = new TransactionData(Guid.NewGuid(), account.Id, today.AddDays(-1), "Delete me", "", -20, null, "", []);
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [edited, deleted], false, false, []) { Today = today };
+        var commands = new List<PlanCommand>();
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
+            .Add(item => item.OnCommand, commands.Add).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(plan.Version, [new(edited, 990), new(deleted, 970)], 2, null)))
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        await component.FindAll(".register-table .category-link")[0].ClickAsync();
+        await component.FindAll(".register-table .category-link")[0].ClickAsync();
+        await component.FindAll(".register-table tbody tr")[1].QuerySelector("fluent-checkbox").ShouldNotBeNull()
+            .ChangeAsync(new() { Value = true });
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Delete…", StringComparison.Ordinal)).ClickAsync();
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Delete selected transactions", StringComparison.Ordinal)).ClickAsync();
+        var submitted = commands.Single().ShouldBeOfType<DeleteTransactions>();
+
+        component.Render(parameters => parameters
+            .Add(item => item.Plan, plan with { Version = plan.Version + 1 })
+            .Add(item => item.AppliedCommand, submitted));
+
+        component.FindAll(".editor-surface").Count.ShouldBe(1);
+        component.Find(".transaction-ledger-payee fluent-text-input").GetAttribute("value").ShouldBe("Keep editing");
+        component.FindAll(".notice[data-kind='warning']").ShouldBeEmpty();
+        component.FindAll(".selection-toolbar").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task DeleteConfirmationCannotSubmitWithNoSelectionAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var entry = new TransactionData(Guid.NewGuid(), account.Id, today, "Visible payee", "", -10, null, "", []);
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [entry], false, false, []) { Today = today };
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(plan.Version, [new(entry, 990)], 1, null)))
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        await component.Find(".register-table fluent-checkbox").ChangeAsync(new() { Value = true });
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Delete…", StringComparison.Ordinal)).ClickAsync();
+        await component.Find(".register-table fluent-checkbox").ChangeAsync(new() { Value = false });
+
+        var delete = component.FindAll("fluent-button")
+            .Single(item => item.TextContent.Contains("Delete selected transactions", StringComparison.Ordinal));
+        delete.HasAttribute("disabled").ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task RefreshKeepsAnEditedDraftWhenTheCatalogOmitsTheLedgerAsync()
     {
         await using var context = new BunitContext();
