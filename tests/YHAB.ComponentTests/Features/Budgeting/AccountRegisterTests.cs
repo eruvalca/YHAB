@@ -150,6 +150,14 @@ public sealed class AccountRegisterTests
         component.FindAll(".transaction-editing-row").Count.ShouldBe(1);
         component.Find(".transaction-ledger-payee fluent-text-input").GetAttribute("value").ShouldBe("Visible payee");
         component.Find("fluent-button[aria-label='Cancel']").ShouldNotBeNull();
+
+        var editor = component.FindComponent<TransactionEditor>().Instance;
+        await component.Find(".transaction-ledger-payee fluent-text-input").ChangeAsync(new() { Value = "Unsaved payee" });
+        await component.Find(".table-toolbar fluent-text-input").ChangeAsync(new() { Value = "" });
+
+        component.FindComponent<TransactionEditor>().Instance.ShouldBeSameAs(editor);
+        component.Find(".transaction-ledger-payee fluent-text-input").GetAttribute("value").ShouldBe("Unsaved payee");
+        component.Find(".register-table tbody tr.transaction-editing-row").ShouldNotBeNull();
     }
 
     [Fact]
