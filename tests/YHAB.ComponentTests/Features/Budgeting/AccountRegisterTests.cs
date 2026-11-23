@@ -274,6 +274,44 @@ public sealed class AccountRegisterTests
     }
 
     [Fact]
+    public async Task DiscardingAHiddenDraftKeepsTheUsersDateRangeAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var entry = new TransactionData(Guid.NewGuid(), account.Id, today, "Corner shop", "", -10, null, "", []);
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [entry], false, false, []) { Today = today };
+        var queries = new List<RegisterQuery>();
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (query, _) =>
+            {
+                queries.Add(query);
+                var rows = query.From > entry.Date ? [] : new RegisterRow[] { new(entry, 990) };
+                return Task.FromResult(new RegisterPage(plan.Version, rows, rows.Length, null));
+            })
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        await component.Find(".register-table .category-link").ClickAsync();
+        await component.Find(".register-table .category-link").ClickAsync();
+        await component.Find(".transaction-ledger-payee fluent-text-input").ChangeAsync(new() { Value = "Unsaved payee" });
+
+        var selectedFrom = today.AddDays(1);
+        await component.Find("#register-from").ChangeAsync(new() { Value = selectedFrom.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) });
+        queries[^1].From.ShouldBe(selectedFrom);
+
+        await component.Find("fluent-button[aria-label='Cancel']").ClickAsync();
+        await component.Find(".editor-discard fluent-button").ClickAsync();
+
+        await component.WaitForAssertionAsync(() => queries[^1].From.ShouldBe(selectedFrom));
+        component.Find("#register-from").GetAttribute("value").ShouldBe(selectedFrom.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        component.FindAll(".transaction-editing-row").ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task NavigationDefersDeletionToTheVisibleRegisterContextAsync()
     {
         await using var context = new BunitContext();

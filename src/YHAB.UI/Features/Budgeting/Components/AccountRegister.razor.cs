@@ -54,6 +54,7 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
     private bool _editing;
     private bool _deleting;
     private bool _reloadAfterClose;
+    private (Guid? AccountId, Guid? CategoryId, DateOnly? From, DateOnly? Through)? _pendingContext;
     private bool _newTransactionPending;
     private bool _newTransactionHandled;
     private bool _newTransactionNeedsAccount;
@@ -103,10 +104,8 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
         }
         var requestedFilter = (InitialCategoryId, InitialFrom, InitialThrough);
         var initialContextChanged = _initialFilter != requestedFilter || _previousAccount != AccountId;
-        if (!initialContextChanged)
-        {
-            _account = Plan.Accounts.SingleOrDefault(item => item.Id == _previousAccount);
-        }
+        UpdateAccountProjection(initialContextChanged);
+        UpdatePendingContext(initialContextChanged, requestedFilter);
         var planChanged = _loadedPlan?.Id != Plan.Id || _version != Plan.Version;
         var refreshChanged = planChanged
             || (_error is not null && !ReferenceEquals(_loadedPlan, Plan));
@@ -114,8 +113,6 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
         {
             var planReplaced = _loadedPlan?.Id != Plan.Id;
             var catalogChanged = _version != Plan.Version;
-            // Recovery after a failed read keeps a draft the refresh preserved, just as a catalog
-            // change does; only the plan, account, or filter identity discards it.
             var readFailed = _error is not null && !ReferenceEquals(_loadedPlan, Plan);
             if (planReplaced || ((catalogChanged || readFailed) && TransactionSettled()))
             {
@@ -126,9 +123,6 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
             {
                 ApplyRequestedContext(Plan.Accounts.SingleOrDefault(item => item.Id == AccountId), requestedFilter);
             }
-
-            // Keep same-account rows painted while a revision refreshes. Their
-            // labels use the catalog they arrived with until replacement is ready.
             if (planReplaced || !_editing && initialContextChanged)
             {
                 _result = null;
@@ -142,6 +136,20 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
             }
             _loadedPlan = Plan;
             await ResetPageAsync();
+        }
+    }
+    private void UpdateAccountProjection(bool contextChanged)
+    {
+        if (!contextChanged)
+        {
+            _account = Plan.Accounts.SingleOrDefault(item => item.Id == _previousAccount);
+        }
+    }
+    private void UpdatePendingContext(bool contextChanged, (Guid?, DateOnly?, DateOnly?) requestedFilter)
+    {
+        if (_editing && contextChanged)
+        {
+            _pendingContext = (AccountId, CategoryId: requestedFilter.Item1, From: requestedFilter.Item2, Through: requestedFilter.Item3);
         }
     }
     private void ApplyRequestedContext(AccountData? account, (Guid?, DateOnly?, DateOnly?) filter)
@@ -279,6 +287,7 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
         _activationEpoch++;
         _pendingActivationId = null;
         _transactionCommand = null;
+        _pendingContext = null;
         _editing = false;
         _deleting = false;
         _reloadAfterClose = false;
@@ -303,17 +312,23 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
     }
     private async Task CloseEditorAsync()
     {
-        var requestedFilter = (InitialCategoryId, InitialFrom, InitialThrough);
-        var contextChanged = _previousAccount != AccountId || _initialFilter != requestedFilter;
-        var reload = _reloadAfterClose || contextChanged;
+        var pendingContext = _pendingContext;
+        var reload = _reloadAfterClose;
         CloseEditors();
-        if (!reload) { return; }
-        ApplyRequestedContext(Plan.Accounts.SingleOrDefault(item => item.Id == AccountId),
-            requestedFilter);
-        _previousAccount = AccountId;
-        _result = null;
-        _rowPlan = null;
-        await ResetPageAsync();
+        if (pendingContext is { } context)
+        {
+            ApplyRequestedContext(Plan.Accounts.SingleOrDefault(item => item.Id == context.AccountId),
+                (context.CategoryId, context.From, context.Through));
+            _previousAccount = context.AccountId;
+            _result = null;
+            _rowPlan = null;
+            await ResetPageAsync();
+            return;
+        }
+        if (reload)
+        {
+            await LoadAsync();
+        }
     }
     private async Task ActivateRowAsync(TransactionData entry)
     {
