@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using AngleSharp.Dom;
 using Bunit;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Shouldly;
@@ -13,6 +14,34 @@ namespace YHAB.ComponentTests.Features.Budgeting;
 [SuppressMessage("Maintainability", "CA1515:Consider making public types internal", Justification = "xUnit requires public test classes for discovery.")]
 public sealed class TransactionEditorTests
 {
+    [Fact]
+    public async Task CategoryComboboxFiltersAndCommitsASelectedResultAsync()
+    {
+        await using var context = CreateContext();
+        var plan = CreatePlan();
+        var utilities = new CategoryData(Guid.CreateVersion7(), plan.Groups[0].Id, "Utilities", "", 1, false, null, null);
+        plan = plan with { Categories = [plan.Categories[0], utilities] };
+        var commands = new List<PlanCommand>();
+        var component = context.Render<TransactionEditor>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.Payees, [])
+            .Add(item => item.OnCommand, commands.Add).Add(item => item.OnClose, () => { })
+            .Add(item => item.Inline, true));
+
+        var category = component.Find("fluent-dropdown[placeholder='Choose a category']");
+        category.QuerySelectorAll("fluent-option").Count.ShouldBe(2);
+        await category.TriggerEventAsync("ontextimmediate", new ChangeEventArgs { Value = "Gro" });
+
+        category = component.Find("fluent-dropdown[placeholder='Choose a category']");
+        category.QuerySelectorAll("fluent-option").Select(item => item.TextContent.Trim()).ShouldBe(["Groceries"]);
+        var groceries = category.QuerySelector("fluent-option[text='Groceries']").ShouldNotBeNull();
+        await category.TriggerEventAsync("ondropdownchange", new DropdownEventArgs { SelectedOptions = groceries.Id });
+        await component.FindAll(".transaction-ledger-amount fluent-text-input")[0].ChangeAsync(new() { Value = "12.50" });
+        await SaveButton(component).ClickAsync();
+
+        commands.Single().ShouldBeOfType<SaveTransaction>().Transaction.Splits.Single().CategoryId
+            .ShouldBe(plan.Categories[0].Id);
+    }
+
     [Fact]
     public async Task InlineEditorCannotSaveAnInvalidKeyboardActivatedInflowAsync()
     {

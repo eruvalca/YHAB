@@ -36,6 +36,7 @@ public sealed partial class TransactionEditor
     private string _memo = "";
     private string _direction = "Outflow";
     private string _flag = "None";
+    private string _categoryFilter = "";
     private DateOnly _date;
     private bool _amountValid = true;
     private bool _outflowValid = true;
@@ -59,6 +60,12 @@ public sealed partial class TransactionEditor
     private decimal InflowAmount => IsOutflow ? 0 : Amount;
     private static string CategoryText(CategoryData? category) => category?.Name ?? string.Empty;
     private static Guid CategoryValue(CategoryData? category) => category?.Id ?? Guid.Empty;
+    private static CategoryData[] FilteredCategories(CategoryData[] categories, string filter)
+        => string.IsNullOrWhiteSpace(filter)
+            ? categories
+            : categories.Where(item => item.Name.Contains(filter.Trim(), StringComparison.OrdinalIgnoreCase)).ToArray();
+    private void FilterCategories(string? filter) => _categoryFilter = filter ?? "";
+    private static void FilterSplitCategories(SplitInput split, string? filter) => split.Filter = filter ?? "";
     private IEnumerable<CategoryData> SelectedCategories()
     {
         var selected = CategoryOptions.SingleOrDefault(item => item.Id == _category);
@@ -72,13 +79,17 @@ public sealed partial class TransactionEditor
     private Task SelectCategoryAsync(IEnumerable<CategoryData> selected)
     {
         _category = selected.SingleOrDefault()?.Id ?? Guid.Empty;
+        ClearCategoryFilter();
         return Task.CompletedTask;
     }
     private static Task SelectSplitAsync(SplitInput split, IEnumerable<CategoryData> selected)
     {
         split.Category = selected.SingleOrDefault()?.Id ?? Guid.Empty;
+        ClearSplitFilter(split);
         return Task.CompletedTask;
     }
+    private void ClearCategoryFilter() => _categoryFilter = "";
+    private static void ClearSplitFilter(SplitInput split) => split.Filter = "";
     private decimal SignedAmount => IsOutflow ? -Math.Abs(Amount) : Math.Abs(Amount);
     private int DirectionSign => IsOutflow ? -1 : 1;
     private bool BudgetOutflow => DirectionSign * BudgetDirection < 0;
@@ -203,7 +214,11 @@ public sealed partial class TransactionEditor
         RepeatFrequency.EverySixMonths => "Every six months",
         _ => frequency.ToString(),
     };
-    private void DirectionChanged() => _focusCategory = CategoryMissing;
+    private void DirectionChanged()
+    {
+        _categoryFilter = "";
+        _focusCategory = CategoryMissing;
+    }
     private Task SetOutflowAsync(decimal amount) { _direction = "Outflow"; Amount = Math.Abs(amount); return Task.CompletedTask; }
     private Task SetInflowAsync(decimal amount) { _direction = "Inflow"; Amount = Math.Abs(amount); return Task.CompletedTask; }
     private void SetOutflowValidity(bool valid) => _outflowValid = valid;
@@ -299,6 +314,7 @@ public sealed partial class TransactionEditor
         public Guid Category { get; set; }
         public decimal Amount { get; set; }
         public string Memo { get; set; } = "";
+        public string Filter { get; set; } = "";
         public bool Valid { get; set; } = true;
         public AmountInput? AmountInput { get; set; }
     }

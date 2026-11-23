@@ -514,9 +514,17 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         (await category.TextContentAsync() ?? "").ShouldContain("Choose a category");
         await page.WaitForFunctionAsync("() => document.activeElement?.id === 'transaction-category-error'");
         (await page.EvaluateAsync<bool>("() => document.activeElement?.id === 'transaction-category-error'")).ShouldBeTrue();
-        await category.ClickAsync();
+        var categoryInput = Input(page, "Category");
+        await categoryInput.ClickAsync();
+        await categoryInput.FillAsync("Gro");
+        await page.Locator("fluent-option[text='Groceries']").WaitForAsync();
+        var categoryHost = categoryInput.Locator("xpath=ancestor::fluent-dropdown[1]");
+        (await categoryHost.Locator("fluent-option").AllTextContentsAsync()).ShouldBe(["Groceries"]);
+        await categoryInput.PressAsync("ArrowDown");
+        await categoryInput.PressAsync("Enter");
+        await page.WaitForFunctionAsync("() => [...document.querySelectorAll('fluent-field')].some(field => field.querySelector('label')?.textContent === 'Category' && field.querySelector('input')?.value === 'Groceries')");
+        (await categoryHost.Locator("fluent-option[selected]").InnerTextAsync()).ShouldContain("Groceries");
         (await page.Locator("fluent-option[text='Inflow: Ready to assign']").CountAsync()).ShouldBe(0);
-        await page.Locator("fluent-option[text='Groceries']").ClickAsync();
         await page.WaitForFunctionAsync("() => [...document.querySelectorAll('fluent-button')].some(button => button.textContent?.trim() === 'Save transaction' && !button.hasAttribute('disabled'))");
         (await Button(page, "Save transaction").GetAttributeAsync("disabled")).ShouldBeNull();
         await Button(page, "Save transaction").ClickAsync();
@@ -525,6 +533,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
             Has = page.GetByRole(AriaRole.Button, new() { Name = "Neighborhood market", Exact = true }),
         });
         await transaction.WaitForAsync();
+        (await transaction.Locator(".category-label").TextContentAsync() ?? "").ShouldContain("Groceries");
         var transactionRow = (await transaction.BoundingBoxAsync()).ShouldNotBeNull();
         transactionRow.Height.ShouldBeLessThanOrEqualTo(width <= 700 ? 64 : 48);
         if (width <= 700)

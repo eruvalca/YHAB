@@ -14,11 +14,12 @@
                 @if (NeedsCategory && !_split)
                 {
                     <FluentCombobox @key="BudgetOutflow" Margin="0" Size="ListSize.Large" TOption="CategoryData" TValue="Guid" Label="Category"
-                                    Items="CategoryOptions" OptionText="CategoryText" OptionValue="CategoryValue" Placeholder="@ChooseCategory"
+                                    Items="FilteredCategories(CategoryOptions, _categoryFilter)" OptionText="CategoryText" OptionValue="CategoryValue" Placeholder="@ChooseCategory"
+                                    Immediate="true" ImmediateText="@_categoryFilter" ImmediateTextChanged="FilterCategories"
                                     SelectedItems="SelectedCategories()" SelectedItemsChanged="SelectCategoryAsync"
                                     aria-invalid="@(CategoryMissing || CategoryUnavailable ? "true" : "false")"
                                     aria-describedby="@(CategoryMissing || CategoryUnavailable ? "transaction-category-error" : null)"
-                                    @bind-Value="_category" />
+                                    @bind-Value="_category" @bind-Value:after="ClearCategoryFilter" />
                 }
                 else
                 {
@@ -65,11 +66,12 @@
                                 <FluentGrid @key="split.Id" Spacing="2">
                                     <FluentGridItem Xs="12" Md="5">
                                         <FluentCombobox @key="SplitNeedsCategory(split)" Margin="0" Size="ListSize.Large" TOption="CategoryData" TValue="Guid" Label="Split category"
-                                                        Items="SplitCategoryOptions(split)" OptionText="CategoryText" OptionValue="CategoryValue" Placeholder="@ChooseCategory"
+                                                        Items="FilteredCategories(SplitCategoryOptions(split), split.Filter)" OptionText="CategoryText" OptionValue="CategoryValue" Placeholder="@ChooseCategory"
+                                                        Immediate="true" ImmediateText="@split.Filter" ImmediateTextChanged="text => FilterSplitCategories(split, text)"
                                                         SelectedItems="SelectedSplitCategories(split)" SelectedItemsChanged="items => SelectSplitAsync(split, items)"
                                                         aria-invalid="@(SplitCategoryMissing(split) || SplitCategoryUnavailable(split) ? "true" : "false")"
                                                         aria-describedby="@(SplitCategoryMissing(split) || SplitCategoryUnavailable(split) ? $"{split.Id}-category-error" : null)"
-                                                        @bind-Value="split.Category" />
+                                                        @bind-Value="split.Category" @bind-Value:after="() => ClearSplitFilter(split)" />
                                         @if (SplitCategoryMissing(split) || SplitCategoryUnavailable(split))
                                         {
                                             <p id="@($"{split.Id}-category-error")" class="validation-message" role="alert">@(SplitCategoryUnavailable(split) ? CategoryUnavailableError : BudgetCategoryError)</p>
@@ -106,11 +108,12 @@
             @if (!_split)
             {
                 <FluentCombobox @key="BudgetOutflow" Margin="0" Size="ListSize.Large" TOption="CategoryData" TValue="Guid" Label="Category"
-                                Items="CategoryOptions" OptionText="CategoryText" OptionValue="CategoryValue" Placeholder="@ChooseCategory"
+                                Items="FilteredCategories(CategoryOptions, _categoryFilter)" OptionText="CategoryText" OptionValue="CategoryValue" Placeholder="@ChooseCategory"
+                                Immediate="true" ImmediateText="@_categoryFilter" ImmediateTextChanged="FilterCategories"
                                 SelectedItems="SelectedCategories()" SelectedItemsChanged="SelectCategoryAsync"
                                 aria-invalid="@(CategoryMissing || CategoryUnavailable ? "true" : "false")"
                                 aria-describedby="@(CategoryMissing || CategoryUnavailable ? "transaction-category-error" : null)"
-                                @bind-Value="_category" />
+                                @bind-Value="_category" @bind-Value:after="ClearCategoryFilter" />
                 @if (CategoryMissing || CategoryUnavailable)
                 {
                     <p @ref="_categoryError" id="transaction-category-error" tabindex="-1" class="validation-message" role="alert">@(CategoryUnavailable ? CategoryUnavailableError : CategoryError)</p>
@@ -126,11 +129,12 @@
                         <FluentGrid @key="split.Id" Spacing="2">
                             <FluentGridItem Xs="12" Md="5">
                                 <FluentCombobox @key="SplitNeedsCategory(split)" Margin="0" Size="ListSize.Large" TOption="CategoryData" TValue="Guid" Label="Split category"
-                                                Items="SplitCategoryOptions(split)" OptionText="CategoryText" OptionValue="CategoryValue" Placeholder="@ChooseCategory"
+                                                Items="FilteredCategories(SplitCategoryOptions(split), split.Filter)" OptionText="CategoryText" OptionValue="CategoryValue" Placeholder="@ChooseCategory"
+                                                Immediate="true" ImmediateText="@split.Filter" ImmediateTextChanged="text => FilterSplitCategories(split, text)"
                                                 SelectedItems="SelectedSplitCategories(split)" SelectedItemsChanged="items => SelectSplitAsync(split, items)"
                                                 aria-invalid="@(SplitCategoryMissing(split) || SplitCategoryUnavailable(split) ? "true" : "false")"
                                                 aria-describedby="@(SplitCategoryMissing(split) || SplitCategoryUnavailable(split) ? $"{split.Id}-category-error" : null)"
-                                                @bind-Value="split.Category" />
+                                                @bind-Value="split.Category" @bind-Value:after="() => ClearSplitFilter(split)" />
                                 @if (SplitCategoryMissing(split) || SplitCategoryUnavailable(split))
                                 {
                                     <p id="@($"{split.Id}-category-error")" class="validation-message" role="alert">@(SplitCategoryUnavailable(split) ? CategoryUnavailableError : BudgetCategoryError)</p>

@@ -230,7 +230,8 @@ and save action stay reachable as the form scrolls. The floating add action step
 aside while this row editor is open. Transaction editors load payee suggestions
 separately across the plan, including payees outside the current register page
 or account. Payees use a filtered native suggestion list, categories use a
-type-ahead Fluent combo box, and both suggestions update with the catalog.
+case-insensitive filtered Fluent combo box with Arrow/Enter selection, and both
+suggestions update with the catalog.
 Opening an editor focuses its heading and brings it into view.
 Empty category views
 explain that the selected filter has no matching categories.
