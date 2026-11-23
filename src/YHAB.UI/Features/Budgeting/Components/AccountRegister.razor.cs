@@ -47,6 +47,8 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
     private AccountData? _account;
     private TransactionData? _transaction;
     private Guid? _activeRowId;
+    private Guid? _pendingActivationId;
+    private long _activationEpoch;
     private bool _editing;
     private bool _deleting;
     private bool _reloadAfterClose;
@@ -222,6 +224,8 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
     private void Add()
     {
         if (_editing || AccountEditing) { return; }
+        _activationEpoch++;
+        _pendingActivationId = null;
         _transaction = null;
         _activeRowId = null;
         _editKey = Guid.CreateVersion7();
@@ -230,13 +234,22 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
     private void Edit(TransactionData entry)
     {
         if (_editing || AccountEditing) { return; }
+        _activationEpoch++;
+        _pendingActivationId = null;
         _transaction = entry;
         _activeRowId = entry.Id;
         _editKey = Guid.CreateVersion7();
         _editing = true;
     }
     private void Duplicate(TransactionData entry) => Edit(entry with { Id = Guid.Empty, Date = Plan.Today, Repeat = RepeatFrequency.None, Splits = entry.Splits.Select(item => item with { Id = Guid.CreateVersion7() }).ToArray() });
-    private void CloseEditors() { _editing = false; _deleting = false; _reloadAfterClose = false; }
+    private void CloseEditors()
+    {
+        _activationEpoch++;
+        _pendingActivationId = null;
+        _editing = false;
+        _deleting = false;
+        _reloadAfterClose = false;
+    }
     private async Task CloseEditorAsync()
     {
         var reload = _reloadAfterClose;
@@ -246,7 +259,25 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
     private async Task ActivateRowAsync(TransactionData entry)
     {
         if (IsBusy || _editing || AccountEditing) { return; }
-        if (_activeRowId == entry.Id || await IsCompactRegisterAsync())
+        if (_activeRowId == entry.Id)
+        {
+            Edit(entry);
+            return;
+        }
+
+        if (_pendingActivationId == entry.Id)
+        {
+            Edit(entry);
+            return;
+        }
+
+        var epoch = ++_activationEpoch;
+        _pendingActivationId = entry.Id;
+        var compact = await IsCompactRegisterAsync();
+        if (IsDisposed || epoch != _activationEpoch || _pendingActivationId != entry.Id) { return; }
+        _pendingActivationId = null;
+        if (_editing || AccountEditing) { return; }
+        if (compact)
         {
             Edit(entry);
             return;

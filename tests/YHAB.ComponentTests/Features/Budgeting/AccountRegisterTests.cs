@@ -3,6 +3,7 @@ using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.FluentUI.AspNetCore.Components;
+using Microsoft.JSInterop;
 using Shouldly;
 using Xunit;
 using YHAB.SharedKernel.Budgeting;
@@ -91,6 +92,34 @@ public sealed class AccountRegisterTests
     }
 
     [Fact]
+    public async Task OverlappingClicksEnterThePendingRowEditorAsync()
+    {
+        var hold = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var javascript = new RegisterPlacementJSRuntime(hold);
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.Services.AddSingleton<IJSRuntime>(javascript);
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var entry = new TransactionData(Guid.NewGuid(), account.Id, today, "Visible payee", "", -10, null, "", []);
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], false, false, []) { Today = today };
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(plan.Version, [new(entry, 990)], 1, null)))
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        var first = component.Find(".register-table .category-link").ClickAsync();
+        var second = component.Find(".register-table .category-link").ClickAsync();
+        await second;
+        component.FindAll(".transaction-editing-row").Count.ShouldBe(1);
+
+        hold.SetResult(false);
+        await first;
+        component.FindAll(".transaction-editing-row").Count.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task AFilteredResultKeepsTheEditedDraftMountedUntilCloseAsync()
     {
         await using var context = new BunitContext();
@@ -150,6 +179,34 @@ public sealed class AccountRegisterTests
         component.FindAll(".pagination fluent-button").ShouldAllBe(button => button.HasAttribute("disabled"));
         component.Find("fluent-button[aria-label='Cancel']").TextContent.Trim().ShouldBe("Cancel");
     }
+
+#pragma warning disable BL0016
+    private sealed class RegisterPlacementJSRuntime(TaskCompletionSource<bool> hold) : IJSRuntime, IDisposable
+    {
+        private readonly Module _module = new(hold);
+
+        public void Dispose() => _module.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
+            => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+        public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
+            => string.Equals(identifier, "import", StringComparison.Ordinal)
+                ? ValueTask.FromResult((TValue)(object)_module)
+                : ValueTask.FromResult(default(TValue)!);
+
+        private sealed class Module(TaskCompletionSource<bool> hold) : IJSObjectReference
+        {
+            public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
+                => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
+            public ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
+                => string.Equals(identifier, "compactRegister", StringComparison.Ordinal)
+                    ? new(AnswerAsync<TValue>(hold.Task))
+                    : ValueTask.FromResult(default(TValue)!);
+            public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+            private static async Task<TValue> AnswerAsync<TValue>(Task<bool> answer)
+                => (TValue)(object)await answer;
+        }
+    }
+#pragma warning restore BL0016
 
     [Fact]
     public async Task LoadedEmptyStateStaysPaintedWhileTheWorkspaceIsBusyAsync()
