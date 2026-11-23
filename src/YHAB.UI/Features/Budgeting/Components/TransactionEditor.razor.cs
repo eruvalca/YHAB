@@ -42,6 +42,7 @@ public sealed partial class TransactionEditor
     private bool _inflowValid = true;
     private bool _split;
     private bool _saving;
+    private bool _reverseTransferPerspective;
     private RepeatFrequency _repeat;
     private decimal Amount { get; set; }
     private string _initial = "";
@@ -133,12 +134,21 @@ public sealed partial class TransactionEditor
     protected override void OnInitialized()
     {
         RebuildCatalog();
-        _account = Transaction?.AccountId ?? AccountId ?? _accounts.FirstOrDefault()?.Id ?? Guid.Empty;
-        _transfer = Transaction?.TransferAccountId ?? Guid.Empty;
+        _reverseTransferPerspective = Transaction?.TransferAccountId == AccountId && AccountId.HasValue;
+        _account = _reverseTransferPerspective
+            ? Transaction!.TransferAccountId!.Value
+            : Transaction?.AccountId ?? AccountId ?? _accounts.FirstOrDefault()?.Id ?? Guid.Empty;
+        _transfer = _reverseTransferPerspective ? Transaction!.AccountId : Transaction?.TransferAccountId ?? Guid.Empty;
         InitializeValues();
         if (Transaction is not null)
         {
-            _splits.AddRange(Transaction.Splits.Select(item => new SplitInput { Id = item.Id, Category = item.CategoryId ?? Guid.Empty, Amount = item.Amount, Memo = item.Memo }));
+            _splits.AddRange(Transaction.Splits.Select(item => new SplitInput
+            {
+                Id = item.Id,
+                Category = item.CategoryId ?? Guid.Empty,
+                Amount = _reverseTransferPerspective ? -item.Amount : item.Amount,
+                Memo = item.Memo,
+            }));
         }
 
         _initial = Signature();
@@ -176,7 +186,8 @@ public sealed partial class TransactionEditor
         _payee = Transaction?.Payee ?? "";
         _memo = Transaction?.Memo ?? "";
         Amount = Math.Abs(Transaction?.Amount ?? 0);
-        _direction = Transaction?.Amount > 0 ? "Inflow" : "Outflow";
+        var perspectiveAmount = _reverseTransferPerspective ? -Transaction?.Amount : Transaction?.Amount;
+        _direction = perspectiveAmount > 0 ? "Inflow" : "Outflow";
         _repeat = Transaction?.Repeat ?? RepeatFrequency.None;
         _flag = string.IsNullOrEmpty(Transaction?.Flag) ? "None" : Transaction.Flag;
         _category = FirstSplit?.CategoryId ?? Guid.Empty;
@@ -259,20 +270,28 @@ public sealed partial class TransactionEditor
                 }
             }
 
-            var splits = BuildSplits();
-            await OnCommand.InvokeAsync(new SaveTransaction(Plan.Version, new(Transaction?.Id ?? Guid.Empty, _account, _date, _payee, _memo, SignedAmount,
-                _transfer == Guid.Empty ? null : _transfer, string.Equals(_flag, "None", StringComparison.Ordinal) ? "" : _flag, splits, _repeat)));
+            var reverse = _reverseTransferPerspective && _transfer != Guid.Empty;
+            var account = reverse ? _transfer : _account;
+            var transfer = reverse ? _account : _transfer;
+            var savedAmount = reverse ? -SignedAmount : SignedAmount;
+            var splits = BuildSplits(savedAmount, reverse);
+            await OnCommand.InvokeAsync(new SaveTransaction(Plan.Version, new(Transaction?.Id ?? Guid.Empty, account, _date, _payee, _memo, savedAmount,
+                transfer == Guid.Empty ? null : transfer, string.Equals(_flag, "None", StringComparison.Ordinal) ? "" : _flag, splits, _repeat)));
         }
         finally
         {
             _saving = false;
         }
     }
-    private SplitData[] BuildSplits()
+    private SplitData[] BuildSplits(decimal amount, bool reverse)
     {
         if (!NeedsCategory) { return []; }
-        if (_split) { return _splits.Select(item => new SplitData(item.Id, item.Category == Guid.Empty ? null : item.Category, item.Amount, item.Memo)).ToArray(); }
-        return [new(FirstSplit?.Id ?? Guid.CreateVersion7(), _category == Guid.Empty ? null : _category, SignedAmount, "")];
+        if (_split)
+        {
+            return _splits.Select(item => new SplitData(item.Id, item.Category == Guid.Empty ? null : item.Category,
+                reverse ? -item.Amount : item.Amount, item.Memo)).ToArray();
+        }
+        return [new(FirstSplit?.Id ?? Guid.CreateVersion7(), _category == Guid.Empty ? null : _category, amount, "")];
     }
     private sealed class SplitInput
     {

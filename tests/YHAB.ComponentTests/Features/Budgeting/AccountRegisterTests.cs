@@ -346,7 +346,7 @@ public sealed class AccountRegisterTests
     }
 
     [Fact]
-    public async Task RefreshKeepsAnOpenDraftAndACommandClosesItAsync()
+    public async Task RefreshKeepsAnOpenDraftAndItsOwnSaveClosesItAsync()
     {
         await using var context = new BunitContext();
         context.Services.AddFluentUIComponents();
@@ -354,9 +354,10 @@ public sealed class AccountRegisterTests
         var today = new DateOnly(2026, 10, 3);
         var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
         var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], false, false, []) { Today = today };
+        var commands = new List<PlanCommand>();
         var component = context.Render<AccountRegister>(parameters => parameters
             .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
-            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.OnCommand, commands.Add).Add(item => item.OnEditAccount, _ => { })
             .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(plan.Version, [], 0, null)))
             .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
 
@@ -372,15 +373,53 @@ public sealed class AccountRegisterTests
 
         component.FindAll(".editor-surface").Count.ShouldBe(1);
         component.Find(".transaction-ledger-payee fluent-text-input").GetAttribute("value").ShouldBe("Corner shop");
-        await component.Find("fluent-button[aria-label='Cancel']").ClickAsync();
-        component.Find("[role='alertdialog']").TextContent.ShouldContain("Discard your unsaved changes?");
+        var direction = component.FindAll("fluent-dropdown").First(item => item.TextContent.Contains("Outflow", StringComparison.Ordinal));
+        var inflow = direction.QuerySelector("fluent-option[text='Inflow']").ShouldNotBeNull();
+        await direction.TriggerEventAsync("ondropdownchange", new DropdownEventArgs { SelectedOptions = inflow.Id });
+        await component.FindAll(".transaction-ledger-amount fluent-text-input")[1].ChangeAsync(new() { Value = "12.50" });
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Save transaction", StringComparison.Ordinal)).ClickAsync();
+        var submitted = commands.Single().ShouldBeOfType<SaveTransaction>();
+
+        component.Render(parameters => parameters
+            .Add(item => item.Plan, plan with { Version = 8 })
+            .Add(item => item.ExternalRefresh, false)
+            .Add(item => item.AppliedCommand, new UndoChange(plan.Version)));
+        component.FindAll(".editor-surface").Count.ShouldBe(1);
+        component.Find(".transaction-ledger-payee fluent-text-input").GetAttribute("value").ShouldBe("Corner shop");
 
         // A saved command consumes the draft, so the editor closes.
         component.Render(parameters => parameters
             .Add(item => item.Plan, plan with { Version = 9 })
-            .Add(item => item.ExternalRefresh, false));
+            .Add(item => item.ExternalRefresh, false)
+            .Add(item => item.AppliedCommand, submitted));
 
         component.FindAll(".editor-surface").ShouldBeEmpty();
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Add transaction", StringComparison.Ordinal)).ClickAsync();
+        component.FindAll(".editor-surface").Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task TransactionEntryCanReopenAfterItsEditorClosesAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], false, false, []) { Today = today };
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(plan.Version, [], 0, null)))
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        var add = component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Add transaction", StringComparison.Ordinal));
+        await add.ClickAsync();
+        await component.Find("fluent-button[aria-label='Cancel']").ClickAsync();
+        component.FindAll(".editor-surface").ShouldBeEmpty();
+
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Add transaction", StringComparison.Ordinal)).ClickAsync();
+        component.FindAll(".editor-surface").Count.ShouldBe(1);
     }
 
     [Fact]
@@ -557,6 +596,13 @@ public sealed class AccountRegisterTests
         component.Render(parameters => parameters.Add(item => item.InitialNewTransaction, true));
         component.FindAll(".editor-surface").ShouldBeEmpty();
         consumed.ShouldBe(1);
+
+        // Clearing and reissuing the shortcut is a new intent, so the same mounted register can
+        // open transaction entry again.
+        component.Render(parameters => parameters.Add(item => item.InitialNewTransaction, false));
+        component.Render(parameters => parameters.Add(item => item.InitialNewTransaction, true));
+        await component.WaitForAssertionAsync(() => component.FindAll(".editor-surface").Count.ShouldBe(1));
+        consumed.ShouldBe(2);
     }
 
     [Fact]

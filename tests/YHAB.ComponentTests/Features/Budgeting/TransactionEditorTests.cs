@@ -76,6 +76,93 @@ public sealed class TransactionEditorTests
     }
 
     [Fact]
+    public async Task EditingATransferFromTheDestinationAccountPreservesItsDirectionAsync()
+    {
+        await using var context = CreateContext();
+        var today = new DateOnly(2026, 10, 3);
+        var source = new AccountData(Guid.CreateVersion7(), "Checking", AccountKind.Checking, 0, today, false, "");
+        var destination = new AccountData(Guid.CreateVersion7(), "Savings", AccountKind.Savings, 0, today, false, "");
+        var transaction = new TransactionData(Guid.CreateVersion7(), source.Id, today, "Transfer", "", -20,
+            destination.Id, "", [], RepeatFrequency.None);
+        var plan = new PlanSnapshot(Guid.CreateVersion7(), "Household", "", today, 7,
+            [source, destination], [], [], [], [transaction], false, false, [])
+        { Today = today };
+        var commands = new List<PlanCommand>();
+        var component = context.Render<TransactionEditor>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.Payees, []).Add(item => item.Transaction, transaction)
+            .Add(item => item.AccountId, destination.Id)
+            .Add(item => item.OnCommand, commands.Add).Add(item => item.OnClose, () => { })
+            .Add(item => item.Inline, true));
+
+        component.FindAll(".transaction-ledger-amount fluent-text-input")[0].GetAttribute("value").ShouldBe("0.00");
+        component.FindAll(".transaction-ledger-amount fluent-text-input")[1].GetAttribute("value").ShouldBe("20.00");
+        await SaveButton(component).ClickAsync();
+
+        var saved = commands.Single().ShouldBeOfType<SaveTransaction>().Transaction;
+        saved.AccountId.ShouldBe(source.Id);
+        saved.TransferAccountId.ShouldBe(destination.Id);
+        saved.Amount.ShouldBe(-20);
+    }
+
+    [Fact]
+    public async Task EditingATransferAmountUsesTheDestinationAccountsVisibleDirectionAsync()
+    {
+        await using var context = CreateContext();
+        var today = new DateOnly(2026, 10, 3);
+        var source = new AccountData(Guid.CreateVersion7(), "Checking", AccountKind.Checking, 0, today, false, "");
+        var destination = new AccountData(Guid.CreateVersion7(), "Savings", AccountKind.Savings, 0, today, false, "");
+        var transaction = new TransactionData(Guid.CreateVersion7(), source.Id, today, "Transfer", "", -20,
+            destination.Id, "", [], RepeatFrequency.None);
+        var plan = new PlanSnapshot(Guid.CreateVersion7(), "Household", "", today, 7,
+            [source, destination], [], [], [], [transaction], false, false, [])
+        { Today = today };
+        var commands = new List<PlanCommand>();
+        var component = context.Render<TransactionEditor>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.Payees, []).Add(item => item.Transaction, transaction)
+            .Add(item => item.AccountId, destination.Id)
+            .Add(item => item.OnCommand, commands.Add).Add(item => item.OnClose, () => { })
+            .Add(item => item.Inline, true));
+
+        await component.FindAll(".transaction-ledger-amount fluent-text-input")[1]
+            .ChangeAsync(new() { Value = "25" });
+        await SaveButton(component).ClickAsync();
+
+        var saved = commands.Single().ShouldBeOfType<SaveTransaction>().Transaction;
+        saved.AccountId.ShouldBe(source.Id);
+        saved.TransferAccountId.ShouldBe(destination.Id);
+        saved.Amount.ShouldBe(-25);
+    }
+
+    [Fact]
+    public async Task EditingATransferIntoBudgetPreservesItsSplitDirectionAsync()
+    {
+        await using var context = CreateContext();
+        var today = new DateOnly(2026, 10, 3);
+        var tracking = new AccountData(Guid.CreateVersion7(), "Brokerage", AccountKind.Asset, 0, today, false, "");
+        var budget = new AccountData(Guid.CreateVersion7(), "Checking", AccountKind.Checking, 0, today, false, "");
+        var split = new SplitData(Guid.CreateVersion7(), null, -20, "");
+        var transaction = new TransactionData(Guid.CreateVersion7(), tracking.Id, today, "Transfer", "", -20,
+            budget.Id, "", [split], RepeatFrequency.None);
+        var plan = new PlanSnapshot(Guid.CreateVersion7(), "Household", "", today, 7,
+            [tracking, budget], [], [], [], [transaction], false, false, [])
+        { Today = today };
+        var commands = new List<PlanCommand>();
+        var component = context.Render<TransactionEditor>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.Payees, []).Add(item => item.Transaction, transaction)
+            .Add(item => item.AccountId, budget.Id)
+            .Add(item => item.OnCommand, commands.Add).Add(item => item.OnClose, () => { })
+            .Add(item => item.Inline, true));
+
+        await SaveButton(component).ClickAsync();
+
+        var saved = commands.Single().ShouldBeOfType<SaveTransaction>().Transaction;
+        saved.AccountId.ShouldBe(tracking.Id);
+        saved.TransferAccountId.ShouldBe(budget.Id);
+        saved.Amount.ShouldBe(-20);
+        saved.Splits.Single().Amount.ShouldBe(-20);
+    }
+
+    [Fact]
     public async Task InlineEditorCanSaveAfterAnInvalidColumnIsReplacedByTheOppositeDirectionAsync()
     {
         await using var context = CreateContext();

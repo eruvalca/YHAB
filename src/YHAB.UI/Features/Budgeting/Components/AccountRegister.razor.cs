@@ -29,9 +29,11 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
     /// bottom of a phone screen, so the docked shortcut has to step aside.
     /// </summary>
     [Parameter] public bool AccountEditing { get; set; }
-    // A plain refresh keeps an open draft when its edit target still exists; a
-    // command closes it because the command consumed the draft's values.
+    // A plain refresh keeps an open draft; only its own applied or recovered save
+    // consumes its values.
     [Parameter] public bool ExternalRefresh { get; set; }
+    [Parameter] public PlanCommand? AppliedCommand { get; set; }
+    [Parameter] public PlanCommand? RecoveredCommand { get; set; }
     [Parameter] public RenderFragment? PlanActions { get; set; }
     private static readonly string[] _filters = ["All posted", "Recurring"];
     private static readonly string[] _sorts = ["Newest first", "Oldest first", "Payee", "Amount"];
@@ -63,6 +65,7 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
     private int _page;
     private RegisterPage? _result;
     private PlanSnapshot? _rowPlan;
+    private PlanCommand? _transactionCommand;
     private int _displayPage;
     private IReadOnlyList<string>? _payees;
     private readonly List<RegisterCursor?> _cursors = [null];
@@ -86,7 +89,15 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
 
     protected override async Task OnParametersSetAsync()
     {
-        if (InitialNewTransaction && !_newTransactionHandled) { _newTransactionPending = true; }
+        if (!InitialNewTransaction)
+        {
+            _newTransactionHandled = false;
+            _newTransactionPending = false;
+        }
+        else if (!_newTransactionHandled)
+        {
+            _newTransactionPending = true;
+        }
         _account = Plan.Accounts.SingleOrDefault(item => item.Id == AccountId);
         var initialFilter = (InitialCategoryId, InitialFrom, InitialThrough);
         var filterChanged = _initialFilter != initialFilter;
@@ -104,7 +115,9 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
             // Recovery after a failed read keeps a draft the refresh preserved, just as a catalog
             // change does; only the plan, account, or filter identity discards it.
             var readFailed = _error is not null && !ReferenceEquals(_loadedPlan, Plan);
-            if (planReplaced || _previousAccount != AccountId || filterChanged || ((catalogChanged || readFailed) && !KeepOpenDraft()))
+            var settled = _transactionCommand is not null
+                && (ReferenceEquals(AppliedCommand, _transactionCommand) || ReferenceEquals(RecoveredCommand, _transactionCommand));
+            if (planReplaced || _previousAccount != AccountId || filterChanged || ((catalogChanged || readFailed) && settled))
             {
                 CloseEditors();
             }
@@ -138,11 +151,6 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
         if (OnNewTransactionConsumed.HasDelegate) { await OnNewTransactionConsumed.InvokeAsync(); }
         if (!IsDisposed) { StateHasChanged(); }
     }
-
-    // Refresh keeps an open transaction draft. The catalog deliberately omits the ledger, so the
-    // register cannot prove the edited entry still exists; the save reconciles it instead. A
-    // duplicated entry keeps no id and therefore stays a new draft either way.
-    private bool KeepOpenDraft() => ExternalRefresh && _editing;
 
     private async Task LoadAsync()
     {
@@ -246,6 +254,7 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
     {
         _activationEpoch++;
         _pendingActivationId = null;
+        _transactionCommand = null;
         _editing = false;
         _deleting = false;
         _reloadAfterClose = false;
@@ -300,6 +309,11 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
         catch (JSException) { return false; }
     }
     private Task EditAccountAsync() => OnEditAccount.InvokeAsync(_account!);
+    private Task SendTransactionCommandAsync(PlanCommand command)
+    {
+        _transactionCommand = command;
+        return OnCommand.InvokeAsync(command);
+    }
     private void Select(Guid id, bool value) { if (value) { _selected.Add(id); } else { _selected.Remove(id); } }
     private void SelectVisible(bool value) { foreach (var entry in VisibleEntries) { Select(entry.Id, value); } }
     private async Task PreviousPageAsync() { _page--; _selected.Clear(); await LoadAsync(); }
