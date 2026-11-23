@@ -668,6 +668,11 @@ public sealed class WorkspaceTests
         // The intent is one-shot: a later render that still supplies it must not reopen the editor.
         workspace.Render(parameters => parameters.Add(item => item.PlanId, plan.Id));
         workspace.FindAll(".editor-surface").ShouldBeEmpty();
+
+        navigation.NavigateTo($"/plans/{plan.Id}/accounts?new=true");
+        workspace.Render(parameters => parameters.Add(item => item.PlanId, plan.Id));
+        await workspace.WaitForAssertionAsync(() => workspace.FindAll(".editor-surface").Count.ShouldBe(1));
+        navigation.Uri.ShouldBe($"http://localhost/plans/{plan.Id}/accounts");
     }
 
     private static (IBudgetClient Budgets, PlanSnapshot Plan) Configure(BunitContext context)

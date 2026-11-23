@@ -80,6 +80,7 @@ public sealed partial class Workspace(IBudgetClient budgets, NavigationManager n
 
     protected override async Task OnParametersSetAsync()
     {
+        if (!NewTransaction) { _newTransactionConsumed = false; }
         if (NewTransaction && !_newTransactionConsumed) { _newTransactionRequested = true; }
         // A pending destination outside this workspace must not change the outgoing page.
         if (UpdatePage(navigation.Uri))

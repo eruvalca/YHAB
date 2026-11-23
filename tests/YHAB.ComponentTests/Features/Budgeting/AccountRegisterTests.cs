@@ -120,6 +120,39 @@ public sealed class AccountRegisterTests
     }
 
     [Fact]
+    public async Task MobileActivationMountsAnEditorWhenTheRowLeavesTheCurrentPageAsync()
+    {
+        var hold = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var javascript = new RegisterPlacementJSRuntime(hold);
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.Services.AddSingleton<IJSRuntime>(javascript);
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var entry = new TransactionData(Guid.NewGuid(), account.Id, today, "Visible payee", "", -10, null, "", []);
+        var other = new TransactionData(Guid.NewGuid(), account.Id, today.AddDays(-1), "Other payee", "", -5, null, "", []);
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], false, false, []) { Today = today };
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (query, _) => Task.FromResult(string.Equals(query.Search, "Other", StringComparison.Ordinal)
+                ? new RegisterPage(plan.Version, [new(other, 985)], 1, null)
+                : new RegisterPage(plan.Version, [new(entry, 990)], 1, null)))
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        var activation = component.Find(".register-table .category-link").ClickAsync();
+        await component.Find(".table-toolbar fluent-text-input").ChangeAsync(new() { Value = "Other" });
+        component.Find(".register-table .category-link").TextContent.ShouldBe("Other payee");
+
+        hold.SetResult(true);
+        await activation;
+
+        component.FindAll(".transaction-editing-row").Count.ShouldBe(1);
+        component.Find(".transaction-ledger-payee fluent-text-input").GetAttribute("value").ShouldBe("Visible payee");
+        component.Find("fluent-button[aria-label='Cancel']").ShouldNotBeNull();
+    }
+
+    [Fact]
     public async Task AFilteredResultKeepsTheEditedDraftMountedUntilCloseAsync()
     {
         await using var context = new BunitContext();
@@ -697,6 +730,40 @@ public sealed class AccountRegisterTests
         component.Render(parameters => parameters.Add(item => item.InitialNewTransaction, true));
         await component.WaitForAssertionAsync(() => component.FindAll(".editor-surface").Count.ShouldBe(1));
         consumed.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task ShortcutIntentWaitsForABlockingAccountEditorAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", true));
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], false, false, []) { Today = today };
+        var consumed = 0;
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(plan.Version, [], 0, null)))
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([]))
+            .Add(item => item.InitialNewTransaction, true)
+            .Add(item => item.OnNewTransactionConsumed, () => consumed++)
+            .Add(item => item.AccountEditing, true));
+
+        await component.WaitForAssertionAsync(() =>
+        {
+            component.FindAll(".editor-surface").ShouldBeEmpty();
+            consumed.ShouldBe(0);
+        });
+
+        component.Render(parameters => parameters.Add(item => item.AccountEditing, false));
+        await component.WaitForAssertionAsync(() =>
+        {
+            component.FindAll(".editor-surface").Count.ShouldBe(1);
+            consumed.ShouldBe(1);
+        });
     }
 
     [Fact]

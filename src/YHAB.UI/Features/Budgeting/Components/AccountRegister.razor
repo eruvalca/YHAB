@@ -72,7 +72,7 @@ else if (_result.Rows.Count > 0 || _editing)
         <table class="register-table">
             <thead><tr><th><FluentCheckbox Label="Select page" LabelPosition="LabelPosition.Before" Value="AllVisibleSelected" ValueChanged="SelectVisible" Disabled="IsBusy" /></th><th scope="col">Date</th><th scope="col">Payee / account</th><th scope="col">Category / memo</th><th scope="col" class="numeric">Outflow</th><th scope="col" class="numeric">Inflow</th>@if (_account is not null) { <th scope="col" class="numeric">Balance</th> }</tr></thead>
             <tbody>
-                @if (_editing && IsNewDraft)
+                @if (_editing && (IsNewDraft || !EditingRowVisible))
                 {
                     <tr @key="_editKey" class="transaction-editing-row">
                         <td colspan="@EditorColumnCount">

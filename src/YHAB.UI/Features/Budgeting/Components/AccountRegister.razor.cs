@@ -81,6 +81,7 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
     [Parameter] public IReadOnlyList<AccountBalance>? Balances { get; set; }
     private IEnumerable<TransactionData> VisibleEntries => _result?.Rows.Select(item => item.Transaction) ?? [];
     private bool IsNewDraft => _transaction is null || _transaction.Id == Guid.Empty;
+    private bool EditingRowVisible => _transaction is not null && VisibleEntries.Any(item => item.Id == _transaction.Id);
     private int EditorColumnCount => _account is null ? 6 : 7;
     // The account editor pins its own actions to the bottom of a phone screen, so the
     // docked shortcut steps aside while it is open.
@@ -143,11 +144,17 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
     {
         await base.OnAfterRenderAsync(firstRender);
         if (!_newTransactionPending || !RendererInfo.IsInteractive) { return; }
+        // An editor with no account to record against would be unusable.
+        if (Plan.Accounts.Any(item => !item.Closed))
+        {
+            if (!TryAdd()) { return; }
+        }
+        else
+        {
+            _newTransactionNeedsAccount = true;
+        }
         _newTransactionPending = false;
         _newTransactionHandled = true;
-        // An editor with no account to record against would be unusable.
-        if (Plan.Accounts.Any(item => !item.Closed)) { Add(); }
-        else { _newTransactionNeedsAccount = true; }
         if (OnNewTransactionConsumed.HasDelegate) { await OnNewTransactionConsumed.InvokeAsync(); }
         if (!IsDisposed) { StateHasChanged(); }
     }
@@ -229,15 +236,17 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
     }
     private string CategoryName(Guid? id) => CategoryName(Plan, id);
     private static string CategoryName(PlanSnapshot plan, Guid? id) => id.HasValue ? plan.Categories.SingleOrDefault(item => item.Id == id)?.Name ?? "an unavailable category" : "Ready to assign";
-    private void Add()
+    private void Add() => TryAdd();
+    private bool TryAdd()
     {
-        if (_editing || AccountEditing) { return; }
+        if (_editing || AccountEditing) { return false; }
         _activationEpoch++;
         _pendingActivationId = null;
         _transaction = null;
         _activeRowId = null;
         _editKey = Guid.CreateVersion7();
         _editing = true;
+        return true;
     }
     private void Edit(TransactionData entry)
     {
