@@ -76,6 +76,7 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
     private CancellationTokenSource? _loadCancellation;
     private IJSObjectReference? _layoutModule;
     private bool IsBusy { get => Busy || field || _error is not null; set; }
+    private bool EditorBusy => Busy || _loadCancellation is not null;
     [Parameter, EditorRequired] public Func<RegisterQuery, CancellationToken, Task<RegisterPage>> LoadPage { get; set; } = default!;
     [Parameter, EditorRequired] public Func<CancellationToken, Task<IReadOnlyList<string>>> LoadPayees { get; set; } = default!;
     [Parameter] public IReadOnlyList<AccountBalance>? Balances { get; set; }
@@ -100,17 +101,23 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
         {
             _newTransactionPending = true;
         }
-        _account = Plan.Accounts.SingleOrDefault(item => item.Id == AccountId);
-        var initialFilter = (InitialCategoryId, InitialFrom, InitialThrough);
-        var filterChanged = _initialFilter != initialFilter;
-        if (filterChanged)
+        var requestedFilter = (InitialCategoryId, InitialFrom, InitialThrough);
+        var requestedAccount = Plan.Accounts.SingleOrDefault(item => item.Id == AccountId);
+        var accountChanged = _previousAccount != AccountId;
+        var filterChanged = _initialFilter != requestedFilter;
+        var contextChanged = accountChanged || filterChanged;
+        if (_editing && contextChanged)
         {
-            _initialFilter = initialFilter;
-            _from = InitialFrom;
-            _to = InitialThrough;
-            _categoryId = InitialCategoryId;
+            _reloadAfterClose = true;
         }
-        if (_loadedPlan?.Id != Plan.Id || _version != Plan.Version || _previousAccount != AccountId || filterChanged || (_error is not null && !ReferenceEquals(_loadedPlan, Plan)))
+        else
+        {
+            ApplyRequestedContext(requestedAccount, requestedFilter);
+        }
+
+        var refreshChanged = _loadedPlan?.Id != Plan.Id || _version != Plan.Version
+            || (_error is not null && !ReferenceEquals(_loadedPlan, Plan));
+        if (refreshChanged || !_editing && contextChanged)
         {
             var planReplaced = _loadedPlan?.Id != Plan.Id;
             var catalogChanged = _version != Plan.Version;
@@ -122,20 +129,35 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
                 CloseEditors();
             }
             ReconcileDelete();
+            if (!_editing && contextChanged)
+            {
+                ApplyRequestedContext(requestedAccount, requestedFilter);
+            }
 
             // Keep same-account rows painted while a revision refreshes. Their
             // labels use the catalog they arrived with until replacement is ready.
-            if (planReplaced || !_editing && (_previousAccount != AccountId || filterChanged))
+            if (planReplaced || !_editing && contextChanged)
             {
                 _result = null;
                 _rowPlan = null;
             }
             _payees = null;
             _version = Plan.Version;
-            _previousAccount = AccountId;
+            if (!_editing)
+            {
+                _previousAccount = AccountId;
+            }
             _loadedPlan = Plan;
             await ResetPageAsync();
         }
+    }
+    private void ApplyRequestedContext(AccountData? account, (Guid?, DateOnly?, DateOnly?) filter)
+    {
+        _account = account;
+        _initialFilter = filter;
+        _from = filter.Item2;
+        _to = filter.Item3;
+        _categoryId = filter.Item1;
     }
 
     // Prerendering must not open the editor: the interactive renderer starts over
@@ -290,7 +312,13 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
     {
         var reload = _reloadAfterClose;
         CloseEditors();
-        if (reload) { await LoadAsync(); }
+        if (!reload) { return; }
+        ApplyRequestedContext(Plan.Accounts.SingleOrDefault(item => item.Id == AccountId),
+            (InitialCategoryId, InitialFrom, InitialThrough));
+        _previousAccount = AccountId;
+        _result = null;
+        _rowPlan = null;
+        await ResetPageAsync();
     }
     private async Task ActivateRowAsync(TransactionData entry)
     {

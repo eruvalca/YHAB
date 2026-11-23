@@ -8,7 +8,7 @@
     <div><p class="eyebrow">THE LITTLE DETAILS, ALL TOGETHER</p><h1>@(_account?.Name ?? "All transactions")</h1><p class="muted">@(_account is null ? "Every account in your plan." : AccountLabel(_account.Kind))</p></div>
     <FluentStack Wrap="true" HorizontalGap="var(--spacingHorizontalS)">
         <div class="add-transaction-dock" data-editing="@DockEditingState">
-            <FluentButton Class="add-transaction-action" OnClick="Add" Disabled="@(IsBusy || _editing || AccountEditing || !Plan.Accounts.Any(item => !item.Closed))" Appearance="ButtonAppearance.Primary">+ Add transaction</FluentButton>
+            <FluentButton Class="add-transaction-action" OnClick="Add" Disabled="@(Busy || _editing || AccountEditing || !Plan.Accounts.Any(item => !item.Closed))" Appearance="ButtonAppearance.Primary">+ Add transaction</FluentButton>
         </div>
         @if (_account is not null)
         {
@@ -56,7 +56,7 @@
     </div>
 }
 <div class="register-results" aria-busy="@(IsBusy ? "true" : "false")">
-@if (_result is null)
+@if (_result is null && !_editing)
 {
     @if (_error is null)
     {
@@ -66,7 +66,7 @@
         </div>
     }
 }
-else if (_result.Rows.Count > 0 || _editing)
+else if ((_result?.Rows.Count ?? 0) > 0 || _editing)
 {
     <div class="table-container" tabindex="0" aria-label="Account transaction register">
         <table class="register-table">
@@ -76,7 +76,7 @@ else if (_result.Rows.Count > 0 || _editing)
                 {
                     <tr @key="_editKey" class="transaction-editing-row">
                         <td @key="_editKey" colspan="@EditorColumnCount">
-                            <TransactionEditor @key="_editKey" Plan="Plan" Payees="@(_payees ?? [])" Transaction="_transaction" AccountId="AccountId" OnCommand="SendTransactionCommandAsync" OnClose="CloseEditorAsync" Busy="IsBusy" Inline="true" />
+                            <TransactionEditor @key="_editKey" Plan="Plan" Payees="@(_payees ?? [])" Transaction="_transaction" AccountId="AccountId" OnCommand="SendTransactionCommandAsync" OnClose="CloseEditorAsync" Busy="@EditorBusy" Inline="true" />
                         </td>
                     </tr>
                 }
@@ -87,7 +87,7 @@ else if (_result.Rows.Count > 0 || _editing)
                     {
                         <tr @key="_editKey" class="transaction-editing-row">
                             <td @key="_editKey" colspan="@EditorColumnCount">
-                                <TransactionEditor @key="_editKey" Plan="Plan" Payees="@(_payees ?? [])" Transaction="_transaction" AccountId="AccountId" OnCommand="SendTransactionCommandAsync" OnClose="CloseEditorAsync" Busy="IsBusy" Inline="true" />
+                                <TransactionEditor @key="_editKey" Plan="Plan" Payees="@(_payees ?? [])" Transaction="_transaction" AccountId="AccountId" OnCommand="SendTransactionCommandAsync" OnClose="CloseEditorAsync" Busy="@EditorBusy" Inline="true" />
                             </td>
                         </tr>
                     }
@@ -122,12 +122,12 @@ else if (_result.Rows.Count > 0 || _editing)
             </tbody>
         </table>
     </div>
-    @if (_result.Rows.Count > 0)
+    @if (_result is { Rows.Count: > 0 } result)
     {
         <FluentStack Wrap="true" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="var(--spacingHorizontalM)" Class="pagination">
             <FluentButton OnClick="PreviousPageAsync" Disabled="@(IsBusy || _editing || _page == 0)" Appearance="ButtonAppearance.Subtle">Previous</FluentButton>
-            <span>Page @(_displayPage + 1) · @(_result.Total) transactions</span>
-            <FluentButton OnClick="NextPageAsync" Disabled="@(IsBusy || _editing || _result.Next is null)" Appearance="ButtonAppearance.Subtle">Next</FluentButton>
+            <span>Page @(_displayPage + 1) · @result.Total transactions</span>
+            <FluentButton OnClick="NextPageAsync" Disabled="@(IsBusy || _editing || result.Next is null)" Appearance="ButtonAppearance.Subtle">Next</FluentButton>
         </FluentStack>
     }
 }

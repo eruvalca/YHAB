@@ -277,6 +277,8 @@ public sealed class WorkspaceTests
         register.InitialThrough.ShouldBeNull();
         workspace.FindComponent<TransactionEditor>().Instance.ShouldBeSameAs(editor);
         workspace.Find(".transaction-ledger-payee fluent-text-input").GetAttribute("value").ShouldBe("Shop");
+        await budgets.DidNotReceive().ReadRegisterAsync(plan.Id, Arg.Any<RegisterQuery>(), Arg.Any<CancellationToken>());
+        await workspace.Find("fluent-button[aria-label='Cancel']").ClickAsync();
         await budgets.Received().ReadRegisterAsync(plan.Id, Arg.Any<RegisterQuery>(), Arg.Any<CancellationToken>());
     }
 

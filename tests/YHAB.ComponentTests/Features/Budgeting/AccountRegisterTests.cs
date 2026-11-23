@@ -208,10 +208,15 @@ public sealed class AccountRegisterTests
         var destination = new AccountData(Guid.NewGuid(), "Savings", AccountKind.Savings, 500, today, false, "");
         var entry = new TransactionData(Guid.NewGuid(), source.Id, today, "Draft payee", "", -10, null, "", []);
         var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [source, destination], [], [], [], [entry], false, false, []) { Today = today };
+        var queries = new List<RegisterQuery>();
         var component = context.Render<AccountRegister>(parameters => parameters
             .Add(item => item.Plan, plan).Add(item => item.AccountId, source.Id)
             .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
-            .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(plan.Version, [new(entry, 990)], 1, null)))
+            .Add(item => item.LoadPage, (query, _) =>
+            {
+                queries.Add(query);
+                return Task.FromResult(new RegisterPage(plan.Version, [new(entry, 990)], 1, null));
+            })
             .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
 
         await component.Find(".register-table .category-link").ClickAsync();
@@ -225,6 +230,73 @@ public sealed class AccountRegisterTests
 
         component.FindComponent<TransactionEditor>().Instance.ShouldBeSameAs(editor);
         component.Find(".transaction-ledger-payee fluent-text-input").GetAttribute("value").ShouldBe("Unsaved draft");
+        component.Find("h1").TextContent.ShouldBe("Checking");
+        queries[^1].AccountId.ShouldBe(source.Id);
+
+        await component.Find("fluent-button[aria-label='Cancel']").ClickAsync();
+        await component.Find(".editor-discard fluent-button").ClickAsync();
+        await component.WaitForAssertionAsync(() => queries[^1].AccountId.ShouldBe(destination.Id));
+        component.Find("h1").TextContent.ShouldBe("Savings");
+    }
+
+    [Fact]
+    public async Task NavigationDefersDeletionToTheVisibleRegisterContextAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var today = new DateOnly(2026, 10, 3);
+        var source = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var destination = new AccountData(Guid.NewGuid(), "Savings", AccountKind.Savings, 500, today, false, "");
+        var entry = new TransactionData(Guid.NewGuid(), source.Id, today, "Delete from checking", "", -10, null, "", []);
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [source, destination], [], [], [], [entry], false, false, []) { Today = today };
+        var commands = new List<PlanCommand>();
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, source.Id)
+            .Add(item => item.OnCommand, commands.Add).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (_, _) => Task.FromResult(new RegisterPage(plan.Version, [new(entry, 990)], 1, null)))
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        await component.Find(".register-table .category-link").ClickAsync();
+        await component.Find(".register-table .category-link").ClickAsync();
+        await component.Find(".register-table fluent-checkbox").ChangeAsync(new() { Value = true });
+        component.Render(parameters => parameters.Add(item => item.AccountId, destination.Id));
+        component.Find("h1").TextContent.ShouldBe("Checking");
+
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Delete…", StringComparison.Ordinal)).ClickAsync();
+        await component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Delete selected transactions", StringComparison.Ordinal)).ClickAsync();
+
+        commands.Single().ShouldBeOfType<DeleteTransactions>().TransactionIds.ShouldBe([entry.Id]);
+    }
+
+    [Fact]
+    public async Task InitialRegisterFailureStillAllowsTransactionEntryAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], false, false, []) { Today = today };
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (_, _) => Task.FromException<RegisterPage>(new HttpRequestException("offline")))
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        component.Find("[role='alert']").TextContent.ShouldContain("Unable to load transactions");
+        var add = component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Add transaction", StringComparison.Ordinal));
+        add.HasAttribute("disabled").ShouldBeFalse();
+        await add.ClickAsync();
+
+        component.FindAll(".transaction-editing-row").Count.ShouldBe(1);
+        component.Find(".transaction-ledger-payee fluent-text-input").ShouldNotBeNull();
+        var direction = component.FindAll("fluent-dropdown").First(item => item.TextContent.Contains("Outflow", StringComparison.Ordinal));
+        var inflow = direction.QuerySelector("fluent-option[text='Inflow']").ShouldNotBeNull();
+        await direction.TriggerEventAsync("ondropdownchange", new DropdownEventArgs { SelectedOptions = inflow.Id });
+        await component.FindAll(".transaction-ledger-amount fluent-text-input")[1].ChangeAsync(new() { Value = "10" });
+        component.FindAll("fluent-button").Single(item => item.TextContent.Contains("Save transaction", StringComparison.Ordinal))
+            .HasAttribute("disabled").ShouldBeFalse();
     }
 
     [Fact]
