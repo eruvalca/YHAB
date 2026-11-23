@@ -91,6 +91,43 @@ public sealed class AccountRegisterTests
     }
 
     [Fact]
+    public async Task AFilteredResultKeepsTheEditedDraftMountedUntilCloseAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var edited = new TransactionData(Guid.NewGuid(), account.Id, today, "Corner shop", "", -10, null, "", []);
+        var matching = new TransactionData(Guid.NewGuid(), account.Id, today.AddDays(-1), "Hardware store", "", -20, null, "", []);
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], false, false, []) { Today = today };
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (query, _) => Task.FromResult(string.Equals(query.Search, "Hardware", StringComparison.Ordinal)
+                ? new RegisterPage(plan.Version, [new(matching, 970)], 1, null)
+                : new RegisterPage(plan.Version, [new(edited, 990)], 1, null)))
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        await component.Find(".register-table .category-link").ClickAsync();
+        await component.Find(".register-table .category-link").ClickAsync();
+        await component.Find(".transaction-ledger-payee fluent-text-input").ChangeAsync(new() { Value = "Corner market" });
+
+        await component.Find(".table-toolbar fluent-text-input").ChangeAsync(new() { Value = "Hardware" });
+
+        component.FindAll(".transaction-editing-row").Count.ShouldBe(1);
+        component.Find(".transaction-ledger-payee fluent-text-input").GetAttribute("value").ShouldBe("Corner market");
+        await component.Find("fluent-button[aria-label='Close editor']").ClickAsync();
+        await component.Find(".editor-discard fluent-button").ClickAsync();
+
+        await component.WaitForAssertionAsync(() =>
+        {
+            component.FindAll(".transaction-editing-row").ShouldBeEmpty();
+            component.Find(".register-table .category-link").TextContent.ShouldBe("Hardware store");
+        });
+    }
+
+    [Fact]
     public async Task LoadedEmptyStateStaysPaintedWhileTheWorkspaceIsBusyAsync()
     {
         await using var context = new BunitContext();

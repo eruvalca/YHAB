@@ -49,6 +49,7 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
     private Guid? _activeRowId;
     private bool _editing;
     private bool _deleting;
+    private bool _reloadAfterClose;
     private bool _newTransactionPending;
     private bool _newTransactionHandled;
     private bool _newTransactionNeedsAccount;
@@ -159,11 +160,18 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
             var result = await LoadPage(new(AccountId, _search, _filter, _sort, _from, _to, _cursors[_page], PageSize, Plan.Version, _categoryId), token);
             token.ThrowIfCancellationRequested();
             if (request != _request) { return; }
-            _result = result;
-            _rowPlan = rowPlan;
-            _displayPage = page;
-            _running.Clear();
-            foreach (var row in result.Rows) { _running[row.Transaction.Id] = row.RunningBalance; }
+            if (_editing && !IsNewDraft && result.Rows.All(item => item.Transaction.Id != _transaction?.Id))
+            {
+                _reloadAfterClose = true;
+            }
+            else
+            {
+                _result = result;
+                _rowPlan = rowPlan;
+                _displayPage = page;
+                _running.Clear();
+                foreach (var row in result.Rows) { _running[row.Transaction.Id] = row.RunningBalance; }
+            }
             // Payee suggestions must not delay painting the register page.
             StateHasChanged();
             var payees = _payees ?? await LoadPayees(token);
@@ -227,7 +235,13 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
         _editing = true;
     }
     private void Duplicate(TransactionData entry) => Edit(entry with { Id = Guid.Empty, Date = Plan.Today, Repeat = RepeatFrequency.None, Splits = entry.Splits.Select(item => item with { Id = Guid.CreateVersion7() }).ToArray() });
-    private void CloseEditors() { _editing = false; _deleting = false; }
+    private void CloseEditors() { _editing = false; _deleting = false; _reloadAfterClose = false; }
+    private async Task CloseEditorAsync()
+    {
+        var reload = _reloadAfterClose;
+        CloseEditors();
+        if (reload) { await LoadAsync(); }
+    }
     private async Task ActivateRowAsync(TransactionData entry)
     {
         if (IsBusy || _editing || AccountEditing) { return; }

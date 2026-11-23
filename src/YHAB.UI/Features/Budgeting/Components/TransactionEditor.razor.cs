@@ -38,6 +38,8 @@ public sealed partial class TransactionEditor
     private string _flag = "None";
     private DateOnly _date;
     private bool _amountValid = true;
+    private bool _outflowValid = true;
+    private bool _inflowValid = true;
     private bool _split;
     private bool _saving;
     private RepeatFrequency _repeat;
@@ -87,7 +89,15 @@ public sealed partial class TransactionEditor
                 && !(destination is not null && BudgetFacts.IsBudget(source.Kind) && BudgetFacts.IsBudget(destination.Kind));
         }
     }
-    private bool CannotSave => Busy || _saving || !_amountValid || _account == Guid.Empty || (_transfer != Guid.Empty && _transfer == _account)
+    private bool ActiveAmountValid
+    {
+        get
+        {
+            if (!Inline) { return _amountValid; }
+            return IsOutflow ? _outflowValid : _inflowValid;
+        }
+    }
+    private bool CannotSave => Busy || _saving || !ActiveAmountValid || _account == Guid.Empty || (_transfer != Guid.Empty && _transfer == _account)
         || (_repeat == RepeatFrequency.None && _date > Plan.Today)
         || CategoryMissing
         || CategoryUnavailable
@@ -167,8 +177,8 @@ public sealed partial class TransactionEditor
     private void ActivateInflow() => _direction = "Inflow";
     private Task SetOutflowAsync(decimal amount) { _direction = "Outflow"; Amount = Math.Abs(amount); return Task.CompletedTask; }
     private Task SetInflowAsync(decimal amount) { _direction = "Inflow"; Amount = Math.Abs(amount); return Task.CompletedTask; }
-    private void SetOutflowValidity(bool valid) { if (IsOutflow) { _amountValid = valid; } }
-    private void SetInflowValidity(bool valid) { if (!IsOutflow) { _amountValid = valid; } }
+    private void SetOutflowValidity(bool valid) => _outflowValid = valid;
+    private void SetInflowValidity(bool valid) => _inflowValid = valid;
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (_focusCategory)

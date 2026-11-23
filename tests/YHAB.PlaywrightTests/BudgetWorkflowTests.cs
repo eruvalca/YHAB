@@ -487,6 +487,7 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         var docked = await VerifyFloatingAddTransactionAsync(page, width);
         await Button(page, "+ Add transaction").ClickAsync();
         await VerifyEditorFocusAsync(page);
+        await page.Locator(".transaction-more > summary").ClickAsync();
         if (docked)
         {
             // An open editor owns the screen, so the docked shortcut steps aside
@@ -498,7 +499,6 @@ public sealed class BudgetWorkflowTests(ITestOutputHelper output)
         await VerifyTextUndoOwnershipAsync(page);
         await Input(page, "Payee").FillAsync("Neighborhood market");
         await Input(page, "Outflow").FillAsync("50 + 25");
-        await page.Locator(".transaction-more > summary").ClickAsync();
         var category = page.GetByRole(AriaRole.Combobox, new() { Name = "Category", Exact = true });
         await category.Filter(new() { HasText = "Choose a category" }).WaitForAsync();
         (await category.TextContentAsync() ?? "").ShouldContain("Choose a category");

@@ -14,6 +14,30 @@ namespace YHAB.ComponentTests.Features.Budgeting;
 public sealed class TransactionEditorTests
 {
     [Fact]
+    public async Task InlineEditorCannotSaveAnInvalidKeyboardActivatedInflowAsync()
+    {
+        await using var context = CreateContext();
+        var plan = CreatePlan();
+        var transaction = new TransactionData(Guid.CreateVersion7(), plan.Accounts[0].Id, plan.Today, "Shop", "", -10, null, "",
+            [new SplitData(Guid.CreateVersion7(), plan.Categories[0].Id, -10, "")]);
+        var commands = new List<PlanCommand>();
+        var component = context.Render<TransactionEditor>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.Payees, []).Add(item => item.Transaction, transaction)
+            .Add(item => item.OnCommand, commands.Add).Add(item => item.OnClose, () => { })
+            .Add(item => item.Inline, true));
+
+        var inflow = component.FindAll(".transaction-ledger-amount fluent-text-input")[1];
+        await inflow.TriggerEventAsync("onfocusin", new FocusEventArgs());
+        inflow = component.FindAll(".transaction-ledger-amount fluent-text-input")[1];
+        await inflow.ChangeAsync(new() { Value = "not an amount" });
+
+        SaveButton(component).HasAttribute("disabled").ShouldBeTrue();
+        await component.FindAll(".transaction-ledger-amount .amount-entry")[1]
+            .KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
+        commands.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task InlineEditorSavesFromOutflowColumnAsync()
     {
         await using var context = CreateContext();

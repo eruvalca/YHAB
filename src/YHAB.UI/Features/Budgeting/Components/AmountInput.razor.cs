@@ -129,7 +129,11 @@ public sealed partial class AmountInput
         _suppressedSignGesture = null;
     }
 
-    private void FocusIn() => _negateCommit = false;
+    private Task FocusInAsync()
+    {
+        _negateCommit = false;
+        return ActivateAsync();
+    }
     private Task ActivateAsync() => OnActivate.HasDelegate ? OnActivate.InvokeAsync() : Task.CompletedTask;
 
     // Unsaved text does not reach Value until the editor saves, so drafts are
