@@ -1,11 +1,12 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 using YHAB.SharedKernel.Budgeting;
 
 namespace YHAB.UI.Features.Budgeting.Components;
 
-public sealed partial class AccountRegister
+public sealed partial class AccountRegister(IJSRuntime javascript)
 {
     private const int PageSize = 50;
     [Parameter, EditorRequired] public PlanSnapshot Plan { get; set; } = default!;
@@ -28,14 +29,17 @@ public sealed partial class AccountRegister
     /// bottom of a phone screen, so the docked shortcut has to step aside.
     /// </summary>
     [Parameter] public bool AccountEditing { get; set; }
-    // A plain refresh keeps an open draft when its edit target still exists; a
-    // command closes it because the command consumed the draft's values.
+    // A plain refresh keeps an open draft; only its own applied or recovered save
+    // consumes its values.
     [Parameter] public bool ExternalRefresh { get; set; }
+    [Parameter] public PlanCommand? AppliedCommand { get; set; }
+    [Parameter] public PlanCommand? RecoveredCommand { get; set; }
     [Parameter] public RenderFragment? PlanActions { get; set; }
     private static readonly string[] _filters = ["All posted", "Recurring"];
     private static readonly string[] _sorts = ["Newest first", "Oldest first", "Payee", "Amount"];
     private readonly HashSet<Guid> _selected = [];
     private readonly Dictionary<Guid, decimal> _running = [];
+    private const string LayoutModulePath = "./_content/YHAB.UI/Features/Budgeting/Components/AccountRegister.razor.js";
     private string _search = "";
     private string _filter = "All posted";
     private string _sort = "Newest first";
@@ -44,8 +48,13 @@ public sealed partial class AccountRegister
     private Guid? _categoryId;
     private AccountData? _account;
     private TransactionData? _transaction;
+    private Guid? _activeRowId;
+    private Guid? _pendingActivationId;
+    private long _activationEpoch;
     private bool _editing;
     private bool _deleting;
+    private bool _reloadAfterClose;
+    private (Guid? AccountId, Guid? CategoryId, DateOnly? From, DateOnly? Through)? _pendingContext;
     private bool _newTransactionPending;
     private bool _newTransactionHandled;
     private bool _newTransactionNeedsAccount;
@@ -57,6 +66,8 @@ public sealed partial class AccountRegister
     private int _page;
     private RegisterPage? _result;
     private PlanSnapshot? _rowPlan;
+    private PlanCommand? _transactionCommand;
+    private DeleteTransactions? _deleteCommand;
     private int _displayPage;
     private IReadOnlyList<string>? _payees;
     private readonly List<RegisterCursor?> _cursors = [null];
@@ -64,11 +75,16 @@ public sealed partial class AccountRegister
     private int _request;
     [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = "Borrowed reference: LoadAsync owns and disposes the source after its work completes; component disposal cancels its linked lifetime.")]
     private CancellationTokenSource? _loadCancellation;
+    private IJSObjectReference? _layoutModule;
     private bool IsBusy { get => Busy || field || _error is not null; set; }
+    private bool EditorBusy => Busy || _loadCancellation is not null;
     [Parameter, EditorRequired] public Func<RegisterQuery, CancellationToken, Task<RegisterPage>> LoadPage { get; set; } = default!;
     [Parameter, EditorRequired] public Func<CancellationToken, Task<IReadOnlyList<string>>> LoadPayees { get; set; } = default!;
     [Parameter] public IReadOnlyList<AccountBalance>? Balances { get; set; }
     private IEnumerable<TransactionData> VisibleEntries => _result?.Rows.Select(item => item.Transaction) ?? [];
+    private bool IsNewDraft => _transaction is null || _transaction.Id == Guid.Empty;
+    private bool EditingRowVisible => _transaction is not null && VisibleEntries.Any(item => item.Id == _transaction.Id);
+    private int EditorColumnCount => _account is null ? 6 : 7;
     // The account editor pins its own actions to the bottom of a phone screen, so the
     // docked shortcut steps aside while it is open.
     private string DockEditingState => _editing || AccountEditing ? "true" : "false";
@@ -77,42 +93,77 @@ public sealed partial class AccountRegister
 
     protected override async Task OnParametersSetAsync()
     {
-        if (InitialNewTransaction && !_newTransactionHandled) { _newTransactionPending = true; }
-        _account = Plan.Accounts.SingleOrDefault(item => item.Id == AccountId);
-        var initialFilter = (InitialCategoryId, InitialFrom, InitialThrough);
-        var filterChanged = _initialFilter != initialFilter;
-        if (filterChanged)
+        if (!InitialNewTransaction)
         {
-            _initialFilter = initialFilter;
-            _from = InitialFrom;
-            _to = InitialThrough;
-            _categoryId = InitialCategoryId;
+            _newTransactionHandled = false;
+            _newTransactionPending = false;
         }
-        if (_loadedPlan?.Id != Plan.Id || _version != Plan.Version || _previousAccount != AccountId || filterChanged || (_error is not null && !ReferenceEquals(_loadedPlan, Plan)))
+        else if (!_newTransactionHandled)
+        {
+            _newTransactionPending = true;
+        }
+        var requestedFilter = (InitialCategoryId, InitialFrom, InitialThrough);
+        var initialContextChanged = _initialFilter != requestedFilter || _previousAccount != AccountId;
+        UpdateAccountProjection(initialContextChanged);
+        UpdatePendingContext(initialContextChanged, requestedFilter);
+        var planChanged = _loadedPlan?.Id != Plan.Id || _version != Plan.Version;
+        var refreshChanged = planChanged
+            || (_error is not null && !ReferenceEquals(_loadedPlan, Plan));
+        if (refreshChanged || !_editing && initialContextChanged)
         {
             var planReplaced = _loadedPlan?.Id != Plan.Id;
             var catalogChanged = _version != Plan.Version;
-            // Recovery after a failed read keeps a draft the refresh preserved, just as a catalog
-            // change does; only the plan, account, or filter identity discards it.
             var readFailed = _error is not null && !ReferenceEquals(_loadedPlan, Plan);
-            if (planReplaced || _previousAccount != AccountId || filterChanged || ((catalogChanged || readFailed) && !KeepOpenDraft()))
+            if (planReplaced || ((catalogChanged || readFailed) && TransactionSettled()))
             {
                 CloseEditors();
             }
-
-            // Keep same-account rows painted while a revision refreshes. Their
-            // labels use the catalog they arrived with until replacement is ready.
-            if (planReplaced || _previousAccount != AccountId || filterChanged)
+            ReconcileDelete();
+            if (!_editing && initialContextChanged)
+            {
+                ApplyRequestedContext(Plan.Accounts.SingleOrDefault(item => item.Id == AccountId), requestedFilter);
+            }
+            if (planReplaced || !_editing && initialContextChanged)
             {
                 _result = null;
                 _rowPlan = null;
             }
             _payees = null;
             _version = Plan.Version;
-            _previousAccount = AccountId;
+            if (!_editing)
+            {
+                _previousAccount = AccountId;
+            }
             _loadedPlan = Plan;
             await ResetPageAsync();
         }
+    }
+    private void UpdateAccountProjection(bool contextChanged)
+    {
+        if (!contextChanged)
+        {
+            _account = Plan.Accounts.SingleOrDefault(item => item.Id == _previousAccount);
+        }
+    }
+    private void UpdatePendingContext(bool contextChanged, (Guid?, DateOnly?, DateOnly?) requestedFilter)
+    {
+        if (!_editing) { return; }
+        if (!contextChanged)
+        {
+            _pendingContext = null;
+        }
+        else
+        {
+            _pendingContext = (AccountId, CategoryId: requestedFilter.Item1, From: requestedFilter.Item2, Through: requestedFilter.Item3);
+        }
+    }
+    private void ApplyRequestedContext(AccountData? account, (Guid?, DateOnly?, DateOnly?) filter)
+    {
+        _account = account;
+        _initialFilter = filter;
+        _from = filter.Item2;
+        _to = filter.Item3;
+        _categoryId = filter.Item1;
     }
 
     // Prerendering must not open the editor: the interactive renderer starts over
@@ -121,19 +172,20 @@ public sealed partial class AccountRegister
     {
         await base.OnAfterRenderAsync(firstRender);
         if (!_newTransactionPending || !RendererInfo.IsInteractive) { return; }
+        // An editor with no account to record against would be unusable.
+        if (Plan.Accounts.Any(item => !item.Closed))
+        {
+            if (!TryAdd()) { return; }
+        }
+        else
+        {
+            _newTransactionNeedsAccount = true;
+        }
         _newTransactionPending = false;
         _newTransactionHandled = true;
-        // An editor with no account to record against would be unusable.
-        if (Plan.Accounts.Any(item => !item.Closed)) { Add(); }
-        else { _newTransactionNeedsAccount = true; }
         if (OnNewTransactionConsumed.HasDelegate) { await OnNewTransactionConsumed.InvokeAsync(); }
         if (!IsDisposed) { StateHasChanged(); }
     }
-
-    // Refresh keeps an open transaction draft. The catalog deliberately omits the ledger, so the
-    // register cannot prove the edited entry still exists; the save reconciles it instead. A
-    // duplicated entry keeps no id and therefore stays a new draft either way.
-    private bool KeepOpenDraft() => ExternalRefresh && _editing;
 
     private async Task LoadAsync()
     {
@@ -150,14 +202,22 @@ public sealed partial class AccountRegister
         {
             if (previous is not null) { await previous.CancelAsync(); }
             token.ThrowIfCancellationRequested();
-            var result = await LoadPage(new(AccountId, _search, _filter, _sort, _from, _to, _cursors[_page], PageSize, Plan.Version, _categoryId), token);
+            var result = await LoadPage(new(_previousAccount, _search, _filter, _sort, _from, _to, _cursors[_page], PageSize, Plan.Version, _categoryId), token);
             token.ThrowIfCancellationRequested();
             if (request != _request) { return; }
-            _result = result;
-            _rowPlan = rowPlan;
-            _displayPage = page;
-            _running.Clear();
-            foreach (var row in result.Rows) { _running[row.Transaction.Id] = row.RunningBalance; }
+            if (_editing && !IsNewDraft && result.Rows.All(item => item.Transaction.Id != _transaction?.Id))
+            {
+                _reloadAfterClose = true;
+            }
+            else
+            {
+                _reloadAfterClose = false;
+                _result = result;
+                _rowPlan = rowPlan;
+                _displayPage = page;
+                _running.Clear();
+                foreach (var row in result.Rows) { _running[row.Transaction.Id] = row.RunningBalance; }
+            }
             // Payee suggestions must not delay painting the register page.
             StateHasChanged();
             var payees = _payees ?? await LoadPayees(token);
@@ -186,7 +246,7 @@ public sealed partial class AccountRegister
             if (!IsDisposed && request == _request) { IsBusy = false; }
         }
     }
-    private decimal DisplayAmount(TransactionData entry) => AccountId == entry.TransferAccountId && AccountId.HasValue ? -entry.Amount : entry.Amount;
+    private decimal DisplayAmount(TransactionData entry) => _previousAccount == entry.TransferAccountId && _previousAccount.HasValue ? -entry.Amount : entry.Amount;
     private string MobileDate(TransactionData entry) => entry.Date.Year == Plan.Today.Year
         ? entry.Date.ToString("MM/dd", CultureInfo.InvariantCulture)
         : entry.Date.ToString("MM/dd/yyyy", CultureInfo.InvariantCulture);
@@ -204,11 +264,126 @@ public sealed partial class AccountRegister
     }
     private string CategoryName(Guid? id) => CategoryName(Plan, id);
     private static string CategoryName(PlanSnapshot plan, Guid? id) => id.HasValue ? plan.Categories.SingleOrDefault(item => item.Id == id)?.Name ?? "an unavailable category" : "Ready to assign";
-    private void Add() { CloseEditors(); _transaction = null; _editKey = Guid.CreateVersion7(); _editing = true; }
-    private void Edit(TransactionData entry) { CloseEditors(); _transaction = entry; _editKey = Guid.CreateVersion7(); _editing = true; }
+    private void Add() => TryAdd();
+    private bool TryAdd()
+    {
+        if (_editing || AccountEditing) { return false; }
+        _activationEpoch++;
+        _pendingActivationId = null;
+        _transaction = null;
+        _activeRowId = null;
+        _editKey = Guid.CreateVersion7();
+        _editing = true;
+        return true;
+    }
+    private void Edit(TransactionData entry)
+    {
+        if (_editing || AccountEditing) { return; }
+        _activationEpoch++;
+        _pendingActivationId = null;
+        _transaction = entry;
+        _activeRowId = entry.Id;
+        _editKey = Guid.CreateVersion7();
+        _editing = true;
+    }
     private void Duplicate(TransactionData entry) => Edit(entry with { Id = Guid.Empty, Date = Plan.Today, Repeat = RepeatFrequency.None, Splits = entry.Splits.Select(item => item with { Id = Guid.CreateVersion7() }).ToArray() });
-    private void CloseEditors() { _editing = false; _deleting = false; }
+    private void CloseEditors()
+    {
+        _activationEpoch++;
+        _pendingActivationId = null;
+        _transactionCommand = null;
+        _pendingContext = null;
+        _editing = false;
+        _deleting = false;
+        _reloadAfterClose = false;
+    }
+    private bool TransactionSettled() => _transactionCommand is not null
+        && (ReferenceEquals(AppliedCommand, _transactionCommand) || ReferenceEquals(RecoveredCommand, _transactionCommand));
+    private void ReconcileDelete()
+    {
+        var command = _deleteCommand;
+        if (command is null || !ReferenceEquals(AppliedCommand, command) && !ReferenceEquals(RecoveredCommand, command))
+        {
+            return;
+        }
+
+        _selected.Clear();
+        _deleting = false;
+        if (_transaction is not null && command.TransactionIds.Contains(_transaction.Id))
+        {
+            CloseEditors();
+        }
+        _deleteCommand = null;
+    }
+    private async Task CloseEditorAsync()
+    {
+        var pendingContext = _pendingContext;
+        var reload = _reloadAfterClose;
+        CloseEditors();
+        if (pendingContext is { } context)
+        {
+            ApplyRequestedContext(Plan.Accounts.SingleOrDefault(item => item.Id == context.AccountId),
+                (context.CategoryId, context.From, context.Through));
+            _previousAccount = context.AccountId;
+            _result = null;
+            _rowPlan = null;
+            await ResetPageAsync();
+            return;
+        }
+        if (reload)
+        {
+            await LoadAsync();
+        }
+    }
+    private async Task ActivateRowAsync(TransactionData entry)
+    {
+        if (IsBusy || _editing || AccountEditing) { return; }
+        if (_activeRowId == entry.Id)
+        {
+            Edit(entry);
+            return;
+        }
+
+        if (_pendingActivationId == entry.Id)
+        {
+            Edit(entry);
+            return;
+        }
+
+        var epoch = ++_activationEpoch;
+        _pendingActivationId = entry.Id;
+        var compact = await IsCompactRegisterAsync();
+        if (IsDisposed || epoch != _activationEpoch || _pendingActivationId != entry.Id) { return; }
+        _pendingActivationId = null;
+        if (_editing || AccountEditing) { return; }
+        if (compact)
+        {
+            Edit(entry);
+            return;
+        }
+
+        _activeRowId = entry.Id;
+    }
+    private async Task<bool> IsCompactRegisterAsync()
+    {
+        using var operation = CreateOperation();
+        var token = operation.Token;
+        try
+        {
+            _layoutModule ??= await javascript.InvokeAsync<IJSObjectReference>("import", token, LayoutModulePath);
+            token.ThrowIfCancellationRequested();
+            return await _layoutModule.InvokeAsync<bool>("compactRegister", token);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { return false; }
+        catch (JSDisconnectedException) { return false; }
+        catch (JSException) { return false; }
+    }
     private Task EditAccountAsync() => OnEditAccount.InvokeAsync(_account!);
+    private Task SendTransactionCommandAsync(PlanCommand command)
+    {
+        _transactionCommand = command;
+        return OnCommand.InvokeAsync(command);
+    }
     private void Select(Guid id, bool value) { if (value) { _selected.Add(id); } else { _selected.Remove(id); } }
     private void SelectVisible(bool value) { foreach (var entry in VisibleEntries) { Select(entry.Id, value); } }
     private async Task PreviousPageAsync() { _page--; _selected.Clear(); await LoadAsync(); }
@@ -217,5 +392,20 @@ public sealed partial class AccountRegister
     private async Task NextPageAsync() { if (_result?.Next is not { } next) { return; } _page++; if (_cursors.Count <= _page) { _cursors.Add(next); } else { _cursors[_page] = next; } _selected.Clear(); await LoadAsync(); }
     private void RequestDelete() => _deleting = true;
     private void CancelDelete() => _deleting = false;
-    private Task DeleteAsync() => OnCommand.InvokeAsync(new DeleteTransactions(Plan.Version, _selected.ToArray()));
+    private Task DeleteAsync()
+    {
+        if (_selected.Count == 0) { return Task.CompletedTask; }
+        _deleteCommand = new(Plan.Version, _selected.ToArray());
+        return OnCommand.InvokeAsync(_deleteCommand);
+    }
+    protected override async ValueTask DisposeCoreAsync()
+    {
+        if (_layoutModule is not null)
+        {
+            try { await _layoutModule.DisposeAsync(); }
+            catch (JSDisconnectedException) { /* The circuit already released its JavaScript references. */ }
+        }
+
+        await base.DisposeCoreAsync();
+    }
 }

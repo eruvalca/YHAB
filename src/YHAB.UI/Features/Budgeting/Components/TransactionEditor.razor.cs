@@ -14,7 +14,9 @@ public sealed partial class TransactionEditor
     [Parameter, EditorRequired] public EventCallback<PlanCommand> OnCommand { get; set; }
     [Parameter, EditorRequired] public EventCallback OnClose { get; set; }
     [Parameter] public bool Busy { get; set; }
+    [Parameter] public bool Inline { get; set; }
     private const string ChooseCategory = "Choose a category";
+    private const string PayeeListId = "known-payees";
     private const string OutflowCategoryError = "An outflow needs a spending category. Choose one, or switch the direction to Inflow.";
     private const string BudgetCategoryError = "Money leaving your budget needs a spending category.";
     private const string CategoryUnavailableError = "That category is no longer available. Choose another category.";
@@ -34,17 +36,60 @@ public sealed partial class TransactionEditor
     private string _memo = "";
     private string _direction = "Outflow";
     private string _flag = "None";
+    private string _categoryFilter = "";
     private DateOnly _date;
     private bool _amountValid = true;
+    private bool _outflowValid = true;
+    private bool _inflowValid = true;
     private bool _split;
     private bool _saving;
+    private bool _reverseTransferPerspective;
     private RepeatFrequency _repeat;
     private decimal Amount { get; set; }
     private string _initial = "";
     private AmountInput? _amountInput;
+    private AmountInput? _outflowInput;
+    private AmountInput? _inflowInput;
     private bool _focusCategory;
     private ElementReference _categoryError;
     private bool IsOutflow => string.Equals(_direction, "Outflow", StringComparison.Ordinal);
+    private string EditorClass => Inline ? "transaction-editor transaction-editor-inline" : "transaction-editor";
+    private string DateId { get; } = $"transaction-date-{Guid.CreateVersion7():N}";
+    private string[] KnownPayees() => Payees.Where(item => item.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase).ToArray();
+    private decimal OutflowAmount => IsOutflow ? Amount : 0;
+    private decimal InflowAmount => IsOutflow ? 0 : Amount;
+    private static string CategoryText(CategoryData? category) => category?.Name ?? string.Empty;
+    private static Guid CategoryValue(CategoryData? category) => category?.Id ?? Guid.Empty;
+    private static CategoryData[] FilteredCategories(CategoryData[] categories, string filter)
+        => string.IsNullOrWhiteSpace(filter)
+            ? categories
+            : categories.Where(item => item.Name.Contains(filter.Trim(), StringComparison.OrdinalIgnoreCase)).ToArray();
+    private void FilterCategories(string? filter) => _categoryFilter = filter ?? "";
+    private static void FilterSplitCategories(SplitInput split, string? filter) => split.Filter = filter ?? "";
+    private IEnumerable<CategoryData> SelectedCategories()
+    {
+        var selected = CategoryOptions.SingleOrDefault(item => item.Id == _category);
+        return selected is null ? [] : [selected];
+    }
+    private IEnumerable<CategoryData> SelectedSplitCategories(SplitInput split)
+    {
+        var selected = SplitCategoryOptions(split).SingleOrDefault(item => item.Id == split.Category);
+        return selected is null ? [] : [selected];
+    }
+    private Task SelectCategoryAsync(IEnumerable<CategoryData> selected)
+    {
+        _category = selected.SingleOrDefault()?.Id ?? Guid.Empty;
+        ClearCategoryFilter();
+        return Task.CompletedTask;
+    }
+    private static Task SelectSplitAsync(SplitInput split, IEnumerable<CategoryData> selected)
+    {
+        split.Category = selected.SingleOrDefault()?.Id ?? Guid.Empty;
+        ClearSplitFilter(split);
+        return Task.CompletedTask;
+    }
+    private void ClearCategoryFilter() => _categoryFilter = "";
+    private static void ClearSplitFilter(SplitInput split) => split.Filter = "";
     private decimal SignedAmount => IsOutflow ? -Math.Abs(Amount) : Math.Abs(Amount);
     private int DirectionSign => IsOutflow ? -1 : 1;
     private bool BudgetOutflow => DirectionSign * BudgetDirection < 0;
@@ -76,7 +121,15 @@ public sealed partial class TransactionEditor
                 && !(destination is not null && BudgetFacts.IsBudget(source.Kind) && BudgetFacts.IsBudget(destination.Kind));
         }
     }
-    private bool CannotSave => Busy || _saving || !_amountValid || _account == Guid.Empty || (_transfer != Guid.Empty && _transfer == _account)
+    private bool ActiveAmountValid
+    {
+        get
+        {
+            if (!Inline) { return _amountValid; }
+            return _outflowValid && _inflowValid;
+        }
+    }
+    private bool CannotSave => Busy || _saving || !ActiveAmountValid || _account == Guid.Empty || (_transfer != Guid.Empty && _transfer == _account)
         || (_repeat == RepeatFrequency.None && _date > Plan.Today)
         || CategoryMissing
         || CategoryUnavailable
@@ -85,17 +138,28 @@ public sealed partial class TransactionEditor
     // the committed values plus each field's uncommitted text.
     private bool HasUnsavedChanges() => !string.Equals(Signature(), _initial, StringComparison.Ordinal)
         || _amountInput?.HasDraft is true
+        || _outflowInput?.HasDraft is true
+        || _inflowInput?.HasDraft is true
         || _splits.Any(item => item.AmountInput?.HasDraft is true);
 
     protected override void OnInitialized()
     {
         RebuildCatalog();
-        _account = Transaction?.AccountId ?? AccountId ?? _accounts.FirstOrDefault()?.Id ?? Guid.Empty;
-        _transfer = Transaction?.TransferAccountId ?? Guid.Empty;
+        _reverseTransferPerspective = Transaction?.TransferAccountId == AccountId && AccountId.HasValue;
+        _account = _reverseTransferPerspective
+            ? Transaction!.TransferAccountId!.Value
+            : Transaction?.AccountId ?? AccountId ?? _accounts.FirstOrDefault()?.Id ?? Guid.Empty;
+        _transfer = _reverseTransferPerspective ? Transaction!.AccountId : Transaction?.TransferAccountId ?? Guid.Empty;
         InitializeValues();
         if (Transaction is not null)
         {
-            _splits.AddRange(Transaction.Splits.Select(item => new SplitInput { Id = item.Id, Category = item.CategoryId ?? Guid.Empty, Amount = item.Amount, Memo = item.Memo }));
+            _splits.AddRange(Transaction.Splits.Select(item => new SplitInput
+            {
+                Id = item.Id,
+                Category = item.CategoryId ?? Guid.Empty,
+                Amount = _reverseTransferPerspective ? -item.Amount : item.Amount,
+                Memo = item.Memo,
+            }));
         }
 
         _initial = Signature();
@@ -133,7 +197,8 @@ public sealed partial class TransactionEditor
         _payee = Transaction?.Payee ?? "";
         _memo = Transaction?.Memo ?? "";
         Amount = Math.Abs(Transaction?.Amount ?? 0);
-        _direction = Transaction?.Amount > 0 ? "Inflow" : "Outflow";
+        var perspectiveAmount = _reverseTransferPerspective ? -Transaction?.Amount : Transaction?.Amount;
+        _direction = perspectiveAmount > 0 ? "Inflow" : "Outflow";
         _repeat = Transaction?.Repeat ?? RepeatFrequency.None;
         _flag = string.IsNullOrEmpty(Transaction?.Flag) ? "None" : Transaction.Flag;
         _category = FirstSplit?.CategoryId ?? Guid.Empty;
@@ -149,7 +214,15 @@ public sealed partial class TransactionEditor
         RepeatFrequency.EverySixMonths => "Every six months",
         _ => frequency.ToString(),
     };
-    private void DirectionChanged() => _focusCategory = CategoryMissing;
+    private void DirectionChanged()
+    {
+        _categoryFilter = "";
+        _focusCategory = CategoryMissing;
+    }
+    private Task SetOutflowAsync(decimal amount) { _direction = "Outflow"; Amount = Math.Abs(amount); return Task.CompletedTask; }
+    private Task SetInflowAsync(decimal amount) { _direction = "Inflow"; Amount = Math.Abs(amount); return Task.CompletedTask; }
+    private void SetOutflowValidity(bool valid) => _outflowValid = valid;
+    private void SetInflowValidity(bool valid) => _inflowValid = valid;
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (_focusCategory)
@@ -182,7 +255,16 @@ public sealed partial class TransactionEditor
         _saving = true;
         try
         {
-            var amount = await _amountInput!.CommitAsync();
+            AmountInput amountInput;
+            if (Inline)
+            {
+                amountInput = IsOutflow ? _outflowInput! : _inflowInput!;
+            }
+            else
+            {
+                amountInput = _amountInput!;
+            }
+            var amount = await amountInput.CommitAsync();
             if (amount is null)
             {
                 return;
@@ -203,20 +285,28 @@ public sealed partial class TransactionEditor
                 }
             }
 
-            var splits = BuildSplits();
-            await OnCommand.InvokeAsync(new SaveTransaction(Plan.Version, new(Transaction?.Id ?? Guid.Empty, _account, _date, _payee, _memo, SignedAmount,
-                _transfer == Guid.Empty ? null : _transfer, string.Equals(_flag, "None", StringComparison.Ordinal) ? "" : _flag, splits, _repeat)));
+            var reverse = _reverseTransferPerspective && _transfer != Guid.Empty;
+            var account = reverse ? _transfer : _account;
+            var transfer = reverse ? _account : _transfer;
+            var savedAmount = reverse ? -SignedAmount : SignedAmount;
+            var splits = BuildSplits(savedAmount, reverse);
+            await OnCommand.InvokeAsync(new SaveTransaction(Plan.Version, new(Transaction?.Id ?? Guid.Empty, account, _date, _payee, _memo, savedAmount,
+                transfer == Guid.Empty ? null : transfer, string.Equals(_flag, "None", StringComparison.Ordinal) ? "" : _flag, splits, _repeat)));
         }
         finally
         {
             _saving = false;
         }
     }
-    private SplitData[] BuildSplits()
+    private SplitData[] BuildSplits(decimal amount, bool reverse)
     {
         if (!NeedsCategory) { return []; }
-        if (_split) { return _splits.Select(item => new SplitData(item.Id, item.Category == Guid.Empty ? null : item.Category, item.Amount, item.Memo)).ToArray(); }
-        return [new(FirstSplit?.Id ?? Guid.CreateVersion7(), _category == Guid.Empty ? null : _category, SignedAmount, "")];
+        if (_split)
+        {
+            return _splits.Select(item => new SplitData(item.Id, item.Category == Guid.Empty ? null : item.Category,
+                reverse ? -item.Amount : item.Amount, item.Memo)).ToArray();
+        }
+        return [new(FirstSplit?.Id ?? Guid.CreateVersion7(), _category == Guid.Empty ? null : _category, amount, "")];
     }
     private sealed class SplitInput
     {
@@ -224,6 +314,7 @@ public sealed partial class TransactionEditor
         public Guid Category { get; set; }
         public decimal Amount { get; set; }
         public string Memo { get; set; } = "";
+        public string Filter { get; set; } = "";
         public bool Valid { get; set; } = true;
         public AmountInput? AmountInput { get; set; }
     }

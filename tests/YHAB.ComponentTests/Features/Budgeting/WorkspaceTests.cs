@@ -248,6 +248,7 @@ public sealed class WorkspaceTests
         navigation.NavigateTo($"/plans/{plan.Id}/accounts?category={category.Id}&from=2026-10-01&to=2026-10-31");
         var workspace = context.Render<Workspace>(parameters => parameters.Add(item => item.PlanId, plan.Id));
         await workspace.Find(".register-table .category-link").ClickAsync();
+        await workspace.Find(".register-table .category-link").ClickAsync();
         var editor = workspace.FindComponent<TransactionEditor>().Instance;
         budgets.ClearReceivedCalls();
 
@@ -257,10 +258,12 @@ public sealed class WorkspaceTests
         workspace.FindComponent<TransactionEditor>().Instance.ShouldBeSameAs(editor);
         workspace.FindAll(".register-table tbody tr").Count.ShouldBe(1);
         var row = workspace.Find(".register-table tbody tr");
-        row.TextContent.ShouldContain("Shop");
+        row.GetAttribute("class").ShouldNotBeNull().ShouldContain("transaction-editing-row");
+        row.QuerySelector(".transaction-ledger-payee fluent-text-input").ShouldNotBeNull()
+            .GetAttribute("value").ShouldBe("Shop");
         row.TextContent.ShouldContain("Checking");
         row.TextContent.ShouldContain("Groceries");
-        row.TextContent.ShouldContain("$10.00");
+        row.QuerySelectorAll(".amount-input fluent-text-input").ShouldContain(item => string.Equals(item.GetAttribute("value"), "10.00", StringComparison.Ordinal));
         var register = workspace.FindComponent<AccountRegister>().Instance;
         register.InitialCategoryId.ShouldBe(category.Id);
         register.InitialFrom.ShouldBe(new DateOnly(2026, 10, 1));
@@ -272,7 +275,10 @@ public sealed class WorkspaceTests
         register.InitialCategoryId.ShouldBeNull();
         register.InitialFrom.ShouldBeNull();
         register.InitialThrough.ShouldBeNull();
-        workspace.FindComponents<TransactionEditor>().ShouldBeEmpty();
+        workspace.FindComponent<TransactionEditor>().Instance.ShouldBeSameAs(editor);
+        workspace.Find(".transaction-ledger-payee fluent-text-input").GetAttribute("value").ShouldBe("Shop");
+        await budgets.DidNotReceive().ReadRegisterAsync(plan.Id, Arg.Any<RegisterQuery>(), Arg.Any<CancellationToken>());
+        await workspace.Find("fluent-button[aria-label='Cancel']").ClickAsync();
         await budgets.Received().ReadRegisterAsync(plan.Id, Arg.Any<RegisterQuery>(), Arg.Any<CancellationToken>());
     }
 
@@ -316,6 +322,7 @@ public sealed class WorkspaceTests
         var component = context.Render<Workspace>(parameters => parameters.Add(item => item.PlanId, plan.Id));
         await component.WaitForAssertionAsync(() => component.FindAll(".register-table .category-link").Count.ShouldBe(1));
         await component.Find(".register-table .category-link").ClickAsync();
+        await component.Find(".register-table .category-link").ClickAsync();
         component.FindAll(".editor-surface").Count.ShouldBe(1);
         await Button(component, "Save transaction").ClickAsync();
 
@@ -349,13 +356,16 @@ public sealed class WorkspaceTests
                 Task.FromResult<IReadOnlyList<string>>(["Renamed payee"]));
         context.Services.GetRequiredService<NavigationManager>().NavigateTo($"/plans/{plan.Id}/accounts");
         var component = context.Render<Workspace>(parameters => parameters.Add(item => item.PlanId, plan.Id));
-        if (editing) { await component.Find(".register-table .category-link").ClickAsync(); }
+        if (editing)
+        {
+            await component.Find(".register-table .category-link").ClickAsync();
+            await component.Find(".register-table .category-link").ClickAsync();
+        }
         else { await Button(component, "+ Add transaction").ClickAsync(); }
         await component.WaitForAssertionAsync(() => component.FindAll("#known-payees option")
             .Select(item => item.GetAttribute("value")).ShouldBe(["Other account payee", "Visible payee"]));
 
         await Button(component, "Refresh").ClickAsync();
-        await Button(component, "+ Add transaction").ClickAsync();
         await component.WaitForAssertionAsync(() => component.FindAll("#known-payees option")
             .Select(item => item.GetAttribute("value")).ShouldBe(["Renamed payee"]));
         budgets.ReceivedCalls().Count(call => string.Equals(call.GetMethodInfo().Name, nameof(IBudgetClient.ReadPayeesAsync), StringComparison.Ordinal)).ShouldBe(2);
@@ -655,12 +665,17 @@ public sealed class WorkspaceTests
         await workspace.WaitForAssertionAsync(() => workspace.FindAll(".editor-surface").Count.ShouldBe(1));
         navigation.Uri.ShouldBe($"http://localhost/plans/{plan.Id}/accounts");
 
-        await workspace.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Close", StringComparison.Ordinal)).ClickAsync();
+        await workspace.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Cancel", StringComparison.Ordinal)).ClickAsync();
         workspace.FindAll(".editor-surface").ShouldBeEmpty();
 
         // The intent is one-shot: a later render that still supplies it must not reopen the editor.
         workspace.Render(parameters => parameters.Add(item => item.PlanId, plan.Id));
         workspace.FindAll(".editor-surface").ShouldBeEmpty();
+
+        navigation.NavigateTo($"/plans/{plan.Id}/accounts?new=true");
+        workspace.Render(parameters => parameters.Add(item => item.PlanId, plan.Id));
+        await workspace.WaitForAssertionAsync(() => workspace.FindAll(".editor-surface").Count.ShouldBe(1));
+        navigation.Uri.ShouldBe($"http://localhost/plans/{plan.Id}/accounts");
     }
 
     private static (IBudgetClient Budgets, PlanSnapshot Plan) Configure(BunitContext context)

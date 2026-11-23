@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using AngleSharp.Dom;
 using Bunit;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Shouldly;
@@ -14,6 +15,233 @@ namespace YHAB.ComponentTests.Features.Budgeting;
 public sealed class TransactionEditorTests
 {
     [Fact]
+    public async Task CategoryComboboxFiltersAndCommitsASelectedResultAsync()
+    {
+        await using var context = CreateContext();
+        var plan = CreatePlan();
+        var utilities = new CategoryData(Guid.CreateVersion7(), plan.Groups[0].Id, "Utilities", "", 1, false, null, null);
+        plan = plan with { Categories = [plan.Categories[0], utilities] };
+        var commands = new List<PlanCommand>();
+        var component = context.Render<TransactionEditor>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.Payees, [])
+            .Add(item => item.OnCommand, commands.Add).Add(item => item.OnClose, () => { })
+            .Add(item => item.Inline, true));
+
+        var category = component.Find("fluent-dropdown[placeholder='Choose a category']");
+        category.QuerySelectorAll("fluent-option").Count.ShouldBe(2);
+        await category.TriggerEventAsync("ontextimmediate", new ChangeEventArgs { Value = "Gro" });
+
+        category = component.Find("fluent-dropdown[placeholder='Choose a category']");
+        category.QuerySelectorAll("fluent-option").Select(item => item.TextContent.Trim()).ShouldBe(["Groceries"]);
+        var groceries = category.QuerySelector("fluent-option[text='Groceries']").ShouldNotBeNull();
+        await category.TriggerEventAsync("ondropdownchange", new DropdownEventArgs { SelectedOptions = groceries.Id });
+        await component.FindAll(".transaction-ledger-amount fluent-text-input")[0].ChangeAsync(new() { Value = "12.50" });
+        await SaveButton(component).ClickAsync();
+
+        commands.Single().ShouldBeOfType<SaveTransaction>().Transaction.Splits.Single().CategoryId
+            .ShouldBe(plan.Categories[0].Id);
+    }
+
+    [Fact]
+    public async Task InlineEditorCannotSaveAnInvalidKeyboardActivatedInflowAsync()
+    {
+        await using var context = CreateContext();
+        var plan = CreatePlan();
+        var transaction = new TransactionData(Guid.CreateVersion7(), plan.Accounts[0].Id, plan.Today, "Shop", "", -10, null, "",
+            [new SplitData(Guid.CreateVersion7(), plan.Categories[0].Id, -10, "")]);
+        var commands = new List<PlanCommand>();
+        var component = context.Render<TransactionEditor>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.Payees, []).Add(item => item.Transaction, transaction)
+            .Add(item => item.OnCommand, commands.Add).Add(item => item.OnClose, () => { })
+            .Add(item => item.Inline, true));
+
+        var inflow = component.FindAll(".transaction-ledger-amount fluent-text-input")[1];
+        await inflow.TriggerEventAsync("onfocusin", new FocusEventArgs());
+        inflow = component.FindAll(".transaction-ledger-amount fluent-text-input")[1];
+        await inflow.ChangeAsync(new() { Value = "not an amount" });
+
+        SaveButton(component).HasAttribute("disabled").ShouldBeTrue();
+        await component.FindAll(".transaction-ledger-amount .amount-entry")[1]
+            .KeyDownAsync(new KeyboardEventArgs { Key = "Enter" });
+        commands.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task InlineEditorFocusDoesNotChangeTheExistingDirectionAsync()
+    {
+        await using var context = CreateContext();
+        var plan = CreatePlan();
+        var transaction = new TransactionData(Guid.CreateVersion7(), plan.Accounts[0].Id, plan.Today, "Shop", "", -10, null, "",
+            [new SplitData(Guid.CreateVersion7(), plan.Categories[0].Id, -10, "")]);
+        var commands = new List<PlanCommand>();
+        var component = context.Render<TransactionEditor>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.Payees, []).Add(item => item.Transaction, transaction)
+            .Add(item => item.OnCommand, commands.Add).Add(item => item.OnClose, () => { })
+            .Add(item => item.Inline, true));
+
+        await component.FindAll(".transaction-ledger-amount fluent-text-input")[1]
+            .TriggerEventAsync("onfocusin", new FocusEventArgs());
+        await SaveButton(component).ClickAsync();
+
+        commands.Single().ShouldBeOfType<SaveTransaction>().Transaction.Amount.ShouldBe(-10m);
+    }
+
+    [Fact]
+    public void InlineEditorDisplaysTheSelectedStoredCategory()
+    {
+        using var context = CreateContext();
+        var plan = CreatePlan();
+        var category = plan.Categories[0];
+        var transaction = new TransactionData(Guid.CreateVersion7(), plan.Accounts[0].Id, plan.Today, "Shop", "", -10, null, "",
+            [new SplitData(Guid.CreateVersion7(), category.Id, -10, "")]);
+        var component = context.Render<TransactionEditor>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.Payees, []).Add(item => item.Transaction, transaction)
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnClose, () => { })
+            .Add(item => item.Inline, true));
+
+        component.Find("fluent-dropdown[placeholder='Choose a category']")
+            .QuerySelector($"fluent-option[value='{category.Id}'][selected]")
+            .ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task EditingATransferFromTheDestinationAccountPreservesItsDirectionAsync()
+    {
+        await using var context = CreateContext();
+        var today = new DateOnly(2026, 10, 3);
+        var source = new AccountData(Guid.CreateVersion7(), "Checking", AccountKind.Checking, 0, today, false, "");
+        var destination = new AccountData(Guid.CreateVersion7(), "Savings", AccountKind.Savings, 0, today, false, "");
+        var transaction = new TransactionData(Guid.CreateVersion7(), source.Id, today, "Transfer", "", -20,
+            destination.Id, "", [], RepeatFrequency.None);
+        var plan = new PlanSnapshot(Guid.CreateVersion7(), "Household", "", today, 7,
+            [source, destination], [], [], [], [transaction], false, false, [])
+        { Today = today };
+        var commands = new List<PlanCommand>();
+        var component = context.Render<TransactionEditor>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.Payees, []).Add(item => item.Transaction, transaction)
+            .Add(item => item.AccountId, destination.Id)
+            .Add(item => item.OnCommand, commands.Add).Add(item => item.OnClose, () => { })
+            .Add(item => item.Inline, true));
+
+        component.FindAll(".transaction-ledger-amount fluent-text-input")[0].GetAttribute("value").ShouldBe("0.00");
+        component.FindAll(".transaction-ledger-amount fluent-text-input")[1].GetAttribute("value").ShouldBe("20.00");
+        await SaveButton(component).ClickAsync();
+
+        var saved = commands.Single().ShouldBeOfType<SaveTransaction>().Transaction;
+        saved.AccountId.ShouldBe(source.Id);
+        saved.TransferAccountId.ShouldBe(destination.Id);
+        saved.Amount.ShouldBe(-20);
+    }
+
+    [Fact]
+    public async Task EditingATransferAmountUsesTheDestinationAccountsVisibleDirectionAsync()
+    {
+        await using var context = CreateContext();
+        var today = new DateOnly(2026, 10, 3);
+        var source = new AccountData(Guid.CreateVersion7(), "Checking", AccountKind.Checking, 0, today, false, "");
+        var destination = new AccountData(Guid.CreateVersion7(), "Savings", AccountKind.Savings, 0, today, false, "");
+        var transaction = new TransactionData(Guid.CreateVersion7(), source.Id, today, "Transfer", "", -20,
+            destination.Id, "", [], RepeatFrequency.None);
+        var plan = new PlanSnapshot(Guid.CreateVersion7(), "Household", "", today, 7,
+            [source, destination], [], [], [], [transaction], false, false, [])
+        { Today = today };
+        var commands = new List<PlanCommand>();
+        var component = context.Render<TransactionEditor>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.Payees, []).Add(item => item.Transaction, transaction)
+            .Add(item => item.AccountId, destination.Id)
+            .Add(item => item.OnCommand, commands.Add).Add(item => item.OnClose, () => { })
+            .Add(item => item.Inline, true));
+
+        await component.FindAll(".transaction-ledger-amount fluent-text-input")[1]
+            .ChangeAsync(new() { Value = "25" });
+        await SaveButton(component).ClickAsync();
+
+        var saved = commands.Single().ShouldBeOfType<SaveTransaction>().Transaction;
+        saved.AccountId.ShouldBe(source.Id);
+        saved.TransferAccountId.ShouldBe(destination.Id);
+        saved.Amount.ShouldBe(-25);
+    }
+
+    [Fact]
+    public async Task EditingATransferIntoBudgetPreservesItsSplitDirectionAsync()
+    {
+        await using var context = CreateContext();
+        var today = new DateOnly(2026, 10, 3);
+        var tracking = new AccountData(Guid.CreateVersion7(), "Brokerage", AccountKind.Asset, 0, today, false, "");
+        var budget = new AccountData(Guid.CreateVersion7(), "Checking", AccountKind.Checking, 0, today, false, "");
+        var split = new SplitData(Guid.CreateVersion7(), null, -20, "");
+        var transaction = new TransactionData(Guid.CreateVersion7(), tracking.Id, today, "Transfer", "", -20,
+            budget.Id, "", [split], RepeatFrequency.None);
+        var plan = new PlanSnapshot(Guid.CreateVersion7(), "Household", "", today, 7,
+            [tracking, budget], [], [], [], [transaction], false, false, [])
+        { Today = today };
+        var commands = new List<PlanCommand>();
+        var component = context.Render<TransactionEditor>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.Payees, []).Add(item => item.Transaction, transaction)
+            .Add(item => item.AccountId, budget.Id)
+            .Add(item => item.OnCommand, commands.Add).Add(item => item.OnClose, () => { })
+            .Add(item => item.Inline, true));
+
+        await SaveButton(component).ClickAsync();
+
+        var saved = commands.Single().ShouldBeOfType<SaveTransaction>().Transaction;
+        saved.AccountId.ShouldBe(tracking.Id);
+        saved.TransferAccountId.ShouldBe(budget.Id);
+        saved.Amount.ShouldBe(-20);
+        saved.Splits.Single().Amount.ShouldBe(-20);
+    }
+
+    [Fact]
+    public async Task InlineEditorCanSaveAfterAnInvalidColumnIsReplacedByTheOppositeDirectionAsync()
+    {
+        await using var context = CreateContext();
+        var plan = CreatePlan();
+        var transaction = new TransactionData(Guid.CreateVersion7(), plan.Accounts[0].Id, plan.Today, "Shop", "", -10, null, "",
+            [new SplitData(Guid.CreateVersion7(), plan.Categories[0].Id, -10, "")]);
+        var commands = new List<PlanCommand>();
+        var component = context.Render<TransactionEditor>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.Payees, []).Add(item => item.Transaction, transaction)
+            .Add(item => item.OnCommand, commands.Add).Add(item => item.OnClose, () => { })
+            .Add(item => item.Inline, true));
+
+        await component.FindAll(".transaction-ledger-amount fluent-text-input")[0]
+            .ChangeAsync(new() { Value = "invalid" });
+        SaveButton(component).HasAttribute("disabled").ShouldBeTrue();
+
+        await component.FindAll(".transaction-ledger-amount fluent-text-input")[1]
+            .ChangeAsync(new() { Value = "12.50" });
+
+        SaveButton(component).HasAttribute("disabled").ShouldBeFalse();
+        await SaveButton(component).ClickAsync();
+        commands.Single().ShouldBeOfType<SaveTransaction>().Transaction.Amount.ShouldBe(12.50m);
+    }
+
+    [Fact]
+    public async Task InlineEditorSavesFromOutflowColumnAsync()
+    {
+        await using var context = CreateContext();
+        var plan = CreatePlan();
+        var commands = new List<PlanCommand>();
+        var component = context.Render<TransactionEditor>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.Payees, ["Corner shop"])
+            .Add(item => item.OnCommand, commands.Add).Add(item => item.OnClose, () => { })
+            .Add(item => item.Inline, true));
+
+        component.Find(".transaction-editor-inline .transaction-ledger-fields").ShouldNotBeNull();
+        component.Find("datalist option[value='Corner shop']").ShouldNotBeNull();
+        var category = component.Find("fluent-dropdown[placeholder='Choose a category']");
+        var option = category.QuerySelector("fluent-option[text='Groceries']").ShouldNotBeNull();
+        await category.TriggerEventAsync("ondropdownchange", new DropdownEventArgs { SelectedOptions = option.Id });
+        await component.FindAll(".transaction-ledger-amount fluent-text-input")[0].ChangeAsync(new() { Value = "12.50" });
+
+        await SaveButton(component).ClickAsync();
+
+        var saved = commands.Single().ShouldBeOfType<SaveTransaction>().Transaction;
+        saved.Amount.ShouldBe(-12.50m);
+        saved.Splits.Single().CategoryId.ShouldBe(plan.Categories[0].Id);
+    }
+
+    [Fact]
     public async Task NewOutflowAsksForASpendingCategoryAndBlocksSaveAsync()
     {
         await using var context = CreateContext();
@@ -23,7 +251,7 @@ public sealed class TransactionEditorTests
             .Add(item => item.Payees, []).Add(item => item.OnCommand, commands.Add)
             .Add(item => item.OnClose, () => { }));
 
-        var category = component.FindAll("fluent-dropdown")[3];
+        var category = component.Find("fluent-dropdown[placeholder='Choose a category']");
         category.QuerySelector("fluent-option[text='Inflow: Ready to assign']").ShouldBeNull();
         category.GetAttribute("placeholder").ShouldBe("Choose a category");
         category.GetAttribute("aria-invalid").ShouldBe("true");
@@ -38,7 +266,7 @@ public sealed class TransactionEditorTests
         await component.FindAll("fluent-text-input")[1].ChangeAsync(new() { Value = "12.50" });
 
         component.FindAll("#transaction-category-error").ShouldBeEmpty();
-        component.FindAll("fluent-dropdown")[3].GetAttribute("aria-invalid").ShouldBe("false");
+        component.Find("fluent-dropdown[placeholder='Choose a category']").GetAttribute("aria-invalid").ShouldBe("false");
         SaveButton(component).HasAttribute("disabled").ShouldBeFalse();
         await SaveButton(component).ClickAsync();
 
@@ -62,7 +290,7 @@ public sealed class TransactionEditorTests
         await direction.TriggerEventAsync("ondropdownchange", new DropdownEventArgs { SelectedOptions = inflow.Id });
         await component.FindAll("fluent-text-input")[1].ChangeAsync(new() { Value = "12.50" });
 
-        var category = component.FindAll("fluent-dropdown")[3];
+        var category = component.Find("fluent-dropdown[placeholder='Choose a category']");
         category.QuerySelector("fluent-option[text='Inflow: Ready to assign']").ShouldNotBeNull();
         component.FindAll("#transaction-category-error").ShouldBeEmpty();
         SaveButton(component).HasAttribute("disabled").ShouldBeFalse();
@@ -91,7 +319,7 @@ public sealed class TransactionEditorTests
         await component.FindAll("fluent-text-input")[1].ChangeAsync(new() { Value = "7.77" });
         await component.FindAll("fluent-button").Single(item => string.Equals(item.TextContent.Trim(), "Split across categories", StringComparison.Ordinal)).ClickAsync();
 
-        var split = component.FindAll("fluent-dropdown")[3];
+        var split = component.Find("fluent-dropdown[placeholder='Choose a category']");
         split.QuerySelector("fluent-option[text='Inflow: Ready to assign']").ShouldBeNull();
         component.FindAll("[role='alert']").Any(item => item.TextContent.Contains("Money leaving your budget", StringComparison.Ordinal)).ShouldBeTrue();
         SaveButton(component).HasAttribute("disabled").ShouldBeTrue();
@@ -125,7 +353,7 @@ public sealed class TransactionEditorTests
         }
 
         await component.FindAll("fluent-text-input")[1].ChangeAsync(new() { Value = "10" });
-        var category = component.FindAll("fluent-dropdown")[3];
+        var category = component.Find("fluent-dropdown[placeholder='Choose a category']");
         if (requiresCategory)
         {
             category.QuerySelector("fluent-option[text='Inflow: Ready to assign']").ShouldBeNull();

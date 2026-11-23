@@ -21,6 +21,9 @@ login to the same shortcut. Android and desktop Chromium surface manifest
 shortcuts on the installed icon, while an iPhone/iPad home screen does not. The
 shell reserves the safe-area insets for the header, content, footer, and
 reconnect notice so an installed window clears notches and home indicators.
+The plan board routes its **Add transaction** action into the same register
+draft. Desktop transaction entry and editing stay in the ledger row; phone entry
+expands the selected row into a stacked form.
 
 This is an online application with an offline fallback. After one successful
 visit and service-worker installation, failed full-page and Blazor enhanced GET
