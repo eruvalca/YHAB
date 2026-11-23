@@ -102,22 +102,15 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
             _newTransactionPending = true;
         }
         var requestedFilter = (InitialCategoryId, InitialFrom, InitialThrough);
-        var requestedAccount = Plan.Accounts.SingleOrDefault(item => item.Id == AccountId);
-        var accountChanged = _previousAccount != AccountId;
-        var filterChanged = _initialFilter != requestedFilter;
-        var contextChanged = accountChanged || filterChanged;
-        if (_editing && contextChanged)
+        var initialContextChanged = _initialFilter != requestedFilter || _previousAccount != AccountId;
+        if (!initialContextChanged)
         {
-            _reloadAfterClose = true;
+            _account = Plan.Accounts.SingleOrDefault(item => item.Id == _previousAccount);
         }
-        else
-        {
-            ApplyRequestedContext(requestedAccount, requestedFilter);
-        }
-
-        var refreshChanged = _loadedPlan?.Id != Plan.Id || _version != Plan.Version
+        var planChanged = _loadedPlan?.Id != Plan.Id || _version != Plan.Version;
+        var refreshChanged = planChanged
             || (_error is not null && !ReferenceEquals(_loadedPlan, Plan));
-        if (refreshChanged || !_editing && contextChanged)
+        if (refreshChanged || !_editing && initialContextChanged)
         {
             var planReplaced = _loadedPlan?.Id != Plan.Id;
             var catalogChanged = _version != Plan.Version;
@@ -129,14 +122,14 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
                 CloseEditors();
             }
             ReconcileDelete();
-            if (!_editing && contextChanged)
+            if (!_editing && initialContextChanged)
             {
-                ApplyRequestedContext(requestedAccount, requestedFilter);
+                ApplyRequestedContext(Plan.Accounts.SingleOrDefault(item => item.Id == AccountId), requestedFilter);
             }
 
             // Keep same-account rows painted while a revision refreshes. Their
             // labels use the catalog they arrived with until replacement is ready.
-            if (planReplaced || !_editing && contextChanged)
+            if (planReplaced || !_editing && initialContextChanged)
             {
                 _result = null;
                 _rowPlan = null;
@@ -196,7 +189,7 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
         {
             if (previous is not null) { await previous.CancelAsync(); }
             token.ThrowIfCancellationRequested();
-            var result = await LoadPage(new(AccountId, _search, _filter, _sort, _from, _to, _cursors[_page], PageSize, Plan.Version, _categoryId), token);
+            var result = await LoadPage(new(_previousAccount, _search, _filter, _sort, _from, _to, _cursors[_page], PageSize, Plan.Version, _categoryId), token);
             token.ThrowIfCancellationRequested();
             if (request != _request) { return; }
             if (_editing && !IsNewDraft && result.Rows.All(item => item.Transaction.Id != _transaction?.Id))
@@ -240,7 +233,7 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
             if (!IsDisposed && request == _request) { IsBusy = false; }
         }
     }
-    private decimal DisplayAmount(TransactionData entry) => AccountId == entry.TransferAccountId && AccountId.HasValue ? -entry.Amount : entry.Amount;
+    private decimal DisplayAmount(TransactionData entry) => _previousAccount == entry.TransferAccountId && _previousAccount.HasValue ? -entry.Amount : entry.Amount;
     private string MobileDate(TransactionData entry) => entry.Date.Year == Plan.Today.Year
         ? entry.Date.ToString("MM/dd", CultureInfo.InvariantCulture)
         : entry.Date.ToString("MM/dd/yyyy", CultureInfo.InvariantCulture);
@@ -310,11 +303,13 @@ public sealed partial class AccountRegister(IJSRuntime javascript)
     }
     private async Task CloseEditorAsync()
     {
-        var reload = _reloadAfterClose;
+        var requestedFilter = (InitialCategoryId, InitialFrom, InitialThrough);
+        var contextChanged = _previousAccount != AccountId || _initialFilter != requestedFilter;
+        var reload = _reloadAfterClose || contextChanged;
         CloseEditors();
         if (!reload) { return; }
         ApplyRequestedContext(Plan.Accounts.SingleOrDefault(item => item.Id == AccountId),
-            (InitialCategoryId, InitialFrom, InitialThrough));
+            requestedFilter);
         _previousAccount = AccountId;
         _result = null;
         _rowPlan = null;

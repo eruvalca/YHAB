@@ -76,7 +76,7 @@ else if ((_result?.Rows.Count ?? 0) > 0 || _editing)
                 {
                     <tr @key="_editKey" class="transaction-editing-row">
                         <td @key="_editKey" colspan="@EditorColumnCount">
-                            <TransactionEditor @key="_editKey" Plan="Plan" Payees="@(_payees ?? [])" Transaction="_transaction" AccountId="AccountId" OnCommand="SendTransactionCommandAsync" OnClose="CloseEditorAsync" Busy="@EditorBusy" Inline="true" />
+                            <TransactionEditor @key="_editKey" Plan="Plan" Payees="@(_payees ?? [])" Transaction="_transaction" AccountId="@_previousAccount" OnCommand="SendTransactionCommandAsync" OnClose="CloseEditorAsync" Busy="@EditorBusy" Inline="true" />
                         </td>
                     </tr>
                 }
@@ -87,7 +87,7 @@ else if ((_result?.Rows.Count ?? 0) > 0 || _editing)
                     {
                         <tr @key="_editKey" class="transaction-editing-row">
                             <td @key="_editKey" colspan="@EditorColumnCount">
-                                <TransactionEditor @key="_editKey" Plan="Plan" Payees="@(_payees ?? [])" Transaction="_transaction" AccountId="AccountId" OnCommand="SendTransactionCommandAsync" OnClose="CloseEditorAsync" Busy="@EditorBusy" Inline="true" />
+                                <TransactionEditor @key="_editKey" Plan="Plan" Payees="@(_payees ?? [])" Transaction="_transaction" AccountId="@_previousAccount" OnCommand="SendTransactionCommandAsync" OnClose="CloseEditorAsync" Busy="@EditorBusy" Inline="true" />
                             </td>
                         </tr>
                     }

@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -233,10 +234,43 @@ public sealed class AccountRegisterTests
         component.Find("h1").TextContent.ShouldBe("Checking");
         queries[^1].AccountId.ShouldBe(source.Id);
 
+        await component.Find(".table-toolbar fluent-text-input").ChangeAsync(new() { Value = "Draft" });
+        queries[^1].AccountId.ShouldBe(source.Id);
+        queries[^1].Search.ShouldBe("Draft");
+        queries[^1].From.ShouldBeNull();
+
         await component.Find("fluent-button[aria-label='Cancel']").ClickAsync();
         await component.Find(".editor-discard fluent-button").ClickAsync();
         await component.WaitForAssertionAsync(() => queries[^1].AccountId.ShouldBe(destination.Id));
         component.Find("h1").TextContent.ShouldBe("Savings");
+    }
+
+    [Fact]
+    public async Task UnrelatedRenderDoesNotRestoreInitialDateFiltersAsync()
+    {
+        await using var context = new BunitContext();
+        context.Services.AddFluentUIComponents();
+        context.JSInterop.Mode = JSRuntimeMode.Loose;
+        var today = new DateOnly(2026, 10, 3);
+        var account = new AccountData(Guid.NewGuid(), "Checking", AccountKind.Checking, 1000, today, false, "");
+        var plan = new PlanSnapshot(Guid.NewGuid(), "Plan", "", today, 7, [account], [], [], [], [], false, false, []) { Today = today };
+        var queries = new List<RegisterQuery>();
+        var component = context.Render<AccountRegister>(parameters => parameters
+            .Add(item => item.Plan, plan).Add(item => item.AccountId, account.Id)
+            .Add(item => item.InitialFrom, new DateOnly(2026, 10, 1))
+            .Add(item => item.OnCommand, _ => { }).Add(item => item.OnEditAccount, _ => { })
+            .Add(item => item.LoadPage, (query, _) =>
+            {
+                queries.Add(query);
+                return Task.FromResult(new RegisterPage(plan.Version, [], 0, null));
+            })
+            .Add(item => item.LoadPayees, _ => Task.FromResult<IReadOnlyList<string>>([])));
+
+        await component.Find("#register-from").ChangeAsync(new() { Value = today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) });
+        queries[^1].From.ShouldBe(today);
+
+        component.Render(parameters => parameters.Add(item => item.AccountEditing, true));
+        queries[^1].From.ShouldBe(today);
     }
 
     [Fact]
