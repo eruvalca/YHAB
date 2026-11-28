@@ -25,8 +25,7 @@ the [test README](../../tests/README.md).
   Playwright tests also need Aspire tooling, and Playwright needs its Chromium
   binary. See `tests/README.md` for setup and layer-specific commands.
 - Use `YHAB.UnitTests` for server logic and `YHAB.ComponentTests` for
-  Blazor rendering and interactions with bUnit. Run relevant tests while making
-  changes, then run both projects before completing code changes. Use
+  Blazor rendering and interactions with bUnit. Use
   `YHAB.IntegrationTests` with Testcontainers for in-process persistence,
   migrations, SQL constraints and focused service/dependency behavior. Use
   `YHAB.AspireIntegrationTests` for the actual AppHost graph, migration startup,
