@@ -17,7 +17,7 @@ running tests. Detailed setup and runtime procedures remain in the
 
 ## Orchestration and developer resources
 
-- Aspire is the default application run/debug entry point. Use the CLI for agent
+- Use the CLI for agent
   runs and the checked-in **Aspire: YHAB** VS Code configuration for F5 debugging;
   in Visual Studio, use `YHAB.AppHost` as the startup project. Do not bypass
   orchestration by launching the web or WebAssembly project alone. Unit/component
