@@ -19,9 +19,7 @@ running tests. Detailed setup and runtime procedures remain in the
 
 - Use the CLI for agent
   runs and the checked-in **Aspire: YHAB** VS Code configuration for F5 debugging;
-  in Visual Studio, use `YHAB.AppHost` as the startup project. Do not bypass
-  orchestration by launching the web or WebAssembly project alone. Unit/component
-  tests remain headless and do not require Aspire.
+  in Visual Studio, use `YHAB.AppHost` as the startup project.
 - Run Aspire CLI commands from the repository root; `aspire.config.json` selects
   `src/YHAB.AppHost/YHAB.AppHost.csproj`. Use
   `aspire start --launch-profile https --non-interactive`,
