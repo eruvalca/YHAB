@@ -18,7 +18,7 @@ tests also follow the [test guide](tests.instructions.md).
 
 ## Static SSR and redirect contracts
 
-- Account pages use static server-side rendering (SSR). Preserve
+- Preserve
   `[ExcludeFromInteractiveRouting]` in their page imports, authorization on
   account-management pages, and their HTTP context and cookie contracts. Keep
   form names, POST methods, `[SupplyParameterFromForm]` mapping, and antiforgery
